@@ -5,54 +5,32 @@ import {
   GraduationCap, ShieldCheck, HeartHandshake, HeartPulse,
   Home, Bell, ChevronRight, X, CheckCircle2, AlertCircle,
   Flame, Trophy, Sparkles, Play, ArrowRight, Newspaper,
-  Scale, FlaskConical, Stethoscope, PartyPopper, ExternalLink
+  Scale, FlaskConical, Stethoscope, PartyPopper, ExternalLink,
+  Loader2
 } from 'lucide-react'
+import { useUser } from '@/lib/hooks/useUser'
+import { useAxes, type AxisWithProgress } from '@/lib/hooks/useAxes'
+import { useFormations } from '@/lib/hooks/useFormations'
+import { useNews, formatRelativeDate } from '@/lib/hooks/useNews'
+import type { NewsArticle } from '@/types/database'
 
-// Types
-interface AxisData {
-  id: string
-  shortName: string
-  icon: React.ElementType
-  color: string
-  bgLight: string
-  progressFilled: number
-  dailyDone: boolean
-  todayQuiz: { title: string }
+// Icon mapping pour les axes
+const axisIcons: Record<number, React.ElementType> = {
+  1: GraduationCap,
+  2: ShieldCheck,
+  3: HeartHandshake,
+  4: HeartPulse
 }
 
-interface NewsItem {
-  id: string
-  category: 'reglementaire' | 'scientifique' | 'pratique' | 'humour'
-  title: string
-  source: string
-  date: string
-  externalUrl?: string
+const axisBgColors: Record<number, string> = {
+  1: 'bg-indigo-50',
+  2: 'bg-teal-50',
+  3: 'bg-amber-50',
+  4: 'bg-pink-50'
 }
 
-interface QuizQuestion {
-  id: number
-  text: string
-  isTrue: boolean
-  explanation: string
-  source?: string
-}
-
-// Data
-const axesData: AxisData[] = [
-  { id: 'axe1', shortName: 'Connaissances', icon: GraduationCap, color: '#2D1B96', bgLight: 'bg-indigo-50', progressFilled: 2, dailyDone: false, todayQuiz: { title: 'CCAM 2026' } },
-  { id: 'axe2', shortName: 'Pratiques', icon: ShieldCheck, color: '#00D1C1', bgLight: 'bg-teal-50', progressFilled: 3, dailyDone: true, todayQuiz: { title: 'Stérilisation' } },
-  { id: 'axe3', shortName: 'Relation', icon: HeartHandshake, color: '#F59E0B', bgLight: 'bg-amber-50', progressFilled: 1, dailyDone: false, todayQuiz: { title: 'Annonce diagnostic' } },
-  { id: 'axe4', shortName: 'Santé Pro', icon: HeartPulse, color: '#EC4899', bgLight: 'bg-pink-50', progressFilled: 0, dailyDone: false, todayQuiz: { title: 'Ergonomie' } }
-]
-
-const newsData: NewsItem[] = [
-  { id: '1', category: 'reglementaire', title: 'Convention dentaire 2026 : les nouveaux tarifs', source: 'ONCD', date: "Aujourd'hui" },
-  { id: '2', category: 'scientifique', title: 'Techniques éclaircissement : méta-analyse 2025', source: 'J Dental Research', date: 'Hier' },
-  { id: '3', category: 'pratique', title: '5 astuces pour votre flux numérique', source: 'Dental Tribune', date: 'Il y a 2j' },
-  { id: '4', category: 'humour', title: 'Les perles patients de la semaine', source: '@dentiste_humour', date: 'Il y a 3j', externalUrl: 'https://instagram.com' }
-]
-
-const quizQuestions: QuizQuestion[] = [
+// Quiz questions (temporaire - sera remplacé par Supabase)
+const quizQuestions = [
   { id: 1, text: "Le détartrage peut être coté 3 fois par an pour un patient diabétique en ALD ?", isTrue: true, explanation: "Vrai. Depuis 2026, la fréquence passe à 3 fois par an pour les patients en ALD diabète.", source: "Convention 2026" },
   { id: 2, text: "La télé-expertise est opposable pour tous les patients depuis 2026 ?", isTrue: false, explanation: "Faux. Elle reste conditionnée aux patients dépendants ou en EHPAD.", source: "Avenant 3" },
   { id: 3, text: "L'inlay-core fibré bénéficie d'une revalorisation de 12% ?", isTrue: true, explanation: "Vrai. Cette revalorisation encourage les restaurations conservatrices.", source: "CCAM v72" },
@@ -82,33 +60,40 @@ function BottomNav({ activeTab, onNavigate }: { activeTab: string; onNavigate: (
   )
 }
 
-function GlobalProgressBars({ axes }: { axes: AxisData[] }) {
+function GlobalProgressBars({ axes }: { axes: AxisWithProgress[] }) {
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
       <div className="space-y-3">
-        {axes.map((axis) => (
-          <div key={axis.id} className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${axis.bgLight}`} style={{ color: axis.color }}>
-              <axis.icon size={16} />
+        {axes.map((axis) => {
+          const Icon = axisIcons[axis.id] || GraduationCap
+          const bgColor = axisBgColors[axis.id] || 'bg-gray-50'
+          return (
+            <div key={axis.id} className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${bgColor}`} style={{ color: axis.color }}>
+                <Icon size={16} />
+              </div>
+              <div className="flex-1 flex gap-1">
+                {[0, 1, 2, 3].map((seg) => (
+                  <div key={seg} className="h-2 flex-1 rounded-full" style={{ backgroundColor: seg < axis.progressFilled ? axis.color : '#F1F5F9' }} />
+                ))}
+              </div>
             </div>
-            <div className="flex-1 flex gap-1">
-              {[0, 1, 2, 3].map((seg) => (
-                <div key={seg} className="h-2 flex-1 rounded-full" style={{ backgroundColor: seg < axis.progressFilled ? axis.color : '#F1F5F9' }} />
-              ))}
-            </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
 }
 
-function TrainingCard({ axis, onStart }: { axis: AxisData; onStart: (a: AxisData) => void }) {
+function TrainingCard({ axis, onStart }: { axis: AxisWithProgress; onStart: (a: AxisWithProgress) => void }) {
+  const Icon = axisIcons[axis.id] || GraduationCap
+  const bgColor = axisBgColors[axis.id] || 'bg-gray-50'
+  
   return (
     <button onClick={() => !axis.dailyDone && onStart(axis)} disabled={axis.dailyDone} className={`w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left ${axis.dailyDone ? 'opacity-75' : 'hover:shadow-md'}`}>
       <div className="flex items-center justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${axis.bgLight}`} style={{ color: axis.color }}>
-          <axis.icon size={20} />
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bgColor}`} style={{ color: axis.color }}>
+          <Icon size={20} />
         </div>
         {axis.dailyDone ? (
           <div className="flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 rounded-full">
@@ -122,8 +107,8 @@ function TrainingCard({ axis, onStart }: { axis: AxisData; onStart: (a: AxisData
           </div>
         )}
       </div>
-      <h3 className="font-bold text-gray-900 text-sm mb-1">{axis.shortName}</h3>
-      <p className="text-[11px] text-gray-400">{axis.todayQuiz.title}</p>
+      <h3 className="font-bold text-gray-900 text-sm mb-1">{axis.short_name}</h3>
+      <p className="text-[11px] text-gray-400">{axis.name}</p>
       <div className="mt-3 h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
         <div className="h-full rounded-full transition-all" style={{ width: axis.dailyDone ? '100%' : '0%', backgroundColor: axis.color }} />
       </div>
@@ -131,8 +116,8 @@ function TrainingCard({ axis, onStart }: { axis: AxisData; onStart: (a: AxisData
   )
 }
 
-function NewsSection({ news }: { news: NewsItem[] }) {
-  const getStyle = (cat: NewsItem['category']) => {
+function NewsSection({ news, loading }: { news: NewsArticle[]; loading: boolean }) {
+  const getStyle = (cat: NewsArticle['category']) => {
     const styles = {
       reglementaire: { icon: Scale, bg: 'bg-blue-50', text: 'text-blue-600', label: 'Réglementaire' },
       scientifique: { icon: FlaskConical, bg: 'bg-purple-50', text: 'text-purple-600', label: 'Scientifique' },
@@ -141,12 +126,36 @@ function NewsSection({ news }: { news: NewsItem[] }) {
     }
     return styles[cat]
   }
+
+  if (loading) {
+    return (
+      <section>
+        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+          <Newspaper size={20} className="text-[#2D1B96]" /> Veille métier
+        </h2>
+        <div className="flex justify-center py-8">
+          <Loader2 className="animate-spin text-gray-400" size={24} />
+        </div>
+      </section>
+    )
+  }
+
+  if (news.length === 0) {
+    return (
+      <section>
+        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+          <Newspaper size={20} className="text-[#2D1B96]" /> Veille métier
+        </h2>
+        <p className="text-gray-400 text-sm text-center py-8">Aucune actualité pour le moment</p>
+      </section>
+    )
+  }
+
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-          <Newspaper size={20} className="text-[#2D1B96]" />
-          Veille métier
+          <Newspaper size={20} className="text-[#2D1B96]" /> Veille métier
         </h2>
         <button className="text-xs font-bold text-[#2D1B96] flex items-center gap-1">Tout voir <ChevronRight size={14} /></button>
       </div>
@@ -154,7 +163,7 @@ function NewsSection({ news }: { news: NewsItem[] }) {
         {news.map((item) => {
           const style = getStyle(item.category)
           return (
-            <a key={item.id} href={item.externalUrl || '#'} target={item.externalUrl ? '_blank' : undefined} rel={item.externalUrl ? 'noopener noreferrer' : undefined} className="block bg-white rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-md">
+            <a key={item.id} href={item.external_url || '#'} target={item.external_url ? '_blank' : undefined} rel={item.external_url ? 'noopener noreferrer' : undefined} className="block bg-white rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-md">
               <div className="flex gap-3">
                 <div className={`w-10 h-10 rounded-lg ${style.bg} ${style.text} flex items-center justify-center shrink-0`}>
                   <style.icon size={18} />
@@ -163,12 +172,12 @@ function NewsSection({ news }: { news: NewsItem[] }) {
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`text-[10px] font-bold uppercase ${style.text}`}>{style.label}</span>
                     <span className="text-[10px] text-gray-300">•</span>
-                    <span className="text-[10px] text-gray-400">{item.date}</span>
+                    <span className="text-[10px] text-gray-400">{formatRelativeDate(item.published_at)}</span>
                   </div>
                   <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">{item.title}</h3>
                   <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1">
                     <span>{item.source}</span>
-                    {item.externalUrl && <ExternalLink size={10} />}
+                    {item.external_url && <ExternalLink size={10} />}
                   </div>
                 </div>
               </div>
@@ -180,15 +189,36 @@ function NewsSection({ news }: { news: NewsItem[] }) {
   )
 }
 
-function CurrentFormationCard() {
+function CurrentFormationCard({ formation, loading }: { formation: any; loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="bg-gradient-to-br from-[#2D1B96] to-[#1A0F5C] rounded-2xl p-5 flex justify-center items-center h-40">
+        <Loader2 className="animate-spin text-white/50" size={24} />
+      </div>
+    )
+  }
+
+  if (!formation) {
+    return (
+      <div className="bg-gradient-to-br from-[#2D1B96] to-[#1A0F5C] rounded-2xl p-5 text-center">
+        <p className="text-white/60 mb-4">Aucune formation en cours</p>
+        <button className="px-4 py-2.5 bg-[#00D1C1] text-white rounded-xl text-sm font-bold">
+          Voir le catalogue
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="relative bg-gradient-to-br from-[#2D1B96] to-[#1A0F5C] rounded-2xl p-5 overflow-hidden">
       <div className="absolute -top-8 -right-8 w-32 h-32 bg-[#00D1C1] opacity-20 rounded-full" />
       <div className="relative z-10">
         <span className="text-[#00D1C1] text-xs font-bold uppercase">En cours</span>
-        <h3 className="text-white font-bold text-lg mt-2">Éclaircissements & Taches Blanches</h3>
-        <p className="text-white/60 text-xs mb-4">Dr Laurent Elbeze • Séquence 5/15</p>
-        <div className="h-2 bg-white/20 rounded-full mb-4"><div className="h-full bg-[#00D1C1] rounded-full w-[33%]" /></div>
+        <h3 className="text-white font-bold text-lg mt-2">{formation.title}</h3>
+        <p className="text-white/60 text-xs mb-4">{formation.instructor_name} • Séquence {formation.currentSequence}/{formation.total_sequences}</p>
+        <div className="h-2 bg-white/20 rounded-full mb-4">
+          <div className="h-full bg-[#00D1C1] rounded-full" style={{ width: `${formation.progressPercent}%` }} />
+        </div>
         <button className="flex items-center gap-2 px-4 py-2.5 bg-[#00D1C1] text-white rounded-xl text-sm font-bold">
           <Play size={16} /> Continuer
         </button>
@@ -197,12 +227,14 @@ function CurrentFormationCard() {
   )
 }
 
-function QuizModal({ axis, onClose, onComplete }: { axis: AxisData; onClose: () => void; onComplete: () => void }) {
+function QuizModal({ axis, onClose, onComplete }: { axis: AxisWithProgress; onClose: () => void; onComplete: (score: number) => void }) {
   const [current, setCurrent] = useState(0)
   const [score, setScore] = useState(0)
   const [showFeedback, setShowFeedback] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
   const [finished, setFinished] = useState(false)
+  
+  const Icon = axisIcons[axis.id] || GraduationCap
   const q = quizQuestions[current]
 
   const answer = (val: boolean) => {
@@ -230,7 +262,7 @@ function QuizModal({ axis, onClose, onComplete }: { axis: AxisData; onClose: () 
           <div className="bg-gray-50 rounded-2xl p-4 mb-6">
             <div className="text-3xl font-black" style={{ color: axis.color }}>{score}/{quizQuestions.length}</div>
           </div>
-          <button onClick={() => { onComplete(); onClose() }} className="w-full py-3.5 bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] text-white rounded-xl font-bold">
+          <button onClick={() => onComplete(score)} className="w-full py-3.5 bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] text-white rounded-xl font-bold">
             Retour
           </button>
         </div>
@@ -247,7 +279,7 @@ function QuizModal({ axis, onClose, onComplete }: { axis: AxisData; onClose: () 
         <div className="p-4 flex justify-between items-start">
           <div>
             <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-bold" style={{ backgroundColor: `${axis.color}15`, color: axis.color }}>
-              <axis.icon size={14} /> {axis.shortName}
+              <Icon size={14} /> {axis.short_name}
             </div>
             <div className="text-xs text-gray-400 mt-1">Question {current + 1}/{quizQuestions.length}</div>
           </div>
@@ -289,15 +321,28 @@ function QuizModal({ axis, onClose, onComplete }: { axis: AxisData; onClose: () 
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState('home')
   const [showQuiz, setShowQuiz] = useState(false)
-  const [selectedAxis, setSelectedAxis] = useState<AxisData | null>(null)
-  const [axes, setAxes] = useState(axesData)
+  const [selectedAxis, setSelectedAxis] = useState<AxisWithProgress | null>(null)
 
-  const startQuiz = (axis: AxisData) => { setSelectedAxis(axis); setShowQuiz(true) }
-  const completeQuiz = () => {
-    if (selectedAxis) setAxes(prev => prev.map(a => a.id === selectedAxis.id ? { ...a, dailyDone: true } : a))
+  // Hooks Supabase
+  const { user, displayName, streak, loading: userLoading } = useUser()
+  const { axes, loading: axesLoading, completeQuiz } = useAxes(user?.id)
+  const { currentFormation, loading: formationLoading } = useFormations(user?.id)
+  const { news, loading: newsLoading } = useNews(4)
+
+  const startQuiz = (axis: AxisWithProgress) => { 
+    setSelectedAxis(axis)
+    setShowQuiz(true) 
+  }
+
+  const handleQuizComplete = async (score: number) => {
+    if (selectedAxis) {
+      await completeQuiz(selectedAxis.id, score)
+    }
     setShowQuiz(false)
     setSelectedAxis(null)
   }
+
+  const isLoading = userLoading || axesLoading
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
@@ -311,13 +356,13 @@ export default function HomePage() {
             </div>
             <div>
               <p className="text-xs text-gray-400">Bonjour,</p>
-              <h1 className="text-lg font-bold text-gray-900">Dr. Martin</h1>
+              <h1 className="text-lg font-bold text-gray-900">{displayName}</h1>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-full">
               <Flame size={16} className="text-orange-500" />
-              <span className="text-sm font-bold text-orange-600">12</span>
+              <span className="text-sm font-bold text-orange-600">{streak?.current_streak || 0}</span>
             </div>
             <button className="relative p-2.5 bg-gray-50 rounded-full">
               <Bell size={20} className="text-gray-600" />
@@ -328,35 +373,43 @@ export default function HomePage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
-        <GlobalProgressBars axes={axes} />
-
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <Sparkles size={20} className="text-[#00D1C1]" /> Entraînement du jour
-            </h2>
-            <span className="text-xs font-bold text-gray-400">{axes.filter(a => a.dailyDone).length}/4</span>
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="animate-spin text-[#2D1B96]" size={32} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            {axes.map(axis => <TrainingCard key={axis.id} axis={axis} onStart={startQuiz} />)}
-          </div>
-        </section>
+        ) : (
+          <>
+            {axes.length > 0 && <GlobalProgressBars axes={axes} />}
 
-        <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <GraduationCap size={20} className="text-[#2D1B96]" /> Ma formation
-            </h2>
-            <button className="text-xs font-bold text-[#2D1B96] flex items-center gap-1">Catalogue <ChevronRight size={14} /></button>
-          </div>
-          <CurrentFormationCard />
-        </section>
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Sparkles size={20} className="text-[#00D1C1]" /> Entraînement du jour
+                </h2>
+                <span className="text-xs font-bold text-gray-400">{axes.filter(a => a.dailyDone).length}/{axes.length}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {axes.map(axis => <TrainingCard key={axis.id} axis={axis} onStart={startQuiz} />)}
+              </div>
+            </section>
 
-        <NewsSection news={newsData} />
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <GraduationCap size={20} className="text-[#2D1B96]" /> Ma formation
+                </h2>
+                <button className="text-xs font-bold text-[#2D1B96] flex items-center gap-1">Catalogue <ChevronRight size={14} /></button>
+              </div>
+              <CurrentFormationCard formation={currentFormation} loading={formationLoading} />
+            </section>
+
+            <NewsSection news={news} loading={newsLoading} />
+          </>
+        )}
       </main>
 
       <BottomNav activeTab={activeTab} onNavigate={setActiveTab} />
-      {showQuiz && selectedAxis && <QuizModal axis={selectedAxis} onClose={() => { setShowQuiz(false); setSelectedAxis(null) }} onComplete={completeQuiz} />}
+      {showQuiz && selectedAxis && <QuizModal axis={selectedAxis} onClose={() => { setShowQuiz(false); setSelectedAxis(null) }} onComplete={handleQuizComplete} />}
     </div>
   )
 }
