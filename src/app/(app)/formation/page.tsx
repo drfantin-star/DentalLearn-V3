@@ -362,7 +362,7 @@ function PopularFormationCard({ formation }: { formation: FormationPopulaire }) 
           )}
         </div>
         <p className="text-[11px] text-gray-400 mt-0.5">
-          {formation.instructor}
+          {formation.totalSequences} séquences
         </p>
         {formation.isEnCours && formation.progressPercent !== undefined && (
           <div className="flex items-center gap-2 mt-1.5">
@@ -453,9 +453,8 @@ function CategoryDetailView({
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400">{f.instructor}</p>
-                  <p className="text-[11px] text-gray-300 mt-0.5">
-                    {f.totalSequences} séquences • Séquence 0 gratuite
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    {f.totalSequences} séquences • Intro gratuite
                   </p>
                 </div>
                 <div className="flex items-center gap-1 text-gray-400 shrink-0">
@@ -601,7 +600,7 @@ export default function FormationPage() {
         <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 flex items-start gap-3">
           <BookOpen size={20} className="text-blue-500 shrink-0 mt-0.5" />
           <p className="text-sm text-blue-700">
-            La <strong>séquence 0</strong> de chaque formation est gratuite.
+            L&apos;<strong>intro</strong> de chaque formation est gratuite.
             Passez en Premium pour accéder à toutes les séquences.
           </p>
         </div>
