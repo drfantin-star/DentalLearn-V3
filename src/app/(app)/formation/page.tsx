@@ -561,14 +561,9 @@ export default function FormationPage() {
         {/* Spécialités cliniques */}
         {(activeFilter === 'toutes' || activeFilter === 'cp') && (
           <section>
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-bold text-gray-900">
-                Spécialités cliniques
-              </h2>
-              <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-200 flex items-center gap-1">
-                CP ✓
-              </span>
-            </div>
+            <h2 className="text-lg font-bold text-gray-900 mb-4">
+              Spécialités cliniques
+            </h2>
             <CategoryGrid
               cats={cpCategories}
               onSelect={setSelectedCategory}
@@ -579,14 +574,9 @@ export default function FormationPage() {
         {/* Développement professionnel (Bonus) */}
         {(activeFilter === 'toutes' || activeFilter === 'bonus') && (
           <section>
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-bold text-gray-900">
-                Développement professionnel
-              </h2>
-              <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-yellow-50 text-yellow-600 rounded-full border border-yellow-200">
-                Bonus
-              </span>
-            </div>
+            <h2 className="text-lg font-bold text-gray-900 mb-4">
+              Développement professionnel
+            </h2>
             <BonusGrid
               cats={bonusCategories}
               onSelect={setSelectedCategory}
