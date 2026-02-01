@@ -1,12 +1,13 @@
 'use client'
 
 import React, { useState } from 'react'
+import Link from 'next/link'
 import {
   GraduationCap, ShieldCheck, HeartHandshake, HeartPulse,
   Bell, ChevronRight, X, CheckCircle2, AlertCircle,
   Flame, Trophy, Sparkles, Play, ArrowRight, Newspaper,
   Scale, FlaskConical, Stethoscope, PartyPopper, ExternalLink,
-  Loader2
+  Loader2, Heart, BookOpen
 } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useAxes, type AxisWithProgress } from '@/lib/hooks/useAxes'
@@ -15,7 +16,7 @@ import { useNews, formatRelativeDate } from '@/lib/hooks/useNews'
 import type { NewsArticle } from '@/types/database'
 
 // ============================================
-// MAPPINGS
+// MAPPINGS — Couleurs prototype V5
 // ============================================
 
 const axisIcons: Record<number, React.ElementType> = {
@@ -26,10 +27,17 @@ const axisIcons: Record<number, React.ElementType> = {
 }
 
 const axisBgColors: Record<number, string> = {
-  1: 'bg-indigo-50',
+  1: 'bg-violet-50',
   2: 'bg-teal-50',
   3: 'bg-amber-50',
-  4: 'bg-pink-50',
+  4: 'bg-emerald-50',
+}
+
+const axisColors: Record<number, string> = {
+  1: '#8B5CF6',
+  2: '#00D1C1',
+  3: '#F59E0B',
+  4: '#10B981',
 }
 
 // ============================================
@@ -44,6 +52,50 @@ const quizQuestions = [
 ]
 
 // ============================================
+// MOCK FORMATIONS EN COURS (temporaire)
+// ============================================
+
+interface FormationEnCours {
+  id: string
+  title: string
+  instructor: string
+  category: string
+  currentSequence: number
+  totalSequences: number
+  progressPercent: number
+  likes: number
+  isCP: boolean
+  badge?: 'NOUVEAU' | 'POPULAIRE'
+}
+
+const mockFormations: FormationEnCours[] = [
+  {
+    id: '1',
+    title: 'Éclaircissements & Taches Blanches',
+    instructor: 'Dr Laurent Elbeze',
+    category: 'Dentisterie Restauratrice',
+    currentSequence: 6,
+    totalSequences: 15,
+    progressPercent: 40,
+    likes: 124,
+    isCP: true,
+    badge: 'POPULAIRE',
+  },
+  {
+    id: '2',
+    title: 'Fêlures & Overlays',
+    instructor: 'Dr Gauthier Weisrock',
+    category: 'Dentisterie Restauratrice',
+    currentSequence: 2,
+    totalSequences: 15,
+    progressPercent: 13,
+    likes: 89,
+    isCP: true,
+    badge: 'NOUVEAU',
+  },
+]
+
+// ============================================
 // COMPOSANTS INTERNES (seront extraits en 2.2)
 // ============================================
 
@@ -54,26 +106,30 @@ function GlobalProgressBars({ axes }: { axes: AxisWithProgress[] }) {
         {axes.map((axis) => {
           const Icon = axisIcons[axis.id] || GraduationCap
           const bgColor = axisBgColors[axis.id] || 'bg-gray-50'
+          const color = axisColors[axis.id] || axis.color
+          // Barre continue : progressFilled va de 0 à 4, on le convertit en %
+          const percent = Math.round((axis.progressFilled / 4) * 100)
           return (
             <div key={axis.id} className="flex items-center gap-3">
               <div
                 className={`w-8 h-8 rounded-lg flex items-center justify-center ${bgColor}`}
-                style={{ color: axis.color }}
+                style={{ color }}
               >
                 <Icon size={16} />
               </div>
-              <div className="flex-1 flex gap-1">
-                {[0, 1, 2, 3].map((seg) => (
-                  <div
-                    key={seg}
-                    className="h-2 flex-1 rounded-full transition-all duration-500"
-                    style={{
-                      backgroundColor:
-                        seg < axis.progressFilled ? axis.color : '#F1F5F9',
-                    }}
-                  />
-                ))}
+              {/* Barre CONTINUE (pas de segments) */}
+              <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{
+                    width: `${percent}%`,
+                    backgroundColor: color,
+                  }}
+                />
               </div>
+              <span className="text-[10px] font-bold text-gray-400 w-8 text-right">
+                {percent}%
+              </span>
             </div>
           )
         })}
@@ -141,6 +197,65 @@ function TrainingCard({
         />
       </div>
     </button>
+  )
+}
+
+function FormationCard({ formation }: { formation: FormationEnCours }) {
+  return (
+    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all">
+      {/* Header : badge + likes */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          {formation.isCP && (
+            <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-violet-50 text-violet-600 rounded-full">
+              CP
+            </span>
+          )}
+          {formation.badge && (
+            <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+              formation.badge === 'NOUVEAU'
+                ? 'bg-emerald-50 text-emerald-600'
+                : 'bg-orange-50 text-orange-600'
+            }`}>
+              {formation.badge}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 text-gray-400">
+          <Heart size={12} className="text-red-400 fill-red-400" />
+          <span className="text-[11px] font-medium">{formation.likes}</span>
+        </div>
+      </div>
+
+      {/* Titre + formateur */}
+      <h3 className="font-bold text-gray-900 text-sm leading-snug mb-1">
+        {formation.title}
+      </h3>
+      <p className="text-[11px] text-gray-400 mb-1">
+        {formation.instructor}
+      </p>
+      <p className="text-[10px] text-gray-300 mb-3">
+        {formation.category}
+      </p>
+
+      {/* Barre de progression continue */}
+      <div className="flex items-center gap-2 mb-3">
+        <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-[#8B5CF6] rounded-full transition-all duration-700"
+            style={{ width: `${formation.progressPercent}%` }}
+          />
+        </div>
+        <span className="text-[10px] font-bold text-gray-400">
+          {formation.currentSequence}/{formation.totalSequences}
+        </span>
+      </div>
+
+      {/* Bouton Continuer */}
+      <button className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-[#2D1B96] to-[#3D2BB6] text-white rounded-xl text-sm font-bold hover:shadow-md transition-all active:scale-[0.98]">
+        <Play size={14} /> Continuer
+      </button>
+    </div>
   )
 }
 
@@ -241,61 +356,6 @@ function NewsSection({
         })}
       </div>
     </section>
-  )
-}
-
-function CurrentFormationCard({
-  formation,
-  loading,
-}: {
-  formation: any
-  loading: boolean
-}) {
-  if (loading) {
-    return (
-      <div className="bg-gradient-to-br from-[#2D1B96] to-[#1A0F5C] rounded-2xl p-5 flex justify-center items-center h-40">
-        <Loader2 className="animate-spin text-white/50" size={24} />
-      </div>
-    )
-  }
-
-  if (!formation) {
-    return (
-      <div className="bg-gradient-to-br from-[#2D1B96] to-[#1A0F5C] rounded-2xl p-5 text-center">
-        <p className="text-white/60 mb-4">Aucune formation en cours</p>
-        <button className="px-4 py-2.5 bg-[#00D1C1] text-white rounded-xl text-sm font-bold hover:bg-[#00b8a9] transition-colors">
-          Voir le catalogue
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="relative bg-gradient-to-br from-[#2D1B96] to-[#1A0F5C] rounded-2xl p-5 overflow-hidden">
-      <div className="absolute -top-8 -right-8 w-32 h-32 bg-[#00D1C1] opacity-20 rounded-full" />
-      <div className="absolute -bottom-4 -left-4 w-20 h-20 bg-[#00D1C1] opacity-10 rounded-full" />
-      <div className="relative z-10">
-        <span className="text-[#00D1C1] text-xs font-bold uppercase tracking-wide">
-          En cours
-        </span>
-        <h3 className="text-white font-bold text-lg mt-2 leading-tight">
-          {formation.title}
-        </h3>
-        <p className="text-white/60 text-xs mb-4">
-          {formation.instructor_name} • Séquence{' '}
-          {formation.currentSequence}/{formation.total_sequences}
-        </p>
-        <div className="h-2 bg-white/20 rounded-full mb-4 overflow-hidden">
-          <div
-            className="h-full bg-[#00D1C1] rounded-full transition-all duration-700"
-            style={{ width: `${formation.progressPercent}%` }}
-          />
-        </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-[#00D1C1] text-white rounded-xl text-sm font-bold hover:bg-[#00b8a9] transition-colors">
-          <Play size={16} /> Continuer
-        </button>
-      </div>
-    </div>
   )
 }
 
@@ -586,7 +646,7 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            {/* Progression globale */}
+            {/* Progression globale — barres continues */}
             {axes.length > 0 && <GlobalProgressBars axes={axes} />}
 
             {/* Entraînement du jour */}
@@ -611,21 +671,47 @@ export default function HomePage() {
               </div>
             </section>
 
-            {/* Formation en cours */}
+            {/* Mes formations en cours — cartes multiples */}
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <GraduationCap size={20} className="text-[#2D1B96]" />
-                  Ma formation
+                  <BookOpen size={20} className="text-[#8B5CF6]" />
+                  Mes formations en cours
                 </h2>
-                <button className="text-xs font-bold text-[#2D1B96] flex items-center gap-1 hover:underline">
-                  Catalogue <ChevronRight size={14} />
-                </button>
+                <Link
+                  href="/formation"
+                  className="text-xs font-bold text-[#2D1B96] flex items-center gap-1 hover:underline"
+                >
+                  Tout voir <ChevronRight size={14} />
+                </Link>
               </div>
-              <CurrentFormationCard
-                formation={currentFormation}
-                loading={formationLoading}
-              />
+
+              {formationLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="animate-spin text-gray-400" size={24} />
+                </div>
+              ) : mockFormations.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3">
+                  {mockFormations.map((f) => (
+                    <FormationCard key={f.id} formation={f} />
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
+                  <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-violet-50 flex items-center justify-center">
+                    <GraduationCap size={24} className="text-violet-400" />
+                  </div>
+                  <p className="text-gray-500 text-sm mb-4">
+                    Aucune formation en cours
+                  </p>
+                  <Link
+                    href="/formation"
+                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#00D1C1] text-white rounded-xl text-sm font-bold hover:bg-[#00b8a9] transition-colors"
+                  >
+                    Voir le catalogue
+                  </Link>
+                </div>
+              )}
             </section>
 
             {/* Veille métier */}
