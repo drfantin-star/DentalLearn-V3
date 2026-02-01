@@ -227,14 +227,11 @@ function FormationCard({ formation }: { formation: FormationEnCours }) {
         </div>
       </div>
 
-      {/* Titre + formateur */}
+      {/* Titre */}
       <h3 className="font-bold text-gray-900 text-sm leading-snug mb-1">
         {formation.title}
       </h3>
-      <p className="text-[11px] text-gray-400 mb-1">
-        {formation.instructor}
-      </p>
-      <p className="text-[10px] text-gray-300 mb-3">
+      <p className="text-[10px] text-gray-400 mb-3">
         {formation.category}
       </p>
 
