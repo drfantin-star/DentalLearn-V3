@@ -399,9 +399,21 @@ function CategoryDetailView({
   formations: FormationPopulaire[]
   onBack: () => void
 }) {
+  const [filter, setFilter] = useState<FilterTab>('toutes')
+
   const catFormations = formations.filter(
     (f) => f.categoryId === category.id
   )
+
+  const filteredFormations = catFormations.filter((f) => {
+    if (filter === 'cp') return f.isCP
+    if (filter === 'bonus') return !f.isCP
+    return true
+  })
+
+  const hasCp = catFormations.some((f) => f.isCP)
+  const hasBonus = catFormations.some((f) => !f.isCP)
+  const showFilters = hasCp && hasBonus // ne montrer les filtres que si mix CP + Bonus
 
   return (
     <div>
@@ -429,10 +441,17 @@ function CategoryDetailView({
         </div>
       </div>
 
+      {/* Filtres CP / Bonus — uniquement si la catégorie contient les deux types */}
+      {showFilters && (
+        <div className="mb-4">
+          <FilterTabs active={filter} onChange={setFilter} />
+        </div>
+      )}
+
       {/* Liste formations */}
-      {catFormations.length > 0 ? (
+      {filteredFormations.length > 0 ? (
         <div className="space-y-3">
-          {catFormations.map((f) => (
+          {filteredFormations.map((f) => (
             <div
               key={f.id}
               className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm"
@@ -506,17 +525,10 @@ function CategoryDetailView({
 // ============================================
 
 export default function FormationPage() {
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('toutes')
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
 
   const cpCategories = categories.filter((c) => c.type === 'cp')
   const bonusCategories = categories.filter((c) => c.type === 'bonus')
-
-  const filteredPopulaires = formationsPopulaires.filter((f) => {
-    if (activeFilter === 'cp') return f.isCP
-    if (activeFilter === 'bonus') return !f.isCP
-    return true
-  })
 
   // Vue détail catégorie
   if (selectedCategory) {
@@ -554,34 +566,27 @@ export default function FormationPage() {
       </header>
 
       <main className="max-w-lg mx-auto px-4 py-6 space-y-8">
-        {/* Filtres */}
-        <FilterTabs active={activeFilter} onChange={setActiveFilter} />
-
         {/* Spécialités cliniques */}
-        {(activeFilter === 'toutes' || activeFilter === 'cp') && (
-          <section>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">
-              Spécialités cliniques
-            </h2>
-            <CategoryGrid
-              cats={cpCategories}
-              onSelect={setSelectedCategory}
-            />
-          </section>
-        )}
+        <section>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">
+            Spécialités cliniques
+          </h2>
+          <CategoryGrid
+            cats={cpCategories}
+            onSelect={setSelectedCategory}
+          />
+        </section>
 
-        {/* Développement professionnel (Bonus) */}
-        {(activeFilter === 'toutes' || activeFilter === 'bonus') && (
-          <section>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">
-              Développement professionnel
-            </h2>
-            <BonusGrid
-              cats={bonusCategories}
-              onSelect={setSelectedCategory}
-            />
-          </section>
-        )}
+        {/* Développement professionnel */}
+        <section>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">
+            Développement professionnel
+          </h2>
+          <BonusGrid
+            cats={bonusCategories}
+            onSelect={setSelectedCategory}
+          />
+        </section>
 
         {/* Populaires */}
         <section>
@@ -590,7 +595,7 @@ export default function FormationPage() {
             <h2 className="text-lg font-bold text-gray-900">Populaires</h2>
           </div>
           <div className="space-y-2">
-            {filteredPopulaires.map((f) => (
+            {formationsPopulaires.map((f) => (
               <PopularFormationCard key={f.id} formation={f} />
             ))}
           </div>
