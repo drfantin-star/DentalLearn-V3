@@ -15,6 +15,7 @@ import {
   useSequenceQuestions,
   useSubmitSequenceResult,
   type Sequence,
+  type QuestionOption,
 } from '@/lib/supabase'
 
 // ============================================
@@ -29,6 +30,33 @@ interface SequencePlayerProps {
 }
 
 type PlayerStep = 'video' | 'quiz' | 'pdf' | 'results'
+
+// ============================================
+// HELPER — Parser les options (string JSON ou array)
+// ============================================
+
+function parseOptions(options: unknown): QuestionOption[] {
+  if (!options) return []
+  
+  // Si c'est déjà un tableau, le retourner
+  if (Array.isArray(options)) {
+    return options as QuestionOption[]
+  }
+  
+  // Si c'est une chaîne JSON, la parser
+  if (typeof options === 'string') {
+    try {
+      const parsed = JSON.parse(options)
+      if (Array.isArray(parsed)) {
+        return parsed as QuestionOption[]
+      }
+    } catch (e) {
+      console.error('Erreur parsing options:', e)
+    }
+  }
+  
+  return []
+}
 
 // ============================================
 // COMPOSANT PRINCIPAL
@@ -85,8 +113,9 @@ export default function SequencePlayer({
 
   const currentStepIdx = steps.indexOf(playerStep === 'results' ? 'quiz' : playerStep)
 
-  // Question actuelle
+  // Question actuelle avec options parsées
   const currentQuestion = questions[currentQ]
+  const currentOptions = currentQuestion ? parseOptions(currentQuestion.options) : []
   const isCheckbox = currentQuestion?.question_type === 'checkbox'
 
   // ============================================
@@ -98,7 +127,8 @@ export default function SequencePlayer({
     setSelectedAnswer(answerId)
 
     const q = questions[currentQ]
-    const selected = q.options.find((o) => o.id === answerId)
+    const opts = parseOptions(q.options)
+    const selected = opts.find((o) => o.id === answerId)
     const isCorrect = selected?.correct || false
     const points = isCorrect ? q.points : 0
 
@@ -147,9 +177,10 @@ export default function SequencePlayer({
     if (showFeedback || selectedAnswers.length === 0) return
 
     const q = questions[currentQ]
+    const opts = parseOptions(q.options)
     
     // Trouver toutes les réponses correctes
-    const correctOptionIds = q.options.filter((o) => o.correct).map((o) => o.id)
+    const correctOptionIds = opts.filter((o) => o.correct).map((o) => o.id)
     
     // Vérifier si l'utilisateur a coché exactement les bonnes réponses
     const allCorrectSelected = correctOptionIds.every((id) => selectedAnswers.includes(id))
@@ -357,7 +388,24 @@ export default function SequencePlayer({
         {/* QUIZ */}
         {playerStep === 'quiz' && currentQuestion && (() => {
           const q = currentQuestion
+          const opts = currentOptions
           const isTF = q.question_type === 'true_false'
+
+          // Si pas d'options valides, afficher un message
+          if (opts.length === 0) {
+            return (
+              <div className="text-center py-10">
+                <p className="text-gray-500 mb-4">Question mal formatée (pas d&apos;options)</p>
+                <button
+                  onClick={nextQuestion}
+                  className="px-6 py-3 rounded-xl text-white font-bold"
+                  style={{ background: categoryGradient.from }}
+                >
+                  Question suivante
+                </button>
+              </div>
+            )
+          }
 
           return (
             <div>
@@ -413,7 +461,7 @@ export default function SequencePlayer({
 
               {/* Options */}
               <div className="flex flex-col gap-2.5">
-                {q.options.map((opt, i) => {
+                {opts.map((opt, i) => {
                   // État de l'option
                   const isSelectedSingle = selectedAnswer === opt.id
                   const isSelectedMultiple = selectedAnswers.includes(opt.id)
