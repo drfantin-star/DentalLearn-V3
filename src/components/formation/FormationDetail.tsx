@@ -12,6 +12,7 @@ import {
   useFormation,
   useUserFormationProgress,
   usePremiumAccess,
+  usePreviewMode,
   isSequenceAccessible,
   getCategoryConfig,
   type Sequence,
@@ -173,6 +174,7 @@ export default function FormationDetail({
   const { formation, sequences, loading, error } = useFormation(formationId)
   const { currentSequence, completedSequenceIds } = useUserFormationProgress(formationId)
   const { isPremium } = usePremiumAccess()
+  const { isPreview } = usePreviewMode()
 
   const categoryConfig = useMemo(() => {
     return getCategoryConfig(formation?.category || null)
@@ -184,7 +186,7 @@ export default function FormationDetail({
     
     // Chercher la première séquence accessible et non complétée
     for (const seq of sequences) {
-      const access = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium)
+      const access = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium, isPreview)
       if (access.accessible && access.reason !== 'completed') {
         return seq
       }
@@ -192,7 +194,7 @@ export default function FormationDetail({
     
     // Si toutes complétées, retourner la première
     return sequences[0]
-  }, [sequences, currentSequence, completedSequenceIds, isPremium])
+  }, [sequences, currentSequence, completedSequenceIds, isPremium, isPreview])
 
   // Loading state
   if (loading) {
@@ -289,7 +291,7 @@ export default function FormationDetail({
         </h3>
 
         {sequences.map((seq) => {
-          const accessibility = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium)
+          const accessibility = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium, isPreview)
           
           return (
             <SequenceCard
