@@ -1,5 +1,5 @@
 // ============================================
-// EXPORTS SUPABASE
+// EXPORTS SUPABASE — DentalLearn
 // ============================================
 
 // Client
@@ -14,10 +14,9 @@ export type {
   UserFormation,
   UserSequence,
   UserSequenceAnswer,
-  UserStats,
+  UserSubscription,
   UserPoints,
-  FormationWithProgress,
-  SequenceWithQuestions,
+  PointReason,
 } from './types'
 
 export {
@@ -28,11 +27,12 @@ export {
 
 // Hooks
 export {
+  usePreviewMode,
   useFormations,
   useFormation,
   useSequenceQuestions,
   useUserFormationProgress,
-  useEnrollFormation,
+  usePremiumAccess,
   useSubmitSequenceResult,
-  useUserStats,
+  isSequenceAccessible,
 } from './hooks'
