@@ -1,128 +1,30 @@
 'use client'
 
-import React from 'react'
+import React, { useMemo } from 'react'
 import {
   ChevronLeft,
   Check,
   Lock,
   Play,
+  Loader2,
 } from 'lucide-react'
+import {
+  useFormation,
+  useUserFormationProgress,
+  usePremiumAccess,
+  isSequenceAccessible,
+  getCategoryConfig,
+  type Sequence,
+} from '@/lib/supabase'
 
 // ============================================
 // TYPES
 // ============================================
 
-export interface Sequence {
-  id: string
-  number: number
-  title: string
-  isFree: boolean
-  hasVideo: boolean
-  hasPdf: boolean
-  questionsCount: number
-  points: number
-  videoDuration?: string // ex: "8:00"
-}
-
-export interface FormationDetailData {
-  id: string
-  title: string
-  instructor: string
-  category: string
-  categoryGradient: { from: string; to: string }
-  categoryEmoji: string
-  totalSequences: number
-  totalPoints: number
-  likes: number
-  isCP: boolean
-  sequences: Sequence[]
-  userProgress: {
-    currentSequence: number // dernière séquence débloquée
-    completedSequences: number[]
-    totalPoints: number
-  } | null
-}
-
 interface FormationDetailProps {
-  formation: FormationDetailData
-  isPremium: boolean
+  formationId: string
   onBack: () => void
   onStartSequence: (sequence: Sequence) => void
-}
-
-// ============================================
-// MOCK DATA — Formations de référence
-// ============================================
-
-const SEQUENCE_TITLES = [
-  'Introduction — Découverte',
-  'Bases scientifiques',
-  'Mécanismes d\'action',
-  'Protocole en cabinet',
-  'Indications cliniques',
-  'Contre-indications',
-  'Gestion complications',
-  'Cas clinique #1',
-  'Techniques avancées',
-  'Cas clinique #2',
-  'Matériaux & produits',
-  'Evidence-based',
-  'Situations spéciales',
-  'Synthèse pratique',
-  'Cas clinique #3',
-  'Évaluation finale',
-]
-
-export function generateMockSequences(count: number = 16): Sequence[] {
-  return Array.from({ length: count }, (_, i) => ({
-    id: `seq-${i}`,
-    number: i,
-    title: i === 0 ? SEQUENCE_TITLES[0] : `Séquence ${i} — ${SEQUENCE_TITLES[i] || 'Contenu'}`,
-    isFree: i === 0,
-    hasVideo: i <= 3 || i === 7 || i === 14,
-    hasPdf: i > 0,
-    questionsCount: i === 0 ? 2 : 4,
-    points: i === 0 ? 20 : 55,
-    videoDuration: i === 0 ? '3:00' : i <= 3 ? '8:00' : '5:00',
-  }))
-}
-
-export const mockFormationEclaircissement: FormationDetailData = {
-  id: 'f1',
-  title: 'Éclaircissements & Taches Blanches',
-  instructor: 'Dr Laurent Elbeze',
-  category: 'esthetique',
-  categoryGradient: { from: '#8B5CF6', to: '#A78BFA' },
-  categoryEmoji: '✨',
-  totalSequences: 15,
-  totalPoints: 825,
-  likes: 142,
-  isCP: true,
-  sequences: generateMockSequences(16),
-  userProgress: {
-    currentSequence: 6,
-    completedSequences: [0, 1, 2, 3, 4, 5],
-    totalPoints: 280,
-  },
-}
-
-export const mockFormationFelures: FormationDetailData = {
-  id: 'f2',
-  title: 'Fêlures : Diagnostic & Traitement',
-  instructor: 'Dr Gauthier Weisrock',
-  category: 'restauratrice',
-  categoryGradient: { from: '#3B82F6', to: '#60A5FA' },
-  categoryEmoji: '🦷',
-  totalSequences: 15,
-  totalPoints: 810,
-  likes: 98,
-  isCP: true,
-  sequences: generateMockSequences(16),
-  userProgress: {
-    currentSequence: 1,
-    completedSequences: [0],
-    totalPoints: 20,
-  },
 }
 
 // ============================================
@@ -131,22 +33,20 @@ export const mockFormationFelures: FormationDetailData = {
 
 function SequenceCard({
   sequence,
-  formation,
-  isPremium,
+  accessibility,
+  gradient,
   onStart,
 }: {
   sequence: Sequence
-  formation: FormationDetailData
-  isPremium: boolean
+  accessibility: { accessible: boolean; reason: string }
+  gradient: { from: string; to: string }
   onStart: () => void
 }) {
-  const currentSeq = formation.userProgress?.currentSequence || 0
-  const completedSeqs = formation.userProgress?.completedSequences || []
-
-  const isLocked = !sequence.isFree && !isPremium && sequence.number > 0
-  const isCompleted = completedSeqs.includes(sequence.number)
-  const isCurrent = sequence.number === currentSeq
-  const isAccessible = sequence.number <= currentSeq
+  const isFree = sequence.is_intro || sequence.access_level === 'free'
+  const isCompleted = accessibility.reason === 'completed'
+  const isCurrent = accessibility.reason === 'unlocked' || accessibility.reason === 'free'
+  const isLocked = accessibility.reason === 'premium_required'
+  const isNotUnlocked = accessibility.reason === 'not_unlocked'
 
   // Styles conditionnels
   let bgColor = '#FAFAFF'
@@ -155,10 +55,10 @@ function SequenceCard({
   if (isCompleted) {
     bgColor = '#F0FDF4'
     borderColor = '#86EFAC'
-  } else if (isCurrent) {
+  } else if (isCurrent && !isCompleted) {
     bgColor = 'white'
-    borderColor = formation.categoryGradient.from
-  } else if (isLocked) {
+    borderColor = gradient.from
+  } else if (isLocked || isNotUnlocked) {
     bgColor = '#FAFAFA'
     borderColor = '#E8E5F5'
   }
@@ -170,15 +70,19 @@ function SequenceCard({
   if (isCompleted) {
     badgeBg = '#22C55E'
     badgeColor = 'white'
-  } else if (isCurrent) {
-    badgeBg = formation.categoryGradient.from
+  } else if (isCurrent && !isCompleted) {
+    badgeBg = gradient.from
     badgeColor = 'white'
-  } else if (isLocked) {
+  } else if (isLocked || isNotUnlocked) {
     badgeBg = '#CBD5E1'
     badgeColor = 'white'
   }
 
-  const canClick = !isLocked && isAccessible
+  const canClick = accessibility.accessible
+
+  // Durée affichée
+  const duration = sequence.estimated_duration_minutes || 4
+  const hasMedia = !!sequence.course_media_url
 
   return (
     <button
@@ -191,7 +95,7 @@ function SequenceCard({
         borderRadius: 16,
         padding: '12px 14px',
         cursor: canClick ? 'pointer' : 'not-allowed',
-        opacity: !isAccessible && !isLocked ? 0.5 : 1,
+        opacity: isNotUnlocked ? 0.5 : 1,
       }}
     >
       <div className="flex items-center gap-3">
@@ -205,7 +109,7 @@ function SequenceCard({
           ) : isLocked ? (
             <Lock size={14} />
           ) : (
-            sequence.number
+            sequence.sequence_number
           )}
         </div>
 
@@ -214,32 +118,34 @@ function SequenceCard({
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
             <p
               className={`font-semibold text-[13px] leading-snug ${
-                isLocked ? 'text-gray-400' : 'text-gray-800'
+                isLocked || isNotUnlocked ? 'text-gray-400' : 'text-gray-800'
               }`}
             >
               {sequence.title}
             </p>
-            {sequence.isFree && (
+            {isFree && (
               <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-lg text-[10px] font-bold">
                 GRATUIT
+              </span>
+            )}
+            {sequence.is_evaluation && (
+              <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+                ÉVALUATION
               </span>
             )}
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            {sequence.hasVideo && (
+            {hasMedia && (
               <span className="text-[10px] text-gray-500">
-                📹 {sequence.videoDuration}
+                📹 {sequence.course_duration_seconds ? Math.round(sequence.course_duration_seconds / 60) : duration} min
               </span>
             )}
             <span className="text-[10px] text-gray-500">
-              📝 {sequence.questionsCount}Q
+              📝 4Q
             </span>
-            {sequence.hasPdf && (
-              <span className="text-[10px] text-gray-500">📄 PDF</span>
-            )}
             <span className="text-[10px] text-gray-500">
-              ⭐ {sequence.points}
+              ⏱️ {duration} min
             </span>
           </div>
         </div>
@@ -260,17 +166,56 @@ function SequenceCard({
 // ============================================
 
 export default function FormationDetail({
-  formation,
-  isPremium,
+  formationId,
   onBack,
   onStartSequence,
 }: FormationDetailProps) {
-  const currentSeq = formation.userProgress?.currentSequence || 0
-  const completedSeqs = formation.userProgress?.completedSequences || []
-  
-  const nextSequence = formation.sequences.find(
-    (s) => s.number === currentSeq && !completedSeqs.includes(s.number)
-  ) || formation.sequences.find((s) => s.number === currentSeq)
+  const { formation, sequences, loading, error } = useFormation(formationId)
+  const { currentSequence, completedSequenceIds } = useUserFormationProgress(formationId)
+  const { isPremium } = usePremiumAccess()
+
+  const categoryConfig = useMemo(() => {
+    return getCategoryConfig(formation?.category || null)
+  }, [formation?.category])
+
+  // Trouver la prochaine séquence à faire
+  const nextSequence = useMemo(() => {
+    if (!sequences.length) return null
+    
+    // Chercher la première séquence accessible et non complétée
+    for (const seq of sequences) {
+      const access = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium)
+      if (access.accessible && access.reason !== 'completed') {
+        return seq
+      }
+    }
+    
+    // Si toutes complétées, retourner la première
+    return sequences[0]
+  }, [sequences, currentSequence, completedSequenceIds, isPremium])
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+      </div>
+    )
+  }
+
+  // Error state
+  if (error || !formation) {
+    return (
+      <div className="p-4">
+        <button onClick={onBack} className="mb-4 text-gray-500 flex items-center gap-1">
+          <ChevronLeft size={18} /> Retour
+        </button>
+        <p className="text-red-500">
+          Erreur : {error?.message || 'Formation non trouvée'}
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="pb-24">
@@ -278,7 +223,7 @@ export default function FormationDetail({
       <div
         className="pt-14 pb-6 px-4 rounded-b-[28px]"
         style={{
-          background: `linear-gradient(135deg, ${formation.categoryGradient.from}, ${formation.categoryGradient.to})`,
+          background: `linear-gradient(135deg, ${categoryConfig.gradient.from}, ${categoryConfig.gradient.to})`,
         }}
       >
         {/* Bouton retour */}
@@ -296,17 +241,14 @@ export default function FormationDetail({
         </h1>
 
         {/* Instructeur */}
-        <p className="text-white/85 text-[13px] mb-3">{formation.instructor}</p>
+        <p className="text-white/85 text-[13px] mb-3">{formation.instructor_name}</p>
 
         {/* Tags */}
         <div className="flex flex-wrap gap-2">
           <span className="bg-white/20 text-white px-3 py-1 rounded-xl text-xs">
-            {formation.totalSequences} séquences
+            {sequences.length} séquences
           </span>
-          <span className="bg-white/20 text-white px-3 py-1 rounded-xl text-xs">
-            {formation.totalPoints} points
-          </span>
-          {formation.isCP ? (
+          {formation.cp_eligible ? (
             <span className="bg-white/25 text-white px-3 py-1 rounded-xl text-xs font-bold">
               🏅 CP validante
             </span>
@@ -315,22 +257,56 @@ export default function FormationDetail({
               💼 Bonus
             </span>
           )}
+          {formation.dpc_hours && (
+            <span className="bg-white/20 text-white px-3 py-1 rounded-xl text-xs">
+              {formation.dpc_hours}h DPC
+            </span>
+          )}
         </div>
+      </div>
+
+      {/* Description */}
+      {formation.description_short && (
+        <div className="px-4 pt-4">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            {formation.description_short}
+          </p>
+        </div>
+      )}
+
+      {/* Mode Preview Banner */}
+      <div className="mx-4 mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3">
+        <p className="text-xs text-blue-700">
+          🔓 <strong>Mode Preview</strong> — Toutes les séquences sont accessibles pour tester. 
+          La progression n&apos;est pas sauvegardée.
+        </p>
       </div>
 
       {/* Liste des séquences */}
       <div className="px-4 pt-5">
-        <h3 className="text-[15px] font-bold text-gray-800 mb-4">Séquences</h3>
+        <h3 className="text-[15px] font-bold text-gray-800 mb-4">
+          Séquences ({sequences.length})
+        </h3>
 
-        {formation.sequences.map((seq) => (
-          <SequenceCard
-            key={seq.id}
-            sequence={seq}
-            formation={formation}
-            isPremium={isPremium}
-            onStart={() => onStartSequence(seq)}
-          />
-        ))}
+        {sequences.map((seq) => {
+          const accessibility = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium)
+          
+          return (
+            <SequenceCard
+              key={seq.id}
+              sequence={seq}
+              accessibility={accessibility}
+              gradient={categoryConfig.gradient}
+              onStart={() => onStartSequence(seq)}
+            />
+          )
+        })}
+
+        {sequences.length === 0 && (
+          <p className="text-gray-400 text-sm text-center py-8">
+            Aucune séquence disponible
+          </p>
+        )}
       </div>
 
       {/* CTA fixe en bas */}
@@ -341,13 +317,13 @@ export default function FormationDetail({
               onClick={() => onStartSequence(nextSequence)}
               className="w-full py-3.5 rounded-2xl font-bold text-[15px] text-white flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
               style={{
-                background: `linear-gradient(135deg, ${formation.categoryGradient.from}, ${formation.categoryGradient.to})`,
+                background: `linear-gradient(135deg, ${categoryConfig.gradient.from}, ${categoryConfig.gradient.to})`,
               }}
             >
               <Play size={18} />
-              {currentSeq === 0
+              {completedSequenceIds.length === 0
                 ? 'Commencer la formation'
-                : `Continuer — Séquence ${currentSeq}`}
+                : `Continuer — Séquence ${nextSequence.sequence_number}`}
             </button>
           </div>
         </div>
