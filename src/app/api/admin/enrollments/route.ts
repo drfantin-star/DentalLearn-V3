@@ -43,9 +43,8 @@ export async function GET() {
     }
 
     // Récupérer les IDs uniques
-    const userIds = [...new Set(enrollmentsData.map(e => e.user_id))]
-    const formationIds = [...new Set(enrollmentsData.map(e => e.formation_id))]
-
+    const userIds = Array.from(new Set(enrollmentsData.map(e => e.user_id)))
+    const formationIds = Array.from(new Set(enrollmentsData.map(e => e.formation_id)))
     // Charger les profils utilisateurs
     const { data: profilesData } = await adminSupabase
       .from('user_profiles')
