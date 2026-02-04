@@ -190,7 +190,12 @@ export default function SequencePlayer({
   const hasVideo = !!sequence.course_media_url
   const hasPdf = !!sequence.infographic_url
   
-  const [playerStep, setPlayerStep] = useState<PlayerStep>(hasVideo ? 'video' : 'quiz')
+  // Mode démo : toujours afficher les 3 étapes pour tester l'interface
+  const demoMode = true // Mettre à false en production
+  const showVideo = demoMode || hasVideo
+  const showPdf = demoMode || hasPdf
+  
+  const [playerStep, setPlayerStep] = useState<PlayerStep>(showVideo ? 'video' : 'quiz')
   const [currentQ, setCurrentQ] = useState(0)
   
   // États pour différents types
@@ -224,11 +229,11 @@ export default function SequencePlayer({
 
   const steps: PlayerStep[] = useMemo(() => {
     const s: PlayerStep[] = []
-    if (hasVideo) s.push('video')
+    if (showVideo) s.push('video')
     s.push('quiz')
-    if (hasPdf) s.push('pdf')
+    if (showPdf) s.push('pdf')
     return s
-  }, [hasVideo, hasPdf])
+  }, [showVideo, showPdf])
 
   const currentStepIdx = steps.indexOf(playerStep === 'results' ? 'quiz' : playerStep)
   const currentQuestion = questions[currentQ]
@@ -868,10 +873,12 @@ export default function SequencePlayer({
           <div className="text-center py-10">
             <div className="w-20 h-20 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4 text-4xl">📄</div>
             <h3 className="text-lg font-bold text-gray-800 mb-2">Support de cours</h3>
-            {sequence.infographic_url && (
+            {sequence.infographic_url ? (
               <a href={sequence.infographic_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl border-2 border-gray-200 bg-white font-semibold text-sm mb-6">
                 <Download size={18} /> Télécharger le PDF
               </a>
+            ) : (
+              <p className="text-sm text-gray-400 mb-6">PDF non disponible pour cette séquence</p>
             )}
             <div className="mt-4">
               <button onClick={finishSequence} disabled={submitting} className="w-full max-w-xs py-4 rounded-2xl font-bold text-white disabled:opacity-50" style={{ background: categoryGradient.from }}>
@@ -901,8 +908,8 @@ export default function SequencePlayer({
               </div>
             </div>
             <div>
-              <button onClick={() => hasPdf ? setPlayerStep('pdf') : finishSequence()} disabled={submitting} className="w-full max-w-xs py-4 rounded-2xl font-bold text-white disabled:opacity-50" style={{ background: categoryGradient.from }}>
-                {submitting ? 'Enregistrement...' : hasPdf ? 'Voir le PDF' : 'Terminer'}
+              <button onClick={() => showPdf ? setPlayerStep('pdf') : finishSequence()} disabled={submitting} className="w-full max-w-xs py-4 rounded-2xl font-bold text-white disabled:opacity-50" style={{ background: categoryGradient.from }}>
+                {submitting ? 'Enregistrement...' : showPdf ? 'Voir le PDF' : 'Terminer'}
               </button>
             </div>
           </div>
