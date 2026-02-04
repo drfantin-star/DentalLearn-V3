@@ -1,5 +1,6 @@
 // ============================================
 // TYPES SUPABASE — DentalLearn Database
+// Adapté à la structure réelle de la BDD
 // ============================================
 
 // ─────────────────────────────────────────────
@@ -15,11 +16,14 @@ export interface Formation {
   description_long: string | null
   cover_image_url: string | null
   category: string | null
-  level: 'debutant' | 'intermediate' | 'avance' | null
+  level: string | null
   total_sequences: number
   dpc_hours: number | null
   is_published: boolean
   access_type: 'demo' | 'full'
+  cp_eligible: boolean | null
+  cp_axe_id: number | null
+  cp_hours: number | null
   created_at: string
   updated_at: string
 }
@@ -33,9 +37,17 @@ export interface Sequence {
   formation_id: string
   sequence_number: number
   title: string
-  unlock_day: number | null // obsolète mais encore présent
+  unlock_day: number | null
   estimated_duration_minutes: number
   learning_objectives: string[] | null
+  is_intro: boolean
+  is_evaluation: boolean
+  access_level: 'free' | 'premium'
+  course_media_url: string | null
+  course_media_type: 'audio' | 'video' | null
+  course_duration_seconds: number | null
+  subtitles_url: string | null
+  infographic_url: string | null
   created_at: string
   updated_at: string
 }
@@ -45,7 +57,7 @@ export interface Sequence {
 // ─────────────────────────────────────────────
 
 export interface QuestionOption {
-  id: string // "A", "B", "C", "D" ou "VRAI", "FAUX"
+  id: string
   text: string
   correct: boolean
 }
@@ -54,14 +66,16 @@ export interface Question {
   id: string
   sequence_id: string
   question_order: number
-  question_type: 'mcq' | 'true_false' | 'fill_blank' | 'drag_drop' | 'matching' | 'hotspot' | 'case_study' | 'ordering'
+  question_type: string
   question_text: string
   options: QuestionOption[]
-  feedback_correct: string | null
-  feedback_incorrect: string | null
+  feedback_correct: string
+  feedback_incorrect: string
   image_url: string | null
   points: number
   recommended_time_seconds: number | null
+  is_daily_quiz_eligible: boolean
+  difficulty: number
   created_at: string
 }
 
@@ -76,8 +90,8 @@ export interface UserFormation {
   started_at: string
   completed_at: string | null
   is_active: boolean
-  progress: number | null
-  access_type: string | null
+  progress: Record<string, unknown> | null
+  access_type: 'demo' | 'full'
   current_sequence: number
 }
 
@@ -96,61 +110,55 @@ export interface UserSequence {
   id: string
   user_id: string
   sequence_id: string
-  completed_at: string
-  score: number
-  time_spent_seconds: number
+  completed_at: string | null
+  score: number | null
+  time_spent_seconds: number | null
   attempts_count: number
-  answers: UserSequenceAnswer[]
+  answers: UserSequenceAnswer[] | null
 }
 
 // ─────────────────────────────────────────────
-// USER STATS
+// USER SUBSCRIPTIONS
 // ─────────────────────────────────────────────
 
-export interface UserStats {
+export interface UserSubscription {
+  id: string
   user_id: string
-  first_name: string | null
-  last_name: string | null
-  total_points: number
-  current_streak: number | null
-  longest_streak: number | null
-  formations_enrolled: number
-  formations_completed: number
-  sequences_completed: number
-  badges_earned: number
+  plan: 'free' | 'premium' | 'cabinet' | 'enterprise'
+  status: 'active' | 'cancelled' | 'expired' | 'trial'
+  trial_ends_at: string | null
+  current_period_start: string | null
+  current_period_end: string | null
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  created_at: string
+  updated_at: string
 }
 
 // ─────────────────────────────────────────────
-// USER POINTS
+// USER POINTS — ENUM point_reason
 // ─────────────────────────────────────────────
+
+export type PointReason = 
+  | 'question_correct'
+  | 'speed_bonus'
+  | 'perfect_sequence'
+  | 'streak_bonus_3'
+  | 'streak_bonus_7'
+  | 'streak_bonus_14'
+  | 'streak_bonus_30'
+  | 'badge_unlock'
+  | 'quest_reward'
+  | 'streak_bonus'
+  | 'leaderboard_reward'
 
 export interface UserPoints {
   id: string
   user_id: string
-  sequence_id: string
+  sequence_id: string | null
   points_earned: number
-  reason: string
+  reason: PointReason
   created_at: string
-}
-
-// ─────────────────────────────────────────────
-// TYPES COMPOSITES (avec jointures)
-// ─────────────────────────────────────────────
-
-export interface FormationWithProgress extends Formation {
-  userProgress?: {
-    currentSequence: number
-    completedSequences: number
-    totalPoints: number
-    isEnrolled: boolean
-  }
-  totalLikes?: number
-}
-
-export interface SequenceWithQuestions extends Sequence {
-  questions: Question[]
-  isCompleted?: boolean
-  userScore?: number
 }
 
 // ─────────────────────────────────────────────
@@ -220,21 +228,7 @@ export const CATEGORY_CONFIG: Record<string, {
     textColor: 'text-teal-600',
     isCP: true,
   },
-  management: {
-    emoji: '💼',
-    gradient: { from: '#64748B', to: '#94A3B8' },
-    bgColor: 'bg-slate-50',
-    textColor: 'text-slate-600',
-    isCP: false,
-  },
-  organisation: {
-    emoji: '📋',
-    gradient: { from: '#78716C', to: '#A8A29E' },
-    bgColor: 'bg-stone-50',
-    textColor: 'text-stone-600',
-    isCP: false,
-  },
-  softskills: {
+  'soft-skills': {
     emoji: '🤝',
     gradient: { from: '#D97706', to: '#F59E0B' },
     bgColor: 'bg-yellow-50',
@@ -243,7 +237,6 @@ export const CATEGORY_CONFIG: Record<string, {
   },
 }
 
-// Catégorie par défaut si non trouvée
 export const DEFAULT_CATEGORY_CONFIG = {
   emoji: '📚',
   gradient: { from: '#6B7280', to: '#9CA3AF' },
