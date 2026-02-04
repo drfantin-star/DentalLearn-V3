@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   ChevronLeft,
   Check,
@@ -10,16 +10,19 @@ import {
   Loader2,
   Square,
   CheckSquare,
+  AlertCircle,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react'
 import {
   useSequenceQuestions,
   useSubmitSequenceResult,
   type Sequence,
-  type QuestionOption,
+  type Question,
 } from '@/lib/supabase'
 
 // ============================================
-// TYPES
+// TYPES (basés sur types/questions.ts)
 // ============================================
 
 interface SequencePlayerProps {
@@ -31,31 +34,144 @@ interface SequencePlayerProps {
 
 type PlayerStep = 'video' | 'quiz' | 'pdf' | 'results'
 
+interface StandardOption {
+  id: string
+  text: string
+  correct: boolean
+}
+
+interface FillBlankBlank {
+  id: string
+  correctAnswer: string
+  alternatives?: string[]
+  position?: number
+}
+
+interface FillBlankOptions {
+  blanks: FillBlankBlank[]
+  wordBank: string[]
+}
+
+interface OrderingOption {
+  id: string
+  text: string
+  correctPosition: number
+}
+
+interface MatchingPair {
+  id: string
+  left: string
+  right: string
+}
+
+interface CaseStudyContext {
+  patient: string
+  chief_complaint: string
+  history: string
+  clinical_image?: string
+}
+
+interface CaseStudySubQuestion {
+  id: string
+  order: number
+  text: string
+  choices: StandardOption[]
+  feedback: string
+  points: number
+}
+
+interface CaseStudyOptions {
+  context: CaseStudyContext
+  questions: CaseStudySubQuestion[]
+}
+
 // ============================================
-// HELPER — Parser les options (string JSON ou array)
+// PARSERS
 // ============================================
 
-function parseOptions(options: unknown): QuestionOption[] {
+function parseStandardOptions(options: unknown): StandardOption[] {
   if (!options) return []
-  
-  // Si c'est déjà un tableau, le retourner
-  if (Array.isArray(options)) {
-    return options as QuestionOption[]
-  }
-  
-  // Si c'est une chaîne JSON, la parser
+  if (Array.isArray(options)) return options as StandardOption[]
   if (typeof options === 'string') {
     try {
       const parsed = JSON.parse(options)
-      if (Array.isArray(parsed)) {
-        return parsed as QuestionOption[]
-      }
-    } catch (e) {
-      console.error('Erreur parsing options:', e)
-    }
+      if (Array.isArray(parsed)) return parsed as StandardOption[]
+    } catch (e) { /* ignore */ }
+  }
+  return []
+}
+
+function parseFillBlankOptions(options: unknown): FillBlankOptions | null {
+  if (!options) return null
+  
+  let opts = options
+  if (typeof options === 'string') {
+    try {
+      opts = JSON.parse(options)
+    } catch (e) { return null }
   }
   
+  if (typeof opts === 'object' && opts !== null) {
+    const o = opts as Record<string, unknown>
+    if ('blanks' in o && 'wordBank' in o) {
+      return o as unknown as FillBlankOptions
+    }
+  }
+  return null
+}
+
+function parseOrderingOptions(options: unknown): OrderingOption[] {
+  if (!options) return []
+  
+  let opts = options
+  if (typeof options === 'string') {
+    try { opts = JSON.parse(options) } catch (e) { return [] }
+  }
+  
+  // Format: { ordering: [...] } ou { items: [...] }
+  if (typeof opts === 'object' && !Array.isArray(opts) && opts !== null) {
+    const o = opts as Record<string, unknown>
+    if ('ordering' in o && Array.isArray(o.ordering)) return o.ordering as OrderingOption[]
+    if ('items' in o && Array.isArray(o.items)) return o.items as OrderingOption[]
+  }
+  
+  // Format: [{ id, text, correctPosition }, ...]
+  if (Array.isArray(opts) && opts.length > 0 && 'correctPosition' in opts[0]) {
+    return opts as OrderingOption[]
+  }
   return []
+}
+
+function parseMatchingOptions(options: unknown): MatchingPair[] {
+  if (!options) return []
+  
+  let opts = options
+  if (typeof options === 'string') {
+    try { opts = JSON.parse(options) } catch (e) { return [] }
+  }
+  
+  if (typeof opts === 'object' && !Array.isArray(opts) && opts !== null) {
+    const o = opts as Record<string, unknown>
+    if ('pairs' in o && Array.isArray(o.pairs)) return o.pairs as MatchingPair[]
+  }
+  return []
+}
+
+function parseCaseStudyOptions(options: unknown): CaseStudyOptions | null {
+  if (!options) return null
+  
+  let opts = options
+  if (typeof options === 'string') {
+    try { opts = JSON.parse(options) } catch (e) { return null }
+  }
+  
+  if (typeof opts === 'object' && opts !== null) {
+    const o = opts as Record<string, unknown>
+    if ('context' in o && 'questions' in o) {
+      return o as unknown as CaseStudyOptions
+    }
+  }
+  return null
 }
 
 // ============================================
@@ -71,18 +187,22 @@ export default function SequencePlayer({
   const { questions, loading: loadingQuestions, error } = useSequenceQuestions(sequence.id)
   const { submit: submitResult, loading: submitting } = useSubmitSequenceResult()
 
-  // États du player
   const hasVideo = !!sequence.course_media_url
   const hasPdf = !!sequence.infographic_url
   
   const [playerStep, setPlayerStep] = useState<PlayerStep>(hasVideo ? 'video' : 'quiz')
   const [currentQ, setCurrentQ] = useState(0)
   
-  // Pour QCM simple / Vrai-Faux : une seule réponse
+  // États pour différents types
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
-  
-  // Pour Checkbox : plusieurs réponses possibles
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([])
+  const [fillBlankAnswers, setFillBlankAnswers] = useState<Record<string, string>>({})
+  const [orderingOrder, setOrderingOrder] = useState<string[]>([])
+  const [matchingMatches, setMatchingMatches] = useState<Record<string, string>>({})
+  const [caseStudyAnswers, setCaseStudyAnswers] = useState<Record<string, string>>({})
+  const [caseStudyCurrentQ, setCaseStudyCurrentQ] = useState(0)
+  const [selectedLeftMatching, setSelectedLeftMatching] = useState<string | null>(null)
+  const [shuffledMatchingRights, setShuffledMatchingRights] = useState<MatchingPair[]>([])
   
   const [showFeedback, setShowFeedback] = useState(false)
   const [correctCount, setCorrectCount] = useState(0)
@@ -94,7 +214,7 @@ export default function SequencePlayer({
     feedback: string
     isLast: boolean
   } | null>(null)
-  const [answers, setAnswers] = useState<{
+  const [answersLog, setAnswersLog] = useState<{
     question_id: string
     selected_option: string
     is_correct: boolean
@@ -102,7 +222,6 @@ export default function SequencePlayer({
   }[]>([])
   const [startTime] = useState(Date.now())
 
-  // Étapes disponibles
   const steps: PlayerStep[] = useMemo(() => {
     const s: PlayerStep[] = []
     if (hasVideo) s.push('video')
@@ -112,138 +231,187 @@ export default function SequencePlayer({
   }, [hasVideo, hasPdf])
 
   const currentStepIdx = steps.indexOf(playerStep === 'results' ? 'quiz' : playerStep)
-
-  // Question actuelle avec options parsées
   const currentQuestion = questions[currentQ]
-  const currentOptions = currentQuestion ? parseOptions(currentQuestion.options) : []
-  const isCheckbox = currentQuestion?.question_type === 'checkbox'
+
+  // Initialiser ordering
+  useEffect(() => {
+    if (currentQuestion?.question_type === 'ordering' && orderingOrder.length === 0) {
+      const opts = parseOrderingOptions(currentQuestion.options)
+      if (opts.length > 0) {
+        const shuffled = [...opts].sort(() => Math.random() - 0.5).map(o => o.id)
+        setOrderingOrder(shuffled)
+      }
+    }
+  }, [currentQuestion, orderingOrder.length])
+
+  // Initialiser matching
+  useEffect(() => {
+    if (currentQuestion?.question_type === 'matching' && shuffledMatchingRights.length === 0) {
+      const pairs = parseMatchingOptions(currentQuestion.options)
+      if (pairs.length > 0) {
+        const shuffled = [...pairs].sort(() => Math.random() - 0.5)
+        setShuffledMatchingRights(shuffled)
+      }
+    }
+  }, [currentQuestion, shuffledMatchingRights.length])
+
+  const resetQuestionState = () => {
+    setSelectedAnswer(null)
+    setSelectedAnswers([])
+    setFillBlankAnswers({})
+    setOrderingOrder([])
+    setMatchingMatches({})
+    setCaseStudyAnswers({})
+    setCaseStudyCurrentQ(0)
+    setSelectedLeftMatching(null)
+    setShuffledMatchingRights([])
+    setShowFeedback(false)
+  }
 
   // ============================================
-  // HANDLERS — QCM Simple / Vrai-Faux
+  // ÉVALUATION
   // ============================================
-  
+
+  const evaluateAndShowFeedback = (isCorrect: boolean, points: number, feedback: string) => {
+    if (isCorrect) setCorrectCount(c => c + 1)
+    setTotalPoints(p => p + points)
+    setShowFeedback(true)
+    setOverlayData({ isCorrect, points, feedback, isLast: currentQ === questions.length - 1 })
+    setShowOverlay(true)
+  }
+
+  // MCQ / True-False / MCQ Image
   const handleSingleAnswer = (answerId: string) => {
     if (showFeedback || selectedAnswer) return
     setSelectedAnswer(answerId)
 
-    const q = questions[currentQ]
-    const opts = parseOptions(q.options)
-    const selected = opts.find((o) => o.id === answerId)
+    const q = currentQuestion
+    const opts = parseStandardOptions(q.options)
+    const selected = opts.find(o => o.id === answerId)
     const isCorrect = selected?.correct || false
     const points = isCorrect ? q.points : 0
 
-    if (isCorrect) {
-      setCorrectCount((c) => c + 1)
-    }
-    setTotalPoints((p) => p + points)
-
-    setAnswers((prev) => [
-      ...prev,
-      {
-        question_id: q.id,
-        selected_option: answerId,
-        is_correct: isCorrect,
-        points_earned: points,
-      },
-    ])
-
-    setShowFeedback(true)
-    setOverlayData({
-      isCorrect,
-      points,
-      feedback: isCorrect ? q.feedback_correct : q.feedback_incorrect,
-      isLast: currentQ === questions.length - 1,
-    })
-    setShowOverlay(true)
+    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: answerId, is_correct: isCorrect, points_earned: points }])
+    evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
   }
 
-  // ============================================
-  // HANDLERS — Checkbox (choix multiples)
-  // ============================================
-
-  const toggleCheckboxAnswer = (answerId: string) => {
-    if (showFeedback) return
-    
-    setSelectedAnswers((prev) => {
-      if (prev.includes(answerId)) {
-        return prev.filter((id) => id !== answerId)
-      } else {
-        return [...prev, answerId]
-      }
-    })
-  }
-
-  const validateCheckboxAnswer = () => {
+  // Checkbox
+  const handleCheckboxValidate = () => {
     if (showFeedback || selectedAnswers.length === 0) return
-
-    const q = questions[currentQ]
-    const opts = parseOptions(q.options)
+    const q = currentQuestion
+    const opts = parseStandardOptions(q.options)
+    const correctIds = opts.filter(o => o.correct).map(o => o.id)
     
-    // Trouver toutes les réponses correctes
-    const correctOptionIds = opts.filter((o) => o.correct).map((o) => o.id)
-    
-    // Vérifier si l'utilisateur a coché exactement les bonnes réponses
-    const allCorrectSelected = correctOptionIds.every((id) => selectedAnswers.includes(id))
-    const noIncorrectSelected = selectedAnswers.every((id) => correctOptionIds.includes(id))
-    const isFullyCorrect = allCorrectSelected && noIncorrectSelected
+    const correctSelected = selectedAnswers.filter(a => correctIds.includes(a)).length
+    const incorrectSelected = selectedAnswers.filter(a => !correctIds.includes(a)).length
+    const score = Math.max(0, (correctSelected - incorrectSelected) / correctIds.length)
+    const isCorrect = score === 1
+    const points = Math.round(score * q.points)
 
-    // Calcul des points (partiel possible)
-    let points = 0
-    if (isFullyCorrect) {
-      points = q.points
-    } else {
-      // Points partiels : proportion de bonnes réponses
-      const correctSelected = selectedAnswers.filter((id) => correctOptionIds.includes(id)).length
-      const incorrectSelected = selectedAnswers.filter((id) => !correctOptionIds.includes(id)).length
-      const partialScore = Math.max(0, correctSelected - incorrectSelected) / correctOptionIds.length
-      points = Math.round(q.points * partialScore)
-    }
-
-    if (isFullyCorrect) {
-      setCorrectCount((c) => c + 1)
-    }
-    setTotalPoints((p) => p + points)
-
-    setAnswers((prev) => [
-      ...prev,
-      {
-        question_id: q.id,
-        selected_option: selectedAnswers.join(','),
-        is_correct: isFullyCorrect,
-        points_earned: points,
-      },
-    ])
-
-    setShowFeedback(true)
-    setOverlayData({
-      isCorrect: isFullyCorrect,
-      points,
-      feedback: isFullyCorrect ? q.feedback_correct : q.feedback_incorrect,
-      isLast: currentQ === questions.length - 1,
-    })
-    setShowOverlay(true)
+    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: selectedAnswers.join(','), is_correct: isCorrect, points_earned: points }])
+    evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
   }
 
-  // ============================================
-  // Question suivante
-  // ============================================
+  // Highlight (barrer les intrus)
+  const handleHighlightValidate = () => {
+    if (showFeedback || selectedAnswers.length === 0) return
+    const q = currentQuestion
+    const opts = parseStandardOptions(q.options)
+    const intrusIds = opts.filter(o => !o.correct).map(o => o.id)
+
+    const intrusBarred = selectedAnswers.filter(a => intrusIds.includes(a)).length
+    const correctBarred = selectedAnswers.filter(a => !intrusIds.includes(a)).length
+    const score = intrusIds.length > 0 ? Math.max(0, (intrusBarred - correctBarred) / intrusIds.length) : 0
+    const isCorrect = score === 1
+    const points = Math.round(score * q.points)
+
+    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: selectedAnswers.join(','), is_correct: isCorrect, points_earned: points }])
+    evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
+  }
+
+  // Fill Blank
+  const handleFillBlankValidate = () => {
+    const q = currentQuestion
+    const opts = parseFillBlankOptions(q.options)
+    if (!opts) return
+
+    let correct = 0
+    for (const blank of opts.blanks) {
+      const userAnswer = (fillBlankAnswers[blank.id] || '').toLowerCase().trim()
+      const correctAnswer = blank.correctAnswer.toLowerCase().trim()
+      
+      // Vérifier réponse exacte ou alternatives
+      const alternatives = blank.alternatives?.map(a => a.toLowerCase().trim()) || []
+      if (userAnswer === correctAnswer || alternatives.includes(userAnswer)) {
+        correct++
+      }
+    }
+
+    const score = opts.blanks.length > 0 ? correct / opts.blanks.length : 0
+    const isCorrect = score === 1
+    const points = Math.round(score * q.points)
+
+    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: JSON.stringify(fillBlankAnswers), is_correct: isCorrect, points_earned: points }])
+    evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
+  }
+
+  // Ordering
+  const handleOrderingValidate = () => {
+    const q = currentQuestion
+    const opts = parseOrderingOptions(q.options)
+
+    let correct = 0
+    orderingOrder.forEach((itemId, index) => {
+      const opt = opts.find(o => o.id === itemId)
+      if (opt && opt.correctPosition === index + 1) correct++
+    })
+
+    const score = opts.length > 0 ? correct / opts.length : 0
+    const isCorrect = score === 1
+    const points = Math.round(score * q.points)
+
+    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: orderingOrder.join(','), is_correct: isCorrect, points_earned: points }])
+    evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
+  }
+
+  // Matching
+  const handleMatchingValidate = () => {
+    const q = currentQuestion
+    const pairs = parseMatchingOptions(q.options)
+
+    let correct = 0
+    for (const pair of pairs) {
+      if (matchingMatches[pair.id] === pair.id) correct++
+    }
+
+    const score = pairs.length > 0 ? correct / pairs.length : 0
+    const isCorrect = score === 1
+    const points = Math.round(score * q.points)
+
+    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: JSON.stringify(matchingMatches), is_correct: isCorrect, points_earned: points }])
+    evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
+  }
 
   const nextQuestion = () => {
     setShowOverlay(false)
-    setShowFeedback(false)
-    setSelectedAnswer(null)
-    setSelectedAnswers([])
+    resetQuestionState()
 
     if (currentQ < questions.length - 1) {
-      setCurrentQ((c) => c + 1)
+      setCurrentQ(c => c + 1)
     } else {
       setPlayerStep('results')
     }
   }
 
-  // ============================================
-  // Terminer séquence
-  // ============================================
+  const skipQuestion = () => {
+    setAnswersLog(prev => [...prev, { question_id: currentQuestion.id, selected_option: 'skipped', is_correct: false, points_earned: 0 }])
+    resetQuestionState()
+    if (currentQ < questions.length - 1) {
+      setCurrentQ(c => c + 1)
+    } else {
+      setPlayerStep('results')
+    }
+  }
 
   const finishSequence = async () => {
     try {
@@ -252,134 +420,85 @@ export default function SequencePlayer({
         score: Math.round((correctCount / questions.length) * 100),
         totalPoints,
         timeSpentSeconds: Math.round((Date.now() - startTime) / 1000),
-        answers,
+        answers: answersLog,
       })
     } catch (err) {
       console.error('Erreur soumission:', err)
     }
-
     onComplete(correctCount, totalPoints)
   }
 
-  // Score final
-  const score = questions.length > 0 
-    ? Math.round((correctCount / questions.length) * 100) 
-    : 0
+  const score = questions.length > 0 ? Math.round((correctCount / questions.length) * 100) : 0
 
   // ============================================
-  // RENDU — Loading / Error
+  // RENDU
   // ============================================
 
   if (loadingQuestions) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAFF]">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96] mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Chargement des questions...</p>
-        </div>
+        <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
       </div>
     )
   }
 
-  if (error) {
+  if (error || questions.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAFF] p-4">
         <div className="text-center">
-          <p className="text-red-500 mb-4">Erreur : {error.message}</p>
-          <button onClick={onBack} className="px-4 py-2 bg-gray-100 rounded-xl text-sm">
-            Retour
-          </button>
+          <p className="text-gray-500 mb-4">{error?.message || 'Aucune question disponible'}</p>
+          <button onClick={onBack} className="px-4 py-2 bg-gray-100 rounded-xl text-sm">Retour</button>
         </div>
       </div>
     )
   }
 
-  if (questions.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAFAFF] p-4">
-        <div className="text-center">
-          <p className="text-gray-500 mb-4">Aucune question pour cette séquence</p>
-          <button onClick={onBack} className="px-4 py-2 bg-gray-100 rounded-xl text-sm">
-            Retour
-          </button>
-        </div>
-      </div>
-    )
+  const typeLabels: Record<string, string> = {
+    mcq: 'QCM', true_false: 'Vrai/Faux', checkbox: 'Choix multiples',
+    fill_blank: 'Compléter', highlight: 'Barrer les intrus', mcq_image: 'QCM Image',
+    ordering: 'Ordonnancement', matching: 'Association', case_study: 'Cas clinique',
   }
-
-  // ============================================
-  // RENDU PRINCIPAL
-  // ============================================
 
   return (
     <div className="min-h-screen bg-[#FAFAFF] flex flex-col">
       {/* Header */}
       <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-        <button
-          onClick={onBack}
-          className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-        >
+        <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-lg">
           <ChevronLeft size={20} className="text-gray-600" />
         </button>
-        <p className="flex-1 font-bold text-sm text-gray-800 truncate">
-          {sequence.title}
-        </p>
-        <span className="font-bold text-[13px] text-amber-600">
-          ⭐ {totalPoints}
-        </span>
+        <p className="flex-1 font-bold text-sm text-gray-800 truncate">{sequence.title}</p>
+        <span className="font-bold text-[13px] text-amber-600">⭐ {totalPoints}</span>
       </div>
 
       {/* Stepper */}
       <div className="bg-white px-4 py-3 flex items-center justify-center gap-2">
         {steps.map((step, i) => {
           const isActive = (playerStep === 'results' ? 'quiz' : playerStep) === step
-          const isDone = playerStep === 'results' ? true : i < currentStepIdx
-          const label =
-            step === 'video' ? '📹 Vidéo' : step === 'quiz' ? '📝 Quiz' : '📄 PDF'
-
+          const isDone = playerStep === 'results' || i < currentStepIdx
+          const label = step === 'video' ? '📹 Vidéo' : step === 'quiz' ? '📝 Quiz' : '📄 PDF'
           return (
             <div key={step} className="flex items-center gap-2">
               <div
-                className="px-3.5 py-1.5 rounded-2xl text-xs font-semibold transition-all"
-                style={{
-                  background: isActive
-                    ? categoryGradient.from
-                    : isDone
-                    ? '#DCFCE7'
-                    : '#F1F5F9',
-                  color: isActive ? 'white' : isDone ? '#15803D' : '#94A3B8',
-                }}
+                className="px-3.5 py-1.5 rounded-2xl text-xs font-semibold"
+                style={{ background: isActive ? categoryGradient.from : isDone ? '#DCFCE7' : '#F1F5F9', color: isActive ? 'white' : isDone ? '#15803D' : '#94A3B8' }}
               >
-                {isDone && !isActive ? '✓ ' : ''}
-                {label}
+                {isDone && !isActive ? '✓ ' : ''}{label}
               </div>
-              {i < steps.length - 1 && (
-                <div
-                  className="w-5 h-0.5"
-                  style={{ background: isDone ? '#86EFAC' : '#E2E8F0' }}
-                />
-              )}
+              {i < steps.length - 1 && <div className="w-5 h-0.5" style={{ background: isDone ? '#86EFAC' : '#E2E8F0' }} />}
             </div>
           )
         })}
       </div>
 
       {/* Contenu */}
-      <div className="flex-1 p-4 overflow-auto">
-        
+      <div className="flex-1 p-4 overflow-auto pb-24">
         {/* VIDEO */}
         {playerStep === 'video' && (
           <div className="text-center py-10">
             <div className="w-full aspect-video bg-gray-900 rounded-2xl flex items-center justify-center mb-6">
-              <p className="text-white/60 text-sm">
-                🎬 Lecteur vidéo à intégrer
-              </p>
+              <p className="text-white/60 text-sm">🎬 Lecteur vidéo</p>
             </div>
-            <button
-              onClick={() => setPlayerStep('quiz')}
-              className="w-full max-w-xs py-4 rounded-2xl font-bold text-[15px] text-white"
-              style={{ background: categoryGradient.from }}
-            >
+            <button onClick={() => setPlayerStep('quiz')} className="w-full max-w-xs py-4 rounded-2xl font-bold text-white" style={{ background: categoryGradient.from }}>
               Passer au Quiz →
             </button>
           </div>
@@ -388,191 +507,357 @@ export default function SequencePlayer({
         {/* QUIZ */}
         {playerStep === 'quiz' && currentQuestion && (() => {
           const q = currentQuestion
-          const opts = currentOptions
-          const isTF = q.question_type === 'true_false'
-
-          // Si pas d'options valides, afficher un message
-          if (opts.length === 0) {
-            return (
-              <div className="text-center py-10">
-                <p className="text-gray-500 mb-4">Question mal formatée (pas d&apos;options)</p>
-                <button
-                  onClick={nextQuestion}
-                  className="px-6 py-3 rounded-xl text-white font-bold"
-                  style={{ background: categoryGradient.from }}
-                >
-                  Question suivante
-                </button>
-              </div>
-            )
-          }
+          const qType = q.question_type
 
           return (
             <div>
               {/* Progress */}
               <div className="mb-4">
                 <div className="flex justify-between mb-1.5">
-                  <span className="text-xs text-gray-500">
-                    Question {currentQ + 1}/{questions.length}
-                  </span>
+                  <span className="text-xs text-gray-500">Question {currentQ + 1}/{questions.length}</span>
                   <span className="text-xs text-gray-500">⭐ {totalPoints} pts</span>
                 </div>
                 <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{
-                      background: `linear-gradient(90deg, ${categoryGradient.from}, ${categoryGradient.to})`,
-                      width: `${((currentQ + 1) / questions.length) * 100}%`,
-                    }}
-                  />
+                  <div className="h-full rounded-full transition-all duration-500" style={{ background: `linear-gradient(90deg, ${categoryGradient.from}, ${categoryGradient.to})`, width: `${((currentQ + 1) / questions.length) * 100}%` }} />
                 </div>
               </div>
 
               {/* Type badge */}
               <span className="inline-block bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[11px] font-semibold mb-3">
-                {q.question_type === 'mcq' ? 'QCM' : 
-                 q.question_type === 'true_false' ? 'Vrai/Faux' : 
-                 q.question_type === 'checkbox' ? 'Choix multiples' :
-                 q.question_type.toUpperCase()}
+                {typeLabels[qType] || qType.toUpperCase()}
               </span>
 
-              {/* Instruction pour checkbox */}
-              {isCheckbox && !showFeedback && (
-                <p className="text-xs text-blue-600 mb-2">
-                  ☑️ Plusieurs réponses possibles — cochez puis validez
-                </p>
-              )}
-
-              {/* Image si présente */}
+              {/* Image */}
               {q.image_url && (
                 <div className="mb-4">
-                  <img
-                    src={q.image_url}
-                    alt="Question"
-                    className="w-full rounded-xl border border-gray-200"
-                  />
+                  <img src={q.image_url} alt="Question" className="w-full rounded-xl border border-gray-200" />
                 </div>
               )}
 
-              {/* Question */}
-              <h2 className="text-[16px] font-bold text-gray-800 leading-relaxed mb-5">
-                {q.question_text}
-              </h2>
+              {/* Question text */}
+              <h2 className="text-[16px] font-bold text-gray-800 leading-relaxed mb-5">{q.question_text}</h2>
 
-              {/* Options */}
-              <div className="flex flex-col gap-2.5">
-                {opts.map((opt, i) => {
-                  // État de l'option
-                  const isSelectedSingle = selectedAnswer === opt.id
-                  const isSelectedMultiple = selectedAnswers.includes(opt.id)
-                  const isSelected = isCheckbox ? isSelectedMultiple : isSelectedSingle
-                  const isCorrect = opt.correct
-
-                  // Couleurs par défaut
-                  let bg = '#FAFAFF'
-                  let border = '#E2E8F0'
-                  let textColor = '#334155'
-                  let badgeBg = '#E2E8F0'
-                  let badgeColor = '#64748B'
-
-                  // État sélectionné (avant validation)
-                  if (isSelected && !showFeedback) {
-                    bg = '#F1F5F9'
-                    border = '#94A3B8'
-                    badgeBg = '#475569'
-                    badgeColor = 'white'
-                  }
-
-                  // Après validation (feedback)
-                  if (showFeedback) {
-                    if (isCorrect) {
-                      bg = '#F0FDF4'
-                      border = '#4ADE80'
-                      badgeBg = '#22C55E'
-                      badgeColor = 'white'
-                    } else if (isSelected && !isCorrect) {
-                      bg = '#FEF2F2'
-                      border = '#FCA5A5'
-                      badgeBg = '#EF4444'
-                      badgeColor = 'white'
-                    } else {
-                      textColor = '#94A3B8'
+              {/* === MCQ / TRUE_FALSE / MCQ_IMAGE === */}
+              {(qType === 'mcq' || qType === 'true_false' || qType === 'mcq_image' || qType === 'image') && (
+                <div className="flex flex-col gap-2.5">
+                  {parseStandardOptions(q.options).map((opt, i) => {
+                    const isSelected = selectedAnswer === opt.id
+                    const isCorrect = opt.correct
+                    let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155', badgeBg = '#E2E8F0', badgeColor = '#64748B'
+                    
+                    if (isSelected && !showFeedback) { bg = '#F1F5F9'; border = '#94A3B8'; badgeBg = '#475569'; badgeColor = 'white' }
+                    if (showFeedback) {
+                      if (isCorrect) { bg = '#F0FDF4'; border = '#4ADE80'; badgeBg = '#22C55E'; badgeColor = 'white' }
+                      else if (isSelected) { bg = '#FEF2F2'; border = '#FCA5A5'; badgeBg = '#EF4444'; badgeColor = 'white' }
+                      else { textColor = '#94A3B8' }
                     }
-                  }
+                    
+                    return (
+                      <button key={opt.id} onClick={() => handleSingleAnswer(opt.id)} disabled={showFeedback || selectedAnswer !== null}
+                        className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
+                        style={{ background: bg, border: `2px solid ${border}`, cursor: showFeedback || selectedAnswer ? 'default' : 'pointer' }}>
+                        {qType !== 'true_false' && (
+                          <span className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0" style={{ background: badgeBg, color: badgeColor }}>
+                            {showFeedback && isCorrect ? '✓' : showFeedback && isSelected && !isCorrect ? '✗' : String.fromCharCode(65 + i)}
+                          </span>
+                        )}
+                        <span className="flex-1 font-semibold text-sm" style={{ color: textColor }}>{opt.text}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
 
-                  // Handler selon le type
-                  const handleClick = () => {
-                    if (showFeedback) return
-                    if (isCheckbox) {
-                      toggleCheckboxAnswer(opt.id)
-                    } else {
-                      handleSingleAnswer(opt.id)
-                    }
-                  }
-
-                  return (
-                    <button
-                      key={opt.id}
-                      onClick={handleClick}
-                      disabled={showFeedback || (!isCheckbox && selectedAnswer !== null)}
-                      className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
-                      style={{
-                        background: bg,
-                        border: `2px solid ${border}`,
-                        cursor: showFeedback || (!isCheckbox && selectedAnswer) ? 'default' : 'pointer',
-                      }}
-                    >
-                      {/* Badge ou Checkbox */}
-                      {isCheckbox ? (
-                        <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-                          {showFeedback ? (
-                            isCorrect ? (
-                              <CheckSquare size={24} className="text-emerald-500" />
-                            ) : isSelected ? (
-                              <X size={24} className="text-red-500" />
-                            ) : (
-                              <Square size={24} className="text-gray-300" />
-                            )
-                          ) : isSelected ? (
-                            <CheckSquare size={24} style={{ color: categoryGradient.from }} />
-                          ) : (
-                            <Square size={24} className="text-gray-400" />
-                          )}
-                        </span>
-                      ) : !isTF ? (
-                        <span
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0"
-                          style={{ background: badgeBg, color: badgeColor }}
-                        >
-                          {showFeedback && isCorrect
-                            ? '✓'
-                            : showFeedback && isSelected && !isCorrect
-                            ? '✗'
-                            : String.fromCharCode(65 + i)}
-                        </span>
-                      ) : null}
-                      
-                      <span
-                        className="flex-1 font-semibold text-sm"
-                        style={{ color: textColor }}
-                      >
-                        {opt.text}
-                      </span>
+              {/* === CHECKBOX === */}
+              {qType === 'checkbox' && (
+                <>
+                  <p className="text-xs text-blue-600 mb-3">☑️ Plusieurs réponses possibles — cochez puis validez</p>
+                  <div className="flex flex-col gap-2.5">
+                    {parseStandardOptions(q.options).map((opt) => {
+                      const isSelected = selectedAnswers.includes(opt.id)
+                      const isCorrect = opt.correct
+                      let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155'
+                      if (isSelected && !showFeedback) { bg = '#F1F5F9'; border = '#94A3B8' }
+                      if (showFeedback) {
+                        if (isCorrect) { bg = '#F0FDF4'; border = '#4ADE80' }
+                        else if (isSelected) { bg = '#FEF2F2'; border = '#FCA5A5' }
+                        else { textColor = '#94A3B8' }
+                      }
+                      return (
+                        <button key={opt.id} onClick={() => !showFeedback && setSelectedAnswers(prev => prev.includes(opt.id) ? prev.filter(a => a !== opt.id) : [...prev, opt.id])}
+                          disabled={showFeedback} className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
+                          style={{ background: bg, border: `2px solid ${border}`, cursor: showFeedback ? 'default' : 'pointer' }}>
+                          <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+                            {showFeedback ? (isCorrect ? <CheckSquare size={24} className="text-emerald-500" /> : isSelected ? <X size={24} className="text-red-500" /> : <Square size={24} className="text-gray-300" />)
+                              : isSelected ? <CheckSquare size={24} style={{ color: categoryGradient.from }} /> : <Square size={24} className="text-gray-400" />}
+                          </span>
+                          <span className="flex-1 font-semibold text-sm" style={{ color: textColor }}>{opt.text}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {!showFeedback && (
+                    <button onClick={handleCheckboxValidate} disabled={selectedAnswers.length === 0}
+                      className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40" style={{ background: categoryGradient.from }}>
+                      Valider ({selectedAnswers.length} sélectionnée{selectedAnswers.length > 1 ? 's' : ''})
                     </button>
-                  )
-                })}
-              </div>
+                  )}
+                </>
+              )}
 
-              {/* Bouton Valider pour Checkbox */}
-              {isCheckbox && !showFeedback && (
-                <button
-                  onClick={validateCheckboxAnswer}
-                  disabled={selectedAnswers.length === 0}
-                  className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40 transition-all"
-                  style={{ background: categoryGradient.from }}
-                >
-                  Valider ma réponse ({selectedAnswers.length} sélectionnée{selectedAnswers.length > 1 ? 's' : ''})
-                </button>
+              {/* === HIGHLIGHT === */}
+              {qType === 'highlight' && (
+                <>
+                  <p className="text-xs text-rose-600 mb-3">🚫 Barrez les intrus en les sélectionnant</p>
+                  <div className="flex flex-col gap-2.5">
+                    {parseStandardOptions(q.options).map((opt) => {
+                      const isSelected = selectedAnswers.includes(opt.id)
+                      const isIntrus = !opt.correct
+                      let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155', textDeco = 'none'
+                      if (isSelected && !showFeedback) { bg = '#FEF2F2'; border = '#FCA5A5'; textDeco = 'line-through' }
+                      if (showFeedback) {
+                        if (isIntrus) { bg = '#FEF2F2'; border = '#FCA5A5'; textDeco = 'line-through'; textColor = '#DC2626' }
+                        else if (isSelected) { bg = '#FEF2F2'; border = '#EF4444'; textColor = '#EF4444' }
+                        else { bg = '#F0FDF4'; border = '#4ADE80' }
+                      }
+                      return (
+                        <button key={opt.id} onClick={() => !showFeedback && setSelectedAnswers(prev => prev.includes(opt.id) ? prev.filter(a => a !== opt.id) : [...prev, opt.id])}
+                          disabled={showFeedback} className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
+                          style={{ background: bg, border: `2px solid ${border}`, cursor: showFeedback ? 'default' : 'pointer' }}>
+                          <span className="flex-1 font-semibold text-sm" style={{ color: textColor, textDecoration: textDeco }}>{opt.text}</span>
+                          {showFeedback && isIntrus && <span className="text-rose-500 text-xs font-bold">INTRUS</span>}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {!showFeedback && (
+                    <button onClick={handleHighlightValidate} disabled={selectedAnswers.length === 0}
+                      className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40" style={{ background: categoryGradient.from }}>
+                      Valider mes choix
+                    </button>
+                  )}
+                </>
+              )}
+
+              {/* === FILL_BLANK === */}
+              {qType === 'fill_blank' && (() => {
+                const opts = parseFillBlankOptions(q.options)
+                if (!opts) return <p className="text-gray-500">Format de question non supporté</p>
+                
+                const usedWords = Object.values(fillBlankAnswers)
+                const allFilled = opts.blanks.every(b => fillBlankAnswers[b.id])
+                
+                return (
+                  <>
+                    <p className="text-xs text-indigo-600 mb-3">📝 Sélectionnez un blanc puis un mot de la banque</p>
+                    
+                    {/* Blanks */}
+                    <div className="bg-white p-4 rounded-2xl border-2 border-gray-100 mb-4 space-y-3">
+                      {opts.blanks.map((blank, idx) => {
+                        const answer = fillBlankAnswers[blank.id]
+                        const isCorrect = answer && (
+                          answer.toLowerCase().trim() === blank.correctAnswer.toLowerCase().trim() ||
+                          blank.alternatives?.some(alt => alt.toLowerCase().trim() === answer.toLowerCase().trim())
+                        )
+                        
+                        return (
+                          <div key={blank.id} className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm text-gray-600 font-medium">Blanc {idx + 1}:</span>
+                            <button
+                              onClick={() => !showFeedback && setFillBlankAnswers(prev => {
+                                const newAnswers = { ...prev }
+                                delete newAnswers[blank.id]
+                                return newAnswers
+                              })}
+                              disabled={showFeedback}
+                              className="min-w-[100px] px-4 py-2 rounded-xl border-2 border-dashed text-sm font-semibold transition-all"
+                              style={{
+                                borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : answer ? categoryGradient.from : '#CBD5E1',
+                                background: showFeedback ? (isCorrect ? '#F0FDF4' : '#FEF2F2') : answer ? `${categoryGradient.from}10` : 'white',
+                                color: showFeedback ? (isCorrect ? '#16A34A' : '#DC2626') : '#334155',
+                              }}
+                            >
+                              {answer || '________'}
+                            </button>
+                            {showFeedback && !isCorrect && (
+                              <span className="text-xs text-emerald-600 font-medium">→ {blank.correctAnswer}</span>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {/* Word Bank */}
+                    {!showFeedback && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {opts.wordBank.map((word, i) => {
+                          const isUsed = usedWords.includes(word)
+                          return (
+                            <button
+                              key={`${word}-${i}`}
+                              onClick={() => {
+                                if (isUsed) return
+                                // Trouver le premier blanc vide
+                                const emptyBlank = opts.blanks.find(b => !fillBlankAnswers[b.id])
+                                if (emptyBlank) {
+                                  setFillBlankAnswers(prev => ({ ...prev, [emptyBlank.id]: word }))
+                                }
+                              }}
+                              disabled={isUsed}
+                              className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+                              style={{
+                                background: isUsed ? '#E2E8F0' : categoryGradient.from,
+                                color: isUsed ? '#94A3B8' : 'white',
+                                opacity: isUsed ? 0.5 : 1,
+                              }}
+                            >
+                              {word}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {!showFeedback && (
+                      <button onClick={handleFillBlankValidate} disabled={!allFilled}
+                        className="w-full py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40" style={{ background: categoryGradient.from }}>
+                        Valider mes réponses
+                      </button>
+                    )}
+                  </>
+                )
+              })()}
+
+              {/* === ORDERING === */}
+              {qType === 'ordering' && (() => {
+                const opts = parseOrderingOptions(q.options)
+                if (opts.length === 0) return <p className="text-gray-500">Format de question non supporté</p>
+
+                const moveItem = (from: number, to: number) => {
+                  if (showFeedback || to < 0 || to >= orderingOrder.length) return
+                  const newOrder = [...orderingOrder]
+                  const [moved] = newOrder.splice(from, 1)
+                  newOrder.splice(to, 0, moved)
+                  setOrderingOrder(newOrder)
+                }
+
+                return (
+                  <>
+                    <p className="text-xs text-amber-600 mb-3">↕️ Utilisez les flèches pour réordonner</p>
+                    <div className="flex flex-col gap-2">
+                      {orderingOrder.map((itemId, index) => {
+                        const item = opts.find(o => o.id === itemId)
+                        if (!item) return null
+                        const isCorrectPos = showFeedback && item.correctPosition === index + 1
+
+                        return (
+                          <div key={itemId} className="flex items-center gap-2 p-3 rounded-2xl border-2 transition-all"
+                            style={{
+                              background: showFeedback ? (isCorrectPos ? '#F0FDF4' : '#FEF2F2') : '#FAFAFF',
+                              borderColor: showFeedback ? (isCorrectPos ? '#4ADE80' : '#FCA5A5') : '#E2E8F0',
+                            }}>
+                            <span className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
+                              style={{ background: showFeedback ? (isCorrectPos ? '#22C55E' : '#EF4444') : categoryGradient.from, color: 'white' }}>
+                              {index + 1}
+                            </span>
+                            <span className="flex-1 text-sm font-semibold text-gray-700">{item.text}</span>
+                            {!showFeedback && (
+                              <div className="flex flex-col">
+                                <button onClick={() => moveItem(index, index - 1)} disabled={index === 0} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
+                                  <ChevronUp size={16} className="text-gray-500" />
+                                </button>
+                                <button onClick={() => moveItem(index, index + 1)} disabled={index === orderingOrder.length - 1} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
+                                  <ChevronDown size={16} className="text-gray-500" />
+                                </button>
+                              </div>
+                            )}
+                            {showFeedback && !isCorrectPos && <span className="text-xs text-emerald-600">→ Pos. {item.correctPosition}</span>}
+                          </div>
+                        )
+                      })}
+                    </div>
+                    {!showFeedback && (
+                      <button onClick={handleOrderingValidate} className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white" style={{ background: categoryGradient.from }}>
+                        Valider l&apos;ordre
+                      </button>
+                    )}
+                  </>
+                )
+              })()}
+
+              {/* === MATCHING === */}
+              {qType === 'matching' && (() => {
+                const pairs = parseMatchingOptions(q.options)
+                if (pairs.length === 0) return <p className="text-gray-500">Format de question non supporté</p>
+
+                return (
+                  <>
+                    <p className="text-xs text-teal-600 mb-3">🔗 Cliquez sur un élément gauche puis son correspondant à droite</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Gauche */}
+                      <div className="flex flex-col gap-2">
+                        {pairs.map((pair) => {
+                          const isSelected = selectedLeftMatching === pair.id
+                          const isMatched = matchingMatches[pair.id]
+                          const isCorrect = showFeedback && matchingMatches[pair.id] === pair.id
+
+                          return (
+                            <button key={pair.id} onClick={() => !showFeedback && !isMatched && setSelectedLeftMatching(pair.id)}
+                              disabled={showFeedback || !!isMatched}
+                              className="p-3 rounded-xl border-2 text-left text-sm font-semibold transition-all"
+                              style={{
+                                background: showFeedback ? (isCorrect ? '#F0FDF4' : '#FEF2F2') : isSelected ? `${categoryGradient.from}15` : isMatched ? '#F1F5F9' : '#FAFAFF',
+                                borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : isSelected ? categoryGradient.from : isMatched ? '#94A3B8' : '#E2E8F0',
+                                color: '#334155', opacity: isMatched && !showFeedback ? 0.7 : 1,
+                              }}>
+                              {pair.left}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      {/* Droite */}
+                      <div className="flex flex-col gap-2">
+                        {(shuffledMatchingRights.length > 0 ? shuffledMatchingRights : pairs).map((pair) => {
+                          const isMatched = Object.values(matchingMatches).includes(pair.id)
+                          return (
+                            <button key={pair.id}
+                              onClick={() => {
+                                if (showFeedback || isMatched || !selectedLeftMatching) return
+                                setMatchingMatches(prev => ({ ...prev, [selectedLeftMatching]: pair.id }))
+                                setSelectedLeftMatching(null)
+                              }}
+                              disabled={showFeedback || isMatched}
+                              className="p-3 rounded-xl border-2 text-left text-sm font-semibold transition-all"
+                              style={{
+                                background: isMatched ? '#F1F5F9' : selectedLeftMatching ? `${categoryGradient.from}10` : '#FAFAFF',
+                                borderColor: isMatched ? '#94A3B8' : '#E2E8F0',
+                                opacity: isMatched ? 0.6 : 1,
+                              }}>
+                              {pair.right}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                    {!showFeedback && (
+                      <button onClick={handleMatchingValidate} disabled={Object.keys(matchingMatches).length < pairs.length}
+                        className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40" style={{ background: categoryGradient.from }}>
+                        Valider les associations
+                      </button>
+                    )}
+                  </>
+                )
+              })()}
+
+              {/* === TYPE NON SUPPORTÉ === */}
+              {!['mcq', 'true_false', 'mcq_image', 'image', 'checkbox', 'highlight', 'fill_blank', 'ordering', 'matching'].includes(qType) && (
+                <div className="text-center py-8">
+                  <AlertCircle size={48} className="text-amber-500 mx-auto mb-3" />
+                  <p className="text-gray-600 mb-2">Type &quot;{qType}&quot; non encore implémenté</p>
+                  <button onClick={skipQuestion} className="px-6 py-3 rounded-xl text-white font-bold" style={{ background: categoryGradient.from }}>
+                    Passer cette question
+                  </button>
+                </div>
               )}
             </div>
           )
@@ -581,33 +866,16 @@ export default function SequencePlayer({
         {/* PDF */}
         {playerStep === 'pdf' && (
           <div className="text-center py-10">
-            <div className="w-20 h-20 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4 text-4xl">
-              📄
-            </div>
-            <h3 className="text-lg font-bold text-gray-800 mb-2">
-              Support de cours
-            </h3>
-            <p className="text-[13px] text-gray-500 mb-6 leading-relaxed">
-              Téléchargez le PDF récapitulatif pour réviser.
-            </p>
+            <div className="w-20 h-20 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4 text-4xl">📄</div>
+            <h3 className="text-lg font-bold text-gray-800 mb-2">Support de cours</h3>
             {sequence.infographic_url && (
-              <a
-                href={sequence.infographic_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl border-2 border-gray-200 bg-white font-semibold text-sm text-gray-800 hover:bg-gray-50 transition-colors"
-              >
+              <a href={sequence.infographic_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl border-2 border-gray-200 bg-white font-semibold text-sm mb-6">
                 <Download size={18} /> Télécharger le PDF
               </a>
             )}
-            <div className="mt-8">
-              <button
-                onClick={finishSequence}
-                disabled={submitting}
-                className="w-full max-w-xs py-4 rounded-2xl font-bold text-[15px] text-white disabled:opacity-50"
-                style={{ background: categoryGradient.from }}
-              >
-                {submitting ? 'Enregistrement...' : 'Terminer la séquence ✓'}
+            <div className="mt-4">
+              <button onClick={finishSequence} disabled={submitting} className="w-full max-w-xs py-4 rounded-2xl font-bold text-white disabled:opacity-50" style={{ background: categoryGradient.from }}>
+                {submitting ? 'Enregistrement...' : 'Terminer ✓'}
               </button>
             </div>
           </div>
@@ -616,115 +884,52 @@ export default function SequencePlayer({
         {/* RÉSULTATS */}
         {playerStep === 'results' && (
           <div className="text-center py-5">
-            {/* Score circulaire */}
-            <div
-              className="w-28 h-28 rounded-full mx-auto mb-4 flex items-center justify-center"
-              style={{
-                background: `conic-gradient(${
-                  score >= 75 ? '#22C55E' : score >= 50 ? '#FBBF24' : '#EF4444'
-                } ${score * 3.6}deg, #E2E8F0 0deg)`,
-              }}
-            >
+            <div className="w-28 h-28 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: `conic-gradient(${score >= 75 ? '#22C55E' : score >= 50 ? '#FBBF24' : '#EF4444'} ${score * 3.6}deg, #E2E8F0 0deg)` }}>
               <div className="w-[88px] h-[88px] rounded-full bg-white flex items-center justify-center">
-                <span className="text-3xl font-extrabold text-gray-800">
-                  {score}%
-                </span>
+                <span className="text-3xl font-extrabold text-gray-800">{score}%</span>
               </div>
             </div>
-
             <h2 className="text-[22px] font-extrabold text-gray-800 mb-1">
-              {score === 100
-                ? 'Parfait ! 🏆'
-                : score >= 75
-                ? 'Excellent ! ✨'
-                : score >= 50
-                ? 'Bien joué ! 💪'
-                : 'Continue ! 📚'}
+              {score === 100 ? 'Parfait ! 🏆' : score >= 75 ? 'Excellent ! ✨' : score >= 50 ? 'Bien joué ! 💪' : 'Continue ! 📚'}
             </h2>
-            <p className="text-sm text-gray-500 mb-6">
-              {correctCount}/{questions.length} bonnes réponses
-            </p>
-
-            {/* Points gagnés */}
+            <p className="text-sm text-gray-500 mb-6">{correctCount}/{questions.length} bonnes réponses</p>
             <div className="inline-flex items-center gap-3 bg-gradient-to-r from-amber-100 to-amber-200 rounded-2xl px-5 py-4 mb-6">
               <span className="text-3xl">⭐</span>
               <div className="text-left">
-                <p className="text-2xl font-extrabold text-amber-700">
-                  +{totalPoints}
-                </p>
+                <p className="text-2xl font-extrabold text-amber-700">+{totalPoints}</p>
                 <p className="text-xs text-amber-700">points gagnés</p>
               </div>
             </div>
-
             <div>
-              <button
-                onClick={() => (hasPdf ? setPlayerStep('pdf') : finishSequence())}
-                disabled={submitting}
-                className="w-full max-w-xs py-4 rounded-2xl font-bold text-[15px] text-white disabled:opacity-50"
-                style={{ background: categoryGradient.from }}
-              >
-                {submitting
-                  ? 'Enregistrement...'
-                  : hasPdf
-                  ? 'Voir le PDF récapitulatif'
-                  : 'Terminer'}
+              <button onClick={() => hasPdf ? setPlayerStep('pdf') : finishSequence()} disabled={submitting} className="w-full max-w-xs py-4 rounded-2xl font-bold text-white disabled:opacity-50" style={{ background: categoryGradient.from }}>
+                {submitting ? 'Enregistrement...' : hasPdf ? 'Voir le PDF' : 'Terminer'}
               </button>
             </div>
           </div>
         )}
       </div>
 
-      {/* Feedback Overlay */}
+      {/* Overlay Feedback */}
       {showOverlay && overlayData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div className="relative w-full max-w-[360px] bg-white rounded-3xl overflow-hidden shadow-2xl">
-            {/* Header coloré */}
-            <div
-              className="px-6 py-5 text-center"
-              style={{
-                background: overlayData.isCorrect
-                  ? 'linear-gradient(135deg, #34D399, #059669)'
-                  : 'linear-gradient(135deg, #F87171, #DC2626)',
-              }}
-            >
+            <div className="px-6 py-5 text-center" style={{ background: overlayData.isCorrect ? 'linear-gradient(135deg, #34D399, #059669)' : 'linear-gradient(135deg, #F87171, #DC2626)' }}>
               <div className="w-14 h-14 mx-auto mb-2 bg-white rounded-full flex items-center justify-center">
-                {overlayData.isCorrect ? (
-                  <Check size={28} className="text-emerald-600" strokeWidth={3} />
-                ) : (
-                  <X size={28} className="text-red-600" strokeWidth={3} />
-                )}
+                {overlayData.isCorrect ? <Check size={28} className="text-emerald-600" strokeWidth={3} /> : <X size={28} className="text-red-600" strokeWidth={3} />}
               </div>
-              <h3 className="text-xl font-extrabold text-white mb-2">
-                {overlayData.isCorrect ? 'Bravo !' : 'Dommage !'}
-              </h3>
-              {overlayData.points > 0 && (
-                <span className="bg-white/20 px-4 py-1 rounded-full text-white font-bold text-sm">
-                  +{overlayData.points} points
-                </span>
-              )}
+              <h3 className="text-xl font-extrabold text-white mb-2">{overlayData.isCorrect ? 'Bravo !' : 'Dommage !'}</h3>
+              {overlayData.points > 0 && <span className="bg-white/20 px-4 py-1 rounded-full text-white font-bold text-sm">+{overlayData.points} points</span>}
             </div>
-
-            {/* Feedback */}
             <div className="px-6 py-5 max-h-[200px] overflow-auto">
               <div className="flex items-center gap-2 mb-2">
                 <Lightbulb size={16} className="text-amber-500" />
-                <span className="text-xs font-bold text-gray-400 uppercase">
-                  Explication
-                </span>
+                <span className="text-xs font-bold text-gray-400 uppercase">Explication</span>
               </div>
-              <p className="text-[13px] text-gray-600 leading-relaxed">
-                {overlayData.feedback}
-              </p>
+              <p className="text-[13px] text-gray-600 leading-relaxed">{overlayData.feedback || 'Aucun feedback disponible.'}</p>
             </div>
-
-            {/* Bouton */}
             <div className="px-6 pb-5">
-              <button
-                onClick={nextQuestion}
-                className="w-full py-4 rounded-2xl font-bold text-[15px] text-white"
-                style={{ background: categoryGradient.from }}
-              >
+              <button onClick={nextQuestion} className="w-full py-4 rounded-2xl font-bold text-white" style={{ background: categoryGradient.from }}>
                 {overlayData.isLast ? 'Voir mes résultats' : 'Question suivante'}
               </button>
             </div>
