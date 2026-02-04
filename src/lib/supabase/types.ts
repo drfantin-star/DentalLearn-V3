@@ -24,6 +24,7 @@ export interface Formation {
   cp_eligible: boolean | null
   cp_axe_id: number | null
   cp_hours: number | null
+  likes_count: number
   created_at: string
   updated_at: string
 }
@@ -93,6 +94,8 @@ export interface UserFormation {
   progress: Record<string, unknown> | null
   access_type: 'demo' | 'full'
   current_sequence: number
+  total_points: number
+  best_score: number
 }
 
 // ─────────────────────────────────────────────
