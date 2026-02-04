@@ -1,114 +1,51 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
   ChevronLeft,
-  Play,
   Check,
   X,
   Download,
   Lightbulb,
+  Loader2,
 } from 'lucide-react'
-import type { Sequence } from './FormationDetail'
+import {
+  useSequenceQuestions,
+  useSubmitSequenceResult,
+  type Sequence,
+} from '@/lib/supabase'
 
 // ============================================
 // TYPES
 // ============================================
 
-interface Question {
-  id: string
-  type: 'mcq' | 'true_false'
-  text: string
-  options: { id: string; text: string; correct: boolean }[]
-  feedback: string
-  points: number
-}
-
 interface SequencePlayerProps {
   sequence: Sequence
   categoryGradient: { from: string; to: string }
-  questions: Question[]
   onBack: () => void
   onComplete: (score: number, totalPoints: number) => void
 }
 
-// ============================================
-// MOCK QUESTIONS
-// ============================================
-
-export const mockQuestions: Question[] = [
-  {
-    id: 'q1',
-    type: 'mcq',
-    text: "Quelle est la concentration maximale de peroxyde d'hydrogène autorisée en France pour l'éclaircissement au fauteuil ?",
-    options: [
-      { id: 'A', text: '25%', correct: false },
-      { id: 'B', text: '6%', correct: true },
-      { id: 'C', text: '35%', correct: false },
-      { id: 'D', text: '10%', correct: false },
-    ],
-    feedback:
-      "La réglementation européenne (2011/84/UE) limite la concentration de peroxyde d'hydrogène à 6% pour les produits utilisés par les chirurgiens-dentistes. — Dr Elbeze, article 3",
-    points: 15,
-  },
-  {
-    id: 'q2',
-    type: 'true_false',
-    text: "L'éclaircissement ambulatoire est contre-indiqué chez la femme enceinte ?",
-    options: [
-      { id: 'A', text: 'Vrai', correct: true },
-      { id: 'B', text: 'Faux', correct: false },
-    ],
-    feedback:
-      "Par principe de précaution, l'éclaircissement est contre-indiqué pendant la grossesse et l'allaitement. — Recommandations ADF 2024",
-    points: 10,
-  },
-  {
-    id: 'q3',
-    type: 'mcq',
-    text: 'Quel est le mécanisme principal des taches blanches de type MIH ?',
-    options: [
-      { id: 'A', text: 'Hypominéralisation amélaire', correct: true },
-      { id: 'B', text: 'Fluorose dentaire', correct: false },
-      { id: 'C', text: 'Carie initiale', correct: false },
-      { id: 'D', text: 'Traumatisme', correct: false },
-    ],
-    feedback:
-      "Les MIH (Molar Incisor Hypomineralization) sont dues à un défaut de minéralisation de l'émail survenu pendant l'amélogénèse. — Dr Elbeze, article 5",
-    points: 15,
-  },
-  {
-    id: 'q4',
-    type: 'mcq',
-    text: "Quelle technique est recommandée pour traiter les taches blanches post-orthodontiques ?",
-    options: [
-      { id: 'A', text: 'Facettes céramiques', correct: false },
-      { id: 'B', text: 'Infiltration résineuse (Icon)', correct: true },
-      { id: 'C', text: 'Micro-abrasion seule', correct: false },
-      { id: 'D', text: 'Éclaircissement externe', correct: false },
-    ],
-    feedback:
-      "L'infiltration résineuse (Icon®) est le traitement de première intention pour les white spots post-orthodontiques, avec un taux de succès de 85%. — Dr Elbeze, article 6",
-    points: 15,
-  },
-]
+type PlayerStep = 'video' | 'quiz' | 'pdf' | 'results'
 
 // ============================================
 // COMPOSANT PRINCIPAL
 // ============================================
 
-type PlayerStep = 'video' | 'quiz' | 'pdf' | 'results'
-
 export default function SequencePlayer({
   sequence,
   categoryGradient,
-  questions,
   onBack,
   onComplete,
 }: SequencePlayerProps) {
-  const [playerStep, setPlayerStep] = useState<PlayerStep>(
-    sequence.hasVideo ? 'video' : 'quiz'
-  )
+  const { questions, loading: loadingQuestions, error } = useSequenceQuestions(sequence.id)
+  const { submit: submitResult, loading: submitting } = useSubmitSequenceResult()
+
+  // États du player
+  const hasVideo = !!sequence.course_media_url
+  const hasPdf = !!sequence.infographic_url
+  
+  const [playerStep, setPlayerStep] = useState<PlayerStep>(hasVideo ? 'video' : 'quiz')
   const [currentQ, setCurrentQ] = useState(0)
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
@@ -121,20 +58,28 @@ export default function SequencePlayer({
     feedback: string
     isLast: boolean
   } | null>(null)
+  const [answers, setAnswers] = useState<{
+    question_id: string
+    selected_option: string
+    is_correct: boolean
+    points_earned: number
+  }[]>([])
+  const [startTime] = useState(Date.now())
 
-  // Steps disponibles
-  const steps: PlayerStep[] = []
-  if (sequence.hasVideo) steps.push('video')
-  steps.push('quiz')
-  if (sequence.hasPdf) steps.push('pdf')
+  // Étapes disponibles
+  const steps: PlayerStep[] = useMemo(() => {
+    const s: PlayerStep[] = []
+    if (hasVideo) s.push('video')
+    s.push('quiz')
+    if (hasPdf) s.push('pdf')
+    return s
+  }, [hasVideo, hasPdf])
 
-  const currentStepIdx = steps.indexOf(
-    playerStep === 'results' ? 'quiz' : playerStep
-  )
+  const currentStepIdx = steps.indexOf(playerStep === 'results' ? 'quiz' : playerStep)
 
   // Gestion réponse
   const handleAnswer = (answerId: string) => {
-    if (showFeedback || selectedAnswer) return
+    if (showFeedback || selectedAnswer || !questions.length) return
     setSelectedAnswer(answerId)
 
     const q = questions[currentQ]
@@ -144,14 +89,25 @@ export default function SequencePlayer({
 
     if (isCorrect) {
       setCorrectCount((c) => c + 1)
-      setTotalPoints((p) => p + points)
     }
+    setTotalPoints((p) => p + points)
+
+    // Enregistrer la réponse
+    setAnswers((prev) => [
+      ...prev,
+      {
+        question_id: q.id,
+        selected_option: answerId,
+        is_correct: isCorrect,
+        points_earned: points,
+      },
+    ])
 
     setShowFeedback(true)
     setOverlayData({
       isCorrect,
       points,
-      feedback: q.feedback,
+      feedback: isCorrect ? q.feedback_correct : q.feedback_incorrect,
       isLast: currentQ === questions.length - 1,
     })
     setShowOverlay(true)
@@ -171,12 +127,73 @@ export default function SequencePlayer({
   }
 
   // Terminer séquence
-  const finishSequence = () => {
+  const finishSequence = async () => {
+    // Soumettre les résultats (mode preview = log uniquement)
+    try {
+      await submitResult({
+        sequenceId: sequence.id,
+        score: Math.round((correctCount / questions.length) * 100),
+        totalPoints,
+        timeSpentSeconds: Math.round((Date.now() - startTime) / 1000),
+        answers,
+      })
+    } catch (err) {
+      console.error('Erreur soumission:', err)
+    }
+
     onComplete(correctCount, totalPoints)
   }
 
   // Score final
-  const score = Math.round((correctCount / questions.length) * 100)
+  const score = questions.length > 0 
+    ? Math.round((correctCount / questions.length) * 100) 
+    : 0
+
+  // Loading state
+  if (loadingQuestions) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FAFAFF]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96] mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Chargement des questions...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FAFAFF] p-4">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">Erreur : {error.message}</p>
+          <button
+            onClick={onBack}
+            className="px-4 py-2 bg-gray-100 rounded-xl text-sm"
+          >
+            Retour
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // Pas de questions
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FAFAFF] p-4">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">Aucune question pour cette séquence</p>
+          <button
+            onClick={onBack}
+            className="px-4 py-2 bg-gray-100 rounded-xl text-sm"
+          >
+            Retour
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#FAFAFF] flex flex-col">
@@ -233,39 +250,18 @@ export default function SequencePlayer({
 
       {/* Contenu */}
       <div className="flex-1 p-4 overflow-auto">
-        {/* VIDÉO */}
+        
+        {/* VIDEO */}
         {playerStep === 'video' && (
-          <div>
-            <div className="bg-black rounded-2xl overflow-hidden aspect-video flex items-center justify-center relative mb-4">
-              <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center cursor-pointer hover:scale-105 transition-transform">
-                <Play size={24} className="text-gray-800 ml-1" />
-              </div>
-              <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2">
-                <div className="flex-1 h-1 bg-white/30 rounded">
-                  <div
-                    className="h-full rounded"
-                    style={{
-                      width: '30%',
-                      background: categoryGradient.from,
-                    }}
-                  />
-                </div>
-                <span className="text-white text-xs">{sequence.videoDuration}</span>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-4 border border-gray-200 mb-4">
-              <h3 className="font-bold text-[15px] text-gray-800 mb-1">
-                📹 Vidéo de cours
-              </h3>
-              <p className="text-[13px] text-gray-500 leading-relaxed">
-                Visionnage complet requis pour la validation DPC.
+          <div className="text-center py-10">
+            <div className="w-full aspect-video bg-gray-900 rounded-2xl flex items-center justify-center mb-6">
+              <p className="text-white/60 text-sm">
+                🎬 Lecteur vidéo à intégrer
               </p>
             </div>
-
             <button
               onClick={() => setPlayerStep('quiz')}
-              className="w-full py-4 rounded-2xl font-bold text-[15px] text-white"
+              className="w-full max-w-xs py-4 rounded-2xl font-bold text-[15px] text-white"
               style={{ background: categoryGradient.from }}
             >
               Passer au Quiz →
@@ -277,7 +273,7 @@ export default function SequencePlayer({
         {playerStep === 'quiz' && (() => {
           const q = questions[currentQ]
           if (!q) return null
-          const isTF = q.type === 'true_false'
+          const isTF = q.question_type === 'true_false'
 
           return (
             <div>
@@ -302,12 +298,23 @@ export default function SequencePlayer({
 
               {/* Type badge */}
               <span className="inline-block bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[11px] font-semibold mb-3">
-                {q.type === 'mcq' ? 'QCM' : 'Vrai/Faux'}
+                {q.question_type === 'mcq' ? 'QCM' : q.question_type === 'true_false' ? 'Vrai/Faux' : q.question_type.toUpperCase()}
               </span>
+
+              {/* Image si présente */}
+              {q.image_url && (
+                <div className="mb-4">
+                  <img
+                    src={q.image_url}
+                    alt="Question"
+                    className="w-full rounded-xl border border-gray-200"
+                  />
+                </div>
+              )}
 
               {/* Question */}
               <h2 className="text-[16px] font-bold text-gray-800 leading-relaxed mb-5">
-                {q.text}
+                {q.question_text}
               </h2>
 
               {/* Options */}
@@ -396,16 +403,24 @@ export default function SequencePlayer({
             <p className="text-[13px] text-gray-500 mb-6 leading-relaxed">
               Téléchargez le PDF récapitulatif pour réviser.
             </p>
-            <button className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl border-2 border-gray-200 bg-white font-semibold text-sm text-gray-800 hover:bg-gray-50 transition-colors">
-              <Download size={18} /> Télécharger le PDF
-            </button>
+            {sequence.infographic_url && (
+              <a
+                href={sequence.infographic_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl border-2 border-gray-200 bg-white font-semibold text-sm text-gray-800 hover:bg-gray-50 transition-colors"
+              >
+                <Download size={18} /> Télécharger le PDF
+              </a>
+            )}
             <div className="mt-8">
               <button
                 onClick={finishSequence}
-                className="w-full max-w-xs py-4 rounded-2xl font-bold text-[15px] text-white"
+                disabled={submitting}
+                className="w-full max-w-xs py-4 rounded-2xl font-bold text-[15px] text-white disabled:opacity-50"
                 style={{ background: categoryGradient.from }}
               >
-                Terminer la séquence ✓
+                {submitting ? 'Enregistrement...' : 'Terminer la séquence ✓'}
               </button>
             </div>
           </div>
@@ -456,13 +471,16 @@ export default function SequencePlayer({
 
             <div>
               <button
-                onClick={() =>
-                  sequence.hasPdf ? setPlayerStep('pdf') : finishSequence()
-                }
-                className="w-full max-w-xs py-4 rounded-2xl font-bold text-[15px] text-white"
+                onClick={() => (hasPdf ? setPlayerStep('pdf') : finishSequence())}
+                disabled={submitting}
+                className="w-full max-w-xs py-4 rounded-2xl font-bold text-[15px] text-white disabled:opacity-50"
                 style={{ background: categoryGradient.from }}
               >
-                {sequence.hasPdf ? 'Voir le PDF récapitulatif' : 'Terminer'}
+                {submitting
+                  ? 'Enregistrement...'
+                  : hasPdf
+                  ? 'Voir le PDF récapitulatif'
+                  : 'Terminer'}
               </button>
             </div>
           </div>
@@ -472,10 +490,7 @@ export default function SequencePlayer({
       {/* Feedback Overlay */}
       {showOverlay && overlayData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => {}}
-          />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div className="relative w-full max-w-[360px] bg-white rounded-3xl overflow-hidden shadow-2xl">
             {/* Header coloré */}
             <div
@@ -494,7 +509,7 @@ export default function SequencePlayer({
                 )}
               </div>
               <h3 className="text-xl font-extrabold text-white mb-2">
-                {overlayData.isCorrect ? 'Bravo !' : '0 points'}
+                {overlayData.isCorrect ? 'Bravo !' : 'Dommage !'}
               </h3>
               {overlayData.points > 0 && (
                 <span className="bg-white/20 px-4 py-1 rounded-full text-white font-bold text-sm">
