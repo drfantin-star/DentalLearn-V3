@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { createClient } from './client'
 import type {
   Formation,
@@ -306,4 +306,207 @@ export function isSequenceAccessible(
   }
 
   return { accessible: true, reason: 'unlocked' }
+}
+
+// ============================================
+// HOOK — Like formation (MODE PREVIEW)
+// ============================================
+
+export function useFormationLike(formationId: string | null) {
+  const { isPreview } = usePreviewMode()
+  const [isLiked, setIsLiked] = useState(false)
+  const [likesCount, setLikesCount] = useState(0)
+  const [loading, setLoading] = useState(false)
+
+  // Charger l'état initial du like
+  useEffect(() => {
+    if (!formationId) return
+
+    async function fetchLikeStatus() {
+      try {
+        // Récupérer le nombre de likes
+        const { data: formation } = await supabase
+          .from('formations')
+          .select('likes_count')
+          .eq('id', formationId)
+          .single()
+
+        if (formation) {
+          setLikesCount(formation.likes_count || 0)
+        }
+
+        // En mode preview, on ne vérifie pas le like utilisateur
+        if (isPreview) return
+
+        // Vérifier si l'utilisateur a liké (nécessite auth)
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data: like } = await supabase
+          .from('formation_likes')
+          .select('id')
+          .eq('formation_id', formationId)
+          .eq('user_id', user.id)
+          .single()
+
+        setIsLiked(!!like)
+      } catch (err) {
+        console.error('Erreur fetchLikeStatus:', err)
+      }
+    }
+
+    fetchLikeStatus()
+  }, [formationId, isPreview])
+
+  const toggleLike = useCallback(async () => {
+    if (!formationId) return
+
+    // Mode preview: toggle local seulement
+    if (isPreview) {
+      setIsLiked(prev => !prev)
+      setLikesCount(prev => isLiked ? prev - 1 : prev + 1)
+      console.log('💜 [Preview] Like toggled:', !isLiked)
+      return
+    }
+
+    try {
+      setLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Non authentifié')
+
+      if (isLiked) {
+        // Retirer le like
+        await supabase
+          .from('formation_likes')
+          .delete()
+          .eq('formation_id', formationId)
+          .eq('user_id', user.id)
+        
+        setIsLiked(false)
+        setLikesCount(prev => Math.max(0, prev - 1))
+      } else {
+        // Ajouter le like
+        await supabase
+          .from('formation_likes')
+          .insert({ formation_id: formationId, user_id: user.id })
+        
+        setIsLiked(true)
+        setLikesCount(prev => prev + 1)
+      }
+    } catch (err) {
+      console.error('Erreur toggleLike:', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [formationId, isLiked, isPreview])
+
+  return { isLiked, likesCount, toggleLike, loading }
+}
+
+// ============================================
+// HOOK — Points formation (MODE PREVIEW)
+// ============================================
+
+export function useFormationPoints(formationId: string | null) {
+  const { isPreview } = usePreviewMode()
+  const [totalPoints, setTotalPoints] = useState(0)
+  const [earnedPoints, setEarnedPoints] = useState(0)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!formationId) {
+      setLoading(false)
+      return
+    }
+
+    async function fetchPoints() {
+      try {
+        setLoading(true)
+
+        // Calculer le total possible de points pour la formation
+        const { data: questions } = await supabase
+          .from('questions')
+          .select('points, sequence_id')
+          .in('sequence_id', 
+            supabase
+              .from('sequences')
+              .select('id')
+              .eq('formation_id', formationId)
+          )
+
+        // Alternative: requête avec jointure via la vue
+        const { data: sequences } = await supabase
+          .from('sequences')
+          .select('id')
+          .eq('formation_id', formationId)
+
+        if (sequences) {
+          const sequenceIds = sequences.map(s => s.id)
+          const { data: questionsData } = await supabase
+            .from('questions')
+            .select('points')
+            .in('sequence_id', sequenceIds)
+
+          const total = questionsData?.reduce((sum, q) => sum + (q.points || 0), 0) || 0
+          setTotalPoints(total)
+        }
+
+        // En mode preview, pas de points gagnés persistés
+        if (isPreview) {
+          setEarnedPoints(0)
+          return
+        }
+
+        // Récupérer les points gagnés par l'utilisateur
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const { data: userFormation } = await supabase
+          .from('user_formations')
+          .select('total_points')
+          .eq('formation_id', formationId)
+          .eq('user_id', user.id)
+          .single()
+
+        if (userFormation) {
+          setEarnedPoints(userFormation.total_points || 0)
+        }
+      } catch (err) {
+        console.error('Erreur fetchPoints:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPoints()
+  }, [formationId, isPreview])
+
+  const addPoints = useCallback((points: number) => {
+    setEarnedPoints(prev => prev + points)
+    console.log(`⭐ Points ajoutés: +${points} (Total: ${earnedPoints + points})`)
+  }, [earnedPoints])
+
+  const progressPercent = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0
+
+  return { totalPoints, earnedPoints, progressPercent, addPoints, loading }
+}
+
+// ============================================
+// HOOK — Vérifier si formation complétée
+// ============================================
+
+export function useFormationCompletion(formationId: string | null, sequences: Sequence[], completedSequenceIds: string[]) {
+  const isCompleted = useMemo(() => {
+    if (!sequences.length) return false
+    return sequences.every(seq => completedSequenceIds.includes(seq.id))
+  }, [sequences, completedSequenceIds])
+
+  const completionPercent = useMemo(() => {
+    if (!sequences.length) return 0
+    return Math.round((completedSequenceIds.filter(id => 
+      sequences.some(s => s.id === id)
+    ).length / sequences.length) * 100)
+  }, [sequences, completedSequenceIds])
+
+  return { isCompleted, completionPercent }
 }
