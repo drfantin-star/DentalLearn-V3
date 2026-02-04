@@ -4,7 +4,6 @@ import React, { useState, useMemo } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
-  Heart,
   Flame,
   BookOpen,
   Loader2,
@@ -13,22 +12,21 @@ import {
 // Hooks Supabase
 import {
   useFormations,
+  useUserFormationProgress,
   getCategoryConfig,
   type Formation,
-  type Sequence as DbSequence,
+  type Sequence,
 } from '@/lib/supabase'
-import { useAuth, usePremiumStatus } from '@/hooks/useAuth'
 
-// Composants Supabase
-import FormationDetailSupabase from '@/components/formation/FormationDetailSupabase'
-import SequencePlayerSupabase from '@/components/formation/SequencePlayerSupabase'
+// Composants
+import FormationDetail from '@/components/formation/FormationDetail'
+import SequencePlayer from '@/components/formation/SequencePlayer'
 
 // ============================================
 // TYPES
 // ============================================
 
 type ViewMode = 'catalog' | 'category' | 'formation' | 'sequence'
-type FilterTab = 'toutes' | 'cp' | 'bonus'
 
 interface Category {
   id: string
@@ -46,7 +44,6 @@ interface Category {
 // ============================================
 
 const categories: Category[] = [
-  // CP — Spécialités cliniques
   { id: 'esthetique', name: 'Esthétique', shortName: 'Esthétique', emoji: '✨', bgColor: 'bg-violet-50', textColor: 'text-violet-600', gradient: { from: '#8B5CF6', to: '#A78BFA' }, type: 'cp' },
   { id: 'restauratrice', name: 'Dentisterie Restauratrice', shortName: 'Restauratrice', emoji: '🦷', bgColor: 'bg-amber-50', textColor: 'text-amber-700', gradient: { from: '#F59E0B', to: '#FBBF24' }, type: 'cp' },
   { id: 'chirurgie', name: 'Chirurgie Orale', shortName: 'Chirurgie', emoji: '🔪', bgColor: 'bg-rose-50', textColor: 'text-rose-600', gradient: { from: '#EF4444', to: '#F87171' }, type: 'cp' },
@@ -55,10 +52,7 @@ const categories: Category[] = [
   { id: 'parodontologie', name: 'Parodontologie', shortName: 'Paro', emoji: '🫧', bgColor: 'bg-pink-50', textColor: 'text-pink-600', gradient: { from: '#EC4899', to: '#F472B6' }, type: 'cp' },
   { id: 'endodontie', name: 'Endodontie', shortName: 'Endo', emoji: '🔬', bgColor: 'bg-indigo-50', textColor: 'text-indigo-600', gradient: { from: '#6366F1', to: '#818CF8' }, type: 'cp' },
   { id: 'radiologie', name: 'Radiologie', shortName: 'Radio', emoji: '📡', bgColor: 'bg-teal-50', textColor: 'text-teal-600', gradient: { from: '#14B8A6', to: '#2DD4BF' }, type: 'cp' },
-  // Bonus
-  { id: 'management', name: 'Management', shortName: 'Management', emoji: '💼', bgColor: 'bg-slate-50', textColor: 'text-slate-600', gradient: { from: '#64748B', to: '#94A3B8' }, type: 'bonus' },
-  { id: 'organisation', name: 'Organisation', shortName: 'Organisation', emoji: '📋', bgColor: 'bg-stone-50', textColor: 'text-stone-600', gradient: { from: '#78716C', to: '#A8A29E' }, type: 'bonus' },
-  { id: 'softskills', name: 'Soft Skills', shortName: 'Soft Skills', emoji: '🤝', bgColor: 'bg-yellow-50', textColor: 'text-yellow-700', gradient: { from: '#D97706', to: '#F59E0B' }, type: 'bonus' },
+  { id: 'soft-skills', name: 'Soft Skills', shortName: 'Soft Skills', emoji: '🤝', bgColor: 'bg-yellow-50', textColor: 'text-yellow-700', gradient: { from: '#D97706', to: '#F59E0B' }, type: 'bonus' },
 ]
 
 // ============================================
@@ -84,25 +78,6 @@ function CategoryGrid({ cats, onSelect }: { cats: Category[]; onSelect: (cat: Ca
   )
 }
 
-function BonusGrid({ cats, onSelect }: { cats: Category[]; onSelect: (cat: Category) => void }) {
-  return (
-    <div className="grid grid-cols-3 gap-3">
-      {cats.map((cat) => (
-        <button
-          key={cat.id}
-          onClick={() => onSelect(cat)}
-          className={`flex flex-col items-center p-4 rounded-2xl border transition-all hover:shadow-md active:scale-95 ${cat.bgColor} border-gray-100`}
-        >
-          <span className="text-2xl mb-1">{cat.emoji}</span>
-          <span className={`text-xs font-semibold ${cat.textColor}`}>
-            {cat.shortName}
-          </span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
 // ============================================
 // COMPOSANT — Carte formation
 // ============================================
@@ -115,18 +90,16 @@ function FormationCard({ formation, onSelect }: { formation: Formation; onSelect
       onClick={onSelect}
       className="w-full flex items-center gap-3 p-3 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all text-left"
     >
-      {/* Emoji catégorie */}
       <div className={`w-10 h-10 rounded-xl ${config.bgColor} flex items-center justify-center shrink-0`}>
         <span className="text-xl">{config.emoji}</span>
       </div>
 
-      {/* Infos */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           <h3 className="font-semibold text-sm text-gray-800 truncate">
             {formation.title}
           </h3>
-          {config.isCP && (
+          {formation.cp_eligible && (
             <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-200">
               CP
             </span>
@@ -144,38 +117,7 @@ function FormationCard({ formation, onSelect }: { formation: Formation; onSelect
 }
 
 // ============================================
-// COMPOSANT — FilterTabs
-// ============================================
-
-function FilterTabs({ active, onChange }: { active: FilterTab; onChange: (tab: FilterTab) => void }) {
-  const tabs: { key: FilterTab; label: string; emoji?: string }[] = [
-    { key: 'toutes', label: 'Toutes' },
-    { key: 'cp', label: 'Certif. Périodique', emoji: '🏅' },
-    { key: 'bonus', label: 'Bonus', emoji: '🎁' },
-  ]
-
-  return (
-    <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-      {tabs.map((tab) => (
-        <button
-          key={tab.key}
-          onClick={() => onChange(tab.key)}
-          className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
-            active === tab.key
-              ? 'bg-[#2D1B96] text-white shadow-md'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
-          }`}
-        >
-          {tab.emoji && <span>{tab.emoji}</span>}
-          {tab.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
-// ============================================
-// COMPOSANT — Vue détail catégorie
+// COMPOSANT — Vue catégorie
 // ============================================
 
 function CategoryDetailView({
@@ -189,18 +131,9 @@ function CategoryDetailView({
   onBack: () => void
   onSelectFormation: (f: Formation) => void
 }) {
-  const [filter, setFilter] = useState<FilterTab>('toutes')
-
   const categoryFormations = formations.filter(
     (f) => f.category?.toLowerCase() === category.id.toLowerCase()
   )
-
-  const config = getCategoryConfig(category.id)
-  const filteredFormations = categoryFormations.filter((f) => {
-    if (filter === 'cp') return config.isCP
-    if (filter === 'bonus') return !config.isCP
-    return true
-  })
 
   return (
     <>
@@ -223,7 +156,7 @@ function CategoryDetailView({
 
       <main className="max-w-lg mx-auto px-4 py-6">
         <div className="space-y-2">
-          {filteredFormations.map((f) => (
+          {categoryFormations.map((f) => (
             <FormationCard
               key={f.id}
               formation={f}
@@ -232,7 +165,7 @@ function CategoryDetailView({
           ))}
         </div>
 
-        {filteredFormations.length === 0 && (
+        {categoryFormations.length === 0 && (
           <p className="text-gray-400 text-sm text-center py-8">
             Aucune formation dans cette catégorie
           </p>
@@ -246,10 +179,7 @@ function CategoryDetailView({
 // PAGE PRINCIPALE
 // ============================================
 
-export default function FormationPageSupabase() {
-  const { user } = useAuth()
-  const { isPremium } = usePremiumStatus()
-  
+export default function FormationPage() {
   // Récupérer les formations depuis Supabase
   const { formations, loading, error } = useFormations({ isPublished: true })
 
@@ -257,8 +187,11 @@ export default function FormationPageSupabase() {
   const [viewMode, setViewMode] = useState<ViewMode>('catalog')
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
   const [selectedFormationId, setSelectedFormationId] = useState<string | null>(null)
-  const [selectedSequence, setSelectedSequence] = useState<DbSequence | null>(null)
+  const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
   const [sequenceGradient, setSequenceGradient] = useState<{ from: string; to: string }>({ from: '#8B5CF6', to: '#A78BFA' })
+
+  // Hook pour la progression (mode preview)
+  const { markCompleted } = useUserFormationProgress(selectedFormationId)
 
   const cpCategories = categories.filter((c) => c.type === 'cp')
   const bonusCategories = categories.filter((c) => c.type === 'bonus')
@@ -276,7 +209,7 @@ export default function FormationPageSupabase() {
     setViewMode('formation')
   }
 
-  const openSequence = (seq: DbSequence) => {
+  const openSequence = (seq: Sequence) => {
     setSelectedSequence(seq)
     setViewMode('sequence')
   }
@@ -295,7 +228,13 @@ export default function FormationPageSupabase() {
   }
 
   const handleSequenceComplete = (score: number, totalPoints: number) => {
-    console.log('Sequence complete:', { score, totalPoints })
+    console.log('✅ Séquence terminée:', { score, totalPoints })
+    
+    // Marquer comme complétée (localement en mode preview)
+    if (selectedSequence) {
+      markCompleted(selectedSequence.id, selectedSequence.sequence_number + 1)
+    }
+    
     setSelectedSequence(null)
     setViewMode('formation')
   }
@@ -305,7 +244,7 @@ export default function FormationPageSupabase() {
   // ============================================
   if (viewMode === 'sequence' && selectedSequence) {
     return (
-      <SequencePlayerSupabase
+      <SequencePlayer
         sequence={selectedSequence}
         categoryGradient={sequenceGradient}
         onBack={goBack}
@@ -319,9 +258,8 @@ export default function FormationPageSupabase() {
   // ============================================
   if (viewMode === 'formation' && selectedFormationId) {
     return (
-      <FormationDetailSupabase
+      <FormationDetail
         formationId={selectedFormationId}
-        isPremium={isPremium}
         onBack={goBack}
         onStartSequence={openSequence}
       />
@@ -346,7 +284,6 @@ export default function FormationPageSupabase() {
   // RENDU — Catalogue principal
   // ============================================
   
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -355,7 +292,6 @@ export default function FormationPageSupabase() {
     )
   }
 
-  // Error state
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -393,12 +329,14 @@ export default function FormationPageSupabase() {
         </section>
 
         {/* Développement professionnel */}
-        <section>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">
-            Développement professionnel
-          </h2>
-          <BonusGrid cats={bonusCategories} onSelect={openCategory} />
-        </section>
+        {bonusCategories.length > 0 && (
+          <section>
+            <h2 className="text-lg font-bold text-gray-900 mb-4">
+              Développement professionnel
+            </h2>
+            <CategoryGrid cats={bonusCategories} onSelect={openCategory} />
+          </section>
+        )}
 
         {/* Populaires */}
         <section>
@@ -422,12 +360,12 @@ export default function FormationPageSupabase() {
           )}
         </section>
 
-        {/* Info freemium */}
+        {/* Info mode preview */}
         <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 flex items-start gap-3">
           <BookOpen size={20} className="text-blue-500 shrink-0 mt-0.5" />
           <p className="text-sm text-blue-700">
-            L&apos;<strong>intro</strong> de chaque formation est gratuite.
-            Passez en Premium pour accéder à toutes les séquences.
+            🔓 <strong>Mode Preview</strong> — Toutes les séquences sont accessibles 
+            pour tester. Connectez-vous pour sauvegarder votre progression.
           </p>
         </div>
       </main>
