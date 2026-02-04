@@ -113,8 +113,12 @@ function parseFillBlankOptions(options: unknown): FillBlankOptions | null {
   
   if (typeof opts === 'object' && opts !== null) {
     const o = opts as Record<string, unknown>
-    if ('blanks' in o && 'wordBank' in o) {
-      return o as unknown as FillBlankOptions
+    // Format avec ou sans wordBank
+    if ('blanks' in o && Array.isArray(o.blanks)) {
+      return {
+        blanks: o.blanks as FillBlankOptions['blanks'],
+        wordBank: 'wordBank' in o && Array.isArray(o.wordBank) ? o.wordBank as string[] : []
+      }
     }
   }
   return null
@@ -155,6 +159,38 @@ function parseMatchingOptions(options: unknown): MatchingPair[] {
     if ('pairs' in o && Array.isArray(o.pairs)) return o.pairs as MatchingPair[]
   }
   return []
+}
+
+// Helpers pour drag_drop (peut être matching ou ordering)
+function isDragDropMatching(options: unknown): boolean {
+  if (!options) return false
+  let opts = options
+  if (typeof options === 'string') {
+    try { opts = JSON.parse(options) } catch (e) { return false }
+  }
+  if (typeof opts === 'object' && !Array.isArray(opts) && opts !== null) {
+    const o = opts as Record<string, unknown>
+    // Format matching: { pairs: [...] } sans ordering
+    if ('pairs' in o && Array.isArray(o.pairs) && !('ordering' in o)) return true
+  }
+  return false
+}
+
+function isDragDropOrdering(options: unknown): boolean {
+  if (!options) return false
+  let opts = options
+  if (typeof options === 'string') {
+    try { opts = JSON.parse(options) } catch (e) { return false }
+  }
+  if (typeof opts === 'object' && !Array.isArray(opts) && opts !== null) {
+    const o = opts as Record<string, unknown>
+    // Format ordering: { ordering: [...] } ou { items: [...] }
+    if ('ordering' in o && Array.isArray(o.ordering)) return true
+    if ('items' in o && Array.isArray(o.items)) return true
+  }
+  // Ou tableau avec correctPosition
+  if (Array.isArray(opts) && opts.length > 0 && 'correctPosition' in opts[0]) return true
+  return false
 }
 
 function parseCaseStudyOptions(options: unknown): CaseStudyOptions | null {
@@ -240,7 +276,10 @@ export default function SequencePlayer({
 
   // Initialiser ordering
   useEffect(() => {
-    if (currentQuestion?.question_type === 'ordering' && orderingOrder.length === 0) {
+    const isOrdering = currentQuestion?.question_type === 'ordering' || 
+      (currentQuestion?.question_type === 'drag_drop' && isDragDropOrdering(currentQuestion.options))
+    
+    if (isOrdering && orderingOrder.length === 0) {
       const opts = parseOrderingOptions(currentQuestion.options)
       if (opts.length > 0) {
         const shuffled = [...opts].sort(() => Math.random() - 0.5).map(o => o.id)
@@ -251,7 +290,10 @@ export default function SequencePlayer({
 
   // Initialiser matching
   useEffect(() => {
-    if (currentQuestion?.question_type === 'matching' && shuffledMatchingRights.length === 0) {
+    const isMatching = currentQuestion?.question_type === 'matching' || 
+      (currentQuestion?.question_type === 'drag_drop' && isDragDropMatching(currentQuestion.options))
+    
+    if (isMatching && shuffledMatchingRights.length === 0) {
       const pairs = parseMatchingOptions(currentQuestion.options)
       if (pairs.length > 0) {
         const shuffled = [...pairs].sort(() => Math.random() - 0.5)
@@ -462,6 +504,7 @@ export default function SequencePlayer({
     mcq: 'QCM', true_false: 'Vrai/Faux', checkbox: 'Choix multiples',
     fill_blank: 'Compléter', highlight: 'Barrer les intrus', mcq_image: 'QCM Image',
     ordering: 'Ordonnancement', matching: 'Association', case_study: 'Cas clinique',
+    drag_drop: 'Glisser-Déposer',
   }
 
   return (
@@ -649,12 +692,15 @@ export default function SequencePlayer({
                 const opts = parseFillBlankOptions(q.options)
                 if (!opts) return <p className="text-gray-500">Format de question non supporté</p>
                 
+                const hasWordBank = opts.wordBank && opts.wordBank.length > 0
                 const usedWords = Object.values(fillBlankAnswers)
                 const allFilled = opts.blanks.every(b => fillBlankAnswers[b.id])
                 
                 return (
                   <>
-                    <p className="text-xs text-indigo-600 mb-3">📝 Sélectionnez un blanc puis un mot de la banque</p>
+                    <p className="text-xs text-indigo-600 mb-3">
+                      {hasWordBank ? '📝 Sélectionnez un mot de la banque pour chaque blanc' : '📝 Tapez votre réponse'}
+                    </p>
                     
                     {/* Blanks */}
                     <div className="bg-white p-4 rounded-2xl border-2 border-gray-100 mb-4 space-y-3">
@@ -667,23 +713,45 @@ export default function SequencePlayer({
                         
                         return (
                           <div key={blank.id} className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm text-gray-600 font-medium">Blanc {idx + 1}:</span>
-                            <button
-                              onClick={() => !showFeedback && setFillBlankAnswers(prev => {
-                                const newAnswers = { ...prev }
-                                delete newAnswers[blank.id]
-                                return newAnswers
-                              })}
-                              disabled={showFeedback}
-                              className="min-w-[100px] px-4 py-2 rounded-xl border-2 border-dashed text-sm font-semibold transition-all"
-                              style={{
-                                borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : answer ? categoryGradient.from : '#CBD5E1',
-                                background: showFeedback ? (isCorrect ? '#F0FDF4' : '#FEF2F2') : answer ? `${categoryGradient.from}10` : 'white',
-                                color: showFeedback ? (isCorrect ? '#16A34A' : '#DC2626') : '#334155',
-                              }}
-                            >
-                              {answer || '________'}
-                            </button>
+                            <span className="text-sm text-gray-600 font-medium">
+                              {opts.blanks.length > 1 ? `Blanc ${idx + 1}:` : 'Réponse:'}
+                            </span>
+                            
+                            {/* Mode wordBank → bouton cliquable */}
+                            {hasWordBank ? (
+                              <button
+                                onClick={() => !showFeedback && setFillBlankAnswers(prev => {
+                                  const newAnswers = { ...prev }
+                                  delete newAnswers[blank.id]
+                                  return newAnswers
+                                })}
+                                disabled={showFeedback}
+                                className="min-w-[100px] px-4 py-2 rounded-xl border-2 border-dashed text-sm font-semibold transition-all"
+                                style={{
+                                  borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : answer ? categoryGradient.from : '#CBD5E1',
+                                  background: showFeedback ? (isCorrect ? '#F0FDF4' : '#FEF2F2') : answer ? `${categoryGradient.from}10` : 'white',
+                                  color: showFeedback ? (isCorrect ? '#16A34A' : '#DC2626') : '#334155',
+                                }}
+                              >
+                                {answer || '________'}
+                              </button>
+                            ) : (
+                              /* Mode saisie libre → input text */
+                              <input
+                                type="text"
+                                value={answer || ''}
+                                onChange={(e) => !showFeedback && setFillBlankAnswers(prev => ({ ...prev, [blank.id]: e.target.value }))}
+                                disabled={showFeedback}
+                                placeholder="Tapez votre réponse..."
+                                className="flex-1 min-w-[150px] px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all outline-none"
+                                style={{
+                                  borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : '#CBD5E1',
+                                  background: showFeedback ? (isCorrect ? '#F0FDF4' : '#FEF2F2') : 'white',
+                                  color: showFeedback ? (isCorrect ? '#16A34A' : '#DC2626') : '#334155',
+                                }}
+                              />
+                            )}
+                            
                             {showFeedback && !isCorrect && (
                               <span className="text-xs text-emerald-600 font-medium">→ {blank.correctAnswer}</span>
                             )}
@@ -692,8 +760,8 @@ export default function SequencePlayer({
                       })}
                     </div>
 
-                    {/* Word Bank */}
-                    {!showFeedback && (
+                    {/* Word Bank (seulement si disponible) */}
+                    {!showFeedback && hasWordBank && (
                       <div className="flex flex-wrap gap-2 mb-4">
                         {opts.wordBank.map((word, i) => {
                           const isUsed = usedWords.includes(word)
@@ -726,15 +794,15 @@ export default function SequencePlayer({
                     {!showFeedback && (
                       <button onClick={handleFillBlankValidate} disabled={!allFilled}
                         className="w-full py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40" style={{ background: categoryGradient.from }}>
-                        Valider mes réponses
+                        Valider {hasWordBank ? 'mes réponses' : 'ma réponse'}
                       </button>
                     )}
                   </>
                 )
               })()}
 
-              {/* === ORDERING === */}
-              {qType === 'ordering' && (() => {
+              {/* === ORDERING (ou drag_drop format ordering) === */}
+              {(qType === 'ordering' || (qType === 'drag_drop' && isDragDropOrdering(q.options))) && (() => {
                 const opts = parseOrderingOptions(q.options)
                 if (opts.length === 0) return <p className="text-gray-500">Format de question non supporté</p>
 
@@ -790,8 +858,8 @@ export default function SequencePlayer({
                 )
               })()}
 
-              {/* === MATCHING === */}
-              {qType === 'matching' && (() => {
+              {/* === MATCHING (ou drag_drop format matching) === */}
+              {(qType === 'matching' || (qType === 'drag_drop' && isDragDropMatching(q.options))) && (() => {
                 const pairs = parseMatchingOptions(q.options)
                 if (pairs.length === 0) return <p className="text-gray-500">Format de question non supporté</p>
 
@@ -855,7 +923,7 @@ export default function SequencePlayer({
               })()}
 
               {/* === TYPE NON SUPPORTÉ === */}
-              {!['mcq', 'true_false', 'mcq_image', 'image', 'checkbox', 'highlight', 'fill_blank', 'ordering', 'matching'].includes(qType) && (
+              {!['mcq', 'true_false', 'mcq_image', 'image', 'checkbox', 'highlight', 'fill_blank', 'ordering', 'matching', 'drag_drop'].includes(qType) && (
                 <div className="text-center py-8">
                   <AlertCircle size={48} className="text-amber-500 mx-auto mb-3" />
                   <p className="text-gray-600 mb-2">Type &quot;{qType}&quot; non encore implémenté</p>
