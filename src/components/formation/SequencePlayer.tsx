@@ -8,6 +8,8 @@ import {
   Download,
   Lightbulb,
   Loader2,
+  Square,
+  CheckSquare,
 } from 'lucide-react'
 import {
   useSequenceQuestions,
@@ -47,7 +49,13 @@ export default function SequencePlayer({
   
   const [playerStep, setPlayerStep] = useState<PlayerStep>(hasVideo ? 'video' : 'quiz')
   const [currentQ, setCurrentQ] = useState(0)
+  
+  // Pour QCM simple / Vrai-Faux : une seule réponse
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
+  
+  // Pour Checkbox : plusieurs réponses possibles
+  const [selectedAnswers, setSelectedAnswers] = useState<string[]>([])
+  
   const [showFeedback, setShowFeedback] = useState(false)
   const [correctCount, setCorrectCount] = useState(0)
   const [totalPoints, setTotalPoints] = useState(0)
@@ -77,9 +85,16 @@ export default function SequencePlayer({
 
   const currentStepIdx = steps.indexOf(playerStep === 'results' ? 'quiz' : playerStep)
 
-  // Gestion réponse
-  const handleAnswer = (answerId: string) => {
-    if (showFeedback || selectedAnswer || !questions.length) return
+  // Question actuelle
+  const currentQuestion = questions[currentQ]
+  const isCheckbox = currentQuestion?.question_type === 'checkbox'
+
+  // ============================================
+  // HANDLERS — QCM Simple / Vrai-Faux
+  // ============================================
+  
+  const handleSingleAnswer = (answerId: string) => {
+    if (showFeedback || selectedAnswer) return
     setSelectedAnswer(answerId)
 
     const q = questions[currentQ]
@@ -92,7 +107,6 @@ export default function SequencePlayer({
     }
     setTotalPoints((p) => p + points)
 
-    // Enregistrer la réponse
     setAnswers((prev) => [
       ...prev,
       {
@@ -113,11 +127,81 @@ export default function SequencePlayer({
     setShowOverlay(true)
   }
 
+  // ============================================
+  // HANDLERS — Checkbox (choix multiples)
+  // ============================================
+
+  const toggleCheckboxAnswer = (answerId: string) => {
+    if (showFeedback) return
+    
+    setSelectedAnswers((prev) => {
+      if (prev.includes(answerId)) {
+        return prev.filter((id) => id !== answerId)
+      } else {
+        return [...prev, answerId]
+      }
+    })
+  }
+
+  const validateCheckboxAnswer = () => {
+    if (showFeedback || selectedAnswers.length === 0) return
+
+    const q = questions[currentQ]
+    
+    // Trouver toutes les réponses correctes
+    const correctOptionIds = q.options.filter((o) => o.correct).map((o) => o.id)
+    
+    // Vérifier si l'utilisateur a coché exactement les bonnes réponses
+    const allCorrectSelected = correctOptionIds.every((id) => selectedAnswers.includes(id))
+    const noIncorrectSelected = selectedAnswers.every((id) => correctOptionIds.includes(id))
+    const isFullyCorrect = allCorrectSelected && noIncorrectSelected
+
+    // Calcul des points (partiel possible)
+    let points = 0
+    if (isFullyCorrect) {
+      points = q.points
+    } else {
+      // Points partiels : proportion de bonnes réponses
+      const correctSelected = selectedAnswers.filter((id) => correctOptionIds.includes(id)).length
+      const incorrectSelected = selectedAnswers.filter((id) => !correctOptionIds.includes(id)).length
+      const partialScore = Math.max(0, correctSelected - incorrectSelected) / correctOptionIds.length
+      points = Math.round(q.points * partialScore)
+    }
+
+    if (isFullyCorrect) {
+      setCorrectCount((c) => c + 1)
+    }
+    setTotalPoints((p) => p + points)
+
+    setAnswers((prev) => [
+      ...prev,
+      {
+        question_id: q.id,
+        selected_option: selectedAnswers.join(','),
+        is_correct: isFullyCorrect,
+        points_earned: points,
+      },
+    ])
+
+    setShowFeedback(true)
+    setOverlayData({
+      isCorrect: isFullyCorrect,
+      points,
+      feedback: isFullyCorrect ? q.feedback_correct : q.feedback_incorrect,
+      isLast: currentQ === questions.length - 1,
+    })
+    setShowOverlay(true)
+  }
+
+  // ============================================
   // Question suivante
+  // ============================================
+
   const nextQuestion = () => {
     setShowOverlay(false)
     setShowFeedback(false)
     setSelectedAnswer(null)
+    setSelectedAnswers([])
 
     if (currentQ < questions.length - 1) {
       setCurrentQ((c) => c + 1)
@@ -126,9 +210,11 @@ export default function SequencePlayer({
     }
   }
 
+  // ============================================
   // Terminer séquence
+  // ============================================
+
   const finishSequence = async () => {
-    // Soumettre les résultats (mode preview = log uniquement)
     try {
       await submitResult({
         sequenceId: sequence.id,
@@ -149,7 +235,10 @@ export default function SequencePlayer({
     ? Math.round((correctCount / questions.length) * 100) 
     : 0
 
-  // Loading state
+  // ============================================
+  // RENDU — Loading / Error
+  // ============================================
+
   if (loadingQuestions) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAFF]">
@@ -161,16 +250,12 @@ export default function SequencePlayer({
     )
   }
 
-  // Error state
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAFF] p-4">
         <div className="text-center">
           <p className="text-red-500 mb-4">Erreur : {error.message}</p>
-          <button
-            onClick={onBack}
-            className="px-4 py-2 bg-gray-100 rounded-xl text-sm"
-          >
+          <button onClick={onBack} className="px-4 py-2 bg-gray-100 rounded-xl text-sm">
             Retour
           </button>
         </div>
@@ -178,22 +263,22 @@ export default function SequencePlayer({
     )
   }
 
-  // Pas de questions
   if (questions.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAFF] p-4">
         <div className="text-center">
           <p className="text-gray-500 mb-4">Aucune question pour cette séquence</p>
-          <button
-            onClick={onBack}
-            className="px-4 py-2 bg-gray-100 rounded-xl text-sm"
-          >
+          <button onClick={onBack} className="px-4 py-2 bg-gray-100 rounded-xl text-sm">
             Retour
           </button>
         </div>
       </div>
     )
   }
+
+  // ============================================
+  // RENDU PRINCIPAL
+  // ============================================
 
   return (
     <div className="min-h-screen bg-[#FAFAFF] flex flex-col">
@@ -270,9 +355,8 @@ export default function SequencePlayer({
         )}
 
         {/* QUIZ */}
-        {playerStep === 'quiz' && (() => {
-          const q = questions[currentQ]
-          if (!q) return null
+        {playerStep === 'quiz' && currentQuestion && (() => {
+          const q = currentQuestion
           const isTF = q.question_type === 'true_false'
 
           return (
@@ -298,8 +382,18 @@ export default function SequencePlayer({
 
               {/* Type badge */}
               <span className="inline-block bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[11px] font-semibold mb-3">
-                {q.question_type === 'mcq' ? 'QCM' : q.question_type === 'true_false' ? 'Vrai/Faux' : q.question_type.toUpperCase()}
+                {q.question_type === 'mcq' ? 'QCM' : 
+                 q.question_type === 'true_false' ? 'Vrai/Faux' : 
+                 q.question_type === 'checkbox' ? 'Choix multiples' :
+                 q.question_type.toUpperCase()}
               </span>
+
+              {/* Instruction pour checkbox */}
+              {isCheckbox && !showFeedback && (
+                <p className="text-xs text-blue-600 mb-2">
+                  ☑️ Plusieurs réponses possibles — cochez puis validez
+                </p>
+              )}
 
               {/* Image si présente */}
               {q.image_url && (
@@ -320,15 +414,20 @@ export default function SequencePlayer({
               {/* Options */}
               <div className="flex flex-col gap-2.5">
                 {q.options.map((opt, i) => {
-                  const isSelected = selectedAnswer === opt.id
+                  // État de l'option
+                  const isSelectedSingle = selectedAnswer === opt.id
+                  const isSelectedMultiple = selectedAnswers.includes(opt.id)
+                  const isSelected = isCheckbox ? isSelectedMultiple : isSelectedSingle
                   const isCorrect = opt.correct
 
+                  // Couleurs par défaut
                   let bg = '#FAFAFF'
                   let border = '#E2E8F0'
                   let textColor = '#334155'
                   let badgeBg = '#E2E8F0'
                   let badgeColor = '#64748B'
 
+                  // État sélectionné (avant validation)
                   if (isSelected && !showFeedback) {
                     bg = '#F1F5F9'
                     border = '#94A3B8'
@@ -336,6 +435,7 @@ export default function SequencePlayer({
                     badgeColor = 'white'
                   }
 
+                  // Après validation (feedback)
                   if (showFeedback) {
                     if (isCorrect) {
                       bg = '#F0FDF4'
@@ -352,20 +452,46 @@ export default function SequencePlayer({
                     }
                   }
 
+                  // Handler selon le type
+                  const handleClick = () => {
+                    if (showFeedback) return
+                    if (isCheckbox) {
+                      toggleCheckboxAnswer(opt.id)
+                    } else {
+                      handleSingleAnswer(opt.id)
+                    }
+                  }
+
                   return (
                     <button
                       key={opt.id}
-                      onClick={() => handleAnswer(opt.id)}
-                      disabled={showFeedback || selectedAnswer !== null}
+                      onClick={handleClick}
+                      disabled={showFeedback || (!isCheckbox && selectedAnswer !== null)}
                       className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
                       style={{
                         background: bg,
                         border: `2px solid ${border}`,
-                        cursor:
-                          showFeedback || selectedAnswer ? 'default' : 'pointer',
+                        cursor: showFeedback || (!isCheckbox && selectedAnswer) ? 'default' : 'pointer',
                       }}
                     >
-                      {!isTF && (
+                      {/* Badge ou Checkbox */}
+                      {isCheckbox ? (
+                        <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+                          {showFeedback ? (
+                            isCorrect ? (
+                              <CheckSquare size={24} className="text-emerald-500" />
+                            ) : isSelected ? (
+                              <X size={24} className="text-red-500" />
+                            ) : (
+                              <Square size={24} className="text-gray-300" />
+                            )
+                          ) : isSelected ? (
+                            <CheckSquare size={24} style={{ color: categoryGradient.from }} />
+                          ) : (
+                            <Square size={24} className="text-gray-400" />
+                          )}
+                        </span>
+                      ) : !isTF ? (
                         <span
                           className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0"
                           style={{ background: badgeBg, color: badgeColor }}
@@ -376,7 +502,8 @@ export default function SequencePlayer({
                             ? '✗'
                             : String.fromCharCode(65 + i)}
                         </span>
-                      )}
+                      ) : null}
+                      
                       <span
                         className="flex-1 font-semibold text-sm"
                         style={{ color: textColor }}
@@ -387,6 +514,18 @@ export default function SequencePlayer({
                   )
                 })}
               </div>
+
+              {/* Bouton Valider pour Checkbox */}
+              {isCheckbox && !showFeedback && (
+                <button
+                  onClick={validateCheckboxAnswer}
+                  disabled={selectedAnswers.length === 0}
+                  className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40 transition-all"
+                  style={{ background: categoryGradient.from }}
+                >
+                  Valider ma réponse ({selectedAnswers.length} sélectionnée{selectedAnswers.length > 1 ? 's' : ''})
+                </button>
+              )}
             </div>
           )
         })()}
