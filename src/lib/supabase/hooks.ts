@@ -274,11 +274,20 @@ export function isSequenceAccessible(
   sequence: Sequence,
   currentSequence: number,
   completedSequenceIds: string[],
-  isPremium: boolean
+  isPremium: boolean,
+  isPreview: boolean = false
 ): { 
   accessible: boolean
   reason: 'free' | 'unlocked' | 'completed' | 'premium_required' | 'not_unlocked' 
 } {
+  
+  // Mode Preview : toutes les séquences sont accessibles
+  if (isPreview) {
+    if (completedSequenceIds.includes(sequence.id)) {
+      return { accessible: true, reason: 'completed' }
+    }
+    return { accessible: true, reason: 'unlocked' }
+  }
   
   if (completedSequenceIds.includes(sequence.id)) {
     return { accessible: true, reason: 'completed' }
