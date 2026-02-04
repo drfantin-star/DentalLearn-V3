@@ -274,7 +274,25 @@ export default function SequencePlayer({
   const currentStepIdx = steps.indexOf(playerStep === 'results' ? 'quiz' : playerStep)
   const currentQuestion = questions[currentQ]
 
-  // Initialiser ordering
+  // Fisher-Yates shuffle - mélange aléatoire fiable
+  const shuffleArray = <T,>(array: T[]): T[] => {
+    const shuffled = [...array]
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+    }
+    return shuffled
+  }
+
+  // Vérifier si un tableau d'IDs est dans l'ordre correct (1, 2, 3, 4...)
+  const isCorrectOrder = (order: string[], opts: OrderingOption[]): boolean => {
+    return order.every((id, idx) => {
+      const opt = opts.find(o => o.id === id)
+      return opt?.correctPosition === idx + 1
+    })
+  }
+
+  // Initialiser ordering - s'assurer que l'ordre initial n'est PAS la solution
   useEffect(() => {
     const isOrdering = currentQuestion?.question_type === 'ordering' || 
       (currentQuestion?.question_type === 'drag_drop' && isDragDropOrdering(currentQuestion.options))
@@ -282,13 +300,19 @@ export default function SequencePlayer({
     if (isOrdering && orderingOrder.length === 0) {
       const opts = parseOrderingOptions(currentQuestion.options)
       if (opts.length > 0) {
-        const shuffled = [...opts].sort(() => Math.random() - 0.5).map(o => o.id)
+        let shuffled = shuffleArray(opts.map(o => o.id))
+        // Re-mélanger si on tombe sur l'ordre correct (peu probable mais possible)
+        let attempts = 0
+        while (isCorrectOrder(shuffled, opts) && attempts < 10) {
+          shuffled = shuffleArray(opts.map(o => o.id))
+          attempts++
+        }
         setOrderingOrder(shuffled)
       }
     }
   }, [currentQuestion, orderingOrder.length])
 
-  // Initialiser matching
+  // Initialiser matching - mélanger la colonne de droite
   useEffect(() => {
     const isMatching = currentQuestion?.question_type === 'matching' || 
       (currentQuestion?.question_type === 'drag_drop' && isDragDropMatching(currentQuestion.options))
@@ -296,7 +320,14 @@ export default function SequencePlayer({
     if (isMatching && shuffledMatchingRights.length === 0) {
       const pairs = parseMatchingOptions(currentQuestion.options)
       if (pairs.length > 0) {
-        const shuffled = [...pairs].sort(() => Math.random() - 0.5)
+        // Mélanger pour que les droites ne correspondent pas aux gauches
+        let shuffled = shuffleArray([...pairs])
+        // Re-mélanger si par hasard l'ordre est identique (id gauche = position droite)
+        let attempts = 0
+        while (shuffled.every((p, i) => p.id === pairs[i].id) && attempts < 10) {
+          shuffled = shuffleArray([...pairs])
+          attempts++
+        }
         setShuffledMatchingRights(shuffled)
       }
     }
