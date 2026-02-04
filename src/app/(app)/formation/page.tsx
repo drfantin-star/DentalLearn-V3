@@ -52,6 +52,7 @@ const categories: Category[] = [
   { id: 'parodontologie', name: 'Parodontologie', shortName: 'Paro', emoji: '🫧', bgColor: 'bg-pink-50', textColor: 'text-pink-600', gradient: { from: '#EC4899', to: '#F472B6' }, type: 'cp' },
   { id: 'endodontie', name: 'Endodontie', shortName: 'Endo', emoji: '🔬', bgColor: 'bg-indigo-50', textColor: 'text-indigo-600', gradient: { from: '#6366F1', to: '#818CF8' }, type: 'cp' },
   { id: 'radiologie', name: 'Radiologie', shortName: 'Radio', emoji: '📡', bgColor: 'bg-teal-50', textColor: 'text-teal-600', gradient: { from: '#14B8A6', to: '#2DD4BF' }, type: 'cp' },
+  // Développement professionnel (Bonus)
   { id: 'management', name: 'Management', shortName: 'Management', emoji: '💼', bgColor: 'bg-stone-50', textColor: 'text-stone-600', gradient: { from: '#78716C', to: '#A8A29E' }, type: 'bonus' },
   { id: 'organisation', name: 'Organisation', shortName: 'Organisation', emoji: '📋', bgColor: 'bg-slate-50', textColor: 'text-slate-600', gradient: { from: '#64748B', to: '#94A3B8' }, type: 'bonus' },
   { id: 'soft-skills', name: 'Soft Skills', shortName: 'Soft Skills', emoji: '🤝', bgColor: 'bg-yellow-50', textColor: 'text-yellow-700', gradient: { from: '#D97706', to: '#F59E0B' }, type: 'bonus' },
@@ -61,9 +62,10 @@ const categories: Category[] = [
 // COMPOSANTS — Grilles catégories
 // ============================================
 
-function CategoryGrid({ cats, onSelect }: { cats: Category[]; onSelect: (cat: Category) => void }) {
+function CategoryGrid({ cats, onSelect, cols = 4 }: { cats: Category[]; onSelect: (cat: Category) => void; cols?: number }) {
+  const gridCols = cols === 3 ? 'grid-cols-3' : 'grid-cols-4'
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className={`grid ${gridCols} gap-3`}>
       {cats.map((cat) => (
         <button
           key={cat.id}
@@ -336,7 +338,7 @@ export default function FormationPage() {
             <h2 className="text-lg font-bold text-gray-900 mb-4">
               Développement professionnel
             </h2>
-            <CategoryGrid cats={bonusCategories} onSelect={openCategory} />
+            <CategoryGrid cats={bonusCategories} onSelect={openCategory} cols={3} />
           </section>
         )}
 
