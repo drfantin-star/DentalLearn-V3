@@ -18,12 +18,9 @@ const supabase = createClient()
 // MODE PREVIEW — Sans authentification
 // ============================================
 
-// En mode preview, on simule un utilisateur pour tester
-// sans avoir besoin de se connecter
 export function usePreviewMode() {
   return {
     isPreview: true,
-    // Pas de userId en mode preview - on ne sauvegarde pas en BDD
   }
 }
 
@@ -100,7 +97,6 @@ export function useFormation(formationId: string | null) {
       try {
         setLoading(true)
 
-        // Récupérer la formation
         const { data: formationData, error: formationError } = await supabase
           .from('formations')
           .select('*')
@@ -109,7 +105,6 @@ export function useFormation(formationId: string | null) {
 
         if (formationError) throw formationError
 
-        // Récupérer les séquences
         const { data: sequencesData, error: sequencesError } = await supabase
           .from('sequences')
           .select('*')
@@ -185,9 +180,8 @@ export function useUserFormationProgress(formationId: string | null) {
   const { isPreview } = usePreviewMode()
   const [currentSequence, setCurrentSequence] = useState(1)
   const [completedSequenceIds, setCompletedSequenceIds] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading] = useState(false)
 
-  // En mode preview : progression locale (pas de sauvegarde BDD)
   const markCompleted = useCallback((sequenceId: string, nextSeqNumber: number) => {
     if (!completedSequenceIds.includes(sequenceId)) {
       setCompletedSequenceIds(prev => [...prev, sequenceId])
@@ -196,7 +190,6 @@ export function useUserFormationProgress(formationId: string | null) {
   }, [completedSequenceIds])
 
   const refresh = useCallback(() => {
-    // En mode preview, on reset la progression
     if (isPreview) {
       setCurrentSequence(1)
       setCompletedSequenceIds([])
@@ -217,7 +210,6 @@ export function useUserFormationProgress(formationId: string | null) {
 // ============================================
 
 export function usePremiumAccess() {
-  // En mode preview, on donne accès premium pour tout tester
   return {
     isPremium: true,
     loading: false,
@@ -252,18 +244,14 @@ export function useSubmitSequenceResult() {
       setError(null)
 
       if (isPreview) {
-        // Mode preview : log uniquement, pas de sauvegarde BDD
         console.log('📊 [Preview] Résultats séquence:', {
           score: result.score,
           points: result.totalPoints,
           temps: result.timeSpentSeconds + 's',
         })
-        // Simuler un délai réseau
         await new Promise(resolve => setTimeout(resolve, 300))
         return true
       }
-
-      // TODO: Quand auth activée, sauvegarder en BDD ici
 
       return true
     } catch (err) {
@@ -292,22 +280,18 @@ export function isSequenceAccessible(
   reason: 'free' | 'unlocked' | 'completed' | 'premium_required' | 'not_unlocked' 
 } {
   
-  // Déjà complétée = toujours accessible (pour revoir)
   if (completedSequenceIds.includes(sequence.id)) {
     return { accessible: true, reason: 'completed' }
   }
 
-  // Séquence intro OU access_level = free → toujours accessible
   if (sequence.is_intro || sequence.access_level === 'free') {
     return { accessible: true, reason: 'free' }
   }
 
-  // Séquence premium mais pas abonné
   if (sequence.access_level === 'premium' && !isPremium) {
     return { accessible: false, reason: 'premium_required' }
   }
 
-  // Séquence pas encore débloquée (doit faire les précédentes)
   if (sequence.sequence_number > currentSequence) {
     return { accessible: false, reason: 'not_unlocked' }
   }
