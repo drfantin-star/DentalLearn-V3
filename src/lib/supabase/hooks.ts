@@ -423,25 +423,16 @@ export function useFormationPoints(formationId: string | null) {
       try {
         setLoading(true)
 
-        // Calculer le total possible de points pour la formation
-        const { data: questions } = await supabase
-          .from('questions')
-          .select('points, sequence_id')
-          .in('sequence_id', 
-            supabase
-              .from('sequences')
-              .select('id')
-              .eq('formation_id', formationId)
-          )
-
-        // Alternative: requête avec jointure via la vue
+        // 1. Récupérer les IDs des séquences de cette formation
         const { data: sequences } = await supabase
           .from('sequences')
           .select('id')
           .eq('formation_id', formationId)
 
-        if (sequences) {
+        if (sequences && sequences.length > 0) {
           const sequenceIds = sequences.map(s => s.id)
+          
+          // 2. Calculer le total des points possibles
           const { data: questionsData } = await supabase
             .from('questions')
             .select('points')
@@ -457,7 +448,7 @@ export function useFormationPoints(formationId: string | null) {
           return
         }
 
-        // Récupérer les points gagnés par l'utilisateur
+        // 3. Récupérer les points gagnés par l'utilisateur
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
