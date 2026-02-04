@@ -13,5 +13,4 @@ export function createClient() {
   return client
 }
 
-// Export par défaut pour faciliter l'import
 export default createClient
