@@ -26,7 +26,7 @@ const mockFormations: FormationEnCours[] = [
   {
     id: '1',
     title: 'Éclaircissements & Taches Blanches',
-    category: 'Dentisterie Restauratrice',
+    category: 'Esthétique',
     currentSequence: 6,
     totalSequences: 15,
     progressPercent: 40,

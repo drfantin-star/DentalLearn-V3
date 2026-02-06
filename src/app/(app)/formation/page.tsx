@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
@@ -15,8 +15,10 @@ import {
   useFormations,
   useUserFormationProgress,
   getCategoryConfig,
+  CATEGORIES,
   type Formation,
   type Sequence,
+  type CategoryConfig,
 } from '@/lib/supabase'
 
 // Composants
@@ -28,36 +30,7 @@ import SequencePlayer from '@/components/formation/SequencePlayer'
 // ============================================
 
 type ViewMode = 'catalog' | 'category' | 'formation' | 'sequence'
-
-interface Category {
-  id: string
-  name: string
-  shortName: string
-  emoji: string
-  bgColor: string
-  textColor: string
-  gradient: { from: string; to: string }
-  type: 'cp' | 'bonus'
-}
-
-// ============================================
-// DONNÉES — Catégories
-// ============================================
-
-const categories: Category[] = [
-  { id: 'esthetique', name: 'Esthétique', shortName: 'Esthétique', emoji: '✨', bgColor: 'bg-violet-50', textColor: 'text-violet-600', gradient: { from: '#8B5CF6', to: '#A78BFA' }, type: 'cp' },
-  { id: 'restauratrice', name: 'Dentisterie Restauratrice', shortName: 'Restauratrice', emoji: '🦷', bgColor: 'bg-amber-50', textColor: 'text-amber-700', gradient: { from: '#F59E0B', to: '#FBBF24' }, type: 'cp' },
-  { id: 'chirurgie', name: 'Chirurgie Orale', shortName: 'Chirurgie', emoji: '🔪', bgColor: 'bg-rose-50', textColor: 'text-rose-600', gradient: { from: '#EF4444', to: '#F87171' }, type: 'cp' },
-  { id: 'implant', name: 'Implantologie', shortName: 'Implant', emoji: '🔩', bgColor: 'bg-green-50', textColor: 'text-green-600', gradient: { from: '#10B981', to: '#34D399' }, type: 'cp' },
-  { id: 'prothese', name: 'Prothèse', shortName: 'Prothèse', emoji: '👄', bgColor: 'bg-orange-50', textColor: 'text-orange-600', gradient: { from: '#F97316', to: '#FB923C' }, type: 'cp' },
-  { id: 'parodontologie', name: 'Parodontologie', shortName: 'Paro', emoji: '🫧', bgColor: 'bg-pink-50', textColor: 'text-pink-600', gradient: { from: '#EC4899', to: '#F472B6' }, type: 'cp' },
-  { id: 'endodontie', name: 'Endodontie', shortName: 'Endo', emoji: '🔬', bgColor: 'bg-indigo-50', textColor: 'text-indigo-600', gradient: { from: '#6366F1', to: '#818CF8' }, type: 'cp' },
-  { id: 'radiologie', name: 'Radiologie', shortName: 'Radio', emoji: '📡', bgColor: 'bg-teal-50', textColor: 'text-teal-600', gradient: { from: '#14B8A6', to: '#2DD4BF' }, type: 'cp' },
-  // Développement professionnel (Bonus)
-  { id: 'management', name: 'Management', shortName: 'Management', emoji: '💼', bgColor: 'bg-stone-50', textColor: 'text-stone-600', gradient: { from: '#78716C', to: '#A8A29E' }, type: 'bonus' },
-  { id: 'organisation', name: 'Organisation', shortName: 'Organisation', emoji: '📋', bgColor: 'bg-slate-50', textColor: 'text-slate-600', gradient: { from: '#64748B', to: '#94A3B8' }, type: 'bonus' },
-  { id: 'soft-skills', name: 'Soft Skills', shortName: 'Soft Skills', emoji: '🤝', bgColor: 'bg-yellow-50', textColor: 'text-yellow-700', gradient: { from: '#D97706', to: '#F59E0B' }, type: 'bonus' },
-]
+type Category = CategoryConfig & { id: string }
 
 // ============================================
 // COMPOSANTS — Grilles catégories
@@ -206,8 +179,8 @@ export default function FormationPage() {
   // Hook pour la progression (mode preview)
   const { markCompleted } = useUserFormationProgress(selectedFormationId)
 
-  const cpCategories = categories.filter((c) => c.type === 'cp')
-  const bonusCategories = categories.filter((c) => c.type === 'bonus')
+  const cpCategories = CATEGORIES.filter((c) => c.type === 'cp')
+  const bonusCategories = CATEGORIES.filter((c) => c.type === 'bonus')
 
   // Navigation handlers
   const openCategory = (cat: Category) => {

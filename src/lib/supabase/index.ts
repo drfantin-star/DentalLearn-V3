@@ -19,10 +19,12 @@ export type {
   PointReason,
 } from './types'
 
+export type { CategoryConfig } from './types'
 export {
   CATEGORY_CONFIG,
   DEFAULT_CATEGORY_CONFIG,
   getCategoryConfig,
+  CATEGORIES,
 } from './types'
 
 // Hooks
