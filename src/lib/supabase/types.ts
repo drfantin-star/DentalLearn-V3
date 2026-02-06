@@ -303,13 +303,18 @@ export const DEFAULT_CATEGORY_CONFIG: CategoryConfig = {
   type: 'cp',
 }
 
+/** Strip diacritics so "Esthétique" matches key "esthetique" */
+function normalize(str: string): string {
+  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+}
+
 export function getCategoryConfig(category: string | null): CategoryConfig {
   if (!category) return DEFAULT_CATEGORY_CONFIG
-  const lower = category.toLowerCase()
-  // Direct slug match (e.g. "restauratrice")
-  if (CATEGORY_CONFIG[lower]) return CATEGORY_CONFIG[lower]
+  const slug = normalize(category)
+  // Direct slug match (e.g. "esthetique")
+  if (CATEGORY_CONFIG[slug]) return CATEGORY_CONFIG[slug]
   // Try matching individual words (e.g. "Dentisterie Restauratrice" → "restauratrice")
-  for (const word of lower.split(/\s+/)) {
+  for (const word of slug.split(/\s+/)) {
     if (CATEGORY_CONFIG[word]) return CATEGORY_CONFIG[word]
   }
   return DEFAULT_CATEGORY_CONFIG
