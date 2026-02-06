@@ -3,8 +3,8 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import {
-  GraduationCap, Bell, ChevronRight, Flame,
-  BookOpen, Loader2,
+  GraduationCap, Bell, ChevronRight,
+  BookOpen, Loader2, Zap,
 } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useFormations } from '@/lib/hooks/useFormations'
@@ -88,14 +88,6 @@ export default function HomePage() {
             </div>
 
             <div className="flex items-center gap-2">
-              {/* Streak */}
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 rounded-full">
-                <Flame size={16} className="text-orange-500" />
-                <span className="text-sm font-bold text-orange-600">
-                  {streak?.current_streak || 0}
-                </span>
-              </div>
-
               {/* Notifications */}
               <button className="relative p-2.5 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors">
                 <Bell size={20} className="text-gray-600" />
@@ -114,17 +106,33 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            {/* Stats Cards (Points, Streak, Classement) */}
-            <StatsCards
-              userId={user?.id}
-              currentStreak={streak?.current_streak || 0}
-            />
+            {/* Mes stats */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Zap size={20} className="text-[#F59E0B]" />
+                  Mes stats
+                </h2>
+              </div>
+              <StatsCards
+                userId={user?.id}
+                currentStreak={streak?.current_streak || 0}
+              />
+            </section>
 
-            {/* Daily Quiz CTA */}
-            <DailyQuizButton
-              userId={user?.id}
-              onStart={() => setShowDailyQuiz(true)}
-            />
+            {/* Quiz du jour */}
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Zap size={20} className="text-[#F59E0B]" />
+                  Quiz du jour
+                </h2>
+              </div>
+              <DailyQuizButton
+                userId={user?.id}
+                onStart={() => setShowDailyQuiz(true)}
+              />
+            </section>
 
             {/* Mes formations en cours */}
             <section>
