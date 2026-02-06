@@ -26,7 +26,7 @@ export default function StatsCards({ userId, currentStreak }: StatsCardsProps) {
 
       {/* Classement hebdo (agrandi col-span-3) */}
       <div className="col-span-3">
-        <LeaderboardPanel compact />
+        <LeaderboardPanel userId={userId} compact />
       </div>
     </div>
   )
