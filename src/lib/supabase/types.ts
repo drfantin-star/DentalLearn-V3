@@ -168,19 +168,27 @@ export interface UserPoints {
 // CATÉGORIES (mapping frontend)
 // ─────────────────────────────────────────────
 
-export const CATEGORY_CONFIG: Record<string, {
+export interface CategoryConfig {
   emoji: string
   gradient: { from: string; to: string }
   bgColor: string
   textColor: string
   isCP: boolean
-}> = {
+  name: string
+  shortName: string
+  type: 'cp' | 'bonus'
+}
+
+export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   esthetique: {
     emoji: '✨',
     gradient: { from: '#8B5CF6', to: '#A78BFA' },
     bgColor: 'bg-violet-50',
     textColor: 'text-violet-600',
     isCP: true,
+    name: 'Esthétique',
+    shortName: 'Esthétique',
+    type: 'cp',
   },
   restauratrice: {
     emoji: '🦷',
@@ -188,6 +196,9 @@ export const CATEGORY_CONFIG: Record<string, {
     bgColor: 'bg-amber-50',
     textColor: 'text-amber-700',
     isCP: true,
+    name: 'Dentisterie Restauratrice',
+    shortName: 'Restauratrice',
+    type: 'cp',
   },
   chirurgie: {
     emoji: '🔪',
@@ -195,6 +206,9 @@ export const CATEGORY_CONFIG: Record<string, {
     bgColor: 'bg-rose-50',
     textColor: 'text-rose-600',
     isCP: true,
+    name: 'Chirurgie Orale',
+    shortName: 'Chirurgie',
+    type: 'cp',
   },
   implant: {
     emoji: '🔩',
@@ -202,6 +216,9 @@ export const CATEGORY_CONFIG: Record<string, {
     bgColor: 'bg-green-50',
     textColor: 'text-green-600',
     isCP: true,
+    name: 'Implantologie',
+    shortName: 'Implant',
+    type: 'cp',
   },
   prothese: {
     emoji: '👄',
@@ -209,6 +226,9 @@ export const CATEGORY_CONFIG: Record<string, {
     bgColor: 'bg-orange-50',
     textColor: 'text-orange-600',
     isCP: true,
+    name: 'Prothèse',
+    shortName: 'Prothèse',
+    type: 'cp',
   },
   parodontologie: {
     emoji: '🫧',
@@ -216,6 +236,9 @@ export const CATEGORY_CONFIG: Record<string, {
     bgColor: 'bg-pink-50',
     textColor: 'text-pink-600',
     isCP: true,
+    name: 'Parodontologie',
+    shortName: 'Paro',
+    type: 'cp',
   },
   endodontie: {
     emoji: '🔬',
@@ -223,6 +246,9 @@ export const CATEGORY_CONFIG: Record<string, {
     bgColor: 'bg-indigo-50',
     textColor: 'text-indigo-600',
     isCP: true,
+    name: 'Endodontie',
+    shortName: 'Endo',
+    type: 'cp',
   },
   radiologie: {
     emoji: '📡',
@@ -230,6 +256,29 @@ export const CATEGORY_CONFIG: Record<string, {
     bgColor: 'bg-teal-50',
     textColor: 'text-teal-600',
     isCP: true,
+    name: 'Radiologie',
+    shortName: 'Radio',
+    type: 'cp',
+  },
+  management: {
+    emoji: '💼',
+    gradient: { from: '#78716C', to: '#A8A29E' },
+    bgColor: 'bg-stone-50',
+    textColor: 'text-stone-600',
+    isCP: false,
+    name: 'Management',
+    shortName: 'Management',
+    type: 'bonus',
+  },
+  organisation: {
+    emoji: '📋',
+    gradient: { from: '#64748B', to: '#94A3B8' },
+    bgColor: 'bg-slate-50',
+    textColor: 'text-slate-600',
+    isCP: false,
+    name: 'Organisation',
+    shortName: 'Organisation',
+    type: 'bonus',
   },
   'soft-skills': {
     emoji: '🤝',
@@ -237,18 +286,24 @@ export const CATEGORY_CONFIG: Record<string, {
     bgColor: 'bg-yellow-50',
     textColor: 'text-yellow-700',
     isCP: false,
+    name: 'Soft Skills',
+    shortName: 'Soft Skills',
+    type: 'bonus',
   },
 }
 
-export const DEFAULT_CATEGORY_CONFIG = {
+export const DEFAULT_CATEGORY_CONFIG: CategoryConfig = {
   emoji: '📚',
   gradient: { from: '#6B7280', to: '#9CA3AF' },
   bgColor: 'bg-gray-50',
   textColor: 'text-gray-600',
   isCP: true,
+  name: 'Autre',
+  shortName: 'Autre',
+  type: 'cp',
 }
 
-export function getCategoryConfig(category: string | null) {
+export function getCategoryConfig(category: string | null): CategoryConfig {
   if (!category) return DEFAULT_CATEGORY_CONFIG
   const lower = category.toLowerCase()
   // Direct slug match (e.g. "restauratrice")
@@ -259,3 +314,9 @@ export function getCategoryConfig(category: string | null) {
   }
   return DEFAULT_CATEGORY_CONFIG
 }
+
+/** Ordered list of all categories for catalog display */
+export const CATEGORIES = Object.entries(CATEGORY_CONFIG).map(([id, config]) => ({
+  id,
+  ...config,
+}))
