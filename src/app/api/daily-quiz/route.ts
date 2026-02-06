@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
           feedback_incorrect,
           points,
           question_type,
+          image_url,
           sequence:sequences!questions_sequence_id_fkey (
             formation:formations!sequences_formation_id_fkey (
               title
@@ -72,6 +73,7 @@ export async function GET(request: NextRequest) {
         feedback_incorrect: q.feedback_incorrect,
         points: q.points,
         question_type: q.question_type,
+        image_url: q.image_url || null,
         formation_title: (q.sequence as Record<string, unknown>)?.formation
           ? ((q.sequence as Record<string, unknown>).formation as Record<string, unknown>).title
           : null,
