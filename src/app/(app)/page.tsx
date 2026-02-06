@@ -3,20 +3,19 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import {
-  GraduationCap, Bell, ChevronRight, Flame, Sparkles,
+  GraduationCap, Bell, ChevronRight, Flame,
   BookOpen, Loader2,
 } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
-import { useAxes, type AxisWithProgress } from '@/lib/hooks/useAxes'
 import { useFormations } from '@/lib/hooks/useFormations'
 import { useNews } from '@/lib/hooks/useNews'
 
-// Composants extraits
-import GlobalProgressBars from '@/components/home/GlobalProgressBars'
-import TrainingCard from '@/components/home/TrainingCard'
+// Composants
+import StatsCards from '@/components/home/StatsCards'
+import DailyQuizButton from '@/components/home/DailyQuizButton'
+import DailyQuizModal from '@/components/home/DailyQuizModal'
 import FormationCard from '@/components/home/FormationCard'
 import NewsSection from '@/components/home/NewsSection'
-import QuizModal from '@/components/quiz/QuizModal'
 import type { FormationEnCours } from '@/components/home/FormationCard'
 
 // ============================================
@@ -53,29 +52,16 @@ const mockFormations: FormationEnCours[] = [
 // ============================================
 
 export default function HomePage() {
-  const [showQuiz, setShowQuiz] = useState(false)
-  const [selectedAxis, setSelectedAxis] = useState<AxisWithProgress | null>(null)
+  const [showDailyQuiz, setShowDailyQuiz] = useState(false)
 
   // Hooks Supabase
   const { user, displayName, streak, loading: userLoading } = useUser()
-  const { axes, loading: axesLoading, completeQuiz } = useAxes(user?.id)
   const { currentFormation, loading: formationLoading } = useFormations(user?.id)
   const { news, loading: newsLoading } = useNews(4)
 
-  const startQuiz = (axis: AxisWithProgress) => {
-    setSelectedAxis(axis)
-    setShowQuiz(true)
+  const handleDailyQuizComplete = (score: number, totalPoints: number) => {
+    setShowDailyQuiz(false)
   }
-
-  const handleQuizComplete = async (score: number) => {
-    if (selectedAxis) {
-      await completeQuiz(selectedAxis.id, score)
-    }
-    setShowQuiz(false)
-    setSelectedAxis(null)
-  }
-
-  const isLoading = userLoading || axesLoading
 
   return (
     <>
@@ -122,36 +108,23 @@ export default function HomePage() {
 
       {/* Contenu */}
       <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
-        {isLoading ? (
+        {userLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="animate-spin text-[#2D1B96]" size={32} />
           </div>
         ) : (
           <>
-            {/* Progression globale */}
-            {axes.length > 0 && <GlobalProgressBars axes={axes} />}
+            {/* Stats Cards (Points, Streak, Classement) */}
+            <StatsCards
+              userId={user?.id}
+              currentStreak={streak?.current_streak || 0}
+            />
 
-            {/* Entraînement du jour */}
-            <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Sparkles size={20} className="text-[#00D1C1]" />
-                  Entraînement du jour
-                </h2>
-                <span className="text-xs font-bold text-gray-400">
-                  {axes.filter((a) => a.dailyDone).length}/{axes.length}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {axes.map((axis) => (
-                  <TrainingCard
-                    key={axis.id}
-                    axis={axis}
-                    onStart={startQuiz}
-                  />
-                ))}
-              </div>
-            </section>
+            {/* Daily Quiz CTA */}
+            <DailyQuizButton
+              userId={user?.id}
+              onStart={() => setShowDailyQuiz(true)}
+            />
 
             {/* Mes formations en cours */}
             <section>
@@ -202,15 +175,12 @@ export default function HomePage() {
         )}
       </main>
 
-      {/* Modal Quiz */}
-      {showQuiz && selectedAxis && (
-        <QuizModal
-          axis={selectedAxis}
-          onClose={() => {
-            setShowQuiz(false)
-            setSelectedAxis(null)
-          }}
-          onComplete={handleQuizComplete}
+      {/* Modal Daily Quiz */}
+      {showDailyQuiz && user && (
+        <DailyQuizModal
+          userId={user.id}
+          onClose={() => setShowDailyQuiz(false)}
+          onComplete={handleDailyQuizComplete}
         />
       )}
     </>
