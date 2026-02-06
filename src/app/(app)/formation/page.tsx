@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import {
   ChevronLeft,
   ChevronRight,
@@ -168,6 +169,7 @@ function CategoryDetailView({
 export default function FormationPage() {
   // Récupérer les formations depuis Supabase
   const { formations, loading, error } = useFormations({ isPublished: true })
+  const searchParams = useSearchParams()
 
   // États de navigation
   const [viewMode, setViewMode] = useState<ViewMode>('catalog')
@@ -175,6 +177,20 @@ export default function FormationPage() {
   const [selectedFormationId, setSelectedFormationId] = useState<string | null>(null)
   const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
   const [sequenceGradient, setSequenceGradient] = useState<{ from: string; to: string }>({ from: '#8B5CF6', to: '#A78BFA' })
+
+  // Auto-ouvrir une formation si formationId est dans l'URL
+  useEffect(() => {
+    const formationId = searchParams.get('formationId')
+    if (formationId && !loading && formations.length > 0 && viewMode === 'catalog') {
+      const formation = formations.find((f) => f.id === formationId)
+      if (formation) {
+        const config = getCategoryConfig(formation.category)
+        setSequenceGradient(config.gradient)
+        setSelectedFormationId(formation.id)
+        setViewMode('formation')
+      }
+    }
+  }, [searchParams, loading, formations])
 
   // Hook pour la progression (mode preview)
   const { markCompleted } = useUserFormationProgress(selectedFormationId)

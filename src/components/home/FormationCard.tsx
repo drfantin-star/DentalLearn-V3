@@ -1,4 +1,5 @@
 import React from 'react'
+import Link from 'next/link'
 import { Heart, Play } from 'lucide-react'
 import { getCategoryConfig } from '@/lib/supabase/types'
 
@@ -78,9 +79,12 @@ export default function FormationCard({ formation }: FormationCardProps) {
       </div>
 
       {/* Bouton Continuer */}
-      <button className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-[#2D1B96] to-[#3D2BB6] text-white rounded-xl text-sm font-bold hover:shadow-md transition-all active:scale-[0.98]">
+      <Link
+        href={`/formation?formationId=${formation.id}`}
+        className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-[#2D1B96] to-[#3D2BB6] text-white rounded-xl text-sm font-bold hover:shadow-md transition-all active:scale-[0.98]"
+      >
         <Play size={14} /> Continuer
-      </button>
+      </Link>
     </div>
   )
 }
