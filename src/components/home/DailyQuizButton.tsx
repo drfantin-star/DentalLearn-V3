@@ -69,22 +69,22 @@ export default function DailyQuizButton({ userId, onStart }: DailyQuizButtonProp
   }
 
   return (
-    <button
-      onClick={onStart}
-      className="w-full bg-gradient-to-r from-[#2D1B96] to-[#4C3BCF] rounded-2xl p-5 shadow-lg hover:shadow-xl transition-all active:scale-[0.98] group"
-    >
-      <div className="flex items-center gap-4">
-        <div className="p-3 bg-white/15 rounded-xl group-hover:bg-white/25 transition-colors">
-          <Play className="w-7 h-7 text-white" fill="white" />
+    <div>
+      <button
+        onClick={onStart}
+        className="w-full bg-gradient-to-r from-[#2D1B96] to-[#3D2BB6] rounded-2xl p-5 flex items-center justify-between shadow-lg hover:shadow-xl transition-all active:scale-[0.98] group"
+      >
+        <div className="text-left">
+          <p className="text-white font-bold text-lg">10 questions &bull; ~5 min</p>
+          <p className="text-white/70 text-sm mt-1">Testez vos connaissances du jour !</p>
         </div>
-        <div className="flex-1 text-left">
-          <p className="text-base font-bold text-white">Quiz du jour</p>
-          <p className="text-sm text-white/80 mt-0.5">10 questions &bull; ~5 min</p>
+        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0 ml-4 group-hover:bg-white/30 transition-colors">
+          <Play className="w-6 h-6 text-white" fill="white" />
         </div>
-        <div className="text-right">
-          <p className="text-xs text-white/70">Bonus +50 pts si 100%</p>
-        </div>
-      </div>
-    </button>
+      </button>
+      <p className="text-center text-xs text-gray-400 mt-2">
+        Bonus +50 pts si 100% &bull; Renouvellement &agrave; minuit
+      </p>
+    </div>
   )
 }
