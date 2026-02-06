@@ -52,11 +52,7 @@ export default function FormationCard({ formation }: FormationCardProps) {
       {/* Icône catégorie + Titre */}
       <div className="flex items-start gap-3 mb-3">
         <div
-          className="w-[50px] h-[50px] rounded-[14px] flex items-center justify-center shrink-0"
-          style={{
-            background: `linear-gradient(135deg, ${catConfig.gradient.from}, ${catConfig.gradient.to})`,
-            boxShadow: `0 4px 12px ${catConfig.gradient.from}33`,
-          }}
+          className={`w-[50px] h-[50px] rounded-[14px] flex items-center justify-center shrink-0 ${catConfig.bgColor}`}
         >
           <span className="text-2xl leading-none">{catConfig.emoji}</span>
         </div>
