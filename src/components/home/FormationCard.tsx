@@ -1,5 +1,6 @@
 import React from 'react'
 import { Heart, Play } from 'lucide-react'
+import { getCategoryConfig } from '@/lib/supabase/types'
 
 export interface FormationEnCours {
   id: string
@@ -18,6 +19,8 @@ interface FormationCardProps {
 }
 
 export default function FormationCard({ formation }: FormationCardProps) {
+  const catConfig = getCategoryConfig(formation.category)
+
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-all">
       {/* Header : badge + likes */}
@@ -46,11 +49,24 @@ export default function FormationCard({ formation }: FormationCardProps) {
         </div>
       </div>
 
-      {/* Titre */}
-      <h3 className="font-bold text-gray-900 text-sm leading-snug mb-1">
-        {formation.title}
-      </h3>
-      <p className="text-[10px] text-gray-400 mb-3">{formation.category}</p>
+      {/* Icône catégorie + Titre */}
+      <div className="flex items-start gap-3 mb-3">
+        <div
+          className="w-[50px] h-[50px] rounded-[14px] flex items-center justify-center shrink-0"
+          style={{
+            background: `linear-gradient(135deg, ${catConfig.gradient.from}, ${catConfig.gradient.to})`,
+            boxShadow: `0 4px 12px ${catConfig.gradient.from}33`,
+          }}
+        >
+          <span className="text-2xl leading-none">{catConfig.emoji}</span>
+        </div>
+        <div className="min-w-0">
+          <h3 className="font-bold text-gray-900 text-sm leading-snug mb-1">
+            {formation.title}
+          </h3>
+          <p className="text-[10px] text-gray-400">{formation.category}</p>
+        </div>
+      </div>
 
       {/* Barre de progression continue */}
       <div className="flex items-center gap-2 mb-3">

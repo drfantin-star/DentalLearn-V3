@@ -250,5 +250,12 @@ export const DEFAULT_CATEGORY_CONFIG = {
 
 export function getCategoryConfig(category: string | null) {
   if (!category) return DEFAULT_CATEGORY_CONFIG
-  return CATEGORY_CONFIG[category.toLowerCase()] || DEFAULT_CATEGORY_CONFIG
+  const lower = category.toLowerCase()
+  // Direct slug match (e.g. "restauratrice")
+  if (CATEGORY_CONFIG[lower]) return CATEGORY_CONFIG[lower]
+  // Try matching individual words (e.g. "Dentisterie Restauratrice" → "restauratrice")
+  for (const word of lower.split(/\s+/)) {
+    if (CATEGORY_CONFIG[word]) return CATEGORY_CONFIG[word]
+  }
+  return DEFAULT_CATEGORY_CONFIG
 }
