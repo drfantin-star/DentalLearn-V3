@@ -5,6 +5,7 @@ import { getCategoryConfig } from '@/lib/supabase/types'
 
 export interface FormationEnCours {
   id: string
+  slug: string
   title: string
   category: string
   currentSequence: number
@@ -80,7 +81,7 @@ export default function FormationCard({ formation }: FormationCardProps) {
 
       {/* Bouton Continuer */}
       <Link
-        href={`/formation?formationId=${formation.id}`}
+        href={`/formation/${formation.slug}`}
         className="w-full flex items-center justify-center gap-2 py-2.5 bg-gradient-to-r from-[#2D1B96] to-[#3D2BB6] text-white rounded-xl text-sm font-bold hover:shadow-md transition-all active:scale-[0.98]"
       >
         <Play size={14} /> Continuer

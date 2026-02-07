@@ -32,6 +32,7 @@ export {
   usePreviewMode,
   useFormations,
   useFormation,
+  useFormationBySlug,
   useSequenceQuestions,
   useUserFormationProgress,
   usePremiumAccess,

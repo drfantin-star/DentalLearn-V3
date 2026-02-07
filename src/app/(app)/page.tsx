@@ -25,6 +25,7 @@ import type { FormationEnCours } from '@/components/home/FormationCard'
 const mockFormations: FormationEnCours[] = [
   {
     id: '1',
+    slug: 'dyschromies-eclaircissements-dentaires',
     title: 'Éclaircissements & Taches Blanches',
     category: 'Esthétique',
     currentSequence: 6,
@@ -36,6 +37,7 @@ const mockFormations: FormationEnCours[] = [
   },
   {
     id: '2',
+    slug: 'onlays-overlays-felures-dentaires',
     title: 'Fêlures & Overlays',
     category: 'Dentisterie Restauratrice',
     currentSequence: 2,
