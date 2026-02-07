@@ -165,6 +165,28 @@ export interface UserPoints {
 }
 
 // ─────────────────────────────────────────────
+// COURSE WATCH LOGS (DPC compliance)
+// ─────────────────────────────────────────────
+
+export interface CourseWatchLog {
+  id: string
+  user_id: string
+  sequence_id: string
+  started_at: string
+  ended_at: string | null
+  total_duration_seconds: number | null
+  watched_percent: number
+  pause_count: number
+  playback_events: Array<{
+    time: number
+    action: 'play' | 'pause' | 'complete'
+    timestamp: string
+  }> | null
+  completed: boolean
+  created_at: string
+}
+
+// ─────────────────────────────────────────────
 // CATÉGORIES (mapping frontend)
 // ─────────────────────────────────────────────
 

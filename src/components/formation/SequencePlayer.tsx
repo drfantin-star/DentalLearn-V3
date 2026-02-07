@@ -20,6 +20,7 @@ import {
   type Sequence,
   type Question,
 } from '@/lib/supabase'
+import AudioPlayer from './AudioPlayer'
 
 // ============================================
 // TYPES (basés sur types/questions.ts)
@@ -223,15 +224,19 @@ export default function SequencePlayer({
   const { questions, loading: loadingQuestions, error } = useSequenceQuestions(sequence.id)
   const { submit: submitResult, loading: submitting } = useSubmitSequenceResult()
 
-  const hasVideo = !!sequence.course_media_url
+  const hasMedia = !!sequence.course_media_url
   const hasPdf = !!sequence.infographic_url
-  
+  const mediaType = sequence.course_media_type || 'video' // défaut vidéo
+  const isAudio = mediaType === 'audio'
+
   // Mode démo : toujours afficher les 3 étapes pour tester l'interface
   const demoMode = true // Mettre à false en production
-  const showVideo = demoMode || hasVideo
+  const showVideo = demoMode || hasMedia
   const showPdf = demoMode || hasPdf
-  
+
   const [playerStep, setPlayerStep] = useState<PlayerStep>(showVideo ? 'video' : 'quiz')
+  const [courseCompleted, setCourseCompleted] = useState(false)
+  const [courseProgress, setCourseProgress] = useState(0)
   const [currentQ, setCurrentQ] = useState(0)
   
   // États pour différents types
@@ -554,7 +559,7 @@ export default function SequencePlayer({
         {steps.map((step, i) => {
           const isActive = (playerStep === 'results' ? 'quiz' : playerStep) === step
           const isDone = playerStep === 'results' || i < currentStepIdx
-          const label = step === 'video' ? '📹 Vidéo' : step === 'quiz' ? '📝 Quiz' : '📄 PDF'
+          const label = step === 'video' ? '🎧 Cours' : step === 'quiz' ? '📝 Quiz' : '📄 PDF'
           return (
             <div key={step} className="flex items-center gap-2">
               <div
@@ -571,14 +576,38 @@ export default function SequencePlayer({
 
       {/* Contenu */}
       <div className="flex-1 p-4 overflow-auto pb-24">
-        {/* VIDEO */}
+        {/* COURS (VIDEO ou AUDIO) */}
         {playerStep === 'video' && (
-          <div className="text-center py-10">
-            <div className="w-full aspect-video bg-gray-900 rounded-2xl flex items-center justify-center mb-6">
-              <p className="text-white/60 text-sm">🎬 Lecteur vidéo</p>
-            </div>
-            <button onClick={() => setPlayerStep('quiz')} className="w-full max-w-xs py-4 rounded-2xl font-bold text-white" style={{ background: categoryGradient.from }}>
-              Passer au Quiz →
+          <div className="text-center py-6">
+            {isAudio && sequence.course_media_url ? (
+              /* ─── AudioPlayer ─── */
+              <div className="mb-6">
+                <AudioPlayer
+                  src={sequence.course_media_url}
+                  duration={sequence.course_duration_seconds || 0}
+                  sequenceId={sequence.id}
+                  onComplete={() => setCourseCompleted(true)}
+                  onProgress={(percent) => setCourseProgress(percent)}
+                  accentColor={categoryGradient.from}
+                  accentColorSecondary={categoryGradient.to}
+                />
+              </div>
+            ) : (
+              /* ─── VideoPlayer (placeholder conservé pour réutilisation future) ─── */
+              <div className="w-full aspect-video bg-gray-900 rounded-2xl flex items-center justify-center mb-6">
+                <p className="text-white/60 text-sm">🎬 Lecteur vidéo</p>
+              </div>
+            )}
+
+            <button
+              onClick={() => setPlayerStep('quiz')}
+              disabled={isAudio && !courseCompleted && !demoMode}
+              className="w-full max-w-xs py-4 rounded-2xl font-bold text-white disabled:opacity-40 transition-opacity"
+              style={{ background: categoryGradient.from }}
+            >
+              {isAudio && !courseCompleted && !demoMode
+                ? `Écoutez le cours (${courseProgress}%)`
+                : 'Passer au Quiz →'}
             </button>
           </div>
         )}

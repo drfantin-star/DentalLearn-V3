@@ -17,6 +17,7 @@ export type {
   UserSubscription,
   UserPoints,
   PointReason,
+  CourseWatchLog,
 } from './types'
 
 export type { CategoryConfig } from './types'
