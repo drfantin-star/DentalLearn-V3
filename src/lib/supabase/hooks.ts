@@ -130,6 +130,60 @@ export function useFormation(formationId: string | null) {
 }
 
 // ============================================
+// HOOK — Formation par slug avec séquences
+// ============================================
+
+export function useFormationBySlug(slug: string | null) {
+  const [formation, setFormation] = useState<Formation | null>(null)
+  const [sequences, setSequences] = useState<Sequence[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    if (!slug) {
+      setFormation(null)
+      setSequences([])
+      setLoading(false)
+      return
+    }
+
+    async function fetchFormationBySlug() {
+      try {
+        setLoading(true)
+
+        const { data: formationData, error: formationError } = await supabase
+          .from('formations')
+          .select('*')
+          .eq('slug', slug)
+          .single()
+
+        if (formationError) throw formationError
+
+        const { data: sequencesData, error: sequencesError } = await supabase
+          .from('sequences')
+          .select('*')
+          .eq('formation_id', formationData.id)
+          .order('sequence_number', { ascending: true })
+
+        if (sequencesError) throw sequencesError
+
+        setFormation(formationData)
+        setSequences(sequencesData || [])
+      } catch (err) {
+        console.error('Erreur fetchFormationBySlug:', err)
+        setError(err instanceof Error ? err : new Error('Erreur inconnue'))
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchFormationBySlug()
+  }, [slug])
+
+  return { formation, sequences, loading, error }
+}
+
+// ============================================
 // HOOK — Questions d'une séquence
 // ============================================
 
