@@ -69,7 +69,7 @@ export default function HomePage() {
     <>
       {/* Header Accueil */}
       <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto px-4 py-4">
+        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#00D1C1] to-[#2D1B96] p-0.5">
@@ -101,7 +101,7 @@ export default function HomePage() {
       </header>
 
       {/* Contenu */}
-      <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {userLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="animate-spin text-[#2D1B96]" size={32} />
@@ -156,7 +156,7 @@ export default function HomePage() {
                   <Loader2 className="animate-spin text-gray-400" size={24} />
                 </div>
               ) : mockFormations.length > 0 ? (
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {mockFormations.map((f) => (
                     <FormationCard key={f.id} formation={f} />
                   ))}

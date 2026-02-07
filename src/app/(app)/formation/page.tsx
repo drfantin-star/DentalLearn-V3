@@ -37,7 +37,9 @@ type Category = CategoryConfig & { id: string }
 // ============================================
 
 function CategoryGrid({ cats, onSelect, cols = 4 }: { cats: Category[]; onSelect: (cat: Category) => void; cols?: number }) {
-  const gridCols = cols === 3 ? 'grid-cols-3' : 'grid-cols-4'
+  const gridCols = cols === 3
+    ? 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
+    : 'grid-cols-4 md:grid-cols-6 lg:grid-cols-8'
   return (
     <div className={`grid ${gridCols} gap-3`}>
       {cats.map((cat) => (
@@ -124,7 +126,7 @@ function CategoryDetailView({
   return (
     <>
       <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto px-4 py-4">
+        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
@@ -140,8 +142,8 @@ function CategoryDetailView({
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-6">
-        <div className="space-y-2">
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           {categoryFormations.map((f) => (
             <FormationCard
               key={f.id}
@@ -297,7 +299,7 @@ export default function FormationPage() {
   return (
     <>
       <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto px-4 py-4">
+        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <h1 className="text-2xl font-black text-gray-900">Formations</h1>
           <p className="text-sm text-gray-400 mt-0.5">
             Connaissances &amp; compétences · Axes 1 &amp; 2
@@ -305,7 +307,7 @@ export default function FormationPage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-6 space-y-8">
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8">
         {/* Spécialités cliniques */}
         <section>
           <h2 className="text-lg font-bold text-gray-900 mb-4">
@@ -330,7 +332,7 @@ export default function FormationPage() {
             <Flame size={20} className="text-orange-500" />
             <h2 className="text-lg font-bold text-gray-900">Populaires</h2>
           </div>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {formations.slice(0, 5).map((f) => (
               <FormationCard
                 key={f.id}

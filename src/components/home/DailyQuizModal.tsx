@@ -669,19 +669,23 @@ export default function DailyQuizModal({
           {typeLabels[qType] || qType.toUpperCase()}
         </span>
 
-        {/* Image */}
-        {q.image_url && (
-          <div className="mb-4">
-            <img src={q.image_url} alt="Question" className="w-full rounded-xl border border-gray-200" />
-          </div>
-        )}
+        {/* Layout wrapper — side by side on desktop when image present */}
+        <div className={q.image_url ? "flex flex-col md:flex-row md:gap-8 md:items-start" : ""}>
+          {/* Image — left side on desktop */}
+          {q.image_url && (
+            <div className="w-full md:w-1/2 md:max-w-lg md:sticky md:top-4 mb-4 md:mb-0 shrink-0">
+              <img src={q.image_url} alt="Question" className="w-full rounded-xl border border-gray-200 max-h-[50vh] md:max-h-[60vh] object-contain" />
+            </div>
+          )}
 
-        {/* Question text */}
-        <h3 className="text-lg font-bold text-gray-900 leading-snug mb-6">
-          {q.question_text}
-        </h3>
+          {/* Question + Options — right side on desktop when image present */}
+          <div className={q.image_url ? "w-full md:w-1/2" : ""}>
+            {/* Question text */}
+            <h3 className="text-lg font-bold text-gray-900 leading-snug mb-6">
+              {q.question_text}
+            </h3>
 
-        {!showFeedback ? (
+            {!showFeedback ? (
           <>
             {/* === MCQ / MCQ_IMAGE === */}
             {(normalizedType === 'mcq' || normalizedType === 'mcq_image') && (() => {
@@ -1134,6 +1138,8 @@ export default function DailyQuizModal({
             onNext={next}
           />
         )}
+          </div>{/* close question+options wrapper */}
+        </div>{/* close flex layout wrapper */}
       </div>
     </div>
   )

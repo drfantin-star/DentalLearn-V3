@@ -83,7 +83,7 @@ export default function PatientPage() {
   return (
     <>
       <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto px-4 py-4">
+        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-amber-50 flex items-center justify-center">
               <HeartHandshake size={20} className="text-[#F59E0B]" />
@@ -96,14 +96,16 @@ export default function PatientPage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-6 space-y-3">
-        {PATIENT_THEMES.map((theme) => (
-          <ThemeCard
-            key={theme.id}
-            theme={theme}
-            onOpen={setSelectedTheme}
-          />
-        ))}
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {PATIENT_THEMES.map((theme) => (
+            <ThemeCard
+              key={theme.id}
+              theme={theme}
+              onOpen={setSelectedTheme}
+            />
+          ))}
+        </div>
 
         <div className="bg-amber-50 rounded-xl p-4 border border-amber-100 mt-6">
           <p className="text-xs text-amber-700 leading-relaxed">
