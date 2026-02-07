@@ -133,7 +133,7 @@ function ThemeDetail({
   return (
     <>
       <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto px-4 py-4">
+        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
@@ -149,7 +149,7 @@ function ThemeDetail({
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-6 space-y-3">
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-3">
         <p className="text-sm text-gray-500 mb-4">{theme.description}</p>
 
         {theme.contents.map((content, i) => {
@@ -207,7 +207,7 @@ export default function SantePage() {
     <>
       {/* Header */}
       <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto px-4 py-4">
+        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-pink-50 flex items-center justify-center">
               <HeartPulse size={20} className="text-[#EC4899]" />
@@ -220,14 +220,16 @@ export default function SantePage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-6 space-y-3">
-        {SANTE_THEMES.map((theme) => (
-          <ThemeCard
-            key={theme.id}
-            theme={theme}
-            onOpen={setSelectedTheme}
-          />
-        ))}
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {SANTE_THEMES.map((theme) => (
+            <ThemeCard
+              key={theme.id}
+              theme={theme}
+              onOpen={setSelectedTheme}
+            />
+          ))}
+        </div>
 
         {/* Info Axe 4 */}
         <div className="bg-pink-50 rounded-xl p-4 border border-pink-100 mt-6">
