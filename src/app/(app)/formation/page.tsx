@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import {
   ChevronLeft,
@@ -167,6 +167,18 @@ function CategoryDetailView({
 // ============================================
 
 export default function FormationPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+      </div>
+    }>
+      <FormationPageContent />
+    </Suspense>
+  )
+}
+
+function FormationPageContent() {
   // Récupérer les formations depuis Supabase
   const { formations, loading, error } = useFormations({ isPublished: true })
   const searchParams = useSearchParams()
