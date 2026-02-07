@@ -5,6 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { ArrowLeft, Save, Plus, X } from 'lucide-react';
+import MediaUpload from '@/components/admin/MediaUpload';
+
+interface Formation {
+  id: string;
+  slug: string;
+}
 
 interface Sequence {
   id: string;
@@ -13,6 +19,10 @@ interface Sequence {
   title: string;
   estimated_duration_minutes: number;
   learning_objectives: string[];
+  course_media_type: 'audio' | 'video' | null;
+  course_media_url: string | null;
+  course_duration_seconds: number | null;
+  infographic_url: string | null;
 }
 
 export default function EditSequencePage() {
@@ -23,13 +33,18 @@ export default function EditSequencePage() {
   const formationId = params.id as string;
   const sequenceId = params.sequenceId as string;
 
+  const [formation, setFormation] = useState<Formation | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     sequence_number: 1,
     estimated_duration_minutes: 3,
-    learning_objectives: ['']
+    learning_objectives: [''],
+    course_media_type: '' as '' | 'audio' | 'video',
+    course_media_url: '',
+    course_duration_seconds: '' as string | number,
+    infographic_url: ''
   });
 
   useEffect(() => {
@@ -37,6 +52,17 @@ export default function EditSequencePage() {
   }, [sequenceId]);
 
   async function loadSequence() {
+    // Load formation slug
+    const { data: formationData } = await supabase
+      .from('formations')
+      .select('id, slug')
+      .eq('id', formationId)
+      .single();
+
+    if (formationData) {
+      setFormation(formationData);
+    }
+
     const { data, error } = await supabase
       .from('sequences')
       .select('*')
@@ -52,7 +78,11 @@ export default function EditSequencePage() {
       title: data.title,
       sequence_number: data.sequence_number,
       estimated_duration_minutes: data.estimated_duration_minutes,
-      learning_objectives: data.learning_objectives?.length > 0 ? data.learning_objectives : ['']
+      learning_objectives: data.learning_objectives?.length > 0 ? data.learning_objectives : [''],
+      course_media_type: data.course_media_type || '',
+      course_media_url: data.course_media_url || '',
+      course_duration_seconds: data.course_duration_seconds || '',
+      infographic_url: data.infographic_url || ''
     });
 
     setLoading(false);
@@ -93,15 +123,23 @@ export default function EditSequencePage() {
 
     const objectives = formData.learning_objectives.filter(obj => obj.trim());
 
+    const updateData: Record<string, unknown> = {
+      title: formData.title.trim(),
+      sequence_number: formData.sequence_number,
+      estimated_duration_minutes: formData.estimated_duration_minutes,
+      learning_objectives: objectives,
+      access_level: formData.sequence_number === 0 ? 'free' : 'premium',
+      course_media_type: formData.course_media_type || null,
+      course_media_url: formData.course_media_url || null,
+      course_duration_seconds: formData.course_duration_seconds
+        ? Number(formData.course_duration_seconds)
+        : null,
+      infographic_url: formData.infographic_url || null
+    };
+
     const { error } = await supabase
       .from('sequences')
-      .update({
-        title: formData.title.trim(),
-        sequence_number: formData.sequence_number,
-        estimated_duration_minutes: formData.estimated_duration_minutes,
-        learning_objectives: objectives,
-        access_level: formData.sequence_number === 0 ? 'free' : 'premium'
-      })
+      .update(updateData)
       .eq('id', sequenceId);
 
     if (error) {
@@ -227,6 +265,86 @@ export default function EditSequencePage() {
               Ajouter un objectif
             </button>
           </div>
+        </div>
+
+        {/* Section Contenu du cours */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <h3 className="font-semibold text-gray-900">Contenu du cours</h3>
+
+          {/* Type de média */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Type de média
+            </label>
+            <select
+              value={formData.course_media_type}
+              onChange={(e) => setFormData({
+                ...formData,
+                course_media_type: e.target.value as '' | 'audio' | 'video',
+                course_media_url: '',
+                course_duration_seconds: ''
+              })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+            >
+              <option value="">Aucun (quiz seulement)</option>
+              <option value="audio">Audio</option>
+              <option value="video">Video</option>
+            </select>
+          </div>
+
+          {/* Upload Audio/Vidéo */}
+          {formData.course_media_type && formation && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fichier {formData.course_media_type === 'audio' ? 'audio' : 'video'}
+                </label>
+                <MediaUpload
+                  bucket="formations"
+                  path={`${formation.slug}/${formData.course_media_type}`}
+                  accept={formData.course_media_type === 'audio' ? 'audio/*' : 'video/*'}
+                  currentUrl={formData.course_media_url}
+                  onUpload={(url) => setFormData({ ...formData, course_media_url: url })}
+                />
+                <p className="text-sm text-gray-500 mt-2">
+                  Formats acceptes : {formData.course_media_type === 'audio' ? 'MP3, WAV, M4A' : 'MP4, WebM'}
+                </p>
+              </div>
+
+              {/* Durée */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Duree (en secondes)
+                </label>
+                <input
+                  type="number"
+                  value={formData.course_duration_seconds}
+                  onChange={(e) => setFormData({ ...formData, course_duration_seconds: e.target.value })}
+                  placeholder="300 = 5 minutes"
+                  min="0"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Section PDF Récompense */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <h3 className="font-semibold text-gray-900">PDF Recompense (Coffre)</h3>
+          <p className="text-sm text-gray-500">
+            Infographie 1 page debloquee apres le quiz
+          </p>
+
+          {formation && (
+            <MediaUpload
+              bucket="formations"
+              path={`${formation.slug}/pdf`}
+              accept="application/pdf"
+              currentUrl={formData.infographic_url}
+              onUpload={(url) => setFormData({ ...formData, infographic_url: url })}
+            />
+          )}
         </div>
 
         {/* Boutons */}
