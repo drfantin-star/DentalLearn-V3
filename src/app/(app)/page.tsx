@@ -57,7 +57,7 @@ export default function HomePage() {
   const [showDailyQuiz, setShowDailyQuiz] = useState(false)
 
   // Hooks Supabase
-  const { user, displayName, streak, loading: userLoading } = useUser()
+  const { user, profile, displayName, streak, loading: userLoading } = useUser()
   const { currentFormation, loading: formationLoading } = useFormations(user?.id)
   const { news, loading: newsLoading } = useNews(4)
 
@@ -71,14 +71,20 @@ export default function HomePage() {
       <header className="bg-white sticky top-0 z-30 shadow-sm">
         <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <Link href="/profil" className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#00D1C1] to-[#2D1B96] p-0.5">
                 <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                  <img
-                    src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop"
-                    alt="Photo de profil"
-                    className="w-full h-full object-cover"
-                  />
+                  {profile?.profile_photo_url ? (
+                    <img
+                      src={profile.profile_photo_url}
+                      alt="Photo de profil"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-[#2D1B96] font-bold text-sm">
+                      {profile?.first_name?.[0] || 'U'}
+                    </span>
+                  )}
                 </div>
               </div>
               <div>
@@ -87,7 +93,7 @@ export default function HomePage() {
                   {displayName}
                 </h1>
               </div>
-            </div>
+            </Link>
 
             <div className="flex items-center gap-2">
               {/* Notifications */}
