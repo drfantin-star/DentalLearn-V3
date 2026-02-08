@@ -4,12 +4,6 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'DentalLearn',
   description: 'Formation continue gamifiée pour chirurgiens-dentistes',
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'DentalLearn',
-  },
 }
 
 export const viewport: Viewport = {
@@ -17,7 +11,6 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#2D1B96',
 }
 
 export default function RootLayout({
@@ -27,6 +20,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#2D1B96" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/images/icon-192.png" />
+      </head>
       <body className="antialiased">
         {children}
       </body>
