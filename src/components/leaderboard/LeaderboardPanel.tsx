@@ -2,6 +2,7 @@
 
 import { Trophy, Loader2, RefreshCw } from 'lucide-react';
 import { useWeeklyLeaderboard, type LeaderboardEntry } from '@/lib/hooks/useWeeklyLeaderboard';
+import { getAnonymousName, getAnonymousAvatar, getAnonymousEmoji } from '@/lib/utils/anonymousNames';
 
 interface LeaderboardPanelProps {
   userId?: string;
@@ -107,6 +108,8 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
           {/* Top entries (up to 3) */}
           {top3.map((entry) => {
             const isCurrent = entry.is_current_user;
+            const displayName = isCurrent ? 'Toi' : getAnonymousName(entry.user_id);
+            const emoji = getAnonymousEmoji(entry.user_id);
             return (
               <div
                 key={entry.user_id}
@@ -114,15 +117,19 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-base animate-bounce-slow flex-shrink-0">{getRankEmoji(entry.rank)}</span>
-                  {entry.avatar_url && (
+                  {isCurrent && entry.avatar_url ? (
                     <img
                       src={entry.avatar_url}
                       alt=""
                       className="w-5 h-5 rounded-full flex-shrink-0 object-cover"
                     />
-                  )}
+                  ) : !isCurrent ? (
+                    <span className="w-5 h-5 flex items-center justify-center flex-shrink-0 text-sm">
+                      {emoji}
+                    </span>
+                  ) : null}
                   <span className={`text-xs truncate ${isCurrent ? 'font-bold text-white' : 'font-medium text-white/90'}`}>
-                    {isCurrent ? 'Toi' : entry.full_name}
+                    {displayName}
                   </span>
                 </div>
                 <span className={`text-xs font-bold flex-shrink-0 ml-2 ${isCurrent ? 'text-white' : 'text-white/80'}`}>
@@ -231,7 +238,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
                     🥈
                   </div>
                   <p className="text-xs font-medium text-gray-600 mt-1.5 truncate max-w-[70px] text-center">
-                    {second.is_current_user ? 'Toi' : second.full_name}
+                    {second.is_current_user ? 'Toi' : getAnonymousName(second.user_id)}
                   </p>
                   <p className="text-sm font-bold text-gray-700">{second.weekly_points}</p>
                   <p className="text-[10px] text-gray-400">pts</p>
@@ -249,7 +256,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
                     🥇
                   </div>
                   <p className="text-xs font-medium text-gray-600 mt-1.5 truncate max-w-[80px] text-center">
-                    {first.is_current_user ? 'Toi' : first.full_name}
+                    {first.is_current_user ? 'Toi' : getAnonymousName(first.user_id)}
                   </p>
                   <p className="text-lg font-bold text-gray-800">{first.weekly_points}</p>
                   <p className="text-[10px] text-gray-400">pts</p>
@@ -266,7 +273,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
                     🥉
                   </div>
                   <p className="text-xs font-medium text-gray-600 mt-1.5 truncate max-w-[70px] text-center">
-                    {third.is_current_user ? 'Toi' : third.full_name}
+                    {third.is_current_user ? 'Toi' : getAnonymousName(third.user_id)}
                   </p>
                   <p className="text-sm font-bold text-gray-700">{third.weekly_points}</p>
                   <p className="text-[10px] text-gray-400">pts</p>
@@ -324,29 +331,38 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
         <div className="px-4 pb-3">
           <p className="text-xs text-gray-500 mb-2 font-medium">Classement</p>
           <div className="bg-gray-50 rounded-lg overflow-hidden">
-            {leaderboard.filter(e => e.rank > 3).map((entry) => (
-              <div
-                key={entry.user_id}
-                className={`flex items-center justify-between px-3 py-2.5 border-b border-gray-100 last:border-b-0 transition-colors ${
-                  entry.is_current_user ? 'bg-indigo-50' : 'hover:bg-gray-100'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium bg-gray-200 text-gray-600">
-                    {entry.rank}
-                  </span>
-                  {entry.avatar_url && (
-                    <img src={entry.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
-                  )}
-                  <span className={`text-sm ${entry.is_current_user ? 'font-bold text-indigo-700' : 'text-gray-700'}`}>
-                    {entry.is_current_user ? 'Toi' : entry.full_name}
+            {leaderboard.filter(e => e.rank > 3).map((entry) => {
+              const isCurrent = entry.is_current_user;
+              const displayName = isCurrent ? 'Toi' : getAnonymousName(entry.user_id);
+              const emoji = getAnonymousEmoji(entry.user_id);
+              return (
+                <div
+                  key={entry.user_id}
+                  className={`flex items-center justify-between px-3 py-2.5 border-b border-gray-100 last:border-b-0 transition-colors ${
+                    isCurrent ? 'bg-indigo-50' : 'hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium bg-gray-200 text-gray-600">
+                      {entry.rank}
+                    </span>
+                    {isCurrent && entry.avatar_url ? (
+                      <img src={entry.avatar_url} alt="" className="w-6 h-6 rounded-full object-cover" />
+                    ) : !isCurrent ? (
+                      <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${getAnonymousAvatar(entry.user_id)} text-white`}>
+                        {emoji}
+                      </span>
+                    ) : null}
+                    <span className={`text-sm ${isCurrent ? 'font-bold text-indigo-700' : 'text-gray-700'}`}>
+                      {displayName}
+                    </span>
+                  </div>
+                  <span className={`text-sm font-semibold ${isCurrent ? 'text-indigo-600' : 'text-gray-600'}`}>
+                    {entry.weekly_points} pts
                   </span>
                 </div>
-                <span className={`text-sm font-semibold ${entry.is_current_user ? 'text-indigo-600' : 'text-gray-600'}`}>
-                  {entry.weekly_points} pts
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
