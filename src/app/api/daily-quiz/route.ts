@@ -1,6 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+// Force dynamic rendering — prevents Next.js from caching the response
+export const dynamic = 'force-dynamic'
+
+// Seeded PRNG (mulberry32) for deterministic daily shuffle
+function mulberry32(seed: number) {
+  let t = seed
+  return () => {
+    t = (t + 0x6D2B79F5) | 0
+    let x = t
+    x = Math.imul(x ^ (x >>> 15), x | 1)
+    x ^= x + Math.imul(x ^ (x >>> 7), x | 61)
+    return ((x ^ (x >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function seededShuffle<T>(array: T[], seed: number): T[] {
+  const rng = mulberry32(seed)
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
+}
+
+function dailySeedFromDate(dateStr: string): number {
+  // Convert date string "YYYY-MM-DD" to a numeric seed
+  // Different each day, deterministic for the same day
+  let hash = 0
+  for (let i = 0; i < dateStr.length; i++) {
+    hash = ((hash << 5) - hash + dateStr.charCodeAt(i)) | 0
+  }
+  return Math.abs(hash)
+}
+
 // GET: Fetch today's 10 daily quiz questions
 export async function GET(request: NextRequest) {
   try {
@@ -37,7 +72,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error('RPC get_daily_quiz error:', error)
 
-      // Fallback: fetch 10 random eligible questions directly
+      // Fallback: fetch all eligible questions and shuffle with daily seed
       const { data: fallbackQuestions, error: fallbackError } = await supabase
         .from('questions')
         .select(`
@@ -56,7 +91,6 @@ export async function GET(request: NextRequest) {
           )
         `)
         .eq('is_daily_quiz_eligible', true)
-        .limit(10)
 
       if (fallbackError) {
         return NextResponse.json(
@@ -65,7 +99,13 @@ export async function GET(request: NextRequest) {
         )
       }
 
-      const formatted = (fallbackQuestions || []).map((q: Record<string, unknown>) => ({
+      // Shuffle all eligible questions with a date-based seed, then take 10
+      const seed = dailySeedFromDate(today)
+      const allQuestions = (fallbackQuestions || []) as Record<string, unknown>[]
+      const shuffled = seededShuffle(allQuestions, seed)
+      const selected = shuffled.slice(0, 10)
+
+      const formatted = selected.map((q) => ({
         id: q.id,
         question_text: q.question_text,
         options: q.options,
