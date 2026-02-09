@@ -22,7 +22,7 @@ export default function DailyQuizButton({ userId, onStart }: DailyQuizButtonProp
       }
 
       const supabase = createClient()
-      const today = new Date().toISOString().split('T')[0]
+      const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' })
 
       const { data } = await supabase
         .from('daily_quiz_results')
