@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 
@@ -25,41 +25,41 @@ export function useUser() {
   const [streak, setStreak] = useState<Streak | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function fetchUser() {
-      const supabase = createClient()
+  const fetchUser = useCallback(async () => {
+    const supabase = createClient()
 
-      try {
-        // Récupérer l'utilisateur connecté
-        const { data: { user: authUser } } = await supabase.auth.getUser()
-        setUser(authUser)
+    try {
+      // Récupérer l'utilisateur connecté
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      setUser(authUser)
 
-        if (authUser) {
-          // Récupérer le profil
-          const { data: profileData } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', authUser.id)
-            .single()
+      if (authUser) {
+        // Récupérer le profil
+        const { data: profileData } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', authUser.id)
+          .single()
 
-          if (profileData) setProfile(profileData)
+        if (profileData) setProfile(profileData)
 
-          // Récupérer le streak
-          const { data: streakData } = await supabase
-            .from('streaks')
-            .select('current_streak, longest_streak, last_activity_date')
-            .eq('user_id', authUser.id)
-            .single()
+        // Récupérer le streak
+        const { data: streakData } = await supabase
+          .from('streaks')
+          .select('current_streak, longest_streak, last_activity_date')
+          .eq('user_id', authUser.id)
+          .single()
 
-          if (streakData) setStreak(streakData)
-        }
-      } catch (err) {
-        console.error('Error fetching user:', err)
-      } finally {
-        setLoading(false)
+        if (streakData) setStreak(streakData)
       }
+    } catch (err) {
+      console.error('Error fetching user:', err)
+    } finally {
+      setLoading(false)
     }
+  }, [])
 
+  useEffect(() => {
     fetchUser()
 
     // Écouter les changements d'auth
@@ -82,12 +82,13 @@ export function useUser() {
     ? `Dr. ${profile.first_name}` 
     : user?.email?.split('@')[0] || 'Utilisateur'
 
-  return { 
-    user, 
-    profile, 
-    streak, 
-    loading, 
+  return {
+    user,
+    profile,
+    streak,
+    loading,
     displayName,
-    isAuthenticated: !!user 
+    isAuthenticated: !!user,
+    refetch: fetchUser,
   }
 }

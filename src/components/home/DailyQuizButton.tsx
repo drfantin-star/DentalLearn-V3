@@ -7,9 +7,10 @@ import { createClient } from '@/lib/supabase/client'
 interface DailyQuizButtonProps {
   userId?: string
   onStart: () => void
+  refreshTrigger?: number
 }
 
-export default function DailyQuizButton({ userId, onStart }: DailyQuizButtonProps) {
+export default function DailyQuizButton({ userId, onStart, refreshTrigger }: DailyQuizButtonProps) {
   const [alreadyDone, setAlreadyDone] = useState(false)
   const [loading, setLoading] = useState(true)
   const [score, setScore] = useState<number | null>(null)
@@ -40,7 +41,7 @@ export default function DailyQuizButton({ userId, onStart }: DailyQuizButtonProp
     }
 
     checkDailyQuiz()
-  }, [userId])
+  }, [userId, refreshTrigger])
 
   if (loading) {
     return (
