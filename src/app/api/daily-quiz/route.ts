@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { updateStreak, getTodayParis } from '@/lib/streak'
 
 // Force dynamic rendering — prevents Next.js from caching the response
 export const dynamic = 'force-dynamic'
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
     const userId = session.user.id
 
     // Check if user already completed today's quiz
-    const today = new Date().toISOString().split('T')[0]
+    const today = getTodayParis()
     const { data: existing } = await supabase
       .from('daily_quiz_results')
       .select('id')
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { score, total_questions, total_points, question_ids } = body
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = getTodayParis()
 
     // Save quiz result
     const { error: insertError } = await supabase
@@ -172,7 +173,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({ success: true })
+    // Update streak after successful quiz completion
+    const streakResult = await updateStreak(supabase, userId)
+
+    return NextResponse.json({ success: true, streak: streakResult })
   } catch (err) {
     console.error('Daily quiz POST error:', err)
     return NextResponse.json(

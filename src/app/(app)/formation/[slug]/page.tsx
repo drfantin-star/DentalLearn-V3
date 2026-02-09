@@ -38,9 +38,15 @@ export default function FormationSlugPage() {
     setSelectedSequence(seq)
   }
 
-  const handleSequenceComplete = (score: number, totalPoints: number) => {
+  const handleSequenceComplete = async (score: number, totalPoints: number) => {
     if (selectedSequence) {
       markCompleted(selectedSequence.id, selectedSequence.sequence_number + 1)
+    }
+    // Update streak after sequence completion
+    try {
+      await fetch('/api/streaks/update', { method: 'POST' })
+    } catch (err) {
+      console.error('Error updating streak:', err)
     }
     setSelectedSequence(null)
   }
