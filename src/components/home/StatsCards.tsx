@@ -6,9 +6,10 @@ import LeaderboardPanel from '@/components/leaderboard/LeaderboardPanel'
 interface StatsCardsProps {
   userId?: string
   currentStreak: number
+  refreshTrigger?: number
 }
 
-export default function StatsCards({ userId, currentStreak }: StatsCardsProps) {
+export default function StatsCards({ userId, currentStreak, refreshTrigger }: StatsCardsProps) {
   return (
     <div className="grid grid-cols-5 gap-3">
       {/* Jours de suite (Streak) */}
@@ -26,7 +27,7 @@ export default function StatsCards({ userId, currentStreak }: StatsCardsProps) {
 
       {/* Classement hebdo (agrandi col-span-3) */}
       <div className="col-span-3">
-        <LeaderboardPanel userId={userId} compact />
+        <LeaderboardPanel userId={userId} compact refreshTrigger={refreshTrigger} />
       </div>
     </div>
   )

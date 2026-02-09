@@ -55,14 +55,17 @@ const mockFormations: FormationEnCours[] = [
 
 export default function HomePage() {
   const [showDailyQuiz, setShowDailyQuiz] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   // Hooks Supabase
-  const { user, profile, displayName, streak, loading: userLoading } = useUser()
+  const { user, profile, displayName, streak, loading: userLoading, refetch: refetchUser } = useUser()
   const { currentFormation, loading: formationLoading } = useFormations(user?.id)
   const { news, loading: newsLoading } = useNews(4)
 
   const handleDailyQuizComplete = (score: number, totalPoints: number) => {
     setShowDailyQuiz(false)
+    setRefreshTrigger(prev => prev + 1)
+    refetchUser()
   }
 
   return (
@@ -125,6 +128,7 @@ export default function HomePage() {
               <StatsCards
                 userId={user?.id}
                 currentStreak={streak?.current_streak || 0}
+                refreshTrigger={refreshTrigger}
               />
             </section>
 
@@ -139,6 +143,7 @@ export default function HomePage() {
               <DailyQuizButton
                 userId={user?.id}
                 onStart={() => setShowDailyQuiz(true)}
+                refreshTrigger={refreshTrigger}
               />
             </section>
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Trophy, Loader2, RefreshCw } from 'lucide-react';
 import { useWeeklyLeaderboard, type LeaderboardEntry } from '@/lib/hooks/useWeeklyLeaderboard';
 import { getAnonymousName, getAnonymousAvatar, getAnonymousEmoji } from '@/lib/utils/anonymousNames';
@@ -8,6 +9,7 @@ interface LeaderboardPanelProps {
   userId?: string;
   onViewHistory?: () => void;
   compact?: boolean;
+  refreshTrigger?: number;
 }
 
 const getRankEmoji = (rank: number): string => {
@@ -19,8 +21,14 @@ const getRankEmoji = (rank: number): string => {
   }
 };
 
-export default function LeaderboardPanel({ userId, onViewHistory, compact = false }: LeaderboardPanelProps) {
+export default function LeaderboardPanel({ userId, onViewHistory, compact = false, refreshTrigger }: LeaderboardPanelProps) {
   const { leaderboard, userRank, loading, error, refetch } = useWeeklyLeaderboard(userId);
+
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      refetch();
+    }
+  }, [refreshTrigger, refetch]);
 
   // ─── Loading ───
   if (loading) {
