@@ -9,6 +9,7 @@ import {
 import { useUser } from '@/lib/hooks/useUser'
 import { useFormations } from '@/lib/hooks/useFormations'
 import { useNews } from '@/lib/hooks/useNews'
+import { getAnonymousName, getAnonymousEmoji } from '@/lib/utils/anonymousNames'
 
 // Composants
 import StatsCards from '@/components/home/StatsCards'
@@ -97,10 +98,13 @@ export default function HomePage() {
                 </div>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Bonjour,</p>
+                <p className="text-xs text-gray-400">Welcome,</p>
                 <h1 className="text-lg font-bold text-gray-900">
-                  {displayName}
+                  {profile?.first_name || 'Utilisateur'}
                 </h1>
+                <p className="text-xs text-[#00D1C1]">
+                  {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
+                </p>
               </div>
             </Link>
 
