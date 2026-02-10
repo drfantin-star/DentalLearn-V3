@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { axisIcons } from '@/lib/constants/axis'
 import type { AxisWithProgress } from '@/lib/hooks/useAxes'
+import Confetti from '@/components/Confetti'
 
 // Questions temporaires — sera Supabase
 const quizQuestions = [
@@ -84,28 +85,8 @@ export default function QuizModal({
   if (finished) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-gray-900/70 backdrop-blur-sm">
+        <Confetti active={true} />
         <div className="bg-white w-full max-w-sm rounded-3xl p-6 text-center relative overflow-hidden">
-          {/* Confetti */}
-          <div className="absolute inset-0 pointer-events-none">
-            {[...Array(12)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-2 h-2 rounded-full animate-bounce"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 40}%`,
-                  backgroundColor: [
-                    axis.color,
-                    '#00D1C1',
-                    '#F59E0B',
-                    '#EC4899',
-                  ][i % 4],
-                  animationDelay: `${Math.random() * 2}s`,
-                  animationDuration: `${1 + Math.random()}s`,
-                }}
-              />
-            ))}
-          </div>
 
           <div className="relative z-10">
             <div
