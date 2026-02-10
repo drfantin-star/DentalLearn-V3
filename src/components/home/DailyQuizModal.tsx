@@ -165,6 +165,7 @@ const typeLabels: Record<string, string> = {
   highlight: 'Barrer les intrus',
   ordering: 'Ordonnancement',
   matching: 'Association',
+  case_study: 'Cas clinique',
 }
 
 const GRADIENT_FROM = '#2D1B96'
@@ -608,8 +609,8 @@ export default function DailyQuizModal({
   const progress = ((current + 1) / questions.length) * 100
   const qType = q.question_type
 
-  // Normalize type names (API may use 'qcm' instead of 'mcq')
-  const normalizedType = qType === 'qcm' ? 'mcq' : qType === 'qcm_image' ? 'mcq_image' : qType
+  // Normalize type names (API may use 'qcm' instead of 'mcq', 'case_study' behaves like 'mcq')
+  const normalizedType = qType === 'qcm' || qType === 'case_study' ? 'mcq' : qType === 'qcm_image' ? 'mcq_image' : qType
 
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col">
