@@ -617,7 +617,7 @@ export default function SequencePlayer({
             )}
 
             {/* ─── Pas de média ─── */}
-            {(!mediaType || mediaType === 'none' || !sequence.course_media_url) && (
+            {(!sequence.course_media_type || !sequence.course_media_url) && (
               <p className="text-gray-500 italic mb-6">Pas de contenu média pour cette séquence</p>
             )}
 
