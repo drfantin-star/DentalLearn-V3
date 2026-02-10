@@ -14,6 +14,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react'
+import Confetti from '@/components/Confetti'
 
 // ============================================
 // TYPES
@@ -533,24 +534,8 @@ export default function DailyQuizModal({
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-gray-900/70 backdrop-blur-sm">
+        <Confetti active={true} />
         <div className="bg-white w-full max-w-sm rounded-3xl p-6 text-center relative overflow-hidden">
-          {isPerfect && (
-            <div className="absolute inset-0 pointer-events-none">
-              {[...Array(16)].map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute w-2 h-2 rounded-full animate-bounce"
-                  style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 50}%`,
-                    backgroundColor: ['#2D1B96', '#00D1C1', '#F59E0B', '#EC4899'][i % 4],
-                    animationDelay: `${Math.random() * 2}s`,
-                    animationDuration: `${1 + Math.random()}s`,
-                  }}
-                />
-              ))}
-            </div>
-          )}
 
           <div className="relative z-10">
             <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#2D1B96]/10 to-[#00D1C1]/10 flex items-center justify-center">
