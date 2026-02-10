@@ -146,7 +146,7 @@ function SequenceCard({
           <div className="flex items-center gap-2 flex-wrap">
             {hasMedia && (
               <span className="text-[10px] text-gray-500">
-                📹 {sequence.course_duration_seconds ? Math.round(sequence.course_duration_seconds / 60) : duration} min
+                {sequence.course_media_type === 'audio' ? '🎧' : '📹'} {sequence.course_duration_seconds ? Math.round(sequence.course_duration_seconds / 60) : duration} min
               </span>
             )}
             <span className="text-[10px] text-gray-500">

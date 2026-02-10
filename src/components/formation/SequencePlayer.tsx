@@ -558,7 +558,7 @@ export default function SequencePlayer({
         {steps.map((step, i) => {
           const isActive = (playerStep === 'results' ? 'quiz' : playerStep) === step
           const isDone = playerStep === 'results' || i < currentStepIdx
-          const label = step === 'video' ? '🎧 Cours' : step === 'quiz' ? '📝 Quiz' : '📄 PDF'
+          const label = step === 'video' ? (isAudio ? '🎧 Cours' : '🎬 Cours') : step === 'quiz' ? '📝 Quiz' : '📄 PDF'
           return (
             <div key={step} className="flex items-center gap-2">
               <div
@@ -578,8 +578,8 @@ export default function SequencePlayer({
         {/* COURS (VIDEO ou AUDIO) */}
         {playerStep === 'video' && (
           <div className="text-center py-6">
-            {isAudio && sequence.course_media_url ? (
-              /* ─── AudioPlayer ─── */
+            {/* ─── AudioPlayer ─── */}
+            {mediaType === 'audio' && sequence.course_media_url && (
               <div className="mb-6">
                 <AudioPlayer
                   src={sequence.course_media_url}
@@ -591,21 +591,44 @@ export default function SequencePlayer({
                   accentColorSecondary={categoryGradient.to}
                 />
               </div>
-            ) : (
-              /* ─── VideoPlayer (placeholder conservé pour réutilisation future) ─── */
-              <div className="w-full aspect-video bg-gray-900 rounded-2xl flex items-center justify-center mb-6">
-                <p className="text-white/60 text-sm">🎬 Lecteur vidéo</p>
+            )}
+
+            {/* ─── VideoPlayer ─── */}
+            {mediaType === 'video' && sequence.course_media_url && (
+              <div className="mb-6">
+                <video
+                  src={sequence.course_media_url}
+                  controls
+                  className="w-full rounded-2xl"
+                  onEnded={() => setCourseCompleted(true)}
+                  onTimeUpdate={(e) => {
+                    const video = e.currentTarget
+                    if (video.duration > 0) {
+                      setCourseProgress(Math.floor((video.currentTime / video.duration) * 100))
+                    }
+                  }}
+                />
+                {sequence.course_duration_seconds && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    Durée : {Math.floor(sequence.course_duration_seconds / 60)} min
+                  </p>
+                )}
               </div>
+            )}
+
+            {/* ─── Pas de média ─── */}
+            {(!mediaType || mediaType === 'none' || !sequence.course_media_url) && (
+              <p className="text-gray-500 italic mb-6">Pas de contenu média pour cette séquence</p>
             )}
 
             <button
               onClick={() => setPlayerStep('quiz')}
-              disabled={isAudio && !courseCompleted && !demoMode}
+              disabled={hasMedia && !courseCompleted && !demoMode}
               className="w-full max-w-xs py-4 rounded-2xl font-bold text-white disabled:opacity-40 transition-opacity"
               style={{ background: categoryGradient.from }}
             >
-              {isAudio && !courseCompleted && !demoMode
-                ? `Écoutez le cours (${courseProgress}%)`
+              {hasMedia && !courseCompleted && !demoMode
+                ? `${isAudio ? 'Écoutez' : 'Regardez'} le cours (${courseProgress}%)`
                 : 'Passer au Quiz →'}
             </button>
           </div>
