@@ -103,48 +103,39 @@ export default function NewSequencePage() {
 
     const objectives = formData.learning_objectives.filter(obj => obj.trim());
 
-    console.log('💾 Saving new sequence with media:', {
-      courseMediaType: formData.course_media_type,
-      courseMediaUrl: formData.course_media_url,
-      courseDurationSeconds: formData.course_duration_seconds,
-      infographicUrl: formData.infographic_url
-    });
-
-    const insertData: Record<string, unknown> = {
-      formation_id: formationId,
-      title: formData.title.trim(),
-      sequence_number: formData.sequence_number,
-      estimated_duration_minutes: formData.estimated_duration_minutes,
-      learning_objectives: objectives,
-      access_level: formData.sequence_number === 0 ? 'free' : 'premium'
+    const mediaData = {
+      course_media_type: formData.course_media_type || null,
+      course_media_url: formData.course_media_url || null,
+      course_duration_seconds: formData.course_duration_seconds
+        ? parseInt(String(formData.course_duration_seconds), 10)
+        : null,
+      infographic_url: formData.infographic_url || null
     };
 
-    if (formData.course_media_type) {
-      insertData.course_media_type = formData.course_media_type;
-      insertData.course_media_url = formData.course_media_url || null;
-      insertData.course_duration_seconds = formData.course_duration_seconds
-        ? Number(formData.course_duration_seconds)
-        : null;
-    }
-
-    if (formData.infographic_url) {
-      insertData.infographic_url = formData.infographic_url;
-    }
+    console.log('📦 Media data prepared:', mediaData);
 
     const { data, error } = await supabase
       .from('sequences')
-      .insert(insertData)
+      .insert({
+        formation_id: formationId,
+        title: formData.title.trim(),
+        sequence_number: formData.sequence_number,
+        estimated_duration_minutes: formData.estimated_duration_minutes,
+        learning_objectives: objectives,
+        access_level: formData.sequence_number === 0 ? 'free' : 'premium',
+        ...mediaData
+      })
       .select()
       .single();
 
     if (error) {
-      console.error('Erreur création:', error);
-      alert('Erreur: ' + error.message);
+      console.error('❌ Supabase INSERT error:', error);
+      alert(`Erreur sauvegarde: ${error.message}`);
       setSaving(false);
       return;
     }
 
-    // Rediriger vers la page de la séquence pour ajouter les questions
+    console.log('✅ Sequence created:', data);
     router.push(`/admin/formations/${formationId}/sequences/${data.id}`);
   }
 
