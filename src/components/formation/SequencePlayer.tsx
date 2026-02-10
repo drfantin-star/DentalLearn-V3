@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   Check,
   X,
-  Download,
   Lightbulb,
   Loader2,
   Square,
@@ -21,6 +20,7 @@ import {
   type Question,
 } from '@/lib/supabase'
 import AudioPlayer from './AudioPlayer'
+import TreasureChest from '@/components/sequences/TreasureChest'
 
 // ============================================
 // TYPES (basés sur types/questions.ts)
@@ -272,9 +272,8 @@ export default function SequencePlayer({
     const s: PlayerStep[] = []
     if (showVideo) s.push('video')
     s.push('quiz')
-    if (showPdf) s.push('pdf')
     return s
-  }, [showVideo, showPdf])
+  }, [showVideo])
 
   const currentStepIdx = steps.indexOf(playerStep === 'results' ? 'quiz' : playerStep)
   const currentQuestion = questions[currentQ]
@@ -1002,25 +1001,7 @@ export default function SequencePlayer({
           )
         })()}
 
-        {/* PDF */}
-        {playerStep === 'pdf' && (
-          <div className="text-center py-10">
-            <div className="w-20 h-20 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4 text-4xl">📄</div>
-            <h3 className="text-lg font-bold text-gray-800 mb-2">Support de cours</h3>
-            {sequence.infographic_url ? (
-              <a href={sequence.infographic_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-2xl border-2 border-gray-200 bg-white font-semibold text-sm mb-6">
-                <Download size={18} /> Télécharger le PDF
-              </a>
-            ) : (
-              <p className="text-sm text-gray-400 mb-6">PDF non disponible pour cette séquence</p>
-            )}
-            <div className="mt-4">
-              <button onClick={finishSequence} disabled={submitting} className="w-full max-w-xs py-4 rounded-2xl font-bold text-white disabled:opacity-50" style={{ background: categoryGradient.from }}>
-                {submitting ? 'Enregistrement...' : 'Terminer ✓'}
-              </button>
-            </div>
-          </div>
-        )}
+        {/* PDF step removed - handled by TreasureChest in results */}
 
         {/* RÉSULTATS */}
         {playerStep === 'results' && (
@@ -1041,11 +1022,25 @@ export default function SequencePlayer({
                 <p className="text-xs text-amber-700">points gagnés</p>
               </div>
             </div>
-            <div>
-              <button onClick={() => showPdf ? setPlayerStep('pdf') : finishSequence()} disabled={submitting} className="w-full max-w-xs py-4 rounded-2xl font-bold text-white disabled:opacity-50" style={{ background: categoryGradient.from }}>
-                {submitting ? 'Enregistrement...' : showPdf ? 'Voir le PDF' : 'Terminer'}
-              </button>
-            </div>
+            {showPdf ? (
+              <div className="mt-2">
+                <TreasureChest
+                  pdfUrl={sequence.infographic_url}
+                  onOpen={() => console.log('Coffre ouvert !')}
+                />
+                <div className="mt-4">
+                  <button onClick={finishSequence} disabled={submitting} className="w-full max-w-xs py-4 rounded-2xl font-bold text-white disabled:opacity-50" style={{ background: categoryGradient.from }}>
+                    {submitting ? 'Enregistrement...' : 'Terminer'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <button onClick={finishSequence} disabled={submitting} className="w-full max-w-xs py-4 rounded-2xl font-bold text-white disabled:opacity-50" style={{ background: categoryGradient.from }}>
+                  {submitting ? 'Enregistrement...' : 'Terminer'}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
