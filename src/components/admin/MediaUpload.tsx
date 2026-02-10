@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { Upload, X, Loader2, AlertCircle, FileAudio, FileText, Film } from 'lucide-react';
+import { Upload, X, Loader2, AlertCircle, FileAudio, FileText, Film, Image as ImageIcon } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 
 interface MediaUploadProps {
@@ -13,16 +13,27 @@ interface MediaUploadProps {
   label?: string;
 }
 
-function getMediaType(accept: string): 'audio' | 'video' | 'pdf' {
+function getMediaType(accept: string): 'audio' | 'video' | 'pdf' | 'image' | 'mixed' {
   if (accept.startsWith('audio')) return 'audio';
   if (accept.startsWith('video')) return 'video';
+  if (accept.startsWith('image') || accept.startsWith('.png') || accept.startsWith('.jpg') || accept.startsWith('.jpeg')) return 'image';
+  if (accept.includes('.pdf') && (accept.includes('.png') || accept.includes('.jpg') || accept.includes('.jpeg'))) return 'mixed';
+  if (accept.includes('.pdf')) return 'pdf';
   return 'pdf';
+}
+
+function getMediaTypeFromUrl(url: string): 'image' | 'pdf' | 'unknown' {
+  if (url.match(/\.(png|jpg|jpeg|gif|webp)(\?|$)/i)) return 'image';
+  if (url.match(/\.pdf(\?|$)/i)) return 'pdf';
+  return 'unknown';
 }
 
 function getAcceptLabel(accept: string): string {
   const type = getMediaType(accept);
   if (type === 'audio') return 'MP3, WAV, M4A';
   if (type === 'video') return 'MP4, WebM';
+  if (type === 'image') return 'PNG, JPG, JPEG';
+  if (type === 'mixed') return 'PDF, PNG, JPG';
   return 'PDF';
 }
 
@@ -30,6 +41,8 @@ function getIcon(accept: string) {
   const type = getMediaType(accept);
   if (type === 'audio') return FileAudio;
   if (type === 'video') return Film;
+  if (type === 'image') return ImageIcon;
+  if (type === 'mixed') return FileText;
   return FileText;
 }
 
@@ -228,7 +241,7 @@ export default function MediaUpload({
           )}
 
           {/* PDF preview */}
-          {mediaType === 'pdf' && (
+          {(mediaType === 'pdf' || (mediaType === 'mixed' && getMediaTypeFromUrl(currentUrl) === 'pdf')) && (
             <div className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-red-100 rounded-lg">
@@ -243,6 +256,57 @@ export default function MediaUpload({
                     className="text-xs text-[#2D1B96] hover:underline"
                   >
                     Voir le PDF
+                  </a>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemove}
+                  className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Image preview */}
+          {(mediaType === 'image' || (mediaType === 'mixed' && getMediaTypeFromUrl(currentUrl) === 'image')) && (
+            <div className="p-4 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <ImageIcon className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-700 truncate">{fileName}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRemove}
+                  className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <img src={currentUrl} alt="Aperçu" className="max-w-full max-h-32 rounded-lg" />
+            </div>
+          )}
+
+          {/* Mixed type - unknown file extension fallback */}
+          {mediaType === 'mixed' && getMediaTypeFromUrl(currentUrl) === 'unknown' && (
+            <div className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <FileText className="w-5 h-5 text-gray-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-700 truncate">{fileName}</p>
+                  <a
+                    href={currentUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-[#2D1B96] hover:underline"
+                  >
+                    Voir le fichier
                   </a>
                 </div>
                 <button

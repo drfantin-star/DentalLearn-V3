@@ -320,18 +320,18 @@ export default function NewSequencePage() {
           )}
         </div>
 
-        {/* Section PDF Récompense */}
+        {/* Section Fiche mémo */}
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <h3 className="font-semibold text-gray-900">PDF Recompense (Coffre)</h3>
-          <p className="text-sm text-gray-500">
-            Infographie 1 page debloquee apres le quiz
+          <h3 className="font-semibold text-gray-900">Fiche mémo (Coffre)</h3>
+          <p className="text-sm text-gray-500 mb-2">
+            PDF ou image qui apparaît dans le coffre à la fin du quiz
           </p>
 
           {formation && (
             <MediaUpload
               bucket="formations"
-              path={`${formation.slug}/pdf`}
-              accept="application/pdf"
+              path={`${formation.slug}/infographics`}
+              accept=".pdf,.png,.jpg,.jpeg"
               currentUrl={formData.infographic_url}
               onUpload={(url) => setFormData({ ...formData, infographic_url: url })}
             />
