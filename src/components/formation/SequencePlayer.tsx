@@ -649,8 +649,8 @@ export default function SequencePlayer({
                   {/* Question text */}
                   <h2 className="text-[16px] font-bold text-gray-800 leading-relaxed mb-5">{q.question_text}</h2>
 
-              {/* === MCQ / TRUE_FALSE / MCQ_IMAGE === */}
-              {(qType === 'mcq' || qType === 'true_false' || qType === 'mcq_image' || qType === 'image') && (
+              {/* === MCQ / TRUE_FALSE / MCQ_IMAGE / CASE_STUDY === */}
+              {(qType === 'mcq' || qType === 'true_false' || qType === 'mcq_image' || qType === 'image' || qType === 'case_study') && (
                 <div className="flex flex-col gap-2.5">
                   {parseStandardOptions(q.options).map((opt, i) => {
                     const isSelected = selectedAnswer === opt.id
@@ -987,7 +987,7 @@ export default function SequencePlayer({
               })()}
 
               {/* === TYPE NON SUPPORTÉ === */}
-              {!['mcq', 'true_false', 'mcq_image', 'image', 'checkbox', 'highlight', 'fill_blank', 'ordering', 'matching', 'drag_drop'].includes(qType) && (
+              {!['mcq', 'true_false', 'mcq_image', 'image', 'checkbox', 'highlight', 'fill_blank', 'ordering', 'matching', 'drag_drop', 'case_study'].includes(qType) && (
                 <div className="text-center py-8">
                   <AlertCircle size={48} className="text-amber-500 mx-auto mb-3" />
                   <p className="text-gray-600 mb-2">Type &quot;{qType}&quot; non encore implémenté</p>
