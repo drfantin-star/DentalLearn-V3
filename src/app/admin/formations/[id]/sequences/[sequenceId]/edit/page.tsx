@@ -123,6 +123,13 @@ export default function EditSequencePage() {
 
     const objectives = formData.learning_objectives.filter(obj => obj.trim());
 
+    console.log('💾 Saving sequence update with media:', {
+      courseMediaType: formData.course_media_type,
+      courseMediaUrl: formData.course_media_url,
+      courseDurationSeconds: formData.course_duration_seconds,
+      infographicUrl: formData.infographic_url
+    });
+
     const updateData: Record<string, unknown> = {
       title: formData.title.trim(),
       sequence_number: formData.sequence_number,
@@ -278,12 +285,12 @@ export default function EditSequencePage() {
             </label>
             <select
               value={formData.course_media_type}
-              onChange={(e) => setFormData({
-                ...formData,
+              onChange={(e) => setFormData(prev => ({
+                ...prev,
                 course_media_type: e.target.value as '' | 'audio' | 'video',
                 course_media_url: '',
                 course_duration_seconds: ''
-              })}
+              }))}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
             >
               <option value="">Aucun (quiz seulement)</option>
@@ -304,7 +311,7 @@ export default function EditSequencePage() {
                   path={`${formation.slug}/${formData.course_media_type}`}
                   accept={formData.course_media_type === 'audio' ? 'audio/*' : 'video/*'}
                   currentUrl={formData.course_media_url}
-                  onUpload={(url) => setFormData({ ...formData, course_media_url: url })}
+                  onUpload={(url) => setFormData(prev => ({ ...prev, course_media_url: url }))}
                 />
                 <p className="text-sm text-gray-500 mt-2">
                   Formats acceptes : {formData.course_media_type === 'audio' ? 'MP3, WAV, M4A' : 'MP4, WebM'}
@@ -319,7 +326,7 @@ export default function EditSequencePage() {
                 <input
                   type="number"
                   value={formData.course_duration_seconds}
-                  onChange={(e) => setFormData({ ...formData, course_duration_seconds: e.target.value })}
+                  onChange={(e) => setFormData(prev => ({ ...prev, course_duration_seconds: e.target.value }))}
                   placeholder="300 = 5 minutes"
                   min="0"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
@@ -342,7 +349,7 @@ export default function EditSequencePage() {
               path={`${formation.slug}/infographics`}
               accept=".pdf,.png,.jpg,.jpeg"
               currentUrl={formData.infographic_url}
-              onUpload={(url) => setFormData({ ...formData, infographic_url: url })}
+              onUpload={(url) => setFormData(prev => ({ ...prev, infographic_url: url }))}
             />
           )}
         </div>
