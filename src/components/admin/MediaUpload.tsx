@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from 'react';
 import { Upload, X, Loader2, AlertCircle, FileAudio, FileText, Film } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface MediaUploadProps {
   bucket: string;
@@ -65,11 +66,13 @@ export default function MediaUpload({
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('path', path);
+      // Validate file size (50MB max)
+      const MAX_FILE_SIZE = 50 * 1024 * 1024;
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error('Fichier trop volumineux. Taille maximale: 50MB');
+      }
 
-      // Simulate progress since fetch doesn't support progress natively
+      // Simulate progress during upload
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 90) {
@@ -80,21 +83,39 @@ export default function MediaUpload({
         });
       }, 200);
 
-      const response = await fetch('/api/admin/upload-media', {
-        method: 'POST',
-        body: formData
-      });
+      const supabase = createClient();
+
+      // Generate unique file path
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || 'bin';
+      const safeName = file.name
+        .replace(/\.[^/.]+$/, '')
+        .replace(/[^a-zA-Z0-9-_]/g, '-')
+        .substring(0, 50);
+      const cleanPath = path.replace(/\/+$/, '');
+      const fileName = `${cleanPath}/${safeName}-${Date.now()}.${fileExt}`;
+
+      // Upload directly to Supabase Storage (bypasses Vercel 4.5MB limit)
+      const { data, error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
       clearInterval(progressInterval);
-      setUploadProgress(100);
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Erreur lors de l\'upload');
+      if (uploadError) {
+        throw new Error(uploadError.message);
       }
 
-      onUpload(result.url);
+      setUploadProgress(100);
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(data.path);
+
+      onUpload(publicUrl);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
     } finally {
@@ -121,7 +142,20 @@ export default function MediaUpload({
     }
   };
 
-  const handleRemove = () => {
+  const handleRemove = async () => {
+    if (currentUrl) {
+      try {
+        const supabase = createClient();
+        // Extract file path from the public URL
+        const urlParts = currentUrl.split(`/storage/v1/object/public/${bucket}/`);
+        if (urlParts.length > 1) {
+          const filePath = urlParts[1];
+          await supabase.storage.from(bucket).remove([filePath]);
+        }
+      } catch (err) {
+        console.error('Erreur suppression:', err);
+      }
+    }
     onUpload('');
     setError(null);
     if (fileInputRef.current) {
