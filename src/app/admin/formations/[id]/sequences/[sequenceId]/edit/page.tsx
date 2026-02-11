@@ -132,20 +132,29 @@ export default function EditSequencePage() {
       infographic_url: formData.infographic_url || null
     };
 
-    console.log('📦 Media data prepared:', mediaData);
+    const updatePayload = {
+      title: formData.title.trim(),
+      sequence_number: formData.sequence_number,
+      estimated_duration_minutes: formData.estimated_duration_minutes,
+      learning_objectives: objectives,
+      access_level: formData.sequence_number === 0 ? 'free' : 'premium',
+      course_media_type: mediaData.course_media_type,
+      course_media_url: mediaData.course_media_url,
+      course_duration_seconds: mediaData.course_duration_seconds,
+      infographic_url: mediaData.infographic_url
+    };
+
+    console.log('🔥 FULL UPDATE PAYLOAD:', JSON.stringify(updatePayload, null, 2));
+    console.log('🆔 Sequence ID:', sequenceId);
 
     const { data, error } = await supabase
       .from('sequences')
-      .update({
-        title: formData.title.trim(),
-        sequence_number: formData.sequence_number,
-        estimated_duration_minutes: formData.estimated_duration_minutes,
-        learning_objectives: objectives,
-        access_level: formData.sequence_number === 0 ? 'free' : 'premium',
-        ...mediaData
-      })
+      .update(updatePayload)
       .eq('id', sequenceId)
       .select();
+
+    console.log('📤 Supabase response - data:', data);
+    console.log('📤 Supabase response - error:', error);
 
     if (error) {
       console.error('❌ Supabase UPDATE error:', error);

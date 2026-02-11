@@ -112,21 +112,29 @@ export default function NewSequencePage() {
       infographic_url: formData.infographic_url || null
     };
 
-    console.log('📦 Media data prepared:', mediaData);
+    const insertPayload = {
+      formation_id: formationId,
+      title: formData.title.trim(),
+      sequence_number: formData.sequence_number,
+      estimated_duration_minutes: formData.estimated_duration_minutes,
+      learning_objectives: objectives,
+      access_level: formData.sequence_number === 0 ? 'free' : 'premium',
+      course_media_type: mediaData.course_media_type,
+      course_media_url: mediaData.course_media_url,
+      course_duration_seconds: mediaData.course_duration_seconds,
+      infographic_url: mediaData.infographic_url
+    };
+
+    console.log('🔥 FULL INSERT PAYLOAD:', JSON.stringify(insertPayload, null, 2));
 
     const { data, error } = await supabase
       .from('sequences')
-      .insert({
-        formation_id: formationId,
-        title: formData.title.trim(),
-        sequence_number: formData.sequence_number,
-        estimated_duration_minutes: formData.estimated_duration_minutes,
-        learning_objectives: objectives,
-        access_level: formData.sequence_number === 0 ? 'free' : 'premium',
-        ...mediaData
-      })
+      .insert(insertPayload)
       .select()
       .single();
+
+    console.log('📤 Supabase response - data:', data);
+    console.log('📤 Supabase response - error:', error);
 
     if (error) {
       console.error('❌ Supabase INSERT error:', error);
