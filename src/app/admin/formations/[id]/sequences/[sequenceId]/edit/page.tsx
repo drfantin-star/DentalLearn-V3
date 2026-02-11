@@ -74,15 +74,28 @@ export default function EditSequencePage() {
       return;
     }
 
+    // Normaliser le type de média : 'none' ou null → ''
+    const normalizedMediaType = (data.course_media_type && data.course_media_type !== 'none')
+      ? data.course_media_type
+      : '';
+
     setFormData({
       title: data.title,
       sequence_number: data.sequence_number,
       estimated_duration_minutes: data.estimated_duration_minutes,
       learning_objectives: data.learning_objectives?.length > 0 ? data.learning_objectives : [''],
-      course_media_type: data.course_media_type || '',
+      course_media_type: normalizedMediaType as '' | 'audio' | 'video',
       course_media_url: data.course_media_url || '',
       course_duration_seconds: data.course_duration_seconds || '',
       infographic_url: data.infographic_url || ''
+    });
+
+    console.log('📥 Loaded media data:', {
+      type: data.course_media_type,
+      normalizedType: normalizedMediaType,
+      url: data.course_media_url,
+      duration: data.course_duration_seconds,
+      infographic: data.infographic_url
     });
 
     setLoading(false);

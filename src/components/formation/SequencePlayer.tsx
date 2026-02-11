@@ -524,13 +524,80 @@ export default function SequencePlayer({
     )
   }
 
-  if (error || questions.length === 0) {
+  if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FAFAFF] p-4">
         <div className="text-center">
-          <p className="text-gray-500 mb-4">{error?.message || 'Aucune question disponible'}</p>
+          <p className="text-gray-500 mb-4">{error.message}</p>
           <button onClick={onBack} className="px-4 py-2 bg-gray-100 rounded-xl text-sm">Retour</button>
         </div>
+      </div>
+    )
+  }
+
+  // Séquence sans questions mais avec média (ex: intro avec audio uniquement)
+  if (questions.length === 0 && hasMedia) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFF] flex flex-col">
+        {/* Header */}
+        <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+          <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-lg">
+            <ChevronLeft size={20} className="text-gray-600" />
+          </button>
+          <p className="flex-1 font-bold text-sm text-gray-800 truncate">{sequence.title}</p>
+        </div>
+
+        <div className="flex-1 p-4">
+          {isAudio && sequence.course_media_url && (
+            <div className="mb-6">
+              <AudioPlayer
+                src={sequence.course_media_url}
+                duration={sequence.course_duration_seconds || 0}
+                sequenceId={sequence.id}
+                onComplete={() => {}}
+                onProgress={() => {}}
+                accentColor={categoryGradient.from}
+                accentColorSecondary={categoryGradient.to}
+              />
+            </div>
+          )}
+
+          {mediaType === 'video' && sequence.course_media_url && (
+            <div className="mb-6">
+              <video
+                src={sequence.course_media_url}
+                controls
+                className="w-full rounded-2xl"
+              />
+              {sequence.course_duration_seconds && (
+                <p className="text-sm text-gray-500 mt-2">
+                  Durée : {Math.floor(sequence.course_duration_seconds / 60)} min
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="mt-6 text-center">
+            <p className="text-green-600 font-medium mb-4">Introduction terminée</p>
+            <button
+              onClick={onBack}
+              className="px-6 py-3 text-white rounded-xl font-medium"
+              style={{ background: categoryGradient.from }}
+            >
+              Retour à la formation
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Séquence sans questions et sans média — aucun contenu
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFF] p-4 flex flex-col items-center justify-center">
+        <p className="text-gray-500 mb-4">Aucun contenu disponible</p>
+        <button onClick={onBack} className="px-4 py-2 bg-gray-100 rounded-xl text-sm">Retour</button>
       </div>
     )
   }
