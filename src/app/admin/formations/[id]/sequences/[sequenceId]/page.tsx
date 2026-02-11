@@ -14,8 +14,14 @@ import {
   GripVertical,
   CheckCircle,
   XCircle,
-  Image as ImageIcon
+  Image as ImageIcon,
+  FileAudio,
+  Film,
+  FileText,
+  Save,
+  Loader2
 } from 'lucide-react';
+import MediaUpload from '@/components/admin/MediaUpload';
 
 interface Question {
   id: string;
@@ -37,11 +43,16 @@ interface Sequence {
   title: string;
   estimated_duration_minutes: number;
   learning_objectives: string[];
+  course_media_type: 'audio' | 'video' | null;
+  course_media_url: string | null;
+  course_duration_seconds: number | null;
+  infographic_url: string | null;
 }
 
 interface Formation {
   id: string;
   title: string;
+  slug: string;
 }
 
 export default function SequenceDetailPage() {
@@ -59,6 +70,14 @@ export default function SequenceDetailPage() {
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState<string | null>(null);
 
+  // Media state
+  const [mediaType, setMediaType] = useState<'' | 'audio' | 'video'>('');
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [mediaDuration, setMediaDuration] = useState<string | number>('');
+  const [infographicUrl, setInfographicUrl] = useState('');
+  const [savingMedia, setSavingMedia] = useState(false);
+  const [savingInfographic, setSavingInfographic] = useState(false);
+
   useEffect(() => {
     loadData();
   }, [formationId, sequenceId]);
@@ -69,7 +88,7 @@ export default function SequenceDetailPage() {
     // Charger la formation
     const { data: formationData } = await supabase
       .from('formations')
-      .select('id, title')
+      .select('id, title, slug')
       .eq('id', formationId)
       .single();
 
@@ -82,7 +101,18 @@ export default function SequenceDetailPage() {
       .eq('id', sequenceId)
       .single();
 
-    if (sequenceData) setSequence(sequenceData);
+    if (sequenceData) {
+      setSequence(sequenceData);
+
+      // Initialiser l'état média
+      const normalizedType = (sequenceData.course_media_type && sequenceData.course_media_type !== 'none')
+        ? sequenceData.course_media_type
+        : '';
+      setMediaType(normalizedType as '' | 'audio' | 'video');
+      setMediaUrl(sequenceData.course_media_url || '');
+      setMediaDuration(sequenceData.course_duration_seconds || '');
+      setInfographicUrl(sequenceData.infographic_url || '');
+    }
 
     // Charger les questions
     const { data: questionsData } = await supabase
@@ -126,6 +156,52 @@ export default function SequenceDetailPage() {
     }
 
     setDeleting(null);
+  }
+
+  async function handleSaveMedia() {
+    setSavingMedia(true);
+
+    const { error } = await supabase
+      .from('sequences')
+      .update({
+        course_media_type: mediaType || null,
+        course_media_url: mediaUrl || null,
+        course_duration_seconds: mediaDuration ? parseInt(String(mediaDuration), 10) : null
+      })
+      .eq('id', sequenceId);
+
+    if (error) {
+      console.error('Erreur sauvegarde média:', error);
+      alert(`Erreur : ${error.message}`);
+    } else {
+      // Mettre à jour le state local
+      setSequence(prev => prev ? {
+        ...prev,
+        course_media_type: (mediaType || null) as 'audio' | 'video' | null,
+        course_media_url: mediaUrl || null,
+        course_duration_seconds: mediaDuration ? parseInt(String(mediaDuration), 10) : null
+      } : null);
+    }
+
+    setSavingMedia(false);
+  }
+
+  async function handleSaveInfographic() {
+    setSavingInfographic(true);
+
+    const { error } = await supabase
+      .from('sequences')
+      .update({ infographic_url: infographicUrl || null })
+      .eq('id', sequenceId);
+
+    if (error) {
+      console.error('Erreur sauvegarde fiche mémo:', error);
+      alert(`Erreur : ${error.message}`);
+    } else {
+      setSequence(prev => prev ? { ...prev, infographic_url: infographicUrl || null } : null);
+    }
+
+    setSavingInfographic(false);
   }
 
   function getTypeLabel(type: string): string {
@@ -360,6 +436,160 @@ export default function SequenceDetailPage() {
             </ul>
           </div>
         )}
+      </div>
+
+      {/* Contenu du cours */}
+      <div className="bg-white rounded-xl border border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {mediaType === 'audio' ? (
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <FileAudio className="w-5 h-5 text-[#2D1B96]" />
+              </div>
+            ) : mediaType === 'video' ? (
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Film className="w-5 h-5 text-[#2D1B96]" />
+              </div>
+            ) : (
+              <div className="p-2 bg-gray-100 rounded-lg">
+                <Film className="w-5 h-5 text-gray-400" />
+              </div>
+            )}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Contenu du cours</h2>
+              <p className="text-sm text-gray-500">
+                {mediaType === 'audio' && mediaUrl ? 'Audio uploadé' :
+                 mediaType === 'video' && mediaUrl ? 'Vidéo uploadée' :
+                 'Aucun média configuré'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleSaveMedia}
+            disabled={savingMedia}
+            className="px-4 py-2 bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            {savingMedia ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            Enregistrer
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          {/* Type de média */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Type de média
+            </label>
+            <select
+              value={mediaType}
+              onChange={(e) => {
+                const newType = e.target.value as '' | 'audio' | 'video';
+                setMediaType(newType);
+                if (newType !== mediaType) {
+                  setMediaUrl('');
+                  setMediaDuration('');
+                }
+              }}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+            >
+              <option value="">Aucun (quiz seulement)</option>
+              <option value="audio">Audio</option>
+              <option value="video">Vidéo</option>
+            </select>
+          </div>
+
+          {/* Upload Audio/Vidéo */}
+          {mediaType && formation && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Fichier {mediaType === 'audio' ? 'audio' : 'vidéo'}
+                </label>
+                <MediaUpload
+                  bucket="formations"
+                  path={`${formation.slug}/${mediaType}`}
+                  accept={mediaType === 'audio' ? 'audio/*' : 'video/*'}
+                  currentUrl={mediaUrl}
+                  onUpload={(url) => setMediaUrl(url)}
+                />
+                <p className="text-sm text-gray-500 mt-2">
+                  Formats acceptés : {mediaType === 'audio' ? 'MP3, WAV, M4A' : 'MP4, WebM'} — Max 50MB
+                </p>
+              </div>
+
+              {/* Durée */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Durée (en secondes)
+                </label>
+                <input
+                  type="number"
+                  value={mediaDuration}
+                  onChange={(e) => setMediaDuration(e.target.value)}
+                  placeholder="300 = 5 minutes"
+                  min="0"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                />
+              </div>
+            </>
+          )}
+
+          {!mediaType && (
+            <p className="text-sm text-gray-400 text-center py-4">
+              Sélectionnez un type de média pour uploader un fichier audio ou vidéo.
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Fiche mémo (Coffre) */}
+      <div className="bg-white rounded-xl border border-gray-200">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${infographicUrl ? 'bg-amber-100' : 'bg-gray-100'}`}>
+              <FileText className={`w-5 h-5 ${infographicUrl ? 'text-amber-600' : 'text-gray-400'}`} />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Fiche mémo (Coffre)</h2>
+              <p className="text-sm text-gray-500">
+                {infographicUrl ? 'Fichier uploadé' : 'Aucun fichier configuré'}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleSaveInfographic}
+            disabled={savingInfographic}
+            className="px-4 py-2 bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            {savingInfographic ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            Enregistrer
+          </button>
+        </div>
+
+        <div className="p-6">
+          <p className="text-sm text-gray-500 mb-3">
+            PDF ou image qui apparaît dans le coffre à la fin du quiz
+          </p>
+          {formation ? (
+            <MediaUpload
+              bucket="formations"
+              path={`${formation.slug}/infographics`}
+              accept=".pdf,.png,.jpg,.jpeg"
+              currentUrl={infographicUrl}
+              onUpload={(url) => setInfographicUrl(url)}
+            />
+          ) : (
+            <p className="text-sm text-gray-400 text-center py-4">Chargement...</p>
+          )}
+        </div>
       </div>
 
       {/* Questions */}
