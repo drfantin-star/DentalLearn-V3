@@ -15,7 +15,7 @@ export default function NewFormationPage() {
     description_long: '',
     category: 'esthetique',
     level: 'intermediate',
-    total_sequences: 15,
+    total_sequences: 16,
     duration_weeks: 8,
   });
   const router = useRouter();

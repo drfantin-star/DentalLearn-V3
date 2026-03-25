@@ -200,13 +200,18 @@ export default function NewSequencePage() {
                 value={formData.sequence_number}
                 onChange={(e) => setFormData({ ...formData, sequence_number: parseInt(e.target.value) || 0 })}
                 min="0"
-                max="15"
+                max="16"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
               />
-              <p className="text-xs text-gray-500 mt-1">0 = Intro gratuite, 1-15 = Premium</p>
+              <p className="text-xs text-gray-500 mt-1">0 = Intro gratuite, 1-15 = Premium, 16 = Conclusion</p>
               {formData.sequence_number === 0 && (
                 <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
                   INTRO GRATUITE
+                </span>
+              )}
+              {formData.sequence_number === 16 && (
+                <span className="inline-block mt-2 px-2 py-1 bg-purple-100 text-purple-800 text-xs font-semibold rounded-full">
+                  CONCLUSION
                 </span>
               )}
             </div>
