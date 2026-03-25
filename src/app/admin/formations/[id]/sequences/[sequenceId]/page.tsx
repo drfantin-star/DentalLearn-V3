@@ -414,8 +414,8 @@ export default function SequenceDetailPage() {
             <p className="text-sm text-gray-500">Durée estimée</p>
             {(() => {
               const mediaSeconds = Number(mediaDuration) || 0;
-              const qcmSeconds = questions.length * 30; // ~30s par question
-              const memoSeconds = infographicUrl ? 120 : 0; // ~2 min lecture fiche mémo
+              const qcmSeconds = questions.length > 0 ? 300 : 0; // 5 min pour le QCM
+              const memoSeconds = infographicUrl ? 300 : 0; // 5 min lecture récompense
               const totalSeconds = mediaSeconds + qcmSeconds + memoSeconds;
               if (totalSeconds === 0) {
                 return <p className="font-medium">{sequence.estimated_duration_minutes} minutes</p>;
@@ -429,8 +429,8 @@ export default function SequenceDetailPage() {
                   </p>
                   <p className="text-xs text-gray-400 mt-1">
                     Média{mediaSeconds > 0 ? ` ${Math.floor(mediaSeconds / 60)}min${(mediaSeconds % 60) > 0 ? String(mediaSeconds % 60).padStart(2, '0') + 's' : ''}` : ' —'}
-                    {' + '}QCM ~{qcmSeconds > 0 ? `${Math.floor(qcmSeconds / 60)}min${(qcmSeconds % 60) > 0 ? String(qcmSeconds % 60).padStart(2, '0') + 's' : ''}` : '—'}
-                    {memoSeconds > 0 ? ' + Mémo ~2min' : ''}
+                    {qcmSeconds > 0 ? ' + QCM ~5min' : ''}
+                    {memoSeconds > 0 ? ' + Récompense ~5min' : ''}
                   </p>
                 </div>
               );
