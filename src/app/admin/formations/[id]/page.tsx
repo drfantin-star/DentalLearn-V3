@@ -47,8 +47,8 @@ interface Sequence {
 
 function getSequenceTotalSeconds(seq: Sequence): number {
   const media = seq.course_duration_seconds || 0;
-  const qcm = (seq.questions_count || 0) * 30; // ~30s par question
-  const memo = seq.infographic_url ? 120 : 0; // ~2 min lecture fiche mémo
+  const qcm = (seq.questions_count || 0) > 0 ? 300 : 0; // 5 min pour le QCM
+  const memo = seq.infographic_url ? 300 : 0; // 5 min lecture récompense
   return media + qcm + memo;
 }
 
