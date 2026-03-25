@@ -525,6 +525,18 @@ export default function SequenceDetailPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Durée (en secondes)
+                  {mediaDuration && Number(mediaDuration) > 0 && (
+                    <span className="ml-2 text-gray-500 font-normal">
+                      = {(() => {
+                        const total = Number(mediaDuration);
+                        const min = Math.floor(total / 60);
+                        const sec = total % 60;
+                        if (min > 0 && sec > 0) return `${min} min ${sec.toString().padStart(2, '0')}s`;
+                        if (min > 0) return `${min} min`;
+                        return `${sec}s`;
+                      })()}
+                    </span>
+                  )}
                 </label>
                 <input
                   type="number"

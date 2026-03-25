@@ -13,7 +13,8 @@ import {
   Clock,
   HelpCircle,
   GripVertical,
-  Eye
+  Eye,
+  Play
 } from 'lucide-react';
 
 interface Formation {
@@ -37,9 +38,31 @@ interface Sequence {
   sequence_number: number;
   title: string;
   estimated_duration_minutes: number;
+  course_duration_seconds: number | null;
   learning_objectives: string[];
   created_at: string;
   questions_count?: number;
+}
+
+function formatDuration(totalSeconds: number): string {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}h ${minutes.toString().padStart(2, '0')}min`;
+  }
+  if (minutes > 0) {
+    return `${minutes} min ${seconds.toString().padStart(2, '0')}s`;
+  }
+  return `${seconds}s`;
+}
+
+function formatSequenceDuration(seconds: number): string {
+  const min = Math.floor(seconds / 60);
+  const sec = seconds % 60;
+  if (min > 0 && sec > 0) return `${min} min ${sec.toString().padStart(2, '0')}s`;
+  if (min > 0) return `${min} min`;
+  return `${sec}s`;
 }
 
 export default function FormationDetailPage() {
@@ -177,6 +200,7 @@ export default function FormationDetailPage() {
   }
 
   const totalQuestions = sequences.reduce((acc, seq) => acc + (seq.questions_count || 0), 0);
+  const totalMediaDurationSeconds = sequences.reduce((acc, seq) => acc + (seq.course_duration_seconds || 0), 0);
 
   return (
     <div className="p-8 space-y-6">
@@ -240,11 +264,13 @@ export default function FormationDetailPage() {
         <div className="bg-white rounded-xl p-4 border border-gray-200">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg">
-              <Clock className="w-5 h-5 text-green-600" />
+              <Play className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{formation.duration_weeks}</p>
-              <p className="text-sm text-gray-500">Semaines</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {totalMediaDurationSeconds > 0 ? formatDuration(totalMediaDurationSeconds) : '—'}
+              </p>
+              <p className="text-sm text-gray-500">Durée médias</p>
             </div>
           </div>
         </div>
@@ -323,7 +349,11 @@ export default function FormationDetailPage() {
                     {sequence.title}
                   </Link>
                   <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-                    <span>{sequence.estimated_duration_minutes} min</span>
+                    <span>
+                      {sequence.course_duration_seconds
+                        ? formatSequenceDuration(sequence.course_duration_seconds)
+                        : `${sequence.estimated_duration_minutes} min`}
+                    </span>
                     <span>•</span>
                     <span className={sequence.questions_count === 4 ? 'text-green-600' : 'text-orange-600'}>
                       {sequence.questions_count}/4 questions
