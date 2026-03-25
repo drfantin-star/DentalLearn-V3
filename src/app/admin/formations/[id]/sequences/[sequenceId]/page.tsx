@@ -537,7 +537,14 @@ export default function SequenceDetailPage() {
                   accept={mediaType === 'audio' ? 'audio/*' : 'video/*'}
                   currentUrl={mediaUrl}
                   onUpload={(url) => setMediaUrl(url)}
-                  onDurationDetected={(seconds) => setMediaDuration(seconds)}
+                  onDurationDetected={async (seconds) => {
+                    setMediaDuration(seconds);
+                    // Auto-save duration to DB
+                    await supabase
+                      .from('sequences')
+                      .update({ course_duration_seconds: seconds })
+                      .eq('id', sequenceId);
+                  }}
                 />
                 <p className="text-sm text-gray-500 mt-2">
                   Formats acceptés : {mediaType === 'audio' ? 'MP3, WAV, M4A' : 'MP4, WebM'} — Max 50MB
