@@ -283,17 +283,17 @@ export default function TestModePage() {
                       {uf.formation?.title || 'Formation inconnue'}
                     </h3>
                     <p className="text-sm text-gray-500">
-                      Progression : Séquence {uf.current_sequence} / {uf.formation?.total_sequences || 15}
+                      Progression : Séquence {uf.current_sequence} / {uf.formation?.total_sequences || 16}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    uf.current_sequence >= (uf.formation?.total_sequences || 15)
+                    uf.current_sequence >= (uf.formation?.total_sequences || 16)
                       ? 'bg-green-100 text-green-700'
                       : 'bg-orange-100 text-orange-700'
                   }`}>
-                    {uf.current_sequence >= (uf.formation?.total_sequences || 15)
+                    {uf.current_sequence >= (uf.formation?.total_sequences || 16)
                       ? 'Tout débloqué'
                       : `${uf.current_sequence} débloquée${uf.current_sequence > 1 ? 's' : ''}`}
                   </span>
@@ -311,7 +311,7 @@ export default function TestModePage() {
                   <div className="flex flex-wrap gap-3 mb-4">
                     {/* Débloquer tout */}
                     <button
-                      onClick={() => unlockAllSequences(uf.id, uf.formation?.total_sequences || 15)}
+                      onClick={() => unlockAllSequences(uf.id, uf.formation?.total_sequences || 16)}
                       disabled={processing === uf.id}
                       className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors"
                     >
@@ -340,7 +340,7 @@ export default function TestModePage() {
                       Ou définir une séquence spécifique :
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {Array.from({ length: uf.formation?.total_sequences || 15 }, (_, i) => i + 1).map((num) => (
+                      {Array.from({ length: uf.formation?.total_sequences || 16 }, (_, i) => i + 1).map((num) => (
                         <button
                           key={num}
                           onClick={() => setSpecificSequence(uf.id, num)}

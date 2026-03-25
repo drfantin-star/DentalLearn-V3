@@ -28,7 +28,7 @@ export default function EditFormationPage() {
     description_long: '',
     category: 'esthetique',
     level: 'intermediate',
-    total_sequences: 15,
+    total_sequences: 16,
     duration_weeks: 8,
   });
   const router = useRouter();
@@ -59,7 +59,7 @@ export default function EditFormationPage() {
         description_long: data.description_long || '',
         category: data.category || 'esthetique',
         level: data.level || 'intermediate',
-        total_sequences: data.total_sequences || 15,
+        total_sequences: data.total_sequences || 16,
         duration_weeks: data.duration_weeks || 8,
       });
     } catch (error) {

@@ -309,7 +309,7 @@ export default function FormationDetailPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Séquences</h2>
             <p className="text-sm text-gray-500">
-              {sequences.length} séquence{sequences.length > 1 ? 's' : ''} • Objectif: 15 séquences
+              {sequences.length} séquence{sequences.length > 1 ? 's' : ''} • Objectif: 16 séquences
             </p>
           </div>
           <Link
@@ -413,12 +413,12 @@ export default function FormationDetailPage() {
           <div>
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-600">Séquences</span>
-              <span className="font-medium">{sequences.length}/15</span>
+              <span className="font-medium">{sequences.length}/16</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
                 className="bg-[#2D1B96] h-2 rounded-full transition-all"
-                style={{ width: `${(sequences.length / 15) * 100}%` }}
+                style={{ width: `${(sequences.length / 16) * 100}%` }}
               />
             </div>
           </div>
@@ -436,7 +436,7 @@ export default function FormationDetailPage() {
           </div>
         </div>
         
-        {sequences.length === 15 && totalQuestions === 60 && (
+        {sequences.length === 16 && totalQuestions === 60 && (
           <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-green-700 text-sm font-medium">
               ✓ Formation complète ! Prête à être publiée.
