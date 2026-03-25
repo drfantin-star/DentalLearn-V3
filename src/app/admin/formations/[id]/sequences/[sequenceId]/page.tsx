@@ -411,8 +411,30 @@ export default function SequenceDetailPage() {
       <div className="bg-white rounded-xl border border-gray-200 p-6">
         <div className="flex flex-wrap gap-6">
           <div>
-            <p className="text-sm text-gray-500">Durée</p>
-            <p className="font-medium">{sequence.estimated_duration_minutes} minutes</p>
+            <p className="text-sm text-gray-500">Durée estimée</p>
+            {(() => {
+              const mediaSeconds = Number(mediaDuration) || 0;
+              const qcmSeconds = questions.length * 30; // ~30s par question
+              const memoSeconds = infographicUrl ? 120 : 0; // ~2 min lecture fiche mémo
+              const totalSeconds = mediaSeconds + qcmSeconds + memoSeconds;
+              if (totalSeconds === 0) {
+                return <p className="font-medium">{sequence.estimated_duration_minutes} minutes</p>;
+              }
+              const min = Math.floor(totalSeconds / 60);
+              const sec = totalSeconds % 60;
+              return (
+                <div>
+                  <p className="font-medium">
+                    {min > 0 ? `${min} min` : ''}{sec > 0 ? ` ${sec.toString().padStart(2, '0')}s` : ''}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Média{mediaSeconds > 0 ? ` ${Math.floor(mediaSeconds / 60)}min${(mediaSeconds % 60) > 0 ? String(mediaSeconds % 60).padStart(2, '0') + 's' : ''}` : ' —'}
+                    {' + '}QCM ~{qcmSeconds > 0 ? `${Math.floor(qcmSeconds / 60)}min${(qcmSeconds % 60) > 0 ? String(qcmSeconds % 60).padStart(2, '0') + 's' : ''}` : '—'}
+                    {memoSeconds > 0 ? ' + Mémo ~2min' : ''}
+                  </p>
+                </div>
+              );
+            })()}
           </div>
           <div>
             <p className="text-sm text-gray-500">Questions</p>
@@ -515,6 +537,7 @@ export default function SequenceDetailPage() {
                   accept={mediaType === 'audio' ? 'audio/*' : 'video/*'}
                   currentUrl={mediaUrl}
                   onUpload={(url) => setMediaUrl(url)}
+                  onDurationDetected={(seconds) => setMediaDuration(seconds)}
                 />
                 <p className="text-sm text-gray-500 mt-2">
                   Formats acceptés : {mediaType === 'audio' ? 'MP3, WAV, M4A' : 'MP4, WebM'} — Max 50MB

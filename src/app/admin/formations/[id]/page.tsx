@@ -39,9 +39,17 @@ interface Sequence {
   title: string;
   estimated_duration_minutes: number;
   course_duration_seconds: number | null;
+  infographic_url: string | null;
   learning_objectives: string[];
   created_at: string;
   questions_count?: number;
+}
+
+function getSequenceTotalSeconds(seq: Sequence): number {
+  const media = seq.course_duration_seconds || 0;
+  const qcm = (seq.questions_count || 0) * 30; // ~30s par question
+  const memo = seq.infographic_url ? 120 : 0; // ~2 min lecture fiche mémo
+  return media + qcm + memo;
 }
 
 function formatDuration(totalSeconds: number): string {
@@ -200,7 +208,7 @@ export default function FormationDetailPage() {
   }
 
   const totalQuestions = sequences.reduce((acc, seq) => acc + (seq.questions_count || 0), 0);
-  const totalMediaDurationSeconds = sequences.reduce((acc, seq) => acc + (seq.course_duration_seconds || 0), 0);
+  const totalDurationSeconds = sequences.reduce((acc, seq) => acc + getSequenceTotalSeconds(seq), 0);
 
   return (
     <div className="p-8 space-y-6">
@@ -268,9 +276,9 @@ export default function FormationDetailPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-900">
-                {totalMediaDurationSeconds > 0 ? formatDuration(totalMediaDurationSeconds) : '—'}
+                {totalDurationSeconds > 0 ? formatDuration(totalDurationSeconds) : '—'}
               </p>
-              <p className="text-sm text-gray-500">Durée médias</p>
+              <p className="text-sm text-gray-500">Durée totale</p>
             </div>
           </div>
         </div>
@@ -350,9 +358,12 @@ export default function FormationDetailPage() {
                   </Link>
                   <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
                     <span>
-                      {sequence.course_duration_seconds
-                        ? formatSequenceDuration(sequence.course_duration_seconds)
-                        : `${sequence.estimated_duration_minutes} min`}
+                      {(() => {
+                        const total = getSequenceTotalSeconds(sequence);
+                        return total > 0
+                          ? formatSequenceDuration(total)
+                          : `${sequence.estimated_duration_minutes} min`;
+                      })()}
                     </span>
                     <span>•</span>
                     <span className={sequence.questions_count === 4 ? 'text-green-600' : 'text-orange-600'}>
