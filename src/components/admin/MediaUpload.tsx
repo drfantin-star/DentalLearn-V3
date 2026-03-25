@@ -10,6 +10,7 @@ interface MediaUploadProps {
   accept: string;
   currentUrl: string;
   onUpload: (url: string) => void;
+  onDurationDetected?: (seconds: number) => void;
   label?: string;
 }
 
@@ -52,6 +53,7 @@ export default function MediaUpload({
   accept,
   currentUrl,
   onUpload,
+  onDurationDetected,
   label
 }: MediaUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
@@ -208,7 +210,15 @@ export default function MediaUpload({
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <audio controls className="w-full" preload="metadata">
+              <audio
+                controls
+                className="w-full"
+                preload="metadata"
+                onLoadedMetadata={(e) => {
+                  const duration = Math.round((e.target as HTMLAudioElement).duration);
+                  if (duration > 0 && onDurationDetected) onDurationDetected(duration);
+                }}
+              >
                 <source src={currentUrl} />
                 Votre navigateur ne supporte pas la lecture audio.
               </audio>
@@ -233,7 +243,15 @@ export default function MediaUpload({
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <video controls className="w-full rounded-lg" preload="metadata">
+              <video
+                controls
+                className="w-full rounded-lg"
+                preload="metadata"
+                onLoadedMetadata={(e) => {
+                  const duration = Math.round((e.target as HTMLVideoElement).duration);
+                  if (duration > 0 && onDurationDetected) onDurationDetected(duration);
+                }}
+              >
                 <source src={currentUrl} />
                 Votre navigateur ne supporte pas la lecture vidéo.
               </video>
