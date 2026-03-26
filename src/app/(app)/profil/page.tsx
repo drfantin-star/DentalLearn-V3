@@ -56,6 +56,9 @@ export default function ProfilPage() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
 
   const [ordreInscriptionDate, setOrdreInscriptionDate] = useState<string | null>(null);
+  const [actionsParAxe, setActionsParAxe] = useState({
+    axe1: 0, axe2: 0, axe3: 0, axe4: 0
+  });
 
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -69,6 +72,27 @@ export default function ProfilPage() {
 
   useEffect(() => {
     checkUserAndLoadData();
+  }, []);
+
+  useEffect(() => {
+    const loadCPProgress = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .rpc('get_user_cp_progress', { p_user_id: user.id });
+
+      if (data && !error) {
+        setActionsParAxe({
+          axe1: data.axe1 || 0,
+          axe2: data.axe2 || 0,
+          axe3: data.axe3 || 0,
+          axe4: data.axe4 || 0
+        });
+      }
+    };
+
+    loadCPProgress();
   }, []);
 
   const checkUserAndLoadData = async () => {
@@ -252,14 +276,6 @@ export default function ProfilPage() {
     } catch (error: any) {
       setMessage({ type: 'error', text: 'Erreur lors de la mise à jour' });
     }
-  };
-
-  // Données mockées pour les actions par axe (à remplacer par vraies requêtes)
-  const actionsParAxe = {
-    axe1: 1,
-    axe2: 0,
-    axe3: 0,
-    axe4: 0
   };
 
   const formatDate = (dateString: string) => {
