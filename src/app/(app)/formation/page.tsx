@@ -1,166 +1,60 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
-  ChevronLeft,
-  ChevronRight,
-  Flame,
-  BookOpen,
   Loader2,
-  Heart,
+  Flame,
+  ChevronRight,
+  ClipboardCheck,
+  Gamepad2,
 } from 'lucide-react'
-
-// Hooks Supabase
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 import {
-  useFormations,
-  useUserFormationProgress,
+  CATEGORY_CONFIG,
+  DEFAULT_CATEGORY_CONFIG,
   getCategoryConfig,
-  CATEGORIES,
   type Formation,
-  type Sequence,
-  type CategoryConfig,
 } from '@/lib/supabase'
 
-// Composants
-import FormationDetail from '@/components/formation/FormationDetail'
-import SequencePlayer from '@/components/formation/SequencePlayer'
+// ============================================
+// THEMES CONFIG (avec icônes enrichies)
+// ============================================
+
+const THEMES_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
+  'esthetique': { label: 'Esthétique Dentaire', icon: '✨', color: '#8B5CF6' },
+  'restauratrice': { label: 'Dentisterie Restauratrice', icon: '🦷', color: '#F59E0B' },
+  'endodontie': { label: 'Endodontie', icon: '🔬', color: '#6366F1' },
+  'chirurgie': { label: 'Chirurgie Orale', icon: '🔪', color: '#EF4444' },
+  'implant': { label: 'Implantologie', icon: '🔩', color: '#10B981' },
+  'prothese': { label: 'Prothèse', icon: '👄', color: '#F97316' },
+  'parodontologie': { label: 'Parodontologie', icon: '🫧', color: '#EC4899' },
+  'radiologie': { label: 'Radiologie', icon: '📡', color: '#14B8A6' },
+  'ergonomie': { label: 'Ergonomie', icon: '🪑', color: '#F59E0B' },
+  'relation-patient': { label: 'Relation Patient', icon: '🤝', color: '#F97316' },
+  'sante-pro': { label: 'Santé du Praticien', icon: '💚', color: '#10B981' },
+  'numerique': { label: 'Numérique & IA', icon: '🤖', color: '#6366F1' },
+  'environnement': { label: 'Environnement', icon: '🌿', color: '#22C55E' },
+  'management': { label: 'Management', icon: '💼', color: '#78716C' },
+  'organisation': { label: 'Organisation', icon: '📋', color: '#64748B' },
+  'soft-skills': { label: 'Soft Skills', icon: '🤝', color: '#D97706' },
+}
+
+function getThemeConfig(slug: string) {
+  return THEMES_CONFIG[slug] || { label: slug, icon: '📚', color: '#6B7280' }
+}
 
 // ============================================
 // TYPES
 // ============================================
 
-type ViewMode = 'catalog' | 'category' | 'formation' | 'sequence'
-type Category = CategoryConfig & { id: string }
-
-// ============================================
-// COMPOSANTS — Grilles catégories
-// ============================================
-
-function CategoryGrid({ cats, onSelect, cols = 4 }: { cats: Category[]; onSelect: (cat: Category) => void; cols?: number }) {
-  const gridCols = cols === 3
-    ? 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
-    : 'grid-cols-4 md:grid-cols-6 lg:grid-cols-8'
-  return (
-    <div className={`grid ${gridCols} gap-3`}>
-      {cats.map((cat) => (
-        <button
-          key={cat.id}
-          onClick={() => onSelect(cat)}
-          className={`flex flex-col items-center p-3 rounded-2xl border transition-all hover:shadow-md active:scale-95 ${cat.bgColor} border-gray-100`}
-        >
-          <span className="text-2xl mb-1">{cat.emoji}</span>
-          <span className={`text-[11px] font-semibold ${cat.textColor} text-center leading-tight`}>
-            {cat.shortName}
-          </span>
-        </button>
-      ))}
-    </div>
-  )
-}
-
-// ============================================
-// COMPOSANT — Carte formation
-// ============================================
-
-function FormationCard({ formation, onSelect }: { formation: Formation; onSelect: () => void }) {
-  const config = getCategoryConfig(formation.category)
-
-  return (
-    <button
-      onClick={onSelect}
-      className="w-full flex items-center gap-3 p-3 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all text-left"
-    >
-      <div className={`w-10 h-10 rounded-xl ${config.bgColor} flex items-center justify-center shrink-0`}>
-        <span className="text-xl">{config.emoji}</span>
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-          <h3 className="font-semibold text-sm text-gray-800 truncate">
-            {formation.title}
-          </h3>
-          {formation.cp_eligible && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-200">
-              CP
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3 text-[11px] text-gray-400">
-          <span>{formation.instructor_name}</span>
-          <span>{formation.total_sequences} séq.</span>
-        </div>
-      </div>
-
-      {/* Likes count */}
-      {formation.likes_count > 0 && (
-        <div className="flex items-center gap-1 text-pink-500 shrink-0 mr-1">
-          <Heart size={14} className="fill-pink-500" />
-          <span className="text-xs font-semibold">{formation.likes_count}</span>
-        </div>
-      )}
-
-      <ChevronRight size={16} className="text-gray-300 shrink-0" />
-    </button>
-  )
-}
-
-// ============================================
-// COMPOSANT — Vue catégorie
-// ============================================
-
-function CategoryDetailView({
-  category,
-  formations,
-  onBack,
-  onSelectFormation,
-}: {
-  category: Category
-  formations: Formation[]
-  onBack: () => void
-  onSelectFormation: (f: Formation) => void
-}) {
-  const categoryFormations = formations.filter(
-    (f) => f.category?.toLowerCase() === category.id.toLowerCase()
-  )
-
-  return (
-    <>
-      <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors"
-            >
-              <ChevronLeft size={20} className="text-gray-600" />
-            </button>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{category.emoji}</span>
-              <h1 className="text-lg font-bold text-gray-900">{category.name}</h1>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          {categoryFormations.map((f) => (
-            <FormationCard
-              key={f.id}
-              formation={f}
-              onSelect={() => onSelectFormation(f)}
-            />
-          ))}
-        </div>
-
-        {categoryFormations.length === 0 && (
-          <p className="text-gray-400 text-sm text-center py-8">
-            Aucune formation dans cette catégorie
-          </p>
-        )}
-      </main>
-    </>
-  )
+interface ThemeData {
+  slug: string
+  label: string
+  icon: string
+  color: string
+  formationsCount: number
+  hasEpp: boolean
 }
 
 // ============================================
@@ -168,110 +62,77 @@ function CategoryDetailView({
 // ============================================
 
 export default function FormationPage() {
-  // Récupérer les formations depuis Supabase
-  const { formations, loading, error } = useFormations({ isPublished: true })
+  const [themes, setThemes] = useState<ThemeData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
 
-  // États de navigation
-  const [viewMode, setViewMode] = useState<ViewMode>('catalog')
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null)
-  const [selectedFormationId, setSelectedFormationId] = useState<string | null>(null)
-  const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
-  const [sequenceGradient, setSequenceGradient] = useState<{ from: string; to: string }>({ from: '#8B5CF6', to: '#A78BFA' })
+  useEffect(() => {
+    async function loadThemes() {
+      try {
+        const supabase = createClient()
 
-  // Hook pour la progression (mode preview)
-  const { markCompleted } = useUserFormationProgress(selectedFormationId)
+        // 1. Charger les formations publiées groupées par category
+        const { data: formations, error: fError } = await supabase
+          .from('formations')
+          .select('id, category')
+          .eq('is_published', true)
 
-  const cpCategories = CATEGORIES.filter((c) => c.type === 'cp')
-  const bonusCategories = CATEGORIES.filter((c) => c.type === 'bonus')
+        if (fError) throw fError
 
-  // Navigation handlers
-  const openCategory = (cat: Category) => {
-    setSelectedCategory(cat)
-    setViewMode('category')
-  }
+        // 2. Charger les audits EPP publiés avec theme_slug
+        const { data: eppAudits, error: eError } = await supabase
+          .from('epp_audits')
+          .select('id, theme_slug')
+          .eq('is_published', true)
 
-  const openFormation = (f: Formation) => {
-    setSelectedFormationId(f.id)
-    const config = getCategoryConfig(f.category)
-    setSequenceGradient(config.gradient)
-    setViewMode('formation')
-  }
+        if (eError) throw eError
 
-  const openSequence = (seq: Sequence) => {
-    setSelectedSequence(seq)
-    setViewMode('sequence')
-  }
+        // 3. Grouper par catégorie
+        const categoryMap = new Map<string, { count: number; hasEpp: boolean }>()
 
-  const goBack = () => {
-    if (viewMode === 'sequence') {
-      setSelectedSequence(null)
-      setViewMode('formation')
-    } else if (viewMode === 'formation') {
-      setSelectedFormationId(null)
-      setViewMode(selectedCategory ? 'category' : 'catalog')
-    } else if (viewMode === 'category') {
-      setSelectedCategory(null)
-      setViewMode('catalog')
+        for (const f of formations || []) {
+          const cat = f.category?.toLowerCase() || 'autre'
+          const existing = categoryMap.get(cat) || { count: 0, hasEpp: false }
+          existing.count++
+          categoryMap.set(cat, existing)
+        }
+
+        // Marquer les catégories ayant un audit EPP
+        for (const audit of eppAudits || []) {
+          if (audit.theme_slug) {
+            const existing = categoryMap.get(audit.theme_slug) || { count: 0, hasEpp: false }
+            existing.hasEpp = true
+            categoryMap.set(audit.theme_slug, existing)
+          }
+        }
+
+        // 4. Construire la liste des thématiques
+        const themesList: ThemeData[] = Array.from(categoryMap.entries())
+          .map(([slug, data]) => {
+            const config = getThemeConfig(slug)
+            return {
+              slug,
+              label: config.label,
+              icon: config.icon,
+              color: config.color,
+              formationsCount: data.count,
+              hasEpp: data.hasEpp,
+            }
+          })
+          .sort((a, b) => a.label.localeCompare(b.label))
+
+        setThemes(themesList)
+      } catch (err) {
+        console.error('Erreur loadThemes:', err)
+        setError(err instanceof Error ? err : new Error('Erreur inconnue'))
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  const handleSequenceComplete = (score: number, totalPoints: number) => {
-    console.log('✅ Séquence terminée:', { score, totalPoints })
-    
-    // Marquer comme complétée (localement en mode preview)
-    if (selectedSequence) {
-      markCompleted(selectedSequence.id, selectedSequence.sequence_number + 1)
-    }
-    
-    setSelectedSequence(null)
-    setViewMode('formation')
-  }
+    loadThemes()
+  }, [])
 
-  // ============================================
-  // RENDU — Sequence Player
-  // ============================================
-  if (viewMode === 'sequence' && selectedSequence) {
-    return (
-      <SequencePlayer
-        sequence={selectedSequence}
-        categoryGradient={sequenceGradient}
-        onBack={goBack}
-        onComplete={handleSequenceComplete}
-      />
-    )
-  }
-
-  // ============================================
-  // RENDU — Formation Detail
-  // ============================================
-  if (viewMode === 'formation' && selectedFormationId) {
-    return (
-      <FormationDetail
-        formationId={selectedFormationId}
-        onBack={goBack}
-        onStartSequence={openSequence}
-      />
-    )
-  }
-
-  // ============================================
-  // RENDU — Category Detail
-  // ============================================
-  if (viewMode === 'category' && selectedCategory) {
-    return (
-      <CategoryDetailView
-        category={selectedCategory}
-        formations={formations}
-        onBack={goBack}
-        onSelectFormation={openFormation}
-      />
-    )
-  }
-
-  // ============================================
-  // RENDU — Catalogue principal
-  // ============================================
-  
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -302,60 +163,74 @@ export default function FormationPage() {
         <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <h1 className="text-2xl font-black text-gray-900">Formations</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            Connaissances &amp; compétences · Axes 1 &amp; 2
+            Connaissances &amp; compétences &middot; Axes 1 &amp; 2
           </p>
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8">
-        {/* Spécialités cliniques */}
-        <section>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">
-            Spécialités cliniques
-          </h2>
-          <CategoryGrid cats={cpCategories} onSelect={openCategory} />
-        </section>
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-6">
 
-        {/* Développement professionnel */}
-        {bonusCategories.length > 0 && (
-          <section>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">
-              Développement professionnel
-            </h2>
-            <CategoryGrid cats={bonusCategories} onSelect={openCategory} cols={3} />
-          </section>
-        )}
-
-        {/* Populaires */}
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <Flame size={20} className="text-orange-500" />
-            <h2 className="text-lg font-bold text-gray-900">Populaires</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {formations.slice(0, 5).map((f) => (
-              <FormationCard
-                key={f.id}
-                formation={f}
-                onSelect={() => openFormation(f)}
-              />
-            ))}
-          </div>
-          {formations.length === 0 && (
-            <p className="text-gray-400 text-sm text-center py-4">
-              Aucune formation publiée
-            </p>
-          )}
-        </section>
-
-        {/* Info mode preview */}
-        <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 flex items-start gap-3">
-          <BookOpen size={20} className="text-blue-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-700">
-            🔓 <strong>Mode Preview</strong> — Toutes les séquences sont accessibles 
-            pour tester. Connectez-vous pour sauvegarder votre progression.
+        {/* Info box */}
+        <div className="bg-indigo-50 rounded-2xl p-4 border border-indigo-100">
+          <p className="text-xs text-indigo-700 leading-relaxed">
+            <strong>Certification Périodique</strong> — Chaque thématique peut contenir
+            une formation gamifiée (Axe 1) et/ou un audit EPP (Axe 2).
+            Choisissez une thématique pour commencer.
           </p>
         </div>
+
+        {/* Grille des thématiques */}
+        {themes.length === 0 ? (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <p className="text-gray-500 text-sm">Aucune thématique disponible</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {themes.map((theme) => (
+              <Link
+                key={theme.slug}
+                href={`/formation/${theme.slug}`}
+                className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-md hover:scale-[1.01] transition-all active:scale-[0.99]"
+              >
+                <div className="flex items-start gap-3">
+                  {/* Icône thématique */}
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: theme.color + '15' }}
+                  >
+                    <span className="text-2xl">{theme.icon}</span>
+                  </div>
+
+                  {/* Contenu */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 text-[15px]">
+                      {theme.label}
+                    </h3>
+
+                    {/* Badges Axe 1 / Axe 2 */}
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                        <Gamepad2 size={10} />
+                        Formation
+                      </span>
+                      {theme.hasEpp && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
+                          <ClipboardCheck size={10} />
+                          Audit EPP
+                        </span>
+                      )}
+                      <span className="text-[10px] text-gray-400">
+                        {theme.formationsCount} formation{theme.formationsCount > 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+
+                  <ChevronRight size={16} className="text-gray-300 mt-3 shrink-0" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </main>
     </>
   )
