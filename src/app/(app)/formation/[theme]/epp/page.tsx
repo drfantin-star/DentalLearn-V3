@@ -89,6 +89,15 @@ export default function EppPage() {
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // State machine
+  type EppState = 'presentation' | 'resultats'
+  const [eppState, setEppState] = useState<EppState>('presentation')
+
+  // État 3 — Résultats
+  const [responses, setResponses] = useState<Record<string, Record<string, 'oui' | 'non' | 'na'>>>({})
+  const [planActions, setPlanActions] = useState<Record<string, string>>({})
+  const [savingPlan, setSavingPlan] = useState(false)
+
   const themeConfig = THEMES_CONFIG[themeSlug] || { label: themeSlug, icon: '📚' }
 
   useEffect(() => {
@@ -138,7 +147,28 @@ export default function EppPage() {
           .eq('audit_id', auditData.id)
           .order('tour')
 
-        if (sessionsData) setSessions(sessionsData)
+        if (sessionsData) {
+          setSessions(sessionsData)
+
+          // Charger les réponses existantes pour les résultats
+          const completedT1 = sessionsData.find(s => s.tour === 1 && s.completed_at)
+          if (completedT1) {
+            const { data: respData } = await supabase
+              .from('user_epp_responses')
+              .select('dossier_number, criterion_id, response')
+              .eq('session_id', completedT1.id)
+
+            if (respData && respData.length > 0) {
+              const loaded: Record<string, Record<string, 'oui' | 'non' | 'na'>> = {}
+              for (const r of respData) {
+                const key = String(r.dossier_number)
+                if (!loaded[key]) loaded[key] = {}
+                loaded[key][r.criterion_id] = r.response as 'oui' | 'non' | 'na'
+              }
+              setResponses(loaded)
+            }
+          }
+        }
       }
     } catch (err) {
       console.error('Erreur loadData EPP:', err)
@@ -185,6 +215,23 @@ export default function EppPage() {
     }
   }
 
+  // Sauvegarder le plan d'actions
+  const savePlanActions = async () => {
+    if (!t1Session) return
+    setSavingPlan(true)
+    try {
+      const supabase = createClient()
+      await supabase
+        .from('user_epp_sessions')
+        .update({ plan_actions: planActions })
+        .eq('id', t1Session.id)
+    } catch (err) {
+      console.error('Erreur savePlanActions:', err)
+    } finally {
+      setSavingPlan(false)
+    }
+  }
+
   const t1Session = sessions.find(s => s.tour === 1)
   const t2Session = sessions.find(s => s.tour === 2)
 
@@ -222,6 +269,162 @@ export default function EppPage() {
       </div>
     )
   }
+
+  // ============================================
+  // RENDU — État 3 : Résultats T1
+  // ============================================
+
+  if (eppState === 'resultats' && t1Session?.completed_at) {
+    // Calculs résultats par critère
+    const criteriaStats = criteria.map(c => {
+      let oui = 0, non = 0, na = 0
+      Object.entries(responses).forEach(([, dossier]) => {
+        const r = dossier[c.id]
+        if (r === 'oui') oui++
+        else if (r === 'non') non++
+        else if (r === 'na') na++
+      })
+      const pct = oui + non > 0 ? Math.round((oui / (oui + non)) * 100) : null
+      return { ...c, oui, non, na, pct }
+    })
+
+    const score = t1Session.score_global || 0
+    const scoreColor = score >= 80 ? '#16A34A' : score >= 60 ? '#D97706' : '#DC2626'
+    const circumference = 2 * Math.PI * 40
+    const dash = (score / 100) * circumference
+
+    const weakCriteria = criteriaStats.filter(c => c.pct !== null && c.pct < 80)
+      .sort((a, b) => (a.pct || 0) - (b.pct || 0))
+
+    return (
+      <>
+        <header className="bg-white sticky top-0 z-30 shadow-sm">
+          <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+            <button onClick={() => setEppState('presentation')} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors">
+              <ChevronLeft size={20} className="text-gray-600" />
+            </button>
+            <h1 className="text-lg font-bold text-gray-900">Résultats Tour 1</h1>
+          </div>
+        </header>
+
+        <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
+
+          {/* Score global */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center">
+            <p className="text-sm font-semibold text-gray-500 mb-4">Score de conformité T1</p>
+            <svg width="100" height="100" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="40" fill="none" stroke="#F3F4F6" strokeWidth="10" />
+              <circle
+                cx="50" cy="50" r="40" fill="none"
+                stroke={scoreColor} strokeWidth="10"
+                strokeDasharray={`${dash} ${circumference}`}
+                strokeLinecap="round"
+                transform="rotate(-90 50 50)"
+              />
+              <text x="50" y="50" textAnchor="middle" dominantBaseline="central"
+                fontSize="20" fontWeight="bold" fill={scoreColor}>
+                {score.toFixed(0)}%
+              </text>
+            </svg>
+            <p className="text-xs text-gray-400 mt-2">
+              sur {t1Session.nb_dossiers} dossiers évalués
+            </p>
+          </div>
+
+          {/* Résultats par critère */}
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-sm">Détail par critère</h3>
+            </div>
+            {criteriaStats.map(c => {
+              const rowBg = c.pct === null ? '' :
+                c.pct >= 80 ? 'bg-green-50' :
+                c.pct >= 60 ? 'bg-orange-50' : 'bg-red-50'
+              const pctColor = c.pct === null ? 'text-gray-400' :
+                c.pct >= 80 ? 'text-green-700' :
+                c.pct >= 60 ? 'text-orange-600' : 'text-red-600'
+              const typeBg = c.type === 'R' ? 'bg-purple-100 text-purple-700' :
+                             c.type === 'P' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+              return (
+                <div key={c.id} className={`px-4 py-3 border-b border-gray-50 last:border-0 ${rowBg}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${typeBg}`}>{c.code}</span>
+                    <p className="text-xs text-gray-700 flex-1 leading-snug">{c.label}</p>
+                    <span className={`text-sm font-bold ${pctColor}`}>
+                      {c.pct !== null ? `${c.pct}%` : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex gap-3 text-[10px] text-gray-400 ml-7">
+                    <span className="text-green-600">{c.oui} OUI</span>
+                    <span className="text-red-500">{c.non} NON</span>
+                    {c.na > 0 && <span>— {c.na} NA</span>}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Plan d'actions */}
+          {weakCriteria.length > 0 && (
+            <div className="bg-white rounded-2xl border border-orange-100 p-4">
+              <h3 className="font-semibold text-gray-900 text-sm mb-1">
+                Axes d&apos;amélioration prioritaires
+              </h3>
+              <p className="text-xs text-gray-400 mb-3">
+                Critères en dessous de 80% — notez vos actions correctives
+              </p>
+              <div className="space-y-3">
+                {weakCriteria.map(c => (
+                  <div key={c.id}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">{c.code}</span>
+                      <span className="text-xs text-gray-600">{c.pct}% de conformité</span>
+                    </div>
+                    <textarea
+                      rows={2}
+                      placeholder="Action corrective prévue..."
+                      value={planActions[c.code] || ''}
+                      onChange={e => setPlanActions(prev => ({ ...prev, [c.code]: e.target.value }))}
+                      className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:border-teal-400"
+                    />
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={savePlanActions}
+                disabled={savingPlan}
+                className="w-full mt-3 h-11 bg-[#0F7B6C] text-white text-sm font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {savingPlan ? <Loader2 size={16} className="animate-spin" /> : null}
+                Sauvegarder le plan d&apos;actions
+              </button>
+            </div>
+          )}
+
+          {/* Conclusion */}
+          <div className="bg-teal-50 rounded-2xl border border-teal-100 p-4 text-center">
+            <CheckCircle2 size={32} className="text-teal-600 mx-auto mb-2" />
+            <p className="font-semibold text-teal-800 mb-1">Tour 1 complété !</p>
+            <p className="text-xs text-teal-600 mb-4">
+              Mettez en place vos actions d&apos;amélioration, puis revenez dans{' '}
+              {audit.delai_t2_mois_min} à {audit.delai_t2_mois_max} mois pour le Tour 2.
+            </p>
+            <Link
+              href={`/formation/${themeSlug}`}
+              className="inline-block px-6 py-2.5 bg-[#0F7B6C] text-white text-sm font-semibold rounded-xl hover:bg-[#0a5f54] transition-colors"
+            >
+              Retour à la thématique
+            </Link>
+          </div>
+
+        </main>
+      </>
+    )
+  }
+
+  // ============================================
+  // RENDU — État 1 : Présentation
+  // ============================================
 
   return (
     <>
@@ -361,6 +564,17 @@ export default function EppPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Bouton voir résultats T1 */}
+        {t1Session?.completed_at && !t2Session?.completed_at && (
+          <button
+            onClick={() => setEppState('resultats')}
+            className="w-full flex items-center justify-center gap-2 py-3 bg-[#0F7B6C] text-white text-sm font-semibold rounded-2xl hover:bg-[#0a5f54] transition-colors active:scale-[0.98] shadow-sm"
+          >
+            <ClipboardCheck size={18} />
+            Voir les résultats T1
+          </button>
         )}
 
         {/* Critères d'évaluation */}
