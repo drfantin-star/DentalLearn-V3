@@ -21,6 +21,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { PushNotificationToggle } from '@/components/PushNotificationToggle';
+import RadarCP from '@/components/profile/RadarCP';
 
 interface UserProfile {
   id: string;
@@ -29,6 +30,7 @@ interface UserProfile {
   last_name: string | null;
   profile_photo_url: string | null;
   created_at: string;
+  ordre_inscription_date: string | null;
 }
 
 interface UserStats {
@@ -52,6 +54,8 @@ export default function ProfilPage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+
+  const [ordreInscriptionDate, setOrdreInscriptionDate] = useState<string | null>(null);
 
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -100,7 +104,7 @@ export default function ProfilPage() {
         .single();
 
       setProfile({
-        ...(createdProfile || { id: userId, first_name: null, last_name: null, profile_photo_url: null, created_at: new Date().toISOString() }),
+        ...(createdProfile || { id: userId, first_name: null, last_name: null, profile_photo_url: null, created_at: new Date().toISOString(), ordre_inscription_date: null }),
         email
       });
     } else if (existingProfile) {
@@ -108,6 +112,7 @@ export default function ProfilPage() {
       setFirstName(existingProfile.first_name || '');
       setLastName(existingProfile.last_name || '');
       setPhotoUrl(existingProfile.profile_photo_url);
+      setOrdreInscriptionDate(existingProfile.ordre_inscription_date || null);
     }
   };
 
@@ -227,6 +232,34 @@ export default function ProfilPage() {
     } finally {
       setPasswordSaving(false);
     }
+  };
+
+  const handleUpdateOrdreDate = async (value: string) => {
+    if (!user) return;
+    const dateValue = value || null;
+    setOrdreInscriptionDate(dateValue);
+
+    try {
+      const { error } = await supabase
+        .from('user_profiles')
+        .update({ ordre_inscription_date: dateValue, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      setProfile(prev => prev ? { ...prev, ordre_inscription_date: dateValue } : null);
+      setMessage({ type: 'success', text: 'Date d\'inscription mise à jour !' });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error: any) {
+      setMessage({ type: 'error', text: 'Erreur lors de la mise à jour' });
+    }
+  };
+
+  // Données mockées pour les actions par axe (à remplacer par vraies requêtes)
+  const actionsParAxe = {
+    axe1: 1,
+    axe2: 0,
+    axe3: 0,
+    axe4: 0
   };
 
   const formatDate = (dateString: string) => {
@@ -424,6 +457,29 @@ export default function ProfilPage() {
               <p className="text-xs text-gray-500">Séquences</p>
             </div>
           </div>
+        </div>
+
+        {/* Radar Certification Périodique */}
+        <RadarCP
+          ordreInscriptionDate={profile?.ordre_inscription_date ?? null}
+          actionsParAxe={actionsParAxe}
+        />
+
+        {/* Inscription à l'Ordre */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <h3 className="font-semibold text-gray-900 mb-3">Inscription à l&apos;Ordre</h3>
+          <label className="block text-sm text-gray-600 mb-1">
+            Date d&apos;inscription
+          </label>
+          <input
+            type="date"
+            value={ordreInscriptionDate || ''}
+            onChange={(e) => handleUpdateOrdreDate(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+          />
+          <p className="text-xs text-gray-400 mt-2">
+            Cette date détermine votre période de certification périodique.
+          </p>
         </div>
 
         {/* Notifications */}
