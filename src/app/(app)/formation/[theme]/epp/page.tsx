@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
   ChevronLeft,
+  ChevronRight,
   Loader2,
   ClipboardCheck,
   FileText,
@@ -12,6 +13,8 @@ import {
   AlertCircle,
   Play,
   Info,
+  Minus,
+  Plus,
 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -90,11 +93,20 @@ export default function EppPage() {
   const [error, setError] = useState<string | null>(null)
 
   // State machine
-  type EppState = 'presentation' | 'resultats'
+  type EppState = 'presentation' | 'saisie' | 'resultats'
   const [eppState, setEppState] = useState<EppState>('presentation')
 
-  // État 3 — Résultats
+  // Session active (évite la race condition setSessions/setEppState)
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+
+  // État 2 — Saisie
+  const [nbDossiers, setNbDossiers] = useState<number>(10)
+  const [currentDossier, setCurrentDossier] = useState<number>(1)
   const [responses, setResponses] = useState<Record<string, Record<string, 'oui' | 'non' | 'na'>>>({})
+  const [savingDossier, setSavingDossier] = useState(false)
+  const [dossierChoiceConfirmed, setDossierChoiceConfirmed] = useState(false)
+
+  // État 3 — Résultats
   const [planActions, setPlanActions] = useState<Record<string, string>>({})
   const [savingPlan, setSavingPlan] = useState(false)
 
@@ -150,13 +162,15 @@ export default function EppPage() {
         if (sessionsData) {
           setSessions(sessionsData)
 
-          // Charger les réponses existantes pour les résultats
-          const completedT1 = sessionsData.find(s => s.tour === 1 && s.completed_at)
-          if (completedT1) {
+          const t1 = sessionsData.find(s => s.tour === 1)
+          if (t1) {
+            setActiveSessionId(t1.id)
+
+            // Charger les réponses existantes
             const { data: respData } = await supabase
               .from('user_epp_responses')
               .select('dossier_number, criterion_id, response')
-              .eq('session_id', completedT1.id)
+              .eq('session_id', t1.id)
 
             if (respData && respData.length > 0) {
               const loaded: Record<string, Record<string, 'oui' | 'non' | 'na'>> = {}
@@ -166,6 +180,31 @@ export default function EppPage() {
                 loaded[key][r.criterion_id] = r.response as 'oui' | 'non' | 'na'
               }
               setResponses(loaded)
+
+              if (t1.completed_at) {
+                // T1 terminé → résultats
+                setEppState('resultats')
+              } else {
+                // T1 en cours → reprendre la saisie
+                const maxDossier = Math.max(...respData.map(r => r.dossier_number))
+                const dossierKeys = Object.keys(loaded)
+                const lastComplete = dossierKeys.length > 0 && (criteriaData || []).length > 0 &&
+                  Object.keys(loaded[String(maxDossier)] || {}).length >= (criteriaData || []).length
+                setCurrentDossier(lastComplete ? maxDossier + 1 : maxDossier)
+                if (t1.nb_dossiers) setNbDossiers(t1.nb_dossiers)
+                setDossierChoiceConfirmed(true)
+                setEppState('saisie')
+              }
+            } else if (!t1.completed_at) {
+              // Session en cours sans réponses
+              if (t1.nb_dossiers) {
+                setNbDossiers(t1.nb_dossiers)
+                setDossierChoiceConfirmed(true)
+              }
+              setEppState('saisie')
+            } else {
+              // T1 terminé sans réponses (edge case)
+              setEppState('resultats')
             }
           }
         }
@@ -205,7 +244,9 @@ export default function EppPage() {
       if (sErr) throw sErr
 
       if (session) {
+        setActiveSessionId(session.id)
         setSessions(prev => [...prev, session])
+        setEppState('saisie')
       }
     } catch (err) {
       console.error('Erreur startT1:', err)
@@ -215,16 +256,99 @@ export default function EppPage() {
     }
   }
 
+  // ============================================
+  // État 2 — Fonctions de saisie
+  // ============================================
+
+  const setResponse = (criterionId: string, value: 'oui' | 'non' | 'na') => {
+    const key = String(currentDossier)
+    setResponses(prev => ({
+      ...prev,
+      [key]: { ...(prev[key] || {}), [criterionId]: value }
+    }))
+  }
+
+  const currentResponses = responses[String(currentDossier)] || {}
+  const answeredCount = Object.keys(currentResponses).length
+  const allAnswered = criteria.length > 0 && answeredCount >= criteria.length
+  const isLastDossier = currentDossier >= nbDossiers
+
+  const saveDossierResponses = async (dossierNumber: number) => {
+    if (!activeSessionId) return
+    const dossierResp = responses[String(dossierNumber)]
+    if (!dossierResp) return
+
+    const supabase = createClient()
+    const rows = criteria.map(c => ({
+      session_id: activeSessionId,
+      dossier_number: dossierNumber,
+      criterion_id: c.id,
+      response: dossierResp[c.id] || 'na'
+    }))
+    const { error: insertErr } = await supabase.from('user_epp_responses').insert(rows)
+    if (insertErr) console.error('Erreur save responses:', insertErr)
+  }
+
+  const goNextDossier = async () => {
+    setSavingDossier(true)
+    try {
+      await saveDossierResponses(currentDossier)
+      setCurrentDossier(prev => prev + 1)
+    } finally {
+      setSavingDossier(false)
+    }
+  }
+
+  const finishT1 = async () => {
+    if (!activeSessionId) return
+    setSavingDossier(true)
+    try {
+      // 1. Sauvegarder les réponses du dernier dossier
+      await saveDossierResponses(currentDossier)
+
+      // 2. Calculer le score global
+      let totalOui = 0, totalNon = 0
+      Object.values(responses).forEach(dossier => {
+        Object.values(dossier).forEach(v => {
+          if (v === 'oui') totalOui++
+          else if (v === 'non') totalNon++
+        })
+      })
+      // Inclure le dossier courant (déjà dans responses via setResponse)
+      const scoreGlobal = totalOui + totalNon > 0
+        ? Math.round((totalOui / (totalOui + totalNon)) * 100)
+        : 0
+
+      // 3. Mettre à jour user_epp_sessions
+      const supabase = createClient()
+      await supabase
+        .from('user_epp_sessions')
+        .update({
+          completed_at: new Date().toISOString(),
+          nb_dossiers: nbDossiers,
+          score_global: scoreGlobal
+        })
+        .eq('id', activeSessionId)
+
+      // 4. Recharger les sessions et aller aux résultats
+      await loadData()
+    } catch (err) {
+      console.error('Erreur finishT1:', err)
+    } finally {
+      setSavingDossier(false)
+    }
+  }
+
   // Sauvegarder le plan d'actions
   const savePlanActions = async () => {
-    if (!t1Session) return
+    if (!activeSessionId) return
     setSavingPlan(true)
     try {
       const supabase = createClient()
       await supabase
         .from('user_epp_sessions')
         .update({ plan_actions: planActions })
-        .eq('id', t1Session.id)
+        .eq('id', activeSessionId)
     } catch (err) {
       console.error('Erreur savePlanActions:', err)
     } finally {
@@ -267,6 +391,170 @@ export default function EppPage() {
           </Link>
         </div>
       </div>
+    )
+  }
+
+  // ============================================
+  // RENDU — État 2 : Saisie des dossiers
+  // ============================================
+
+  if (eppState === 'saisie') {
+    // Étape 0 : Choix du nombre de dossiers
+    if (!dossierChoiceConfirmed) {
+      return (
+        <>
+          <header className="bg-white sticky top-0 z-30 shadow-sm">
+            <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+              <button onClick={() => setEppState('presentation')} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors">
+                <ChevronLeft size={20} className="text-gray-600" />
+              </button>
+              <h1 className="text-lg font-bold text-gray-900">Préparation T1</h1>
+            </div>
+          </header>
+          <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
+              <ClipboardCheck size={32} className="text-[#0F7B6C] mx-auto mb-3" />
+              <h3 className="font-semibold text-gray-900 mb-1">Combien de dossiers allez-vous évaluer ?</h3>
+              <p className="text-xs text-gray-400 mb-6">
+                Entre {audit.nb_dossiers_min} et {audit.nb_dossiers_max} dossiers patients
+              </p>
+              <div className="flex items-center justify-center gap-4 mb-6">
+                <button
+                  onClick={() => setNbDossiers(prev => Math.max(audit.nb_dossiers_min, prev - 1))}
+                  disabled={nbDossiers <= audit.nb_dossiers_min}
+                  className="w-11 h-11 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 transition-colors"
+                >
+                  <Minus size={18} className="text-gray-600" />
+                </button>
+                <span className="text-4xl font-bold text-[#0F7B6C] w-16 text-center">{nbDossiers}</span>
+                <button
+                  onClick={() => setNbDossiers(prev => Math.min(audit.nb_dossiers_max, prev + 1))}
+                  disabled={nbDossiers >= audit.nb_dossiers_max}
+                  className="w-11 h-11 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 disabled:opacity-30 transition-colors"
+                >
+                  <Plus size={18} className="text-gray-600" />
+                </button>
+              </div>
+              <button
+                onClick={() => setDossierChoiceConfirmed(true)}
+                className="w-full py-3 bg-[#0F7B6C] text-white text-sm font-semibold rounded-2xl hover:bg-[#0a5f54] transition-colors active:scale-[0.98]"
+              >
+                Commencer la saisie
+              </button>
+            </div>
+          </main>
+        </>
+      )
+    }
+
+    // Grille de saisie
+    const progressPct = ((currentDossier - 1) / nbDossiers) * 100
+
+    return (
+      <>
+        <header className="bg-white sticky top-0 z-30 shadow-sm">
+          <div className="max-w-lg mx-auto px-4 py-3">
+            <div className="flex items-center gap-3 mb-2">
+              <button onClick={() => setEppState('presentation')} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors">
+                <ChevronLeft size={20} className="text-gray-600" />
+              </button>
+              <h1 className="text-base font-bold text-gray-900">
+                Dossier {currentDossier} / {nbDossiers}
+              </h1>
+            </div>
+            {/* Progress bar */}
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#0F7B6C] rounded-full transition-all duration-300"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+        </header>
+
+        <main className="max-w-lg mx-auto px-4 py-4 space-y-3 pb-28">
+          {criteria.map((c) => {
+            const val = currentResponses[c.id]
+            const typeBg = c.type === 'R' ? 'bg-purple-100 text-purple-700' :
+                           c.type === 'P' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+            return (
+              <div key={c.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+                <div className="flex items-start gap-2 mb-3">
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${typeBg}`}>{c.code}</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${typeBg}`}>{c.type}</span>
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-800 leading-snug">{c.label}</p>
+                    {c.source && (
+                      <p className="text-[10px] text-gray-400 mt-0.5">{c.source}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setResponse(c.id, 'oui')}
+                    className={`flex-1 h-11 rounded-xl text-sm font-semibold border transition-colors ${
+                      val === 'oui'
+                        ? 'bg-green-500 text-white border-green-500'
+                        : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
+                    }`}
+                  >
+                    OUI
+                  </button>
+                  <button
+                    onClick={() => setResponse(c.id, 'non')}
+                    className={`flex-1 h-11 rounded-xl text-sm font-semibold border transition-colors ${
+                      val === 'non'
+                        ? 'bg-red-500 text-white border-red-500'
+                        : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                    }`}
+                  >
+                    NON
+                  </button>
+                  <button
+                    onClick={() => setResponse(c.id, 'na')}
+                    className={`flex-1 h-11 rounded-xl text-sm font-semibold border transition-colors ${
+                      val === 'na'
+                        ? 'bg-gray-400 text-white border-gray-400'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    NA
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </main>
+
+        {/* Pied de page fixe */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 z-30">
+          <div className="max-w-lg mx-auto">
+            <p className="text-xs text-gray-400 text-center mb-2">
+              {answeredCount} critères évalués sur {criteria.length}
+            </p>
+            {isLastDossier ? (
+              <button
+                onClick={finishT1}
+                disabled={!allAnswered || savingDossier}
+                className="w-full py-3 bg-[#0F7B6C] text-white text-sm font-semibold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2 transition-colors hover:bg-[#0a5f54] active:scale-[0.98]"
+              >
+                {savingDossier ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                Terminer et voir les résultats
+              </button>
+            ) : (
+              <button
+                onClick={goNextDossier}
+                disabled={!allAnswered || savingDossier}
+                className="w-full py-3 bg-[#0F7B6C] text-white text-sm font-semibold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2 transition-colors hover:bg-[#0a5f54] active:scale-[0.98]"
+              >
+                {savingDossier ? <Loader2 size={16} className="animate-spin" /> : null}
+                Dossier suivant
+                <ChevronRight size={16} />
+              </button>
+            )}
+          </div>
+        </div>
+      </>
     )
   }
 
