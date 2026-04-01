@@ -109,6 +109,7 @@ export default function EppPage() {
   // État 3 — Résultats
   const [planActions, setPlanActions] = useState<Record<string, string>>({})
   const [savingPlan, setSavingPlan] = useState(false)
+  const [planSaved, setPlanSaved] = useState(false)
 
   const themeConfig = THEMES_CONFIG[themeSlug] || { label: themeSlug, icon: '📚' }
 
@@ -341,14 +342,19 @@ export default function EppPage() {
 
   // Sauvegarder le plan d'actions
   const savePlanActions = async () => {
-    if (!activeSessionId) return
+    const sessionId = activeSessionId || t1Session?.id
+    if (!sessionId) return
     setSavingPlan(true)
     try {
       const supabase = createClient()
-      await supabase
+      const { error } = await supabase
         .from('user_epp_sessions')
         .update({ plan_actions: planActions })
-        .eq('id', activeSessionId)
+        .eq('id', sessionId)
+      if (!error) {
+        setPlanSaved(true)
+        setTimeout(() => setPlanSaved(false), 3000)
+      }
     } catch (err) {
       console.error('Erreur savePlanActions:', err)
     } finally {
@@ -678,13 +684,28 @@ export default function EppPage() {
                   </div>
                 ))}
               </div>
+              <p className="text-xs text-gray-400 text-center mt-2 mb-1">
+                Vos actions seront enregistrées dans votre dossier EPP
+              </p>
               <button
                 onClick={savePlanActions}
                 disabled={savingPlan}
-                className="w-full mt-3 h-11 bg-[#0F7B6C] text-white text-sm font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
+                className={`w-full mt-1 h-12 text-sm font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2 transition-all ${
+                  planSaved
+                    ? 'bg-green-500 text-white'
+                    : 'bg-[#0F7B6C] text-white hover:bg-[#0a5f54]'
+                }`}
               >
-                {savingPlan ? <Loader2 size={16} className="animate-spin" /> : null}
-                Sauvegarder le plan d&apos;actions
+                {savingPlan ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : planSaved ? (
+                  <>
+                    <CheckCircle2 size={16} />
+                    Plan sauvegardé !
+                  </>
+                ) : (
+                  'Sauvegarder le plan d\'actions'
+                )}
               </button>
             </div>
           )}
