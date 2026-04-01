@@ -16,6 +16,7 @@ import {
   Minus,
   Plus,
   PauseCircle,
+  Lock,
 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -52,6 +53,14 @@ interface UserEppSession {
   completed_at: string | null
   score_global: number | null
   nb_dossiers: number | null
+}
+
+interface EppSuggestion {
+  id: string
+  criterion_id: string
+  sort_order: number
+  text: string
+  sequence_ref: string | null
 }
 
 // ============================================
@@ -111,6 +120,8 @@ export default function EppPage() {
   const [planActions, setPlanActions] = useState<Record<string, string>>({})
   const [savingPlan, setSavingPlan] = useState(false)
   const [planSaved, setPlanSaved] = useState(false)
+  const [suggestions, setSuggestions] = useState<Record<string, EppSuggestion[]>>({})
+  const [checkedSuggestions, setCheckedSuggestions] = useState<Record<string, string[]>>({})
 
   const themeConfig = THEMES_CONFIG[themeSlug] || { label: themeSlug, icon: '📚' }
 
@@ -151,6 +162,25 @@ export default function EppPage() {
 
       if (cErr) throw cErr
       setCriteria(criteriaData || [])
+
+      // 2b. Charger les suggestions d'amélioration
+      if (criteriaData && criteriaData.length > 0) {
+        const criteriaIds = criteriaData.map((c: EppCriterion) => c.id)
+        const { data: suggestionsData } = await supabase
+          .from('epp_improvement_suggestions')
+          .select('*')
+          .in('criterion_id', criteriaIds)
+          .order('sort_order')
+
+        if (suggestionsData) {
+          const grouped: Record<string, EppSuggestion[]> = {}
+          suggestionsData.forEach((s: EppSuggestion) => {
+            if (!grouped[s.criterion_id]) grouped[s.criterion_id] = []
+            grouped[s.criterion_id].push(s)
+          })
+          setSuggestions(grouped)
+        }
+      }
 
       // 3. Charger les sessions utilisateur
       if (user) {
@@ -253,6 +283,40 @@ export default function EppPage() {
     } catch (err) {
       console.error('Erreur startT1:', err)
       setError('Erreur lors du démarrage')
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  const startT2 = async () => {
+    if (!audit) return
+    setStarting(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: session, error: sErr } = await supabase
+        .from('user_epp_sessions')
+        .insert({
+          user_id: user.id,
+          audit_id: audit.id,
+          tour: 2,
+        })
+        .select()
+        .single()
+
+      if (sErr) throw sErr
+      if (session) {
+        setActiveSessionId(session.id)
+        setSessions(prev => [...prev, session])
+        setResponses({})
+        setCurrentDossier(1)
+        setDossierChoiceConfirmed(false)
+        setEppState('saisie')
+      }
+    } catch (err) {
+      console.error('Erreur startT2:', err)
     } finally {
       setStarting(false)
     }
@@ -376,6 +440,18 @@ export default function EppPage() {
     }
   }
 
+  const toggleSuggestion = (criterionCode: string, suggestionId: string) => {
+    setCheckedSuggestions(prev => {
+      const current = prev[criterionCode] || []
+      return {
+        ...prev,
+        [criterionCode]: current.includes(suggestionId)
+          ? current.filter(id => id !== suggestionId)
+          : [...current, suggestionId]
+      }
+    })
+  }
+
   // Sauvegarder le plan d'actions
   const savePlanActions = async () => {
     const sessionId = activeSessionId || t1Session?.id
@@ -383,9 +459,16 @@ export default function EppPage() {
     setSavingPlan(true)
     try {
       const supabase = createClient()
+      const fullPlan: Record<string, { text: string; checked_suggestion_ids: string[] }> = {}
+      Object.keys({ ...planActions, ...checkedSuggestions }).forEach(code => {
+        fullPlan[code] = {
+          text: planActions[code] || '',
+          checked_suggestion_ids: checkedSuggestions[code] || []
+        }
+      })
       const { error } = await supabase
         .from('user_epp_sessions')
-        .update({ plan_actions: planActions })
+        .update({ plan_actions: fullPlan })
         .eq('id', sessionId)
       if (!error) {
         setPlanSaved(true)
@@ -400,6 +483,20 @@ export default function EppPage() {
 
   const t1Session = sessions.find(s => s.tour === 1)
   const t2Session = sessions.find(s => s.tour === 2)
+
+  const getT2Status = (): 'unavailable' | 'done' | 'in_progress' | 'unlocked' | { status: 'locked'; unlockDate: Date } => {
+    if (!t1Session?.completed_at) return 'unavailable'
+    if (t2Session?.completed_at) return 'done'
+    if (t2Session && !t2Session.completed_at) return 'in_progress'
+
+    const t1Date = new Date(t1Session.completed_at)
+    const unlockDate = new Date(t1Date)
+    unlockDate.setMonth(unlockDate.getMonth() + audit!.delai_t2_mois_min)
+
+    const today = new Date()
+    if (today >= unlockDate) return 'unlocked'
+    return { status: 'locked', unlockDate }
+  }
 
   const criteriaByType = {
     R: criteria.filter(c => c.type === 'R'),
@@ -715,22 +812,55 @@ export default function EppPage() {
               <p className="text-xs text-gray-400 mb-3">
                 Critères en dessous de 80% — notez vos actions correctives
               </p>
-              <div className="space-y-3">
-                {weakCriteria.map(c => (
-                  <div key={c.id}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">{c.code}</span>
-                      <span className="text-xs text-gray-600">{c.pct}% de conformité</span>
+              <div className="space-y-4">
+                {weakCriteria.map(c => {
+                  const criterionSuggestions = suggestions[c.id] || []
+                  const checked = checkedSuggestions[c.code] || []
+                  return (
+                    <div key={c.id}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">{c.code}</span>
+                        <span className="text-xs text-gray-600">{c.pct}% de conformité</span>
+                      </div>
+                      {criterionSuggestions.length > 0 && (
+                        <div className="space-y-1.5 mb-2">
+                          {criterionSuggestions.map(s => (
+                            <button
+                              key={s.id}
+                              onClick={() => toggleSuggestion(c.code, s.id)}
+                              className={`w-full flex items-start gap-2 text-left px-3 py-2 rounded-xl border text-xs transition-colors ${
+                                checked.includes(s.id)
+                                  ? 'bg-teal-50 border-teal-300 text-teal-800'
+                                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                              }`}
+                            >
+                              <span className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center ${
+                                checked.includes(s.id)
+                                  ? 'bg-[#0F7B6C] border-[#0F7B6C] text-white'
+                                  : 'border-gray-300'
+                              }`}>
+                                {checked.includes(s.id) && <CheckCircle2 size={10} />}
+                              </span>
+                              <span className="flex-1">
+                                {s.text}
+                                {s.sequence_ref && (
+                                  <span className="block text-[10px] text-teal-500 italic mt-0.5">{s.sequence_ref}</span>
+                                )}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <textarea
+                        rows={2}
+                        placeholder="Action corrective personnalisée..."
+                        value={planActions[c.code] || ''}
+                        onChange={e => setPlanActions(prev => ({ ...prev, [c.code]: e.target.value }))}
+                        className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:border-teal-400"
+                      />
                     </div>
-                    <textarea
-                      rows={2}
-                      placeholder="Action corrective prévue..."
-                      value={planActions[c.code] || ''}
-                      onChange={e => setPlanActions(prev => ({ ...prev, [c.code]: e.target.value }))}
-                      className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:border-teal-400"
-                    />
-                  </div>
-                ))}
+                  )
+                })}
               </div>
               <p className="text-xs text-gray-400 text-center mt-2 mb-1">
                 Vos actions seront enregistrées dans votre dossier EPP
@@ -888,38 +1018,111 @@ export default function EppPage() {
             </div>
 
             {/* Tour 2 status */}
-            {t1Session?.completed_at && (
-              <div className={`bg-white rounded-2xl border p-3 ${
-                t2Session?.completed_at ? 'border-green-200 bg-green-50/30' :
-                'border-gray-100 opacity-70'
-              }`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    t2Session?.completed_at ? 'bg-green-100' : 'bg-gray-100'
-                  }`}>
-                    {t2Session?.completed_at ? (
-                      <CheckCircle2 size={16} className="text-green-600" />
-                    ) : (
-                      <span className="text-xs font-bold text-gray-400">T2</span>
+            {(() => {
+              const t2Status = getT2Status()
+              if (t2Status === 'unavailable') return null
+
+              const isLocked = typeof t2Status === 'object'
+              const isUnlocked = t2Status === 'unlocked'
+              const isInProgress = t2Status === 'in_progress'
+              const isDone = t2Status === 'done'
+
+              const unlockDate = isLocked ? t2Status.unlockDate : null
+              const daysLeft = unlockDate
+                ? Math.ceil((unlockDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                : 0
+
+              return (
+                <div className={`bg-white rounded-2xl border p-4 ${
+                  isDone ? 'border-green-200 bg-green-50/30' :
+                  isUnlocked || isInProgress ? 'border-teal-200 bg-teal-50/30' :
+                  'border-gray-100 opacity-80'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                      isDone ? 'bg-green-100' :
+                      isUnlocked || isInProgress ? 'bg-teal-100' :
+                      'bg-gray-100'
+                    }`}>
+                      {isDone
+                        ? <CheckCircle2 size={18} className="text-green-600" />
+                        : isUnlocked || isInProgress
+                          ? <span className="text-xs font-bold text-[#0F7B6C]">T2</span>
+                          : <Lock size={16} className="text-gray-400" />
+                      }
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900">Tour 2</p>
+                      {isDone && (
+                        <p className="text-xs text-green-600">
+                          Score : {t2Session!.score_global?.toFixed(0)}% &middot;{' '}
+                          {new Date(t2Session!.completed_at!).toLocaleDateString('fr-FR')}
+                        </p>
+                      )}
+                      {isInProgress && (
+                        <p className="text-xs text-blue-600">En cours</p>
+                      )}
+                      {isUnlocked && (
+                        <p className="text-xs text-teal-600">
+                          Disponible depuis le{' '}
+                          {new Date(
+                            new Date(t1Session!.completed_at!).getTime() +
+                            audit!.delai_t2_mois_min * 30 * 24 * 60 * 60 * 1000
+                          ).toLocaleDateString('fr-FR')}
+                        </p>
+                      )}
+                      {isLocked && (
+                        <p className="text-xs text-gray-400 flex items-center gap-1">
+                          <Clock size={10} />
+                          Disponible dans {daysLeft} jour{daysLeft > 1 ? 's' : ''} &middot;
+                          le {unlockDate!.toLocaleDateString('fr-FR')}
+                        </p>
+                      )}
+                    </div>
+
+                    {isUnlocked && (
+                      <button
+                        onClick={startT2}
+                        disabled={starting}
+                        className="px-3 py-1.5 bg-[#0F7B6C] text-white text-xs font-semibold rounded-xl hover:bg-[#0a5f54] transition-colors disabled:opacity-50"
+                      >
+                        Démarrer
+                      </button>
+                    )}
+                    {isInProgress && (
+                      <button
+                        onClick={() => {
+                          setDossierChoiceConfirmed(true)
+                          setEppState('saisie')
+                        }}
+                        className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+                      >
+                        Reprendre
+                      </button>
                     )}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">Tour 2</p>
-                    {t2Session?.completed_at ? (
-                      <p className="text-[11px] text-green-600">
-                        Score : {t2Session.score_global?.toFixed(0)}% &middot;
-                        {' '}{new Date(t2Session.completed_at).toLocaleDateString('fr-FR')}
+
+                  {isLocked && t1Session?.completed_at && (
+                    <div className="mt-3">
+                      <div className="w-full bg-gray-100 rounded-full h-1.5">
+                        <div
+                          className="bg-amber-400 h-1.5 rounded-full transition-all"
+                          style={{
+                            width: `${Math.min(100, Math.max(0,
+                              ((Date.now() - new Date(t1Session.completed_at).getTime()) /
+                              (unlockDate!.getTime() - new Date(t1Session.completed_at).getTime())) * 100
+                            ))}%`
+                          }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        Période d&apos;amélioration des pratiques en cours
                       </p>
-                    ) : (
-                      <p className="text-[11px] text-amber-600 flex items-center gap-1">
-                        <AlertCircle size={10} />
-                        En attente (délai minimum : {audit.delai_t2_mois_min} mois)
-                      </p>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
         )}
 
