@@ -472,7 +472,7 @@ export default function EppPage() {
           </div>
         </header>
 
-        <main className="max-w-lg mx-auto px-4 py-4 space-y-3 pb-28">
+        <main className="max-w-lg mx-auto px-4 py-4 space-y-3 pb-36">
           {criteria.map((c) => {
             const val = currentResponses[c.id]
             const typeBg = c.type === 'R' ? 'bg-purple-100 text-purple-700' :
@@ -527,7 +527,7 @@ export default function EppPage() {
         </main>
 
         {/* Pied de page fixe */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 z-30">
+        <div className="fixed left-0 right-0 bg-white border-t border-gray-100 p-4 z-30" style={{ bottom: '64px' }}>
           <div className="max-w-lg mx-auto">
             <p className="text-xs text-gray-400 text-center mb-2">
               {answeredCount} critères évalués sur {criteria.length}
