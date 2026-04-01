@@ -15,6 +15,7 @@ import {
   Info,
   Minus,
   Plus,
+  PauseCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -109,6 +110,7 @@ export default function EppPage() {
   // État 3 — Résultats
   const [planActions, setPlanActions] = useState<Record<string, string>>({})
   const [savingPlan, setSavingPlan] = useState(false)
+  const [planSaved, setPlanSaved] = useState(false)
 
   const themeConfig = THEMES_CONFIG[themeSlug] || { label: themeSlug, icon: '📚' }
 
@@ -185,15 +187,15 @@ export default function EppPage() {
                 // T1 terminé → résultats
                 setEppState('resultats')
               } else {
-                // T1 en cours → reprendre la saisie
+                // T1 en cours → préparer la reprise (rester sur présentation pour voir la card "Reprendre")
                 const maxDossier = Math.max(...respData.map(r => r.dossier_number))
-                const dossierKeys = Object.keys(loaded)
-                const lastComplete = dossierKeys.length > 0 && (criteriaData || []).length > 0 &&
-                  Object.keys(loaded[String(maxDossier)] || {}).length >= (criteriaData || []).length
+                const cLen = (criteriaData || []).length
+                const lastComplete = cLen > 0 &&
+                  Object.keys(loaded[String(maxDossier)] || {}).length >= cLen
                 setCurrentDossier(lastComplete ? maxDossier + 1 : maxDossier)
                 if (t1.nb_dossiers) setNbDossiers(t1.nb_dossiers)
                 setDossierChoiceConfirmed(true)
-                setEppState('saisie')
+                // Rester sur 'presentation' pour afficher la card de reprise
               }
             } else if (!t1.completed_at) {
               // Session en cours sans réponses
@@ -201,7 +203,7 @@ export default function EppPage() {
                 setNbDossiers(t1.nb_dossiers)
                 setDossierChoiceConfirmed(true)
               }
-              setEppState('saisie')
+              // Rester sur 'presentation'
             } else {
               // T1 terminé sans réponses (edge case)
               setEppState('resultats')
@@ -273,20 +275,35 @@ export default function EppPage() {
   const allAnswered = criteria.length > 0 && answeredCount >= criteria.length
   const isLastDossier = currentDossier >= nbDossiers
 
-  const saveDossierResponses = async (dossierNumber: number) => {
-    if (!activeSessionId) return
+  const saveDossierResponses = async (dossierNumber: number, partial = false) => {
+    const sessionId = activeSessionId || t1Session?.id
+    if (!sessionId) return
     const dossierResp = responses[String(dossierNumber)]
     if (!dossierResp) return
 
     const supabase = createClient()
-    const rows = criteria.map(c => ({
-      session_id: activeSessionId,
-      dossier_number: dossierNumber,
-      criterion_id: c.id,
-      response: dossierResp[c.id] || 'na'
-    }))
-    const { error: insertErr } = await supabase.from('user_epp_responses').insert(rows)
-    if (insertErr) console.error('Erreur save responses:', insertErr)
+
+    // Supprimer les réponses existantes pour ce dossier (évite les doublons)
+    await supabase
+      .from('user_epp_responses')
+      .delete()
+      .eq('session_id', sessionId)
+      .eq('dossier_number', dossierNumber)
+
+    // Insérer les réponses (toutes si complet, sinon seulement celles définies)
+    const rows = criteria
+      .filter(c => dossierResp[c.id] !== undefined)
+      .map(c => ({
+        session_id: sessionId,
+        dossier_number: dossierNumber,
+        criterion_id: c.id,
+        response: dossierResp[c.id]
+      }))
+
+    if (rows.length > 0) {
+      const { error: insertErr } = await supabase.from('user_epp_responses').insert(rows)
+      if (insertErr) console.error('Erreur save responses:', insertErr)
+    }
   }
 
   const goNextDossier = async () => {
@@ -339,16 +356,41 @@ export default function EppPage() {
     }
   }
 
+  const pauseAudit = async () => {
+    setSavingDossier(true)
+    try {
+      // Sauvegarder le dossier en cours (même partiel)
+      await saveDossierResponses(currentDossier, true)
+      // Sauvegarder nb_dossiers dans user_epp_sessions
+      const sessionId = activeSessionId || t1Session?.id
+      if (sessionId) {
+        const supabase = createClient()
+        await supabase
+          .from('user_epp_sessions')
+          .update({ nb_dossiers: nbDossiers })
+          .eq('id', sessionId)
+      }
+      setEppState('presentation')
+    } finally {
+      setSavingDossier(false)
+    }
+  }
+
   // Sauvegarder le plan d'actions
   const savePlanActions = async () => {
-    if (!activeSessionId) return
+    const sessionId = activeSessionId || t1Session?.id
+    if (!sessionId) return
     setSavingPlan(true)
     try {
       const supabase = createClient()
-      await supabase
+      const { error } = await supabase
         .from('user_epp_sessions')
         .update({ plan_actions: planActions })
-        .eq('id', activeSessionId)
+        .eq('id', sessionId)
+      if (!error) {
+        setPlanSaved(true)
+        setTimeout(() => setPlanSaved(false), 3000)
+      }
     } catch (err) {
       console.error('Erreur savePlanActions:', err)
     } finally {
@@ -448,25 +490,37 @@ export default function EppPage() {
     }
 
     // Grille de saisie
-    const progressPct = ((currentDossier - 1) / nbDossiers) * 100
-
     return (
       <>
         <header className="bg-white sticky top-0 z-30 shadow-sm">
           <div className="max-w-lg mx-auto px-4 py-3">
-            <div className="flex items-center gap-3 mb-2">
-              <button onClick={() => setEppState('presentation')} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors">
+            <div className="flex items-center justify-between mb-2">
+              <button
+                onClick={pauseAudit}
+                disabled={savingDossier}
+                className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors"
+              >
                 <ChevronLeft size={20} className="text-gray-600" />
               </button>
-              <h1 className="text-base font-bold text-gray-900">
+              <span className="text-sm font-semibold text-gray-700">
                 Dossier {currentDossier} / {nbDossiers}
-              </h1>
+              </span>
+              <button
+                onClick={pauseAudit}
+                disabled={savingDossier}
+                className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 rounded-xl text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
+              >
+                {savingDossier
+                  ? <Loader2 size={12} className="animate-spin" />
+                  : <PauseCircle size={14} />
+                }
+                {savingDossier ? 'Sauvegarde...' : 'Pause'}
+              </button>
             </div>
-            {/* Progress bar */}
             <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#0F7B6C] rounded-full transition-all duration-300"
-                style={{ width: `${progressPct}%` }}
+                style={{ width: `${(currentDossier / nbDossiers) * 100}%` }}
               />
             </div>
           </div>
@@ -678,13 +732,28 @@ export default function EppPage() {
                   </div>
                 ))}
               </div>
+              <p className="text-xs text-gray-400 text-center mt-2 mb-1">
+                Vos actions seront enregistrées dans votre dossier EPP
+              </p>
               <button
                 onClick={savePlanActions}
                 disabled={savingPlan}
-                className="w-full mt-3 h-11 bg-[#0F7B6C] text-white text-sm font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2"
+                className={`w-full mt-1 h-12 text-sm font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2 transition-all ${
+                  planSaved
+                    ? 'bg-green-500 text-white'
+                    : 'bg-[#0F7B6C] text-white hover:bg-[#0a5f54]'
+                }`}
               >
-                {savingPlan ? <Loader2 size={16} className="animate-spin" /> : null}
-                Sauvegarder le plan d&apos;actions
+                {savingPlan ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : planSaved ? (
+                  <>
+                    <CheckCircle2 size={16} />
+                    Plan sauvegardé !
+                  </>
+                ) : (
+                  'Sauvegarder le plan d\'actions'
+                )}
               </button>
             </div>
           )}
@@ -851,6 +920,32 @@ export default function EppPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Reprise audit en cours */}
+        {t1Session && !t1Session.completed_at && Object.keys(responses).length > 0 && (
+          <div className="bg-blue-50 rounded-2xl border border-blue-100 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                <PauseCircle size={18} className="text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-blue-800">Audit en cours</p>
+                <p className="text-xs text-blue-600">
+                  Dossier {Math.max(currentDossier - 1, 0)} / {nbDossiers} complété{currentDossier - 1 > 1 ? 's' : ''}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setDossierChoiceConfirmed(true)
+                  setEppState('saisie')
+                }}
+                className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+              >
+                Reprendre
+              </button>
+            </div>
           </div>
         )}
 
