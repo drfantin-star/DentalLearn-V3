@@ -55,6 +55,14 @@ interface UserEppSession {
   nb_dossiers: number | null
 }
 
+interface EppSuggestion {
+  id: string
+  criterion_id: string
+  sort_order: number
+  text: string
+  sequence_ref: string | null
+}
+
 // ============================================
 // THEMES CONFIG
 // ============================================
@@ -112,6 +120,8 @@ export default function EppPage() {
   const [planActions, setPlanActions] = useState<Record<string, string>>({})
   const [savingPlan, setSavingPlan] = useState(false)
   const [planSaved, setPlanSaved] = useState(false)
+  const [suggestions, setSuggestions] = useState<Record<string, EppSuggestion[]>>({})
+  const [checkedSuggestions, setCheckedSuggestions] = useState<Record<string, string[]>>({})
 
   const themeConfig = THEMES_CONFIG[themeSlug] || { label: themeSlug, icon: '📚' }
 
@@ -152,6 +162,25 @@ export default function EppPage() {
 
       if (cErr) throw cErr
       setCriteria(criteriaData || [])
+
+      // 2b. Charger les suggestions d'amélioration
+      if (criteriaData && criteriaData.length > 0) {
+        const criteriaIds = criteriaData.map((c: EppCriterion) => c.id)
+        const { data: suggestionsData } = await supabase
+          .from('epp_improvement_suggestions')
+          .select('*')
+          .in('criterion_id', criteriaIds)
+          .order('sort_order')
+
+        if (suggestionsData) {
+          const grouped: Record<string, EppSuggestion[]> = {}
+          suggestionsData.forEach((s: EppSuggestion) => {
+            if (!grouped[s.criterion_id]) grouped[s.criterion_id] = []
+            grouped[s.criterion_id].push(s)
+          })
+          setSuggestions(grouped)
+        }
+      }
 
       // 3. Charger les sessions utilisateur
       if (user) {
@@ -411,6 +440,18 @@ export default function EppPage() {
     }
   }
 
+  const toggleSuggestion = (criterionCode: string, suggestionId: string) => {
+    setCheckedSuggestions(prev => {
+      const current = prev[criterionCode] || []
+      return {
+        ...prev,
+        [criterionCode]: current.includes(suggestionId)
+          ? current.filter(id => id !== suggestionId)
+          : [...current, suggestionId]
+      }
+    })
+  }
+
   // Sauvegarder le plan d'actions
   const savePlanActions = async () => {
     const sessionId = activeSessionId || t1Session?.id
@@ -418,9 +459,16 @@ export default function EppPage() {
     setSavingPlan(true)
     try {
       const supabase = createClient()
+      const fullPlan: Record<string, { text: string; checked_suggestion_ids: string[] }> = {}
+      Object.keys({ ...planActions, ...checkedSuggestions }).forEach(code => {
+        fullPlan[code] = {
+          text: planActions[code] || '',
+          checked_suggestion_ids: checkedSuggestions[code] || []
+        }
+      })
       const { error } = await supabase
         .from('user_epp_sessions')
-        .update({ plan_actions: planActions })
+        .update({ plan_actions: fullPlan })
         .eq('id', sessionId)
       if (!error) {
         setPlanSaved(true)
@@ -764,22 +812,55 @@ export default function EppPage() {
               <p className="text-xs text-gray-400 mb-3">
                 Critères en dessous de 80% — notez vos actions correctives
               </p>
-              <div className="space-y-3">
-                {weakCriteria.map(c => (
-                  <div key={c.id}>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">{c.code}</span>
-                      <span className="text-xs text-gray-600">{c.pct}% de conformité</span>
+              <div className="space-y-4">
+                {weakCriteria.map(c => {
+                  const criterionSuggestions = suggestions[c.id] || []
+                  const checked = checkedSuggestions[c.code] || []
+                  return (
+                    <div key={c.id}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700">{c.code}</span>
+                        <span className="text-xs text-gray-600">{c.pct}% de conformité</span>
+                      </div>
+                      {criterionSuggestions.length > 0 && (
+                        <div className="space-y-1.5 mb-2">
+                          {criterionSuggestions.map(s => (
+                            <button
+                              key={s.id}
+                              onClick={() => toggleSuggestion(c.code, s.id)}
+                              className={`w-full flex items-start gap-2 text-left px-3 py-2 rounded-xl border text-xs transition-colors ${
+                                checked.includes(s.id)
+                                  ? 'bg-teal-50 border-teal-300 text-teal-800'
+                                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                              }`}
+                            >
+                              <span className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center ${
+                                checked.includes(s.id)
+                                  ? 'bg-[#0F7B6C] border-[#0F7B6C] text-white'
+                                  : 'border-gray-300'
+                              }`}>
+                                {checked.includes(s.id) && <CheckCircle2 size={10} />}
+                              </span>
+                              <span className="flex-1">
+                                {s.text}
+                                {s.sequence_ref && (
+                                  <span className="block text-[10px] text-teal-500 italic mt-0.5">{s.sequence_ref}</span>
+                                )}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <textarea
+                        rows={2}
+                        placeholder="Action corrective personnalisée..."
+                        value={planActions[c.code] || ''}
+                        onChange={e => setPlanActions(prev => ({ ...prev, [c.code]: e.target.value }))}
+                        className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:border-teal-400"
+                      />
                     </div>
-                    <textarea
-                      rows={2}
-                      placeholder="Action corrective prévue..."
-                      value={planActions[c.code] || ''}
-                      onChange={e => setPlanActions(prev => ({ ...prev, [c.code]: e.target.value }))}
-                      className="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 resize-none focus:outline-none focus:border-teal-400"
-                    />
-                  </div>
-                ))}
+                  )
+                })}
               </div>
               <p className="text-xs text-gray-400 text-center mt-2 mb-1">
                 Vos actions seront enregistrées dans votre dossier EPP
