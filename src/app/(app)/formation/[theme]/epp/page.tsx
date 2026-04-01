@@ -16,6 +16,7 @@ import {
   Minus,
   Plus,
   PauseCircle,
+  Lock,
 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -258,6 +259,40 @@ export default function EppPage() {
     }
   }
 
+  const startT2 = async () => {
+    if (!audit) return
+    setStarting(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: session, error: sErr } = await supabase
+        .from('user_epp_sessions')
+        .insert({
+          user_id: user.id,
+          audit_id: audit.id,
+          tour: 2,
+        })
+        .select()
+        .single()
+
+      if (sErr) throw sErr
+      if (session) {
+        setActiveSessionId(session.id)
+        setSessions(prev => [...prev, session])
+        setResponses({})
+        setCurrentDossier(1)
+        setDossierChoiceConfirmed(false)
+        setEppState('saisie')
+      }
+    } catch (err) {
+      console.error('Erreur startT2:', err)
+    } finally {
+      setStarting(false)
+    }
+  }
+
   // ============================================
   // État 2 — Fonctions de saisie
   // ============================================
@@ -400,6 +435,20 @@ export default function EppPage() {
 
   const t1Session = sessions.find(s => s.tour === 1)
   const t2Session = sessions.find(s => s.tour === 2)
+
+  const getT2Status = (): 'unavailable' | 'done' | 'in_progress' | 'unlocked' | { status: 'locked'; unlockDate: Date } => {
+    if (!t1Session?.completed_at) return 'unavailable'
+    if (t2Session?.completed_at) return 'done'
+    if (t2Session && !t2Session.completed_at) return 'in_progress'
+
+    const t1Date = new Date(t1Session.completed_at)
+    const unlockDate = new Date(t1Date)
+    unlockDate.setMonth(unlockDate.getMonth() + audit!.delai_t2_mois_min)
+
+    const today = new Date()
+    if (today >= unlockDate) return 'unlocked'
+    return { status: 'locked', unlockDate }
+  }
 
   const criteriaByType = {
     R: criteria.filter(c => c.type === 'R'),
@@ -888,38 +937,111 @@ export default function EppPage() {
             </div>
 
             {/* Tour 2 status */}
-            {t1Session?.completed_at && (
-              <div className={`bg-white rounded-2xl border p-3 ${
-                t2Session?.completed_at ? 'border-green-200 bg-green-50/30' :
-                'border-gray-100 opacity-70'
-              }`}>
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    t2Session?.completed_at ? 'bg-green-100' : 'bg-gray-100'
-                  }`}>
-                    {t2Session?.completed_at ? (
-                      <CheckCircle2 size={16} className="text-green-600" />
-                    ) : (
-                      <span className="text-xs font-bold text-gray-400">T2</span>
+            {(() => {
+              const t2Status = getT2Status()
+              if (t2Status === 'unavailable') return null
+
+              const isLocked = typeof t2Status === 'object'
+              const isUnlocked = t2Status === 'unlocked'
+              const isInProgress = t2Status === 'in_progress'
+              const isDone = t2Status === 'done'
+
+              const unlockDate = isLocked ? t2Status.unlockDate : null
+              const daysLeft = unlockDate
+                ? Math.ceil((unlockDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                : 0
+
+              return (
+                <div className={`bg-white rounded-2xl border p-4 ${
+                  isDone ? 'border-green-200 bg-green-50/30' :
+                  isUnlocked || isInProgress ? 'border-teal-200 bg-teal-50/30' :
+                  'border-gray-100 opacity-80'
+                }`}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                      isDone ? 'bg-green-100' :
+                      isUnlocked || isInProgress ? 'bg-teal-100' :
+                      'bg-gray-100'
+                    }`}>
+                      {isDone
+                        ? <CheckCircle2 size={18} className="text-green-600" />
+                        : isUnlocked || isInProgress
+                          ? <span className="text-xs font-bold text-[#0F7B6C]">T2</span>
+                          : <Lock size={16} className="text-gray-400" />
+                      }
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900">Tour 2</p>
+                      {isDone && (
+                        <p className="text-xs text-green-600">
+                          Score : {t2Session!.score_global?.toFixed(0)}% &middot;{' '}
+                          {new Date(t2Session!.completed_at!).toLocaleDateString('fr-FR')}
+                        </p>
+                      )}
+                      {isInProgress && (
+                        <p className="text-xs text-blue-600">En cours</p>
+                      )}
+                      {isUnlocked && (
+                        <p className="text-xs text-teal-600">
+                          Disponible depuis le{' '}
+                          {new Date(
+                            new Date(t1Session!.completed_at!).getTime() +
+                            audit!.delai_t2_mois_min * 30 * 24 * 60 * 60 * 1000
+                          ).toLocaleDateString('fr-FR')}
+                        </p>
+                      )}
+                      {isLocked && (
+                        <p className="text-xs text-gray-400 flex items-center gap-1">
+                          <Clock size={10} />
+                          Disponible dans {daysLeft} jour{daysLeft > 1 ? 's' : ''} &middot;
+                          le {unlockDate!.toLocaleDateString('fr-FR')}
+                        </p>
+                      )}
+                    </div>
+
+                    {isUnlocked && (
+                      <button
+                        onClick={startT2}
+                        disabled={starting}
+                        className="px-3 py-1.5 bg-[#0F7B6C] text-white text-xs font-semibold rounded-xl hover:bg-[#0a5f54] transition-colors disabled:opacity-50"
+                      >
+                        Démarrer
+                      </button>
+                    )}
+                    {isInProgress && (
+                      <button
+                        onClick={() => {
+                          setDossierChoiceConfirmed(true)
+                          setEppState('saisie')
+                        }}
+                        className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+                      >
+                        Reprendre
+                      </button>
                     )}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">Tour 2</p>
-                    {t2Session?.completed_at ? (
-                      <p className="text-[11px] text-green-600">
-                        Score : {t2Session.score_global?.toFixed(0)}% &middot;
-                        {' '}{new Date(t2Session.completed_at).toLocaleDateString('fr-FR')}
+
+                  {isLocked && t1Session?.completed_at && (
+                    <div className="mt-3">
+                      <div className="w-full bg-gray-100 rounded-full h-1.5">
+                        <div
+                          className="bg-amber-400 h-1.5 rounded-full transition-all"
+                          style={{
+                            width: `${Math.min(100, Math.max(0,
+                              ((Date.now() - new Date(t1Session.completed_at).getTime()) /
+                              (unlockDate!.getTime() - new Date(t1Session.completed_at).getTime())) * 100
+                            ))}%`
+                          }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        Période d&apos;amélioration des pratiques en cours
                       </p>
-                    ) : (
-                      <p className="text-[11px] text-amber-600 flex items-center gap-1">
-                        <AlertCircle size={10} />
-                        En attente (délai minimum : {audit.delai_t2_mois_min} mois)
-                      </p>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
         )}
 
