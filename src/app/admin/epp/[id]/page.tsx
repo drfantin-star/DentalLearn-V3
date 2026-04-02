@@ -101,6 +101,16 @@ export default function EppAuditDetailPage() {
   });
   const [savingSuggestion, setSavingSuggestion] = useState(false);
 
+  // Inline edit criterion
+  const [editingCriterionId, setEditingCriterionId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{
+    code: string;
+    type: 'R' | 'P' | 'S';
+    label: string;
+    source: string;
+    sort_order: number;
+  }>({ code: '', type: 'R', label: '', source: '', sort_order: 0 });
+
   // Expanded criteria (to show suggestions)
   const [expandedCriteria, setExpandedCriteria] = useState<Set<string>>(new Set());
 
@@ -253,6 +263,44 @@ export default function EppAuditDetailPage() {
     } catch (error) {
       console.error('Erreur suppression critere:', error);
       alert('Erreur lors de la suppression');
+    }
+  }
+
+  // --- Inline edit criterion ---
+
+  function startEditCriterion(criterion: Criterion) {
+    setEditingCriterionId(criterion.id);
+    setEditForm({
+      code: criterion.code,
+      type: criterion.type as 'R' | 'P' | 'S',
+      label: criterion.label,
+      source: criterion.source || '',
+      sort_order: criterion.sort_order,
+    });
+  }
+
+  async function saveEditCriterion(criterionId: string) {
+    try {
+      const { error } = await supabase
+        .from('epp_criteria')
+        .update({
+          code: editForm.code,
+          type: editForm.type,
+          label: editForm.label,
+          source: editForm.source,
+          sort_order: editForm.sort_order,
+        })
+        .eq('id', criterionId);
+
+      if (error) throw error;
+
+      setCriteria(prev => prev.map(c =>
+        c.id === criterionId ? { ...c, ...editForm } : c
+      ));
+      setEditingCriterionId(null);
+    } catch (error: any) {
+      console.error('Erreur update critere:', error);
+      alert(`Erreur: ${error.message}`);
     }
   }
 
@@ -448,39 +496,101 @@ export default function EppAuditDetailPage() {
                         }
                       </button>
 
-                      <span className="px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-700">
-                        {criterion.code}
-                      </span>
-                      <span className={`px-2 py-0.5 rounded text-xs font-bold ${typeBadgeClasses[criterion.type] || 'bg-gray-100 text-gray-700'}`}>
-                        {criterion.type}
-                      </span>
+                      {editingCriterionId === criterion.id ? (
+                        <div className="flex-1 space-y-2 pr-4">
+                          <div className="flex gap-2">
+                            <input
+                              value={editForm.code}
+                              onChange={e => setEditForm(prev => ({ ...prev, code: e.target.value }))}
+                              className="w-16 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                              placeholder="C1"
+                            />
+                            <select
+                              value={editForm.type}
+                              onChange={e => setEditForm(prev => ({
+                                ...prev, type: e.target.value as 'R' | 'P' | 'S'
+                              }))}
+                              className="px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                            >
+                              <option value="R">R — Ressources</option>
+                              <option value="P">P — Processus</option>
+                              <option value="S">S — Resultats</option>
+                            </select>
+                            <input
+                              type="number"
+                              value={editForm.sort_order}
+                              onChange={e => setEditForm(prev => ({
+                                ...prev, sort_order: parseInt(e.target.value)
+                              }))}
+                              className="w-16 px-2 py-1 border border-gray-300 rounded-lg text-sm"
+                              placeholder="Ordre"
+                            />
+                          </div>
+                          <textarea
+                            value={editForm.label}
+                            onChange={e => setEditForm(prev => ({ ...prev, label: e.target.value }))}
+                            rows={2}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none"
+                            placeholder="Libelle du critere"
+                          />
+                          <input
+                            value={editForm.source}
+                            onChange={e => setEditForm(prev => ({ ...prev, source: e.target.value }))}
+                            className="w-full px-3 py-1 border border-gray-300 rounded-lg text-sm"
+                            placeholder="Source bibliographique"
+                          />
+                          <div className="flex gap-2 pt-1">
+                            <button
+                              onClick={() => saveEditCriterion(criterion.id)}
+                              className="px-3 py-1.5 bg-[#2D1B96] text-white text-sm font-medium rounded-lg hover:bg-[#231575]"
+                            >
+                              Enregistrer
+                            </button>
+                            <button
+                              onClick={() => setEditingCriterionId(null)}
+                              className="px-3 py-1.5 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200"
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <span className="px-2 py-0.5 rounded text-xs font-bold bg-gray-100 text-gray-700">
+                            {criterion.code}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-bold ${typeBadgeClasses[criterion.type] || 'bg-gray-100 text-gray-700'}`}>
+                            {criterion.type}
+                          </span>
 
-                      <div className="flex-1 min-w-0">
-                        <p className="text-gray-900">{criterion.label}</p>
-                        {criterion.source && (
-                          <p className="text-sm text-gray-500 mt-1">{criterion.source}</p>
-                        )}
-                        <p className="text-xs text-gray-400 mt-1">
-                          Suggestions : {criterionSuggestions.length}
-                        </p>
-                      </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-gray-900">{criterion.label}</p>
+                            {criterion.source && (
+                              <p className="text-xs text-gray-400 mt-0.5">{criterion.source}</p>
+                            )}
+                            <p className="text-xs text-gray-400 mt-1">
+                              Suggestions : {criterionSuggestions.length}
+                            </p>
+                          </div>
 
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => openCriterionForm(criterion)}
-                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Modifier"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => deleteCriterion(criterion.id, criterion.code)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Supprimer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => startEditCriterion(criterion)}
+                              className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Modifier"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => deleteCriterion(criterion.id, criterion.code)}
+                              className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Supprimer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
