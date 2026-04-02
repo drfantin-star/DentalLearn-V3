@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     }
 
     const supabase = createAdminClient();
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
 
     console.log('[Daily Reminder] Envoi des rappels quotidiens...');
 
@@ -46,8 +46,8 @@ export async function GET(request: Request) {
         .from('daily_quiz_results')
         .select('id')
         .eq('user_id', user.user_id)
-        .gte('completed_at', `${today}T00:00:00`)
-        .lte('completed_at', `${today}T23:59:59`)
+        .gte('completed_at', `${today}T00:00:00+02:00`)
+        .lte('completed_at', `${today}T23:59:59+02:00`)
         .limit(1);
 
       if (todayActivity && todayActivity.length > 0) {
