@@ -557,7 +557,7 @@ export default function EppPage() {
           : '—'],
         ['Dossiers évalués', `${t1Sess?.nb_dossiers || '—'} dossiers`],
         ['Score global T1', `${t1Sess?.score_global?.toFixed(0) || '—'}%`],
-        ['Organisme', 'EROJU SAS — N° ODPC : 9AGA'],
+        ['Organisme', 'EROJU SAS — Certification Qualiopi N° QUA006589 — NDA : 52441046544'],
       ]
     })
 
@@ -683,7 +683,7 @@ export default function EppPage() {
       doc.setFontSize(7)
       doc.setTextColor(150, 150, 150)
       doc.text(
-        `EROJU SAS — N° ODPC 9AGA — Document généré le ${new Date().toLocaleDateString('fr-FR')} — Page ${i}/${pageCount}`,
+        `EROJU SAS — Qualiopi QUA006589 — NDA 52441046544 — Document généré le ${new Date().toLocaleDateString('fr-FR')} — Page ${i}/${pageCount}`,
         105, 290, { align: 'center' }
       )
     }
@@ -763,7 +763,7 @@ export default function EppPage() {
       },
       body: [
         ['Thématique / Audit', audit!.title],
-        ['Organisme formateur', 'EROJU SAS — N° ODPC : 9AGA'],
+        ['Organisme formateur', 'EROJU SAS — Certification Qualiopi N° QUA006589 — NDA : 52441046544'],
         ['Certification Périodique', 'Axe 2 — Amélioration de la qualité des pratiques'],
         ['Critères évalués', `${criteria.length} critères (${criteria.filter(c=>c.type==='R').length}R + ${criteria.filter(c=>c.type==='P').length}P + ${criteria.filter(c=>c.type==='S').length}S)`],
         ['Date Tour 1 (T1)', t1Sess?.completed_at
@@ -870,7 +870,7 @@ export default function EppPage() {
       doc.setFontSize(7)
       doc.setTextColor(150, 150, 150)
       doc.text(
-        `EROJU SAS — N° ODPC 9AGA — Document généré le ${new Date().toLocaleDateString('fr-FR')} — Page ${i}/${pageCount}`,
+        `EROJU SAS — Qualiopi QUA006589 — NDA 52441046544 — Document généré le ${new Date().toLocaleDateString('fr-FR')} — Page ${i}/${pageCount}`,
         105, 290, { align: 'center' }
       )
     }
