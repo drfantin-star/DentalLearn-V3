@@ -10,7 +10,8 @@ import {
   Users, 
   LogOut,
   Shield,
-  Beaker
+  Beaker,
+  ClipboardCheck
 } from 'lucide-react';
 
 export default function AdminLayout({
@@ -112,6 +113,15 @@ export default function AdminLayout({
               >
                 <BookOpen className="w-5 h-5" />
                 Formations
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/epp"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <ClipboardCheck className="w-5 h-5" />
+                Audits EPP
               </Link>
             </li>
             <li>
