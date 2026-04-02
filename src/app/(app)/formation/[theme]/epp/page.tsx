@@ -204,8 +204,9 @@ export default function EppPage() {
             const restoredText: Record<string, string> = {}
             const restoredChecked: Record<string, string[]> = {}
             Object.entries(saved).forEach(([code, val]) => {
-              restoredText[code] = val.text || ''
-              restoredChecked[code] = val.checked_suggestion_ids || []
+              const v = val as { text: string; checked_suggestion_ids: string[] }
+              restoredText[code] = v.text || ''
+              restoredChecked[code] = v.checked_suggestion_ids || []
             })
             setPlanActions(restoredText)
             setCheckedSuggestions(restoredChecked)
