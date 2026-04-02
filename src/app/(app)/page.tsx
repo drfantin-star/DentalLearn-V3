@@ -65,12 +65,6 @@ export default function HomePage() {
 
   const handleDailyQuizComplete = async (score: number, totalPoints: number) => {
     setShowDailyQuiz(false)
-    // Update streak after daily quiz completion
-    try {
-      await fetch('/api/streaks/update', { method: 'POST' })
-    } catch (err) {
-      console.error('Error updating streak:', err)
-    }
     setRefreshTrigger(prev => prev + 1)
     refetchUser()
   }
