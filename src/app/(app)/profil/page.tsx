@@ -145,7 +145,24 @@ export default function ProfilPage() {
       const res = await fetch('/api/user/stats');
       if (res.ok) {
         const data = await res.json();
-        setStats(data);
+
+        // Read streak directly from streaks table (same source as useUser() on home)
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        if (currentUser) {
+          const { data: streakData } = await supabase
+            .from('streaks')
+            .select('current_streak, longest_streak')
+            .eq('user_id', currentUser.id)
+            .maybeSingle();
+
+          setStats({
+            ...data,
+            current_streak: streakData?.current_streak ?? 0,
+            longest_streak: streakData?.longest_streak ?? data.longest_streak,
+          });
+        } else {
+          setStats(data);
+        }
       }
     } catch (error) {
       console.error('Erreur chargement stats:', error);
