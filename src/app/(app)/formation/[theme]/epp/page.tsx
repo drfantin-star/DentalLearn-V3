@@ -53,6 +53,7 @@ interface UserEppSession {
   completed_at: string | null
   score_global: number | null
   nb_dossiers: number | null
+  plan_actions: Record<string, { text: string; checked_suggestion_ids: string[] }> | null
 }
 
 interface EppSuggestion {
@@ -186,13 +187,30 @@ export default function EppPage() {
       if (user) {
         const { data: sessionsData } = await supabase
           .from('user_epp_sessions')
-          .select('id, tour, started_at, completed_at, score_global, nb_dossiers')
+          .select('id, tour, started_at, completed_at, score_global, nb_dossiers, plan_actions')
           .eq('user_id', user.id)
           .eq('audit_id', auditData.id)
           .order('tour')
 
         if (sessionsData) {
           setSessions(sessionsData)
+
+          // Restaurer le plan d'actions sauvegardé
+          const completedT1 = sessionsData.find(
+            (s: UserEppSession) => s.tour === 1 && s.completed_at
+          )
+          if (completedT1?.plan_actions) {
+            const saved = completedT1.plan_actions
+            const restoredText: Record<string, string> = {}
+            const restoredChecked: Record<string, string[]> = {}
+            Object.entries(saved).forEach(([code, val]) => {
+              const v = val as { text: string; checked_suggestion_ids: string[] }
+              restoredText[code] = v.text || ''
+              restoredChecked[code] = v.checked_suggestion_ids || []
+            })
+            setPlanActions(restoredText)
+            setCheckedSuggestions(restoredChecked)
+          }
 
           const t1 = sessionsData.find(s => s.tour === 1)
           if (t1) {
