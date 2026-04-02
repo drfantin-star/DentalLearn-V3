@@ -11,12 +11,15 @@ export async function GET() {
     }
 
     // Points totaux
-    const { data: points } = await supabase
-      .from('user_points')
-      .select('points_earned')
-      .eq('user_id', user.id);
+    const { data: pointsData } = await supabase
+      .from('daily_quiz_results')
+      .select('total_points')
+      .eq('user_id', user.id)
+      .not('completed_at', 'is', null);
 
-    const total_points = points?.reduce((sum, p) => sum + p.points_earned, 0) || 0;
+    const total_points = pointsData
+      ? pointsData.reduce((sum, r) => sum + (r.total_points || 0), 0)
+      : 0;
 
     // Streak
     const { data: streak } = await supabase
