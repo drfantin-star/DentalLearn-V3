@@ -17,6 +17,7 @@ import {
   Plus,
   PauseCircle,
   Lock,
+  FileDown,
 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -499,6 +500,385 @@ export default function EppPage() {
     }
   }
 
+  // ============================================
+  // PDF — Plan d'actions T1
+  // ============================================
+
+  const generatePlanActionsPDF = async () => {
+    const { default: jsPDF } = await import('jspdf')
+    const { default: autoTable } = await import('jspdf-autotable')
+
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const teal = [15, 123, 108] as [number, number, number]
+    const darkGray = [30, 30, 30] as [number, number, number]
+    const lightGray = [245, 245, 245] as [number, number, number]
+
+    // ── EN-TÊTE ──────────────────────────────────────────────────
+    doc.setFillColor(...teal)
+    doc.rect(0, 0, 210, 28, 'F')
+
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text('DENTALSCHOOL — EROJU SAS', 105, 10, { align: 'center' })
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text('PLAN D\'ACTIONS D\'AMÉLIORATION — ÉVALUATION DES PRATIQUES PROFESSIONNELLES',
+      105, 18, { align: 'center' })
+    doc.text('Axe 2 — Certification Périodique | Méthodologie HAS',
+      105, 24, { align: 'center' })
+
+    // ── IDENTIFICATION ────────────────────────────────────────────
+    doc.setTextColor(...darkGray)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text('IDENTIFICATION DE L\'AUDIT', 14, 38)
+
+    doc.setDrawColor(...teal)
+    doc.setLineWidth(0.5)
+    doc.line(14, 40, 196, 40)
+
+    const t1Sess = sessions.find(s => s.tour === 1)
+
+    autoTable(doc, {
+      startY: 43,
+      margin: { left: 14, right: 14 },
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 2 },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 55, fillColor: lightGray },
+        1: { cellWidth: 127 }
+      },
+      body: [
+        ['Thématique / Audit', audit!.title],
+        ['Date Tour 1', t1Sess?.completed_at
+          ? new Date(t1Sess.completed_at).toLocaleDateString('fr-FR')
+          : '—'],
+        ['Dossiers évalués', `${t1Sess?.nb_dossiers || '—'} dossiers`],
+        ['Score global T1', `${t1Sess?.score_global?.toFixed(0) || '—'}%`],
+        ['Organisme', 'EROJU SAS — N° ODPC : 9AGA'],
+      ]
+    })
+
+    // ── RÉSULTATS PAR CRITÈRE ────────────────────────────────────
+    const currentY1 = (doc as any).lastAutoTable.finalY + 8
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.text('RÉSULTATS PAR CRITÈRE', 14, currentY1)
+    doc.line(14, currentY1 + 2, 196, currentY1 + 2)
+
+    const statsForPDF = criteria.map(c => {
+      let oui = 0, non = 0, na = 0
+      Object.values(responses).forEach((dossier: any) => {
+        const r = dossier[c.id]
+        if (r === 'oui') oui++
+        else if (r === 'non') non++
+        else if (r === 'na') na++
+      })
+      const pct = oui + non > 0 ? Math.round((oui / (oui + non)) * 100) : null
+      return { code: c.code, type: c.type, label: c.label, oui, non, na, pct }
+    })
+
+    autoTable(doc, {
+      startY: currentY1 + 5,
+      margin: { left: 14, right: 14 },
+      theme: 'striped',
+      headStyles: { fillColor: teal, textColor: 255, fontSize: 8, fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 12 },
+        1: { cellWidth: 10 },
+        2: { cellWidth: 100 },
+        3: { cellWidth: 14, halign: 'center' as const },
+        4: { cellWidth: 14, halign: 'center' as const },
+        5: { cellWidth: 12, halign: 'center' as const },
+        6: { cellWidth: 20, halign: 'center' as const },
+      },
+      head: [['N°', 'Type', 'Critère', 'OUI', 'NON', 'NA', 'Conformité']],
+      body: statsForPDF.map(c => [
+        c.code, c.type, c.label, c.oui, c.non, c.na,
+        c.pct !== null ? `${c.pct}%` : 'N/A'
+      ]),
+      didParseCell: (data: any) => {
+        if (data.section === 'body' && data.column.index === 6) {
+          const pct = statsForPDF[data.row.index]?.pct
+          if (pct !== null && pct !== undefined) {
+            if (pct >= 80) data.cell.styles.textColor = [22, 163, 74]
+            else if (pct >= 60) data.cell.styles.textColor = [217, 119, 6]
+            else data.cell.styles.textColor = [220, 38, 38]
+            data.cell.styles.fontStyle = 'bold'
+          }
+        }
+      }
+    })
+
+    // ── PLAN D'ACTIONS ───────────────────────────────────────────
+    const currentY2 = (doc as any).lastAutoTable.finalY + 8
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.text('PLAN D\'ACTIONS D\'AMÉLIORATION', 14, currentY2)
+    doc.line(14, currentY2 + 2, 196, currentY2 + 2)
+
+    const planRows: string[][] = []
+
+    criteria
+      .filter(c => {
+        const stat = statsForPDF.find(s => s.code === c.code)
+        return stat?.pct !== null && stat!.pct! < 80
+      })
+      .sort((a, b) => {
+        const pa = statsForPDF.find(s => s.code === a.code)?.pct || 0
+        const pb = statsForPDF.find(s => s.code === b.code)?.pct || 0
+        return pa - pb
+      })
+      .forEach(c => {
+        const stat = statsForPDF.find(s => s.code === c.code)
+
+        const criterionSuggestions = suggestions[c.id] || []
+        const checkedIds = checkedSuggestions[c.code] || []
+        const checkedTexts = criterionSuggestions
+          .filter(s => checkedIds.includes(s.id))
+          .map(s => `• ${s.text}`)
+
+        const freeText = planActions[c.code]
+          ? [`→ ${planActions[c.code]}`]
+          : []
+
+        const allActions = [...checkedTexts, ...freeText]
+        const actionsText = allActions.length > 0
+          ? allActions.join('\n')
+          : 'Aucune action définie'
+
+        planRows.push([
+          `${c.code}\n${stat?.pct ?? '—'}%`,
+          c.label,
+          actionsText
+        ])
+      })
+
+    if (planRows.length > 0) {
+      autoTable(doc, {
+        startY: currentY2 + 5,
+        margin: { left: 14, right: 14 },
+        theme: 'grid',
+        headStyles: { fillColor: [249, 115, 22], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+        styles: { fontSize: 8, cellPadding: 3 },
+        columnStyles: {
+          0: { cellWidth: 18, halign: 'center' as const, fontStyle: 'bold' },
+          1: { cellWidth: 80 },
+          2: { cellWidth: 84 },
+        },
+        head: [['Critère', 'Libellé', 'Actions correctives prévues']],
+        body: planRows
+      })
+    }
+
+    // ── PIED DE PAGE ─────────────────────────────────────────────
+    const pageCount = (doc as any).getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFontSize(7)
+      doc.setTextColor(150, 150, 150)
+      doc.text(
+        `EROJU SAS — N° ODPC 9AGA — Document généré le ${new Date().toLocaleDateString('fr-FR')} — Page ${i}/${pageCount}`,
+        105, 290, { align: 'center' }
+      )
+    }
+
+    const dateStr = new Date().toISOString().split('T')[0]
+    doc.save(`Plan-Actions-EPP_${audit!.slug}_${dateStr}.pdf`)
+  }
+
+  // ============================================
+  // PDF — Attestation EPP (après T2)
+  // ============================================
+
+  const generateAttestationPDF = async () => {
+    const { default: jsPDF } = await import('jspdf')
+    const { default: autoTable } = await import('jspdf-autotable')
+
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const teal = [15, 123, 108] as [number, number, number]
+    const darkGray = [30, 30, 30] as [number, number, number]
+    const lightGray = [245, 245, 245] as [number, number, number]
+
+    const t1Sess = sessions.find(s => s.tour === 1)
+    const t2Sess = sessions.find(s => s.tour === 2)
+
+    // ── EN-TÊTE ──────────────────────────────────────────────────
+    doc.setFillColor(...teal)
+    doc.rect(0, 0, 210, 35, 'F')
+
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    doc.text('DENTALSCHOOL — EROJU SAS', 105, 12, { align: 'center' })
+
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text('ATTESTATION DE RÉALISATION', 105, 20, { align: 'center' })
+    doc.text('ÉVALUATION DES PRATIQUES PROFESSIONNELLES (EPP)',
+      105, 26, { align: 'center' })
+    doc.text('Axe 2 — Certification Périodique | Méthodologie HAS',
+      105, 31, { align: 'center' })
+
+    // ── TEXTE INTRO ───────────────────────────────────────────────
+    doc.setTextColor(...darkGray)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    const introText =
+      'Le praticien soussigné atteste avoir réalisé une Évaluation des Pratiques ' +
+      'Professionnelles (EPP) complète (Tour 1 et Tour 2), conforme à la méthodologie ' +
+      'de la Haute Autorité de Santé (HAS), dans le cadre de la Certification Périodique ' +
+      '(CP) — Axe 2 : Amélioration de la qualité et de la sécurité des soins.'
+    const lines = doc.splitTextToSize(introText, 182)
+    doc.text(lines, 14, 46)
+
+    // ── IDENTIFICATION ────────────────────────────────────────────
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.text('IDENTIFICATION DE L\'AUDIT', 14, 66)
+    doc.setDrawColor(...teal)
+    doc.setLineWidth(0.5)
+    doc.line(14, 68, 196, 68)
+
+    const scoreT1 = t1Sess?.score_global?.toFixed(0) || '—'
+    const scoreT2 = t2Sess?.score_global?.toFixed(0) || '—'
+    const delta = t1Sess?.score_global && t2Sess?.score_global
+      ? ((t2Sess.score_global - t1Sess.score_global) >= 0 ? '+' : '') +
+        (t2Sess.score_global - t1Sess.score_global).toFixed(0) + '%'
+      : '—'
+
+    autoTable(doc, {
+      startY: 71,
+      margin: { left: 14, right: 14 },
+      theme: 'plain',
+      styles: { fontSize: 9, cellPadding: 2.5 },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 65, fillColor: lightGray },
+        1: { cellWidth: 117 }
+      },
+      body: [
+        ['Thématique / Audit', audit!.title],
+        ['Organisme formateur', 'EROJU SAS — N° ODPC : 9AGA'],
+        ['Certification Périodique', 'Axe 2 — Amélioration de la qualité des pratiques'],
+        ['Critères évalués', `${criteria.length} critères (${criteria.filter(c=>c.type==='R').length}R + ${criteria.filter(c=>c.type==='P').length}P + ${criteria.filter(c=>c.type==='S').length}S)`],
+        ['Date Tour 1 (T1)', t1Sess?.completed_at
+          ? new Date(t1Sess.completed_at).toLocaleDateString('fr-FR') : '—'],
+        ['Dossiers T1', `${t1Sess?.nb_dossiers || '—'} dossiers évalués`],
+        ['Score conformité T1', `${scoreT1}%`],
+        ['Date Tour 2 (T2)', t2Sess?.completed_at
+          ? new Date(t2Sess.completed_at).toLocaleDateString('fr-FR') : '—'],
+        ['Dossiers T2', `${t2Sess?.nb_dossiers || '—'} dossiers évalués`],
+        ['Score conformité T2', `${scoreT2}%`],
+        ['Progression T1 → T2', delta],
+      ]
+    })
+
+    // ── TABLEAU COMPARATIF T1/T2 ─────────────────────────────────
+    const currentY = (doc as any).lastAutoTable.finalY + 8
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(10)
+    doc.text('RÉSULTATS COMPARATIFS T1 / T2', 14, currentY)
+    doc.line(14, currentY + 2, 196, currentY + 2)
+
+    const compareRows = criteria.map(c => {
+      let oui1 = 0, non1 = 0
+      Object.values(responses).forEach((dossier: any) => {
+        const r = dossier[c.id]
+        if (r === 'oui') oui1++
+        else if (r === 'non') non1++
+      })
+      const pct1 = oui1 + non1 > 0
+        ? Math.round((oui1 / (oui1 + non1)) * 100)
+        : null
+
+      return {
+        code: c.code,
+        type: c.type,
+        label: c.label,
+        pct1,
+      }
+    })
+
+    autoTable(doc, {
+      startY: currentY + 5,
+      margin: { left: 14, right: 14 },
+      theme: 'striped',
+      headStyles: { fillColor: teal, textColor: 255, fontSize: 8, fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 12 },
+        1: { cellWidth: 10 },
+        2: { cellWidth: 110 },
+        3: { cellWidth: 22, halign: 'center' as const },
+        4: { cellWidth: 22, halign: 'center' as const },
+      },
+      head: [['N°', 'Type', 'Critère', 'Score T1', 'Score T2*']],
+      body: compareRows.map(c => [
+        c.code,
+        c.type,
+        c.label,
+        c.pct1 !== null ? `${c.pct1}%` : '—',
+        '→ Voir T2'
+      ]),
+      foot: [['', '', '* Score T2 disponible dans le dossier de suivi', '', '']],
+      footStyles: { fontSize: 7, textColor: [150, 150, 150], fontStyle: 'italic' }
+    })
+
+    // ── VALIDATION ────────────────────────────────────────────────
+    const valY = (doc as any).lastAutoTable.finalY + 8
+
+    doc.setFillColor(220, 252, 231)
+    doc.roundedRect(14, valY, 182, 22, 3, 3, 'F')
+    doc.setDrawColor(22, 163, 74)
+    doc.setLineWidth(0.5)
+    doc.roundedRect(14, valY, 182, 22, 3, 3, 'S')
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(22, 163, 74)
+    doc.text('✓ EPP VALIDÉE — AXE 2 CERTIFICATION PÉRIODIQUE', 105, valY + 8, { align: 'center' })
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.setTextColor(22, 101, 52)
+    doc.text(
+      `Tour 1 : ${scoreT1}%  →  Tour 2 : ${scoreT2}%  |  Progression : ${delta}  |  ${criteria.length} critères évalués`,
+      105, valY + 15, { align: 'center' }
+    )
+
+    // ── SIGNATURE ─────────────────────────────────────────────────
+    const sigY = valY + 30
+    doc.setTextColor(...darkGray)
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Fait le : ${new Date().toLocaleDateString('fr-FR')}`, 14, sigY)
+    doc.text('Signature du praticien :', 14, sigY + 8)
+    doc.setDrawColor(150, 150, 150)
+    doc.line(60, sigY + 8, 130, sigY + 8)
+    doc.text('Cachet de l\'organisme :', 140, sigY + 8)
+    doc.rect(140, sigY + 10, 56, 18)
+
+    // ── PIED DE PAGE ─────────────────────────────────────────────
+    const pageCount = (doc as any).getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i)
+      doc.setFontSize(7)
+      doc.setTextColor(150, 150, 150)
+      doc.text(
+        `EROJU SAS — N° ODPC 9AGA — Document généré le ${new Date().toLocaleDateString('fr-FR')} — Page ${i}/${pageCount}`,
+        105, 290, { align: 'center' }
+      )
+    }
+
+    const dateStr = new Date().toISOString().split('T')[0]
+    doc.save(`Attestation-EPP_${audit!.slug}_${dateStr}.pdf`)
+  }
+
   const t1Session = sessions.find(s => s.tour === 1)
   const t2Session = sessions.find(s => s.tour === 2)
 
@@ -883,6 +1263,15 @@ export default function EppPage() {
               <p className="text-xs text-gray-400 text-center mt-2 mb-1">
                 Vos actions seront enregistrées dans votre dossier EPP
               </p>
+              <button
+                onClick={generatePlanActionsPDF}
+                className="w-full flex items-center justify-center gap-2 py-2.5
+                  border-2 border-[#0F7B6C] text-[#0F7B6C] text-sm font-semibold
+                  rounded-2xl hover:bg-teal-50 transition-colors"
+              >
+                <FileDown size={16} />
+                Télécharger le plan d&apos;actions (PDF)
+              </button>
               <button
                 onClick={savePlanActions}
                 disabled={savingPlan}
@@ -1274,8 +1663,14 @@ export default function EppPage() {
                 <p className="text-xs text-gray-500">Amélioration</p>
               </div>
             </div>
-            <button className="w-full mt-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 transition-colors">
-              Télécharger l&apos;attestation EPP
+            <button
+              onClick={generateAttestationPDF}
+              className="w-full mt-4 py-3 bg-green-600 text-white text-sm
+                font-semibold rounded-xl hover:bg-green-700 transition-colors
+                flex items-center justify-center gap-2"
+            >
+              <FileDown size={16} />
+              Télécharger l&apos;attestation EPP (PDF)
             </button>
           </div>
         )}
