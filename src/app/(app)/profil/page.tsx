@@ -13,9 +13,6 @@ import {
   CheckCircle,
   AlertCircle,
   Bell,
-  Star,
-  Flame,
-  BookOpen,
   Mail,
   Calendar,
   ChevronRight
@@ -33,19 +30,10 @@ interface UserProfile {
   ordre_inscription_date: string | null;
 }
 
-interface UserStats {
-  total_points: number;
-  current_streak: number;
-  longest_streak: number;
-  completed_sequences: number;
-  completed_formations: number;
-}
-
 export default function ProfilPage() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [loading, setLoading] = useState(true);
+const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -104,7 +92,6 @@ export default function ProfilPage() {
       }
       setUser(session.user);
       await loadOrCreateProfile(session.user.id, session.user.email!);
-      await loadStats();
     } catch (error) {
       console.error('Erreur:', error);
       setMessage({ type: 'error', text: 'Erreur lors du chargement du profil' });
@@ -137,35 +124,6 @@ export default function ProfilPage() {
       setLastName(existingProfile.last_name || '');
       setPhotoUrl(existingProfile.profile_photo_url);
       setOrdreInscriptionDate(existingProfile.ordre_inscription_date || null);
-    }
-  };
-
-  const loadStats = async () => {
-    try {
-      const res = await fetch('/api/user/stats');
-      if (res.ok) {
-        const data = await res.json();
-
-        // Read streak directly from streaks table (same source as useUser() on home)
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        if (currentUser) {
-          const { data: streakData } = await supabase
-            .from('streaks')
-            .select('current_streak, longest_streak')
-            .eq('user_id', currentUser.id)
-            .maybeSingle();
-
-          setStats({
-            ...data,
-            current_streak: streakData?.current_streak ?? 0,
-            longest_streak: streakData?.longest_streak ?? data.longest_streak,
-          });
-        } else {
-          setStats(data);
-        }
-      }
-    } catch (error) {
-      console.error('Erreur chargement stats:', error);
     }
   };
 
@@ -461,34 +419,6 @@ export default function ProfilPage() {
                 </div>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="bg-white rounded-2xl border shadow-sm p-5">
-          <h3 className="text-base font-bold text-gray-900 mb-4">Mes statistiques</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-2 bg-yellow-100 rounded-xl flex items-center justify-center">
-                <Star className="w-6 h-6 text-yellow-600" />
-              </div>
-              <p className="text-xl font-bold text-gray-900">{stats?.total_points || 0}</p>
-              <p className="text-xs text-gray-500">Points</p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-2 bg-orange-100 rounded-xl flex items-center justify-center">
-                <Flame className="w-6 h-6 text-orange-600" />
-              </div>
-              <p className="text-xl font-bold text-gray-900">{stats?.current_streak || 0}</p>
-              <p className="text-xs text-gray-500">Jours de suite</p>
-            </div>
-            <div className="text-center">
-              <div className="w-12 h-12 mx-auto mb-2 bg-blue-100 rounded-xl flex items-center justify-center">
-                <BookOpen className="w-6 h-6 text-blue-600" />
-              </div>
-              <p className="text-xl font-bold text-gray-900">{stats?.completed_sequences || 0}</p>
-              <p className="text-xs text-gray-500">Séquences</p>
-            </div>
           </div>
         </div>
 
