@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useFormations } from '@/lib/hooks/useFormations'
+import { useDemarches } from '@/lib/hooks/useDemarches'
 import { useNews } from '@/lib/hooks/useNews'
 import { getAnonymousName, getAnonymousEmoji } from '@/lib/utils/anonymousNames'
 
@@ -15,40 +16,8 @@ import { getAnonymousName, getAnonymousEmoji } from '@/lib/utils/anonymousNames'
 import StatsCards from '@/components/home/StatsCards'
 import DailyQuizButton from '@/components/home/DailyQuizButton'
 import DailyQuizModal from '@/components/home/DailyQuizModal'
-import FormationCard from '@/components/home/FormationCard'
+import DemarcheCard from '@/components/home/DemarcheCard'
 import NewsSection from '@/components/home/NewsSection'
-import type { FormationEnCours } from '@/components/home/FormationCard'
-
-// ============================================
-// MOCK FORMATIONS EN COURS (temporaire — sera Supabase)
-// ============================================
-
-const mockFormations: FormationEnCours[] = [
-  {
-    id: '1',
-    slug: 'dyschromies-eclaircissements-dentaires',
-    title: 'Éclaircissements & Taches Blanches',
-    category: 'Esthétique',
-    currentSequence: 6,
-    totalSequences: 16,
-    progressPercent: 40,
-    likes: 124,
-    isCP: true,
-    badge: 'POPULAIRE',
-  },
-  {
-    id: '2',
-    slug: 'onlays-overlays-felures-dentaires',
-    title: 'Fêlures & Overlays',
-    category: 'Dentisterie Restauratrice',
-    currentSequence: 2,
-    totalSequences: 16,
-    progressPercent: 13,
-    likes: 89,
-    isCP: true,
-    badge: 'NOUVEAU',
-  },
-]
 
 // ============================================
 // PAGE PRINCIPALE — ACCUEIL
@@ -61,6 +30,7 @@ export default function HomePage() {
   // Hooks Supabase
   const { user, profile, displayName, streak, loading: userLoading, refetch: refetchUser } = useUser()
   const { currentFormation, loading: formationLoading } = useFormations(user?.id)
+  const { demarches, loading: demarchesLoading } = useDemarches(user?.id)
   const { news, loading: newsLoading } = useNews(4)
 
   const handleDailyQuizComplete = async (score: number, totalPoints: number) => {
@@ -151,12 +121,12 @@ export default function HomePage() {
               />
             </section>
 
-            {/* Mes formations en cours */}
+            {/* Mes démarches en cours */}
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <BookOpen size={20} className="text-[#8B5CF6]" />
-                  Mes formations en cours
+                  Mes démarches en cours
                 </h2>
                 <Link
                   href="/formation"
@@ -166,14 +136,14 @@ export default function HomePage() {
                 </Link>
               </div>
 
-              {formationLoading ? (
+              {demarchesLoading ? (
                 <div className="flex justify-center py-8">
                   <Loader2 className="animate-spin text-gray-400" size={24} />
                 </div>
-              ) : mockFormations.length > 0 ? (
+              ) : demarches.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {mockFormations.map((f) => (
-                    <FormationCard key={f.id} formation={f} />
+                  {demarches.map((d) => (
+                    <DemarcheCard key={d.id} demarche={d} />
                   ))}
                 </div>
               ) : (
@@ -182,13 +152,13 @@ export default function HomePage() {
                     <GraduationCap size={24} className="text-violet-400" />
                   </div>
                   <p className="text-gray-500 text-sm mb-4">
-                    Aucune formation en cours
+                    Aucune démarche en cours
                   </p>
                   <Link
                     href="/formation"
                     className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#00D1C1] text-white rounded-xl text-sm font-bold hover:bg-[#00b8a9] transition-colors"
                   >
-                    Voir le catalogue
+                    Commencer une formation
                   </Link>
                 </div>
               )}
