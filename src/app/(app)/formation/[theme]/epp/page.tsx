@@ -36,6 +36,8 @@ interface EppAudit {
   nb_dossiers_max: number
   delai_t2_mois_min: number
   delai_t2_mois_max: number
+  inclusion_criteria: string[]
+  exclusion_criteria: string[]
 }
 
 interface EppCriterion {
@@ -955,6 +957,45 @@ export default function EppPage() {
               <p className="text-xs text-gray-400 mb-6">
                 Entre {audit.nb_dossiers_min} et {audit.nb_dossiers_max} dossiers patients
               </p>
+
+              {(audit!.inclusion_criteria?.length > 0 || audit!.exclusion_criteria?.length > 0) && (
+                <div className="space-y-3 mb-4 pt-3 border-t border-teal-100">
+
+                  {audit!.inclusion_criteria?.length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-semibold text-teal-700 uppercase tracking-wide mb-1.5">
+                        ✓ Dossiers à inclure
+                      </p>
+                      <ul className="space-y-1">
+                        {audit!.inclusion_criteria.map((c, i) => (
+                          <li key={i} className="flex items-start gap-2 text-xs text-teal-800">
+                            <span className="shrink-0 mt-0.5 text-green-500">•</span>
+                            {c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {audit!.exclusion_criteria?.length > 0 && (
+                    <div>
+                      <p className="text-[11px] font-semibold text-red-600 uppercase tracking-wide mb-1.5">
+                        ✕ Dossiers à exclure
+                      </p>
+                      <ul className="space-y-1">
+                        {audit!.exclusion_criteria.map((c, i) => (
+                          <li key={i} className="flex items-start gap-2 text-xs text-gray-600">
+                            <span className="shrink-0 mt-0.5 text-red-400">•</span>
+                            {c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                </div>
+              )}
+
               <div className="flex items-center justify-center gap-4 mb-6">
                 <button
                   onClick={() => setNbDossiers(prev => Math.max(audit.nb_dossiers_min, prev - 1))}
