@@ -79,7 +79,7 @@ export function useDemarches(userId?: string) {
             progress: pct,
             progressLabel: `${uf.current_sequence || 0}/${f.total_sequences || 15}`,
             ctaLabel: 'Continuer',
-            ctaUrl: `/formation/${f.slug}`,
+            ctaUrl: `/formation/${f.category}`,
             accentColor: 'border-purple-200',
           }
         }).filter(Boolean) as DemarcheEnCours[]
