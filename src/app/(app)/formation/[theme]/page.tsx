@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ChevronLeft,
   ChevronRight,
@@ -88,7 +88,9 @@ type ViewMode = 'theme' | 'formation' | 'sequence'
 export default function ThemePage() {
   const params = useParams<{ theme: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const themeSlug = params.theme
+  const formationSlugParam = searchParams.get('formation')
 
   const [formations, setFormations] = useState<Formation[]>([])
   const [eppAudit, setEppAudit] = useState<EppAudit | null>(null)
@@ -110,6 +112,16 @@ export default function ThemePage() {
   useEffect(() => {
     loadData()
   }, [themeSlug])
+
+  // Ouvrir directement une formation si ?formation=slug est présent
+  useEffect(() => {
+    if (formationSlugParam && formations.length > 0 && viewMode === 'theme') {
+      const formation = formations.find(f => f.slug === formationSlugParam)
+      if (formation) {
+        openFormation(formation)
+      }
+    }
+  }, [formationSlugParam, formations])
 
   const loadData = async () => {
     try {
