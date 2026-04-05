@@ -155,12 +155,13 @@ export default function FormationPage() {
   // États de navigation
   const [viewMode, setViewMode] = useState<ViewMode>('catalog')
   const [selectedFormationId, setSelectedFormationId] = useState<string | null>(null)
+  const [selectedAccessType, setSelectedAccessType] = useState<'demo' | 'full' | null>(null)
   const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
   const [sequenceGradient, setSequenceGradient] = useState<{ from: string; to: string }>({ from: '#8B5CF6', to: '#A78BFA' })
 
   // Hook pour la progression
-  const { markCompleted } = useUserFormationProgress(selectedFormationId)
-  const { isPreview } = usePreviewMode()
+  const { markCompleted } = useUserFormationProgress(selectedFormationId, selectedAccessType)
+  const { isPreview } = usePreviewMode(selectedAccessType)
 
   const cpCategories = CATEGORIES.filter((c) => c.type === 'cp')
   const bonusCategories = CATEGORIES.filter((c) => c.type === 'bonus')
@@ -172,6 +173,7 @@ export default function FormationPage() {
 
   const openFormation = (f: Formation) => {
     setSelectedFormationId(f.id)
+    setSelectedAccessType(f.access_type)
     const config = getCategoryConfig(f.category)
     setSequenceGradient(config.gradient)
     setViewMode('formation')

@@ -15,19 +15,22 @@ import type {
 const supabase = createClient()
 
 // ============================================
-// MODE PREVIEW — Sans authentification
+// MODE PREVIEW — Basé sur authentification + access_type
 // ============================================
 
-export function usePreviewMode() {
-  const [isPreview, setIsPreview] = useState(true)
+export function usePreviewMode(accessType?: 'demo' | 'full' | null) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
-        setIsPreview(false)
+        setIsAuthenticated(true)
       }
     })
   }, [])
+
+  // Preview activé si non authentifié OU formation non-full (demo)
+  const isPreview = !isAuthenticated || (accessType !== undefined && accessType !== 'full')
 
   return {
     isPreview,
@@ -240,8 +243,8 @@ export function useSequenceQuestions(sequenceId: string | null) {
 // HOOK — Progression utilisateur
 // ============================================
 
-export function useUserFormationProgress(formationId: string | null) {
-  const { isPreview } = usePreviewMode()
+export function useUserFormationProgress(formationId: string | null, accessType?: 'demo' | 'full' | null) {
+  const { isPreview } = usePreviewMode(accessType)
   const [currentSequence, setCurrentSequence] = useState(1)
   const [completedSequenceIds, setCompletedSequenceIds] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -368,7 +371,6 @@ interface SequenceResult {
 }
 
 export function useSubmitSequenceResult() {
-  const { isPreview } = usePreviewMode()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
@@ -377,7 +379,9 @@ export function useSubmitSequenceResult() {
       setLoading(true)
       setError(null)
 
-      if (isPreview) {
+      // Vérifier auth : si non connecté, mode preview (pas de sauvegarde)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
         console.log('📊 [Preview] Résultats séquence:', {
           score: result.score,
           points: result.totalPoints,
@@ -387,9 +391,19 @@ export function useSubmitSequenceResult() {
         return true
       }
 
-      // Mode authentifié : sauvegarder en BDD
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('Non authentifié')
+      // Vérifier access_type si formationId fourni
+      if (result.formationId) {
+        const { data: formation } = await supabase
+          .from('formations')
+          .select('access_type')
+          .eq('id', result.formationId)
+          .single()
+
+        if (formation && formation.access_type !== 'full') {
+          console.log('📊 [Demo] Résultats non sauvegardés (formation demo)')
+          return true
+        }
+      }
 
       // 1. Upsert dans user_sequences
       const { error: seqError } = await supabase
@@ -466,7 +480,7 @@ export function useSubmitSequenceResult() {
     } finally {
       setLoading(false)
     }
-  }, [isPreview])
+  }, [])
 
   return { submit, loading, error }
 }

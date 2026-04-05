@@ -99,10 +99,11 @@ export default function ThemePage() {
   // ViewMode pour la navigation interne (formation detail + sequence player)
   const [viewMode, setViewMode] = useState<ViewMode>('theme')
   const [selectedFormationId, setSelectedFormationId] = useState<string | null>(null)
+  const [selectedAccessType, setSelectedAccessType] = useState<'demo' | 'full' | null>(null)
   const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
   const [sequenceGradient, setSequenceGradient] = useState<{ from: string; to: string }>({ from: '#8B5CF6', to: '#A78BFA' })
 
-  const { markCompleted } = useUserFormationProgress(selectedFormationId)
+  const { markCompleted } = useUserFormationProgress(selectedFormationId, selectedAccessType)
 
   const themeConfig = getThemeConfig(themeSlug)
 
@@ -162,6 +163,7 @@ export default function ThemePage() {
 
   const openFormation = (f: Formation) => {
     setSelectedFormationId(f.id)
+    setSelectedAccessType(f.access_type)
     const config = getCategoryConfig(f.category)
     setSequenceGradient(config.gradient)
     setViewMode('formation')

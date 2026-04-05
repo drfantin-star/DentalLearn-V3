@@ -264,9 +264,9 @@ export default function FormationDetail({
   onStartSequence,
 }: FormationDetailProps) {
   const { formation, sequences, loading, error } = useFormation(formationId)
-  const { currentSequence, completedSequenceIds } = useUserFormationProgress(formationId)
+  const { currentSequence, completedSequenceIds } = useUserFormationProgress(formationId, formation?.access_type)
   const { isPremium } = usePremiumAccess()
-  const { isPreview } = usePreviewMode()
+  const { isPreview } = usePreviewMode(formation?.access_type)
   const { isLiked, likesCount, toggleLike } = useFormationLike(formationId)
   const { totalPoints, earnedPoints } = useFormationPoints(formationId)
   const { completionPercent } = useFormationCompletion(formationId, sequences, completedSequenceIds)
