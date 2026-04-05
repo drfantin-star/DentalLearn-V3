@@ -82,7 +82,7 @@ export function useDemarches(userId?: string) {
             ctaUrl: `/formation/${f.slug}`,
             accentColor: 'border-purple-200',
           }
-        }).filter((c): c is DemarcheEnCours => c !== null)
+        }).filter(Boolean) as DemarcheEnCours[]
 
         // =============================================
         // EPP — 2 requetes separees (pas de join)
@@ -129,7 +129,7 @@ export function useDemarches(userId?: string) {
             ctaUrl: `/formation/${audit.theme_slug}/epp`,
             accentColor: 'border-teal-200',
           }
-        }).filter((c): c is DemarcheEnCours => c !== null)
+        }).filter(Boolean) as DemarcheEnCours[]
 
         // =============================================
         // Combiner et limiter a 4
