@@ -30,69 +30,48 @@ export function useDemarches(userId?: string) {
 
     async function fetchDemarches() {
       const supabase = createClient()
-      const result: DemarcheEnCours[] = []
 
       try {
-        // 1. Formations gamifiees en cours (max 3)
-        //    Jointure via l'alias "formation:formations(*)" qui est le pattern
-        //    utilise partout dans le codebase (useFormations.ts, enrollments, etc.)
-        const { data: formationsData, error: formationsError } = await supabase
+        // =============================================
+        // FORMATIONS — 2 requetes separees (pas de join)
+        // =============================================
+
+        // Etape 1 : inscriptions utilisateur
+        const { data: ufData, error: ufError } = await supabase
           .from('user_formations')
-          .select(`
-            id, formation_id, current_sequence,
-            formation:formations (id, title, slug, category, total_sequences)
-          `)
+          .select('id, formation_id, current_sequence, started_at')
           .eq('user_id', userId)
-          .eq('is_active', true)
+          .not('started_at', 'is', null)
           .order('started_at', { ascending: false })
           .limit(3)
 
-        console.log('[useDemarches] formations query error:', formationsError)
-        console.log('[useDemarches] formations data:', formationsData)
+        console.log('[useDemarches] uf raw:', ufData, ufError)
 
-        // 2. Audits EPP en cours (T1 ou T2 non completes)
-        //    Requete en deux temps car le FK audit_id -> epp_audits
-        //    n'est pas toujours resolu par PostgREST en jointure imbriquee
-        const { data: eppSessionsData, error: eppError } = await supabase
-          .from('user_epp_sessions')
-          .select('id, audit_id, tour, started_at')
-          .eq('user_id', userId)
-          .is('completed_at', null)
-          .order('started_at', { ascending: false })
-          .limit(2)
+        // Etape 2 : details des formations
+        const formationIds = ufData?.map(uf => uf.formation_id).filter(Boolean) || []
+        let formationsDetails: any[] = []
 
-        console.log('[useDemarches] epp sessions error:', eppError)
-        console.log('[useDemarches] epp sessions data:', eppSessionsData)
+        if (formationIds.length > 0) {
+          const { data: fData, error: fError } = await supabase
+            .from('formations')
+            .select('id, title, slug, category, total_sequences')
+            .in('id', formationIds)
+            .eq('is_published', true)
 
-        // Requete 2b : details des audits EPP (si des sessions existent)
-        let eppAuditsMap: Record<string, { id: string; title: string; slug: string; theme_slug: string }> = {}
-        if (eppSessionsData && eppSessionsData.length > 0) {
-          const auditIds = eppSessionsData.map(s => s.audit_id).filter(Boolean)
-          if (auditIds.length > 0) {
-            const { data: auditsData, error: auditsError } = await supabase
-              .from('epp_audits')
-              .select('id, title, slug, theme_slug')
-              .in('id', auditIds)
-
-            console.log('[useDemarches] epp audits error:', auditsError)
-            console.log('[useDemarches] epp audits data:', auditsData)
-
-            auditsData?.forEach(a => {
-              eppAuditsMap[a.id] = a
-            })
-          }
+          console.log('[useDemarches] formations details:', fData, fError)
+          formationsDetails = fData || []
         }
 
-        // Formations gamifiees
-        formationsData?.forEach(uf => {
-          if (!uf.formation) return
-          const f = uf.formation as any
+        // Etape 3 : construire les cartes formations
+        const formationCards = (ufData || []).map(uf => {
+          const f = formationsDetails.find((fd: any) => fd.id === uf.formation_id)
+          if (!f) return null
           const pct = uf.current_sequence && f.total_sequences
             ? Math.round((uf.current_sequence / f.total_sequences) * 100)
             : 0
-          result.push({
+          return {
             id: uf.id,
-            type: 'formation',
+            type: 'formation' as const,
             title: f.title,
             subtitle: f.category || 'Formation',
             badge: 'CP',
@@ -102,36 +81,69 @@ export function useDemarches(userId?: string) {
             ctaLabel: 'Continuer',
             ctaUrl: `/formation/${f.slug}`,
             accentColor: 'border-purple-200',
-          })
-        })
+          }
+        }).filter(Boolean) as DemarcheEnCours[]
 
-        // Audits EPP
-        eppSessionsData?.forEach(session => {
-          const audit = eppAuditsMap[session.audit_id]
-          if (!audit) return
-          result.push({
+        // =============================================
+        // EPP — 2 requetes separees (pas de join)
+        // =============================================
+
+        // Etape 1 : sessions EPP non completees
+        const { data: sessData, error: sessError } = await supabase
+          .from('user_epp_sessions')
+          .select('id, tour, started_at, audit_id')
+          .eq('user_id', userId)
+          .is('completed_at', null)
+          .order('started_at', { ascending: false })
+          .limit(2)
+
+        console.log('[useDemarches] epp sessions raw:', sessData, sessError)
+
+        // Etape 2 : details des audits associes
+        const auditIds = sessData?.map(s => s.audit_id).filter(Boolean) || []
+        let auditsDetails: any[] = []
+
+        if (auditIds.length > 0) {
+          const { data: aData, error: aError } = await supabase
+            .from('epp_audits')
+            .select('id, title, slug, theme_slug')
+            .in('id', auditIds)
+
+          console.log('[useDemarches] audits details:', aData, aError)
+          auditsDetails = aData || []
+        }
+
+        // Etape 3 : construire les cartes EPP
+        const eppCards = (sessData || []).map(session => {
+          const audit = auditsDetails.find((a: any) => a.id === session.audit_id)
+          if (!audit) return null
+          return {
             id: session.id,
-            type: 'epp',
+            type: 'epp' as const,
             title: audit.title,
-            subtitle: `Tour ${session.tour} en cours`,
+            subtitle: `Tour ${session.tour} en cours \u00B7 Axe 2`,
             badge: 'EPP',
             badgeColor: 'bg-[#0F7B6C]',
             icon: '\u{1F4CB}',
             ctaLabel: "Continuer l'audit",
             ctaUrl: `/formation/${audit.theme_slug}/epp`,
             accentColor: 'border-teal-200',
-          })
-        })
+          }
+        }).filter(Boolean) as DemarcheEnCours[]
+
+        // =============================================
+        // Combiner et limiter a 4
+        // =============================================
+        const allDemarches = [...formationCards, ...eppCards].slice(0, 4)
+
+        console.log('[useDemarches] demarches finales:', allDemarches)
 
         // NOTE DEVELOPPEUR : Pour ajouter de nouveaux types de demarches
         // (auto-evaluation sante, PROMs/PREMs, etc.), ajouter une requete
-        // supplementaire ici et pousser dans le tableau result[].
+        // supplementaire ici et pousser dans le tableau avant le slice.
         // Le reste du rendu s'adapte automatiquement.
 
-        console.log('[useDemarches] demarches finales:', result)
-
-        // Limiter a 4 au total
-        setDemarches(result.slice(0, 4))
+        setDemarches(allDemarches)
       } catch (err) {
         console.error('[useDemarches] Erreur chargement demarches:', err)
       } finally {
