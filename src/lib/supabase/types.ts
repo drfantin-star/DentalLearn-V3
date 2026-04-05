@@ -223,7 +223,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     type: 'cp',
   },
   chirurgie: {
-    emoji: '🔪',
+    emoji: '💉',
     gradient: { from: '#EF4444', to: '#F87171' },
     bgColor: 'bg-rose-50',
     textColor: 'text-rose-600',
@@ -253,7 +253,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     type: 'cp',
   },
   parodontologie: {
-    emoji: '🫧',
+    emoji: '🧬',
     gradient: { from: '#EC4899', to: '#F472B6' },
     bgColor: 'bg-pink-50',
     textColor: 'text-pink-600',
@@ -273,7 +273,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     type: 'cp',
   },
   radiologie: {
-    emoji: '📡',
+    emoji: '🩻',
     gradient: { from: '#14B8A6', to: '#2DD4BF' },
     bgColor: 'bg-teal-50',
     textColor: 'text-teal-600',
