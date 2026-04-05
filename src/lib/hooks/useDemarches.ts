@@ -63,7 +63,7 @@ export function useDemarches(userId?: string) {
         }
 
         // Etape 3 : construire les cartes formations
-        const formationCards: DemarcheEnCours[] = (ufData || []).map(uf => {
+        const formationCards = (ufData || []).map(uf => {
           const f = formationsDetails.find((fd: any) => fd.id === uf.formation_id)
           if (!f) return null
           const pct = uf.current_sequence && f.total_sequences
@@ -114,7 +114,7 @@ export function useDemarches(userId?: string) {
         }
 
         // Etape 3 : construire les cartes EPP
-        const eppCards: DemarcheEnCours[] = (sessData || []).map(session => {
+        const eppCards = (sessData || []).map(session => {
           const audit = auditsDetails.find((a: any) => a.id === session.audit_id)
           if (!audit) return null
           return {
