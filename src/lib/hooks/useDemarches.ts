@@ -85,22 +85,51 @@ export function useDemarches(userId?: string) {
         }).filter(Boolean) as DemarcheEnCours[]
 
         // =============================================
-        // EPP — 2 requetes separees (pas de join)
+        // EPP — Sessions en cours + T1 complétés sans T2
         // =============================================
 
-        // Etape 1 : sessions EPP non completees
-        const { data: sessData, error: sessError } = await supabase
+        // Sessions en cours (T1 ou T2 non complétés)
+        const { data: sessEnCours, error: sessError } = await supabase
           .from('user_epp_sessions')
-          .select('id, tour, started_at, audit_id')
+          .select('id, tour, started_at, completed_at, audit_id')
           .eq('user_id', userId)
           .is('completed_at', null)
           .order('started_at', { ascending: false })
           .limit(2)
 
-        console.log('[useDemarches] epp sessions raw:', sessData, sessError)
+        console.log('[useDemarches] epp sessions en cours:', sessEnCours, sessError)
 
-        // Etape 2 : details des audits associes
-        const auditIds = sessData?.map(s => s.audit_id).filter(Boolean) || []
+        // Sessions T1 complétées sans T2 démarré (phase d'attente)
+        const { data: sessT1Completes, error: sessT1Error } = await supabase
+          .from('user_epp_sessions')
+          .select('id, tour, started_at, completed_at, audit_id')
+          .eq('user_id', userId)
+          .eq('tour', 1)
+          .not('completed_at', 'is', null)
+          .order('started_at', { ascending: false })
+          .limit(2)
+
+        console.log('[useDemarches] epp sessions T1 complétées:', sessT1Completes, sessT1Error)
+
+        // Filtrer : garder T1 complétés seulement si pas de T2 existant
+        const auditIdsAvecT2 = (sessEnCours || [])
+          .filter(s => s.tour === 2)
+          .map(s => s.audit_id)
+
+        const sessT1SansT2 = (sessT1Completes || [])
+          .filter(s => !auditIdsAvecT2.includes(s.audit_id))
+
+        // Toutes les sessions EPP à afficher
+        const toutesSessionsEpp = [
+          ...(sessEnCours || []),
+          ...sessT1SansT2
+        ]
+
+        // Charger les audits associés
+        const auditIds = toutesSessionsEpp
+          .map(s => s.audit_id)
+          .filter(Boolean)
+
         let auditsDetails: any[] = []
 
         if (auditIds.length > 0) {
@@ -113,23 +142,29 @@ export function useDemarches(userId?: string) {
           auditsDetails = aData || []
         }
 
-        // Etape 3 : construire les cartes EPP
-        const eppCards = (sessData || []).map(session => {
+        // Construire les cartes EPP
+        const eppCards: DemarcheEnCours[] = []
+        toutesSessionsEpp.forEach(session => {
           const audit = auditsDetails.find((a: any) => a.id === session.audit_id)
-          if (!audit) return null
-          return {
+          if (!audit) return
+
+          const isEnAttente = session.tour === 1 && session.completed_at !== null
+
+          eppCards.push({
             id: session.id,
-            type: 'epp' as const,
+            type: 'epp',
             title: audit.title,
-            subtitle: `Tour ${session.tour} en cours \u00B7 Axe 2`,
+            subtitle: isEnAttente
+              ? 'Tour 1 complété · En attente du Tour 2 · Axe 2'
+              : `Tour ${session.tour} en cours · Axe 2`,
             badge: 'EPP',
             badgeColor: 'bg-[#0F7B6C]',
-            icon: '\u{1F4CB}',
-            ctaLabel: "Continuer l'audit",
+            icon: '📋',
+            ctaLabel: isEnAttente ? 'Voir mon audit' : "Continuer l'audit",
             ctaUrl: `/formation/${audit.theme_slug}/epp`,
             accentColor: 'border-teal-200',
-          }
-        }).filter(Boolean) as DemarcheEnCours[]
+          })
+        })
 
         // =============================================
         // Combiner et limiter a 4
