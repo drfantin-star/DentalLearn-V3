@@ -6,6 +6,7 @@ export interface ThemeContent {
   icon: string
   status: 'available' | 'coming'
   tag: 'cp' | 'bonus'
+  slug?: string
 }
 
 export interface Theme {

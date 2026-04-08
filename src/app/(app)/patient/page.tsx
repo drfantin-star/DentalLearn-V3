@@ -18,7 +18,7 @@ const PATIENT_THEMES: Theme[] = [
     color: '#F59E0B',
     bgLight: 'bg-amber-50',
     contents: [
-      { type: 'Formation gamifiée', icon: '🎮', status: 'available', tag: 'cp' },
+      { type: 'Écoute active & Communication', icon: '🎮', status: 'available', tag: 'cp', slug: 'communication-relation-therapeutique' },
       { type: 'Auto-évaluation', icon: '📊', status: 'available', tag: 'cp' },
       { type: 'EPP - Audit clinique', icon: '📋', status: 'coming', tag: 'cp' },
       { type: 'Fiche pratique', icon: '📄', status: 'available', tag: 'bonus' },
