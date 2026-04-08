@@ -89,24 +89,54 @@ export default function EditFormationPage() {
     setFormData({ ...formData, title, slug: generateSlug(title) });
   };
 
+  const compressImage = (file: File): Promise<Blob> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+
+      img.onload = () => {
+        const maxWidth = 1200;
+        const ratio = Math.min(maxWidth / img.width, 1);
+        canvas.width = Math.round(img.width * ratio);
+        canvas.height = Math.round(img.height * ratio);
+
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+
+        canvas.toBlob(
+          (blob) => resolve(blob!),
+          'image/jpeg',
+          0.85
+        );
+      };
+      img.src = url;
+    });
+  };
+
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Image trop lourde (max 2 Mo)');
-      return;
-    }
-
     setUploading(true);
     try {
+      const compressed = await compressImage(file);
+
+      if (compressed.size > 2 * 1024 * 1024) {
+        alert('Image trop lourde même après compression. Essayez une image plus petite.');
+        return;
+      }
+
       const supabase = createClient();
-      const ext = file.name.split('.').pop();
-      const fileName = `covers/${formationId}-${Date.now()}.${ext}`;
+      const fileName = `covers/${formationId}-${Date.now()}.jpg`;
 
       const { error } = await supabase.storage
         .from('formations')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, compressed, {
+          upsert: true,
+          contentType: 'image/jpeg',
+        });
 
       if (error) {
         console.error('Upload error:', error);
