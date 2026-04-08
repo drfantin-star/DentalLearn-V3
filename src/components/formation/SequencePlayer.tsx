@@ -558,6 +558,7 @@ export default function SequencePlayer({
                 duration={sequence.course_duration_seconds || 0}
                 sequenceId={sequence.id}
                 sequenceTitle={sequence.title}
+                learningObjectives={sequence.learning_objectives}
                 onComplete={() => {}}
                 onProgress={() => {}}
                 accentColor={categoryGradient.from}
@@ -657,6 +658,7 @@ export default function SequencePlayer({
                   duration={sequence.course_duration_seconds || 0}
                   sequenceId={sequence.id}
                   sequenceTitle={sequence.title}
+                  learningObjectives={sequence.learning_objectives}
                   onComplete={() => setCourseCompleted(true)}
                   onProgress={(percent) => setCourseProgress(percent)}
                   accentColor={categoryGradient.from}

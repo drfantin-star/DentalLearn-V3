@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Play, Pause } from 'lucide-react'
+import { Play, Pause, Check } from 'lucide-react'
 import { useAudio } from '@/context/AudioContext'
 
 // ============================================
@@ -18,6 +18,7 @@ interface AudioPlayerProps {
   accentColorSecondary?: string
   sequenceTitle?: string
   formationTitle?: string
+  learningObjectives?: string[] | null
   userId?: string
 }
 
@@ -47,6 +48,7 @@ export default function AudioPlayer({
   accentColorSecondary = '#00D1C1',
   sequenceTitle = 'Cours audio',
   formationTitle = '',
+  learningObjectives,
   userId = '',
 }: AudioPlayerProps) {
   const { state, playAudio, pauseAudio } = useAudio()
@@ -81,18 +83,43 @@ export default function AudioPlayer({
       <div className="rounded-2xl shadow-sm overflow-hidden"
         style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColorSecondary})` }}
       >
-        {/* Header */}
-        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-            <span className="text-lg">🎧</span>
+        {/* Icon + Title + Formation */}
+        <div className="pt-6 pb-4 flex flex-col items-center px-5">
+          <div className="w-12 h-12 rounded-full bg-white/15 flex items-center justify-center mb-3">
+            <span className="text-xl">🎧</span>
           </div>
-          <p className="text-white font-bold text-lg leading-snug flex-1 line-clamp-2">
+          <p className="text-white font-bold text-xl text-center leading-snug">
             {sequenceTitle}
           </p>
+          {formationTitle && (
+            <p className="text-white/60 text-sm text-center mt-1">{formationTitle}</p>
+          )}
         </div>
 
+        {/* Objectives */}
+        {learningObjectives && learningObjectives.length > 0 && (
+          <>
+            <div className="h-px bg-white/20 mx-4" />
+            <div className="w-full px-5 py-4 space-y-2">
+              <p className="text-white/60 text-xs uppercase tracking-wider text-center mb-3">
+                À l'issue de cette séquence
+              </p>
+              {learningObjectives.map((obj, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="mt-0.5 w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                    <Check size={12} className="text-white" />
+                  </span>
+                  <p className="text-white/90 text-sm leading-snug">{obj}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        <div className="h-px bg-white/20 mx-4" />
+
         {/* Timer pill */}
-        <div className="flex justify-center px-5 pb-2">
+        <div className="flex justify-center px-5 pt-4 pb-2">
           <div className="bg-white/20 backdrop-blur-sm px-4 py-1 rounded-full">
             <span className="text-white text-sm font-semibold tabular-nums">
               {formatTime(currentPos)} / {formatTime(currentDuration)}
@@ -114,21 +141,17 @@ export default function AudioPlayer({
         <div className="px-5 pb-5 flex justify-center">
           <button
             onClick={handleToggle}
-            className="flex items-center gap-3 px-8 py-3.5 rounded-2xl font-bold text-sm shadow-lg transition-transform active:scale-95"
-            style={{
-              background: 'rgba(255,255,255,0.2)',
-              backdropFilter: 'blur(8px)',
-              color: 'white',
-            }}
+            className="flex items-center gap-3 px-8 py-3.5 rounded-2xl font-semibold text-sm shadow-lg transition-transform active:scale-95 bg-white"
+            style={{ color: accentColor }}
           >
             {isPlaying ? (
               <>
-                <Pause size={20} fill="white" />
+                <Pause size={20} fill={accentColor} />
                 <span>Pause</span>
               </>
             ) : (
               <>
-                <Play size={20} fill="white" className="ml-0.5" />
+                <Play size={20} fill={accentColor} className="ml-0.5" />
                 <span>{isThisTrack && state.currentTime > 0 ? 'Reprendre' : 'Écouter'}</span>
               </>
             )}
