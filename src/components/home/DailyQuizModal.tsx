@@ -70,7 +70,7 @@ interface DailyQuestion {
   points: number
   formation_title: string | null
   question_type: string
-  recommended_time_seconds?: number | null
+  recommended_time_seconds?: number
 }
 
 interface DailyQuizModalProps {
@@ -254,6 +254,10 @@ export default function DailyQuizModal({
   // Ordering state
   const [orderingOrder, setOrderingOrder] = useState<string[]>([])
 
+  // Case study state
+  const [caseStudyAnswers, setCaseStudyAnswers] = useState<Record<string, string>>({})
+  const [caseStudyCurrentQ, setCaseStudyCurrentQ] = useState(0)
+
   // Matching state
   const [matchingMatches, setMatchingMatches] = useState<Record<string, string>>({})
   const [selectedLeftMatching, setSelectedLeftMatching] = useState<string | null>(null)
@@ -362,6 +366,8 @@ export default function DailyQuizModal({
     setSelectedAnswers([])
     setFillBlankAnswers({})
     setOrderingOrder([])
+    setCaseStudyAnswers({})
+    setCaseStudyCurrentQ(0)
     setMatchingMatches({})
     setSelectedLeftMatching(null)
     setShuffledMatchingRights([])
@@ -378,17 +384,17 @@ export default function DailyQuizModal({
     const q = questions[current]
     if (!q) return
 
-    // For matching questions, validate partial associations
+    // For matching questions, validate partial associations using pair.left/pair.right
     if (q.question_type === 'matching') {
-      const data = parseMatchingData(q.options)
-      if (data) {
+      let pairs: Array<{ left: string; right: string }> = []
+      try {
+        const raw = typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+        if (raw?.pairs) pairs = raw.pairs
+      } catch { /* ignore */ }
+      if (pairs.length > 0) {
         const currentMatches = matchingMatchesRef.current
-        const userAnswers = data.leftItems
-          .map(item => `${item.index + 1}-${currentMatches[String(item.index)] || ''}`)
-          .sort()
-        const correctAnswers = [...data.correctAnswers].sort()
-        const correctCount = userAnswers.filter(a => correctAnswers.includes(a)).length
-        const ratio = data.leftItems.length > 0 ? correctCount / data.leftItems.length : 0
+        const correctCount = pairs.filter(p => currentMatches[p.left] === p.right).length
+        const ratio = correctCount / pairs.length
         const points = Math.round(ratio * q.points)
 
         setIsCorrect(ratio === 1)
@@ -525,26 +531,6 @@ export default function DailyQuizModal({
     evaluateAnswer(correct, points)
   }
 
-  // Matching
-  const handleMatchingValidate = () => {
-    const q = questions[current]
-    const data = parseMatchingData(q.options)
-    if (!data) return
-
-    // Build user answers in "1-C" format (1-based index)
-    const userAnswers = data.leftItems
-      .map(item => `${item.index + 1}-${matchingMatches[String(item.index)] || ''}`)
-      .sort()
-    const correctAnswers = [...data.correctAnswers].sort()
-
-    const correctCount = userAnswers.filter(a => correctAnswers.includes(a)).length
-    const ratio = data.leftItems.length > 0 ? correctCount / data.leftItems.length : 0
-    const correct = ratio === 1
-    const points = Math.round(ratio * q.points)
-
-    evaluateAnswer(correct, points)
-  }
-
   // ============================================
   // NAVIGATION
   // ============================================
@@ -552,6 +538,7 @@ export default function DailyQuizModal({
   const next = async () => {
     if (current < questions.length - 1) {
       resetQuestionState()
+      setTimeLeft(questions[current + 1]?.recommended_time_seconds || 60)
       setCurrent(c => c + 1)
     } else {
       setFinished(true)
@@ -687,7 +674,7 @@ export default function DailyQuizModal({
   const qType = q.question_type
 
   // Normalize type names (API may use 'qcm' instead of 'mcq', 'case_study' behaves like 'mcq')
-  const normalizedType = qType === 'qcm' || qType === 'case_study' ? 'mcq' : qType === 'qcm_image' ? 'mcq_image' : qType
+  const normalizedType = qType === 'qcm' ? 'mcq' : qType === 'qcm_image' ? 'mcq_image' : qType
 
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col">
@@ -854,6 +841,80 @@ export default function DailyQuizModal({
                     <X size={28} className="text-red-600" />
                     <span className="text-lg font-black text-red-700">FAUX</span>
                   </button>
+                </div>
+              )
+            })()}
+
+            {/* === CASE_STUDY === */}
+            {q.question_type === 'case_study' && (() => {
+              // Parser les options case_study
+              let caseOpts: { context?: { history?: string; chief_complaint?: string }; questions?: Array<{ id: string; text: string; choices: Array<{ id: string; text: string; correct: boolean }>; feedback?: string; points?: number }> } | null = null
+              try {
+                const raw = typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+                if (raw && 'context' in raw && 'questions' in raw) caseOpts = raw
+              } catch { caseOpts = null }
+
+              if (!caseOpts) return <p className="text-gray-400 text-sm">Cas clinique non disponible</p>
+
+              const subQ = caseOpts.questions?.[caseStudyCurrentQ]
+              if (!subQ) return null
+
+              return (
+                <div className="space-y-4">
+                  {/* Contexte clinique */}
+                  <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
+                    <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wide mb-2">Contexte clinique</p>
+                    {caseOpts.context?.history && <p className="text-sm text-gray-700 leading-relaxed">{caseOpts.context.history}</p>}
+                    {caseOpts.context?.chief_complaint && <p className="text-sm text-gray-600 mt-1 italic">{caseOpts.context.chief_complaint}</p>}
+                  </div>
+
+                  {caseOpts.questions && caseOpts.questions.length > 1 && (
+                    <p className="text-[11px] text-gray-400">Question {caseStudyCurrentQ + 1} / {caseOpts.questions.length}</p>
+                  )}
+                  <p className="font-bold text-gray-900 text-[15px] leading-snug">{subQ.text}</p>
+
+                  <div className="flex flex-col gap-2.5">
+                    {subQ.choices.map((choice, i) => {
+                      const isSelected = caseStudyAnswers[subQ.id] === choice.id
+                      const isCorrectChoice = choice.correct
+                      let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155'
+                      if (isSelected && !showFeedback) { bg = '#F1F5F9'; border = '#94A3B8' }
+                      if (showFeedback) {
+                        if (isCorrectChoice) { bg = '#F0FDF4'; border = '#4ADE80' }
+                        else if (isSelected && !isCorrectChoice) { bg = '#FEF2F2'; border = '#FCA5A5' }
+                        else { textColor = '#94A3B8' }
+                      }
+                      return (
+                        <button
+                          key={choice.id}
+                          disabled={showFeedback || !!caseStudyAnswers[subQ.id]}
+                          onClick={() => {
+                            if (showFeedback || caseStudyAnswers[subQ.id]) return
+                            const newAnswers = { ...caseStudyAnswers, [subQ.id]: choice.id }
+                            setCaseStudyAnswers(newAnswers)
+                            const isLastSubQ = caseStudyCurrentQ >= (caseOpts!.questions!.length - 1)
+                            if (isLastSubQ) {
+                              const correct = choice.correct
+                              setIsCorrect(correct)
+                              setPointsEarned(correct ? q.points : 0)
+                              if (correct) { setScore(s => s + 1); setTotalPoints(p => p + q.points) }
+                              setShowFeedback(true)
+                            } else {
+                              setTimeout(() => setCaseStudyCurrentQ(c => c + 1), 600)
+                            }
+                          }}
+                          className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
+                          style={{ background: bg, border: `2px solid ${border}`, cursor: showFeedback ? 'default' : 'pointer' }}
+                        >
+                          <span className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0"
+                            style={{ background: showFeedback && isCorrectChoice ? '#BBF7D0' : showFeedback && isSelected && !isCorrectChoice ? '#FECACA' : '#EEF2FF', color: showFeedback && isCorrectChoice ? '#166534' : showFeedback && isSelected && !isCorrectChoice ? '#991B1B' : '#4F46E5' }}>
+                            {showFeedback && isCorrectChoice ? '\u2713' : showFeedback && isSelected && !isCorrectChoice ? '\u2717' : String.fromCharCode(65 + i)}
+                          </span>
+                          <span className="flex-1 font-semibold text-sm" style={{ color: textColor }}>{choice.text}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
               )
             })()}
@@ -1113,89 +1174,92 @@ export default function DailyQuizModal({
             })()}
 
             {/* === MATCHING === */}
-            {normalizedType === 'matching' && (() => {
-              const data = parseMatchingData(q.options)
-              if (!data || data.leftItems.length === 0) return <p className="text-gray-500">Format de question non supporte</p>
+            {q.question_type === 'matching' && (() => {
+              let pairs: Array<{ left: string; right: string }> = []
+              try {
+                const raw = typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+                if (raw?.pairs) pairs = raw.pairs
+              } catch { pairs = [] }
 
-              const rightOpts = shuffledMatchingRights.length > 0 ? shuffledMatchingRights : data.rightOptions
+              const allMatched = pairs.length > 0 && pairs.every(p => matchingMatches[p.left])
 
               return (
-                <>
-                  <p className="text-xs text-teal-600 mb-3">Cliquez sur un element gauche puis son correspondant a droite</p>
+                <div className="space-y-4">
+                  <p className="text-xs text-indigo-600 font-medium">
+                    Cliquez sur un élément gauche puis son correspondant à droite
+                  </p>
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Left column */}
+                    {/* Colonne gauche */}
                     <div className="flex flex-col gap-2">
-                      <p className="text-xs font-medium text-gray-400 uppercase mb-1">A associer</p>
-                      {data.leftItems.map(item => {
-                        const key = String(item.index)
-                        const isSelected = selectedLeftMatching === key
-                        const isMatched = !!matchingMatches[key]
-                        const matchedOption = rightOpts.find(o => o.id === matchingMatches[key])
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">À associer</p>
+                      {pairs.map((pair) => {
+                        const isSelected = selectedLeftMatching === pair.left
+                        const isMatched = !!matchingMatches[pair.left]
+                        const isCorrectMatch = showFeedback && matchingMatches[pair.left] === pair.right
+                        const isWrongMatch = showFeedback && isMatched && matchingMatches[pair.left] !== pair.right
                         return (
-                          <button
-                            key={key}
-                            onClick={() => !isMatched && setSelectedLeftMatching(key)}
-                            disabled={isMatched}
-                            className="p-3 rounded-xl border-2 text-left text-sm font-semibold transition-all"
+                          <button key={pair.left}
+                            onClick={() => { if (showFeedback || isMatched) return; setSelectedLeftMatching(isSelected ? null : pair.left) }}
+                            disabled={showFeedback || isMatched}
+                            className="w-full p-2.5 rounded-xl text-left text-xs font-bold transition-all"
                             style={{
-                              background: isSelected ? `${GRADIENT_FROM}15` : isMatched ? '#F0FDF4' : '#FAFAFF',
-                              borderColor: isSelected ? GRADIENT_FROM : isMatched ? '#4ADE80' : '#E2E8F0',
-                              color: '#334155',
-                              opacity: isMatched ? 0.8 : 1,
-                            }}
-                          >
-                            <span className="font-bold">{item.index + 1}.</span> {item.left}
-                            {isMatched && matchedOption && (
-                              <span className="block text-xs text-emerald-600 mt-1">
-                                &rarr; {matchedOption.text}
-                              </span>
-                            )}
+                              background: isCorrectMatch ? '#F0FDF4' : isWrongMatch ? '#FEF2F2' : isSelected ? '#EEF2FF' : isMatched ? '#F8FAFC' : '#FAFAFF',
+                              border: `2px solid ${isCorrectMatch ? '#4ADE80' : isWrongMatch ? '#FCA5A5' : isSelected ? '#6366F1' : isMatched ? '#CBD5E1' : '#E2E8F0'}`,
+                              color: '#334155'
+                            }}>
+                            {pair.left}
                           </button>
                         )
                       })}
                     </div>
-                    {/* Right column */}
+                    {/* Colonne droite */}
                     <div className="flex flex-col gap-2">
-                      <p className="text-xs font-medium text-gray-400 uppercase mb-1">Options</p>
-                      {rightOpts.map(option => {
-                        const isUsed = Object.values(matchingMatches).includes(option.id)
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Options</p>
+                      {pairs.map((pair) => {
+                        const isAssignedTo = Object.entries(matchingMatches).find(([, v]) => v === pair.right)
                         return (
-                          <button
-                            key={option.id}
+                          <button key={pair.right}
                             onClick={() => {
-                              if (isUsed || !selectedLeftMatching) return
-                              setMatchingMatches(prev => ({ ...prev, [selectedLeftMatching]: option.id }))
+                              if (showFeedback || !selectedLeftMatching || !!isAssignedTo) return
+                              setMatchingMatches(prev => ({ ...prev, [selectedLeftMatching]: pair.right }))
                               setSelectedLeftMatching(null)
                             }}
-                            disabled={isUsed}
-                            className="p-3 rounded-xl border-2 text-left text-sm font-semibold transition-all"
+                            disabled={showFeedback || !!isAssignedTo}
+                            className="w-full p-2.5 rounded-xl text-left text-xs font-semibold transition-all"
                             style={{
-                              background: isUsed ? '#F1F5F9' : selectedLeftMatching ? `${GRADIENT_FROM}10` : '#FAFAFF',
-                              borderColor: isUsed ? '#94A3B8' : selectedLeftMatching ? '#00D1C1' : '#E2E8F0',
-                              opacity: isUsed ? 0.6 : 1,
-                              cursor: isUsed || !selectedLeftMatching ? 'default' : 'pointer',
-                            }}
-                          >
-                            <span className="font-bold">{option.id}.</span> {option.text}
+                              background: isAssignedTo ? '#F8FAFC' : selectedLeftMatching ? '#FAFFFE' : '#FAFAFF',
+                              border: `2px solid ${isAssignedTo ? '#CBD5E1' : selectedLeftMatching ? '#00D1C1' : '#E2E8F0'}`,
+                              color: '#334155'
+                            }}>
+                            {pair.right}
                           </button>
                         )
                       })}
                     </div>
                   </div>
-                  <button
-                    onClick={handleMatchingValidate}
-                    disabled={Object.keys(matchingMatches).length < data.leftItems.length}
-                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40"
-                    style={{ background: GRADIENT_FROM }}
-                  >
-                    Valider les associations
-                  </button>
-                </>
+                  {/* Bouton valider */}
+                  {!showFeedback && (
+                    <button
+                      onClick={() => {
+                        const correct = pairs.every(p => matchingMatches[p.left] === p.right)
+                        const points = correct ? q.points : 0
+                        setIsCorrect(correct)
+                        setPointsEarned(points)
+                        if (correct) { setScore(s => s + 1); setTotalPoints(p => p + q.points) }
+                        setShowFeedback(true)
+                      }}
+                      disabled={!allMatched}
+                      className="w-full py-3 rounded-2xl font-bold text-sm text-white disabled:opacity-40 transition-all"
+                      style={{ background: allMatched ? 'linear-gradient(135deg, #6366F1, #00D1C1)' : '#E2E8F0' }}>
+                      Valider les associations
+                    </button>
+                  )}
+                </div>
               )
             })()}
 
             {/* === UNSUPPORTED TYPE === */}
-            {!['mcq', 'true_false', 'mcq_image', 'checkbox', 'highlight', 'fill_blank', 'ordering', 'matching'].includes(normalizedType) && (
+            {!['mcq', 'true_false', 'mcq_image', 'checkbox', 'highlight', 'fill_blank', 'ordering', 'matching', 'case_study'].includes(normalizedType) && (
               <div className="text-center py-8">
                 <AlertCircle size={48} className="text-amber-500 mx-auto mb-3" />
                 <p className="text-gray-600 mb-4">Type &quot;{qType}&quot; non supporte</p>
@@ -1411,38 +1475,30 @@ function FeedbackPanel({
       }
 
       case 'matching': {
-        const data = parseMatchingData(q.options)
-        if (!data) return null
-
-        // Build a map from index to correct option ID
-        const correctMap: Record<string, string> = {}
-        for (const ans of data.correctAnswers) {
-          const [idx, optId] = ans.split('-')
-          correctMap[String(parseInt(idx) - 1)] = optId
-        }
+        let pairs: Array<{ left: string; right: string }> = []
+        try {
+          const raw = typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+          if (raw?.pairs) pairs = raw.pairs
+        } catch { pairs = [] }
 
         return (
           <div className="flex flex-col gap-2 mb-4">
-            {data.leftItems.map(item => {
-              const key = String(item.index)
-              const userOptionId = matchingMatches[key]
-              const userOption = data.rightOptions.find(o => o.id === userOptionId)
-              const correctOptionId = correctMap[key] || item.correctRightId
-              const correctOption = data.rightOptions.find(o => o.id === correctOptionId)
-              const isCorrectMatch = userOptionId === correctOptionId
+            {pairs.map((pair) => {
+              const userAnswer = matchingMatches[pair.left]
+              const isCorrectMatch = userAnswer === pair.right
               return (
-                <div key={key} className="flex items-center gap-2 p-3 rounded-2xl border-2"
+                <div key={pair.left} className="flex items-center gap-2 p-3 rounded-2xl border-2"
                   style={{
                     background: isCorrectMatch ? '#F0FDF4' : '#FEF2F2',
                     borderColor: isCorrectMatch ? '#4ADE80' : '#FCA5A5',
                   }}>
-                  <span className="text-sm font-semibold text-gray-700">{item.left}</span>
+                  <span className="text-sm font-semibold text-gray-700">{pair.left}</span>
                   <span className="text-gray-400 mx-1">&rarr;</span>
                   <span className="text-sm font-semibold" style={{ color: isCorrectMatch ? '#16A34A' : '#DC2626' }}>
-                    {userOption?.text || '?'}
+                    {userAnswer || '?'}
                   </span>
-                  {!isCorrectMatch && correctOption && (
-                    <span className="text-xs text-emerald-600 ml-auto">&rarr; {correctOption.text}</span>
+                  {!isCorrectMatch && (
+                    <span className="text-xs text-emerald-600 ml-auto">&rarr; {pair.right}</span>
                   )}
                 </div>
               )
