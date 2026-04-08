@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ChevronLeft, Play } from 'lucide-react'
 import FilterTabs, { type FilterTab } from '@/components/ui/FilterTabs'
 import type { Theme } from '@/components/ui/ThemeCard'
@@ -16,6 +17,7 @@ export default function ThemeDetail({
   accentColor,
   onBack,
 }: ThemeDetailProps) {
+  const router = useRouter()
   const [filter, setFilter] = useState<FilterTab>('tous')
 
   const hasCp = theme.contents.some((c) => c.tag === 'cp')
@@ -64,10 +66,15 @@ export default function ThemeDetail({
             <button
               key={i}
               disabled={!isAvailable}
+              onClick={() => {
+                if (isAvailable && content.slug) {
+                  router.push(`/formation?slug=${content.slug}`)
+                }
+              }}
               className={`w-full bg-white rounded-xl p-4 border text-left transition-all ${
                 isAvailable
-                  ? 'border-gray-100 shadow-sm hover:shadow-md'
-                  : 'border-gray-50 opacity-50'
+                  ? 'border-gray-100 shadow-sm hover:shadow-md cursor-pointer'
+                  : 'border-gray-50 opacity-50 cursor-not-allowed'
               }`}
             >
               <div className="flex items-center gap-3">
