@@ -31,6 +31,7 @@ import TreasureChest from '@/components/sequences/TreasureChest'
 interface SequencePlayerProps {
   sequence: Sequence
   categoryGradient: { from: string; to: string }
+  coverImageUrl?: string | null
   onBack: () => void
   onComplete: (score: number, totalPoints: number) => void
 }
@@ -220,6 +221,7 @@ function parseCaseStudyOptions(options: unknown): CaseStudyOptions | null {
 export default function SequencePlayer({
   sequence,
   categoryGradient,
+  coverImageUrl,
   onBack,
   onComplete,
 }: SequencePlayerProps) {
@@ -559,6 +561,7 @@ export default function SequencePlayer({
                 sequenceId={sequence.id}
                 sequenceTitle={sequence.title}
                 learningObjectives={sequence.learning_objectives}
+                coverImageUrl={coverImageUrl}
                 onComplete={() => {}}
                 onProgress={() => {}}
                 accentColor={categoryGradient.from}
@@ -659,6 +662,7 @@ export default function SequencePlayer({
                   sequenceId={sequence.id}
                   sequenceTitle={sequence.title}
                   learningObjectives={sequence.learning_objectives}
+                  coverImageUrl={coverImageUrl}
                   onComplete={() => setCourseCompleted(true)}
                   onProgress={(percent) => setCourseProgress(percent)}
                   accentColor={categoryGradient.from}
