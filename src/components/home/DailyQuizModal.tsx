@@ -861,12 +861,14 @@ export default function DailyQuizModal({
 
               return (
                 <div className="space-y-4">
-                  {/* Contexte clinique */}
-                  <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
-                    <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wide mb-2">Contexte clinique</p>
-                    {caseOpts.context?.history && <p className="text-sm text-gray-700 leading-relaxed">{caseOpts.context.history}</p>}
-                    {caseOpts.context?.chief_complaint && <p className="text-sm text-gray-600 mt-1 italic">{caseOpts.context.chief_complaint}</p>}
-                  </div>
+                  {/* Contexte clinique — affiché uniquement si plusieurs sous-questions */}
+                  {caseOpts.questions && caseOpts.questions.length > 1 && caseOpts.context?.history && (
+                    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
+                      <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wide mb-2">Contexte clinique</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">{caseOpts.context.history}</p>
+                      {caseOpts.context?.chief_complaint && <p className="text-sm text-gray-600 mt-1 italic">{caseOpts.context.chief_complaint}</p>}
+                    </div>
+                  )}
 
                   {caseOpts.questions && caseOpts.questions.length > 1 && (
                     <p className="text-[11px] text-gray-400">Question {caseStudyCurrentQ + 1} / {caseOpts.questions.length}</p>
