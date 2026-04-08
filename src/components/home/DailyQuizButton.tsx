@@ -53,14 +53,14 @@ export default function DailyQuizButton({ userId, onStart, refreshTrigger }: Dai
 
   if (alreadyDone) {
     return (
-      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-5 shadow-sm border border-emerald-200">
+      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 shadow-sm border border-emerald-400">
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-emerald-100 rounded-xl">
-            <CheckCircle2 className="w-7 h-7 text-emerald-600" />
+          <div className="p-3 bg-white/20 rounded-xl">
+            <CheckCircle2 className="w-7 h-7 text-white" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-bold text-emerald-800">Quiz du jour termine !</p>
-            <p className="text-xs text-emerald-600 mt-0.5">
+            <p className="text-sm font-bold text-white">Quiz du jour termine !</p>
+            <p className="text-xs text-white/80 mt-0.5">
               Score : {score}/10 &bull; Reviens demain pour un nouveau quiz
             </p>
           </div>

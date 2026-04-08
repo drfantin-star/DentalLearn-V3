@@ -21,25 +21,29 @@ const categoryStyles = {
   reglementaire: {
     icon: Scale,
     bg: 'bg-blue-50',
-    text: 'text-blue-600',
+    iconBg: 'bg-blue-100',
+    text: 'text-blue-700',
     label: 'Réglementaire',
   },
   scientifique: {
     icon: FlaskConical,
-    bg: 'bg-purple-50',
-    text: 'text-purple-600',
+    bg: 'bg-violet-50',
+    iconBg: 'bg-violet-100',
+    text: 'text-violet-700',
     label: 'Scientifique',
   },
   pratique: {
     icon: Stethoscope,
     bg: 'bg-teal-50',
-    text: 'text-teal-600',
+    iconBg: 'bg-teal-100',
+    text: 'text-teal-700',
     label: 'Pratique',
   },
   humour: {
     icon: PartyPopper,
     bg: 'bg-pink-50',
-    text: 'text-pink-600',
+    iconBg: 'bg-pink-100',
+    text: 'text-pink-700',
     label: 'Humour',
   },
 }
@@ -91,11 +95,11 @@ export default function NewsSection({ news, loading }: NewsSectionProps) {
               href={item.external_url || '#'}
               target={item.external_url ? '_blank' : undefined}
               rel={item.external_url ? 'noopener noreferrer' : undefined}
-              className="block bg-white rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-md transition-all"
+              className={`block ${style.bg} rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-md transition-all`}
             >
               <div className="flex gap-3">
                 <div
-                  className={`w-10 h-10 rounded-lg ${style.bg} ${style.text} flex items-center justify-center shrink-0`}
+                  className={`w-10 h-10 rounded-lg ${style.iconBg} ${style.text} flex items-center justify-center shrink-0`}
                 >
                   <Icon size={18} />
                 </div>

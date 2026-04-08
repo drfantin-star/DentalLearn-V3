@@ -42,7 +42,7 @@ export default function HomePage() {
   return (
     <>
       {/* Header Accueil */}
-      <header className="bg-white sticky top-0 z-30 shadow-sm">
+      <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] sticky top-0 z-30 shadow-sm">
         <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <Link href="/profil" className="flex items-center gap-3">
@@ -62,11 +62,11 @@ export default function HomePage() {
                 </div>
               </div>
               <div>
-                <p className="text-xs text-gray-400">Welcome,</p>
-                <h1 className="text-lg font-bold text-gray-900">
+                <p className="text-xs text-white/70">Welcome,</p>
+                <h1 className="text-lg font-bold text-white">
                   {profile?.first_name || 'Utilisateur'}
                 </h1>
-                <p className="text-xs text-[#00D1C1]">
+                <p className="text-xs text-white/60">
                   {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
                 </p>
               </div>
@@ -74,8 +74,8 @@ export default function HomePage() {
 
             <div className="flex items-center gap-2">
               {/* Notifications */}
-              <button className="relative p-2.5 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors">
-                <Bell size={20} className="text-gray-600" />
+              <button className="relative p-2.5 bg-white/20 text-white border-0 rounded-full hover:bg-white/30 transition-colors">
+                <Bell size={20} className="text-white" />
                 <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
               </button>
             </div>
