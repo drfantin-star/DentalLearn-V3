@@ -83,39 +83,40 @@ export default function AudioPlayer({
   return (
     <div className="w-full">
 
-      {/* IMAGE MOBILE — 180px hauteur fixe, au-dessus du player */}
+      {/* IMAGE MOBILE — 240×240 carré centré */}
       {coverImageUrl && (
-        <div className="md:hidden w-full rounded-2xl overflow-hidden mb-3"
-             style={{ height: '180px' }}>
+        <div className="md:hidden mx-auto mb-3 rounded-2xl overflow-hidden"
+             style={{ width: '240px', height: '240px' }}>
           <img
             src={coverImageUrl}
             alt={sequenceTitle}
-            className="w-full h-full object-cover object-center"
+            className="w-full h-full object-cover"
           />
         </div>
       )}
 
-      {/* LAYOUT DESKTOP — image carrée gauche + player droite */}
-      <div className="md:flex md:gap-6 md:items-start md:justify-center md:max-w-3xl md:mx-auto">
+      {/* LAYOUT DESKTOP — image collée au player, un seul bloc */}
+      <div className="md:flex md:gap-0 md:items-stretch md:w-full md:rounded-2xl md:overflow-hidden md:shadow-md">
 
-        {/* Image desktop — carré fixe 260×260 */}
+        {/* Image desktop — carré fixe 280×280 */}
         {coverImageUrl && (
           <div className="hidden md:block md:flex-shrink-0"
-               style={{ width: '260px', height: '260px' }}>
+               style={{ width: '280px', minWidth: '280px' }}>
             <img
               src={coverImageUrl}
               alt={sequenceTitle}
-              className="w-full h-full object-cover rounded-2xl shadow-md"
+              className="w-full h-full object-cover object-center"
+              style={{ height: '280px' }}
             />
           </div>
         )}
 
         {/* CARD PLAYER */}
-        <div className="flex-1 md:max-w-md rounded-2xl shadow-sm overflow-hidden"
+        <div className="flex-1 rounded-2xl md:rounded-none shadow-sm md:shadow-none overflow-hidden p-6 flex flex-col justify-center gap-4"
           style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColorSecondary})` }}
         >
           {/* Title + Formation */}
-          <div className="px-5 pt-5 pb-4 flex flex-col items-center">
+          <div className="flex flex-col items-center">
             <p className="text-white font-bold text-xl text-center leading-snug">
               {sequenceTitle}
             </p>
@@ -127,8 +128,8 @@ export default function AudioPlayer({
           {/* Objectives */}
           {learningObjectives && learningObjectives.length > 0 && (
             <>
-              <div className="h-px bg-white/20 mx-4" />
-              <div className="w-full px-5 py-4 space-y-2">
+              <div className="h-px bg-white/20" />
+              <div className="space-y-2">
                 <p className="text-white/60 text-xs uppercase tracking-wider text-center mb-3">
                   À l'issue de cette séquence
                 </p>
@@ -144,10 +145,10 @@ export default function AudioPlayer({
             </>
           )}
 
-          <div className="h-px bg-white/20 mx-4" />
+          <div className="h-px bg-white/20" />
 
           {/* Timer pill */}
-          <div className="flex justify-center px-5 pt-4 pb-2">
+          <div className="flex justify-center">
             <div className="bg-white/20 backdrop-blur-sm px-4 py-1 rounded-full">
               <span className="text-white text-sm font-semibold tabular-nums">
                 {formatTime(currentPos)} / {formatTime(currentDuration)}
@@ -156,17 +157,15 @@ export default function AudioPlayer({
           </div>
 
           {/* Progress bar */}
-          <div className="px-5 pb-4">
-            <div className="h-1.5 bg-white/30 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-white rounded-full transition-[width] duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
+          <div className="h-1.5 bg-white/30 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white rounded-full transition-[width] duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
           </div>
 
           {/* Bouton Écouter */}
-          <div className="px-5 pb-5 flex justify-center">
+          <div className="flex justify-center">
             <button
               onClick={handleToggle}
               className="flex items-center gap-3 px-8 py-3.5 rounded-2xl font-semibold text-sm shadow-lg transition-transform active:scale-95 bg-white"
