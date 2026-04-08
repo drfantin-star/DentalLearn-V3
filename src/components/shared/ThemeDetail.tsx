@@ -68,7 +68,7 @@ export default function ThemeDetail({
               disabled={!isAvailable}
               onClick={() => {
                 if (isAvailable && content.slug) {
-                  router.push(`/formation?slug=${content.slug}`)
+                  router.push(`/formation/relation-patient?formation=${content.slug}`)
                 }
               }}
               className={`w-full bg-white rounded-xl p-4 border text-left transition-all ${
