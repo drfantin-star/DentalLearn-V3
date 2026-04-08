@@ -81,35 +81,37 @@ export default function AudioPlayer({
   const progressPercent = currentDuration > 0 ? (currentPos / currentDuration) * 100 : 0
 
   return (
-    <div className="w-full max-w-lg mx-auto">
+    <div className="w-full">
 
-      {/* IMAGE mobile — au-dessus de la card */}
+      {/* IMAGE MOBILE — 180px hauteur fixe, au-dessus du player */}
       {coverImageUrl && (
-        <div className="w-full mb-4 rounded-2xl overflow-hidden shadow-md md:hidden">
+        <div className="md:hidden w-full rounded-2xl overflow-hidden mb-3"
+             style={{ height: '180px' }}>
           <img
             src={coverImageUrl}
             alt={sequenceTitle}
-            className="w-full aspect-square object-cover"
+            className="w-full h-full object-cover object-center"
           />
         </div>
       )}
 
-      {/* LAYOUT desktop : côte à côte */}
-      <div className="md:flex md:gap-6 md:items-start">
+      {/* LAYOUT DESKTOP — image carrée gauche + player droite */}
+      <div className="md:flex md:gap-6 md:items-start md:justify-center md:max-w-3xl md:mx-auto">
 
-        {/* Image desktop — cachée sur mobile */}
+        {/* Image desktop — carré fixe 260×260 */}
         {coverImageUrl && (
-          <div className="hidden md:block md:w-64 md:flex-shrink-0 rounded-2xl overflow-hidden shadow-md">
+          <div className="hidden md:block md:flex-shrink-0"
+               style={{ width: '260px', height: '260px' }}>
             <img
               src={coverImageUrl}
               alt={sequenceTitle}
-              className="w-full aspect-square object-cover"
+              className="w-full h-full object-cover rounded-2xl shadow-md"
             />
           </div>
         )}
 
-        {/* CARD PLAYER — sans image */}
-        <div className="flex-1 rounded-2xl shadow-sm overflow-hidden"
+        {/* CARD PLAYER */}
+        <div className="flex-1 md:max-w-md rounded-2xl shadow-sm overflow-hidden"
           style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColorSecondary})` }}
         >
           {/* Title + Formation */}
