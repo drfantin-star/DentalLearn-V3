@@ -87,12 +87,12 @@ export default function AudioPlayer({
       >
         {/* Cover image or headphone icon */}
         {coverImageUrl ? (
-          <div className="w-full rounded-t-2xl overflow-hidden bg-gradient-to-b from-[#F4A89A]/30 to-[#A8D4F4]/30"
-               style={{ aspectRatio: '1/1' }}>
+          <div className="w-full rounded-t-2xl overflow-hidden"
+               style={{ height: '220px' }}>
             <img
               src={coverImageUrl}
               alt={sequenceTitle}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover object-top"
             />
           </div>
         ) : (
