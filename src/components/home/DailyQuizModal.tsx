@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   X,
   CheckCircle2,
@@ -70,6 +70,7 @@ interface DailyQuestion {
   points: number
   formation_title: string | null
   question_type: string
+  recommended_time_seconds?: number | null
 }
 
 interface DailyQuizModalProps {
@@ -167,17 +168,23 @@ function parseMatchingData(options: unknown): ParsedMatchingData | null {
     }
   }
 
-  // Old format: { pairs: [{id, left, right}] }
+  // Old format: { pairs: [{id?, left, right}] }
+  // id may be missing — generate stable alphabetical IDs (A, B, C…) as fallback
   if ('pairs' in o && Array.isArray(o.pairs)) {
-    const pairs = o.pairs as MatchingPair[]
+    const pairs = o.pairs as Partial<MatchingPair>[]
     return {
       leftItems: pairs.map((p, i) => ({
         index: i,
-        left: p.left,
-        correctRightId: p.id,
+        left: p.left || '',
+        correctRightId: p.id || String.fromCharCode(65 + i),
       })),
-      rightOptions: pairs.map(p => ({ id: p.id, text: p.right })),
-      correctAnswers: pairs.map((p, i) => `${i + 1}-${p.id}`),
+      rightOptions: pairs.map((p, i) => ({
+        id: p.id || String.fromCharCode(65 + i),
+        text: p.right || '',
+      })),
+      correctAnswers: pairs.map((p, i) =>
+        `${i + 1}-${p.id || String.fromCharCode(65 + i)}`
+      ),
     }
   }
 
@@ -252,6 +259,10 @@ export default function DailyQuizModal({
   const [selectedLeftMatching, setSelectedLeftMatching] = useState<string | null>(null)
   const [shuffledMatchingRights, setShuffledMatchingRights] = useState<MatchingRightOption[]>([])
 
+  // Ref to keep matchingMatches fresh for the timeout handler (avoids stale closure)
+  const matchingMatchesRef = useRef<Record<string, string>>({})
+  useEffect(() => { matchingMatchesRef.current = matchingMatches }, [matchingMatches])
+
   // Timer per question
   const [timeLeft, setTimeLeft] = useState(60)
 
@@ -259,7 +270,15 @@ export default function DailyQuizModal({
     fetchQuestions()
   }, [])
 
-  // Question timer
+  // Initialize timer from question's recommended_time_seconds (fallback 60s)
+  useEffect(() => {
+    if (questions.length === 0) return
+    const q = questions[current]
+    if (!q) return
+    setTimeLeft(q.recommended_time_seconds || 60)
+  }, [current, questions])
+
+  // Question timer countdown
   useEffect(() => {
     if (loading || finished || showFeedback || questions.length === 0) return
 
@@ -267,7 +286,6 @@ export default function DailyQuizModal({
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer)
-          handleTimeout()
           return 0
         }
         return prev - 1
@@ -350,15 +368,44 @@ export default function DailyQuizModal({
     setShowFeedback(false)
     setIsCorrect(false)
     setPointsEarned(0)
-    setTimeLeft(60)
+    // timeLeft is set by the timer init effect when `current` changes
   }
 
-  const handleTimeout = useCallback(() => {
-    if (showFeedback) return
+  // When timer reaches 0, validate matching with partial credit or mark wrong
+  useEffect(() => {
+    if (timeLeft !== 0 || showFeedback || loading || finished || questions.length === 0) return
+
+    const q = questions[current]
+    if (!q) return
+
+    // For matching questions, validate partial associations
+    if (q.question_type === 'matching') {
+      const data = parseMatchingData(q.options)
+      if (data) {
+        const currentMatches = matchingMatchesRef.current
+        const userAnswers = data.leftItems
+          .map(item => `${item.index + 1}-${currentMatches[String(item.index)] || ''}`)
+          .sort()
+        const correctAnswers = [...data.correctAnswers].sort()
+        const correctCount = userAnswers.filter(a => correctAnswers.includes(a)).length
+        const ratio = data.leftItems.length > 0 ? correctCount / data.leftItems.length : 0
+        const points = Math.round(ratio * q.points)
+
+        setIsCorrect(ratio === 1)
+        setPointsEarned(points)
+        if (ratio === 1) setScore(s => s + 1)
+        setTotalPoints(p => p + points)
+        setShowFeedback(true)
+        return
+      }
+    }
+
+    // Default: mark as incorrect with 0 points
     setIsCorrect(false)
     setPointsEarned(0)
     setShowFeedback(true)
-  }, [showFeedback])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft])
 
   // ============================================
   // VALIDATION HANDLERS
