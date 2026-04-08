@@ -6,7 +6,7 @@ import ThemeCard, { type Theme } from '@/components/ui/ThemeCard'
 import ThemeDetail from '@/components/shared/ThemeDetail'
 import FormationDetail from '@/components/formation/FormationDetail'
 import SequencePlayer from '@/components/formation/SequencePlayer'
-import { useFormationBySlug, useUserFormationProgress, type Sequence } from '@/lib/supabase'
+import { useUserFormationProgress, type Sequence } from '@/lib/supabase'
 
 // ============================================
 // DONNÉES — Thèmes Patient (Axe 3)
@@ -73,20 +73,30 @@ const PATIENT_THEMES: Theme[] = [
 export default function PatientPage() {
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null)
   const [viewMode, setViewMode] = useState<'themes' | 'formation' | 'sequence'>('themes')
-  const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
+  const [selectedFormationId, setSelectedFormationId] = useState<string | null>(null)
+  const [selectedAccessType, setSelectedAccessType] = useState<'demo' | 'full' | null>(null)
   const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
   const [sequenceGradient] = useState({ from: '#F59E0B', to: '#FCD34D' })
 
-  // Résoudre le slug en formation via le hook existant
-  const { formation } = useFormationBySlug(selectedSlug)
-  const formationId = formation?.id ?? null
-  const accessType = (formation?.access_type as 'demo' | 'full') ?? null
+  const { markCompleted } = useUserFormationProgress(selectedFormationId, selectedAccessType)
 
-  const { markCompleted } = useUserFormationProgress(formationId, accessType)
-
-  const handleContentClick = (slug: string) => {
-    setSelectedSlug(slug)
-    setViewMode('formation')
+  const handleContentClick = async (slug: string) => {
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('formations')
+        .select('id, access_type')
+        .eq('slug', slug)
+        .single()
+      if (data) {
+        setSelectedFormationId(data.id)
+        setSelectedAccessType(data.access_type)
+        setViewMode('formation')
+      }
+    } catch (err) {
+      console.error('Erreur résolution slug:', err)
+    }
   }
 
   const openSequence = (seq: Sequence) => {
@@ -95,7 +105,7 @@ export default function PatientPage() {
   }
 
   const handleSequenceComplete = async (score: number, totalPoints: number) => {
-    if (selectedSequence && formationId) {
+    if (selectedSequence && selectedFormationId) {
       markCompleted(selectedSequence.id, selectedSequence.sequence_number + 1)
     }
     try { await fetch('/api/streaks/update', { method: 'POST' }) } catch {}
@@ -108,7 +118,8 @@ export default function PatientPage() {
       setSelectedSequence(null)
       setViewMode('formation')
     } else if (viewMode === 'formation') {
-      setSelectedSlug(null)
+      setSelectedFormationId(null)
+      setSelectedAccessType(null)
       setViewMode('themes')
     }
   }
@@ -126,10 +137,10 @@ export default function PatientPage() {
   }
 
   // Rendu formation
-  if (viewMode === 'formation' && formationId) {
+  if (viewMode === 'formation' && selectedFormationId) {
     return (
       <FormationDetail
-        formationId={formationId}
+        formationId={selectedFormationId}
         onBack={goBack}
         onStartSequence={openSequence}
       />
