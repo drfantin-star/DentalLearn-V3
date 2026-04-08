@@ -16,7 +16,6 @@ interface FormData {
   category: string;
   level: string;
   total_sequences: number;
-  duration_weeks: number;
 }
 
 export default function EditFormationPage() {
@@ -33,7 +32,6 @@ export default function EditFormationPage() {
     category: 'esthetique',
     level: 'intermediate',
     total_sequences: 16,
-    duration_weeks: 8,
   });
   const router = useRouter();
   const params = useParams();
@@ -65,7 +63,6 @@ export default function EditFormationPage() {
         category: data.category || 'esthetique',
         level: data.level || 'intermediate',
         total_sequences: data.total_sequences || 16,
-        duration_weeks: data.duration_weeks || 8,
       });
     } catch (error) {
       console.error('Erreur:', error);
@@ -315,27 +312,15 @@ export default function EditFormationPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nombre de séquences</label>
-              <input
-                type="number"
-                min="1"
-                value={formData.total_sequences}
-                onChange={(e) => setFormData({ ...formData, total_sequences: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Durée (semaines)</label>
-              <input
-                type="number"
-                min="1"
-                value={formData.duration_weeks}
-                onChange={(e) => setFormData({ ...formData, duration_weeks: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Nombre de séquences</label>
+            <input
+              type="number"
+              min="1"
+              value={formData.total_sequences}
+              onChange={(e) => setFormData({ ...formData, total_sequences: parseInt(e.target.value) })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+            />
           </div>
 
           <div className="flex justify-end gap-4 pt-4">
