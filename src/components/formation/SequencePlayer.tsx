@@ -1246,12 +1246,12 @@ export default function SequencePlayer({
 
       {/* Overlay Feedback */}
       {showOverlay && overlayData && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="
-            bg-white w-full rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl
+            bg-white w-full rounded-3xl overflow-hidden shadow-2xl
             flex flex-col
             max-h-[80vh]
-            sm:max-w-2xl sm:max-h-[75vh] sm:mx-6
+            sm:max-w-2xl sm:max-h-[75vh]
             lg:max-w-3xl
           ">
 
