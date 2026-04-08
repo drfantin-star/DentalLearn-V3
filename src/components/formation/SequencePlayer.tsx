@@ -557,6 +557,7 @@ export default function SequencePlayer({
                 src={sequence.course_media_url}
                 duration={sequence.course_duration_seconds || 0}
                 sequenceId={sequence.id}
+                sequenceTitle={sequence.title}
                 onComplete={() => {}}
                 onProgress={() => {}}
                 accentColor={categoryGradient.from}
@@ -655,6 +656,7 @@ export default function SequencePlayer({
                   src={sequence.course_media_url}
                   duration={sequence.course_duration_seconds || 0}
                   sequenceId={sequence.id}
+                  sequenceTitle={sequence.title}
                   onComplete={() => setCourseCompleted(true)}
                   onProgress={(percent) => setCourseProgress(percent)}
                   accentColor={categoryGradient.from}
