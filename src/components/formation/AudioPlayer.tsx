@@ -72,60 +72,68 @@ export default function AudioPlayer({
     }
   }
 
+  const currentDuration = (isThisTrack ? state.duration : 0) || duration
+  const currentPos = isThisTrack ? state.currentTime : 0
+  const progressPercent = currentDuration > 0 ? (currentPos / currentDuration) * 100 : 0
+
   return (
     <div className="w-full">
-      <div className="bg-white rounded-2xl border-2 border-gray-100 shadow-sm overflow-hidden">
-        {/* Visuel audio */}
-        <div
-          className="relative px-6 py-8 flex flex-col items-center"
-          style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColorSecondary})` }}
-        >
-          <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center mb-4">
-            <span className="text-4xl">🎧</span>
+      <div className="rounded-2xl shadow-sm overflow-hidden"
+        style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColorSecondary})` }}
+      >
+        {/* Header */}
+        <div className="px-5 pt-5 pb-3 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+            <span className="text-lg">🎧</span>
           </div>
-          <p className="text-white/80 text-xs font-medium mb-1">COURS AUDIO</p>
-          {isThisTrack && state.currentTime > 0 ? (
-            <div className="bg-white/20 backdrop-blur-sm px-4 py-1.5 rounded-full">
-              <span className="text-white text-sm font-semibold">
-                {formatTime(state.currentTime)} / {formatTime(state.duration || duration)}
-              </span>
-            </div>
-          ) : (
-            <div className="bg-white/20 backdrop-blur-sm px-4 py-1.5 rounded-full">
-              <span className="text-white text-sm font-semibold">
-                Durée : {formatTime(duration)}
-              </span>
-            </div>
-          )}
+          <p className="text-white font-bold text-lg leading-snug flex-1 line-clamp-2">
+            {sequenceTitle}
+          </p>
+        </div>
+
+        {/* Timer pill */}
+        <div className="flex justify-center px-5 pb-2">
+          <div className="bg-white/20 backdrop-blur-sm px-4 py-1 rounded-full">
+            <span className="text-white text-sm font-semibold tabular-nums">
+              {formatTime(currentPos)} / {formatTime(currentDuration)}
+            </span>
+          </div>
+        </div>
+
+        {/* Progress bar */}
+        <div className="px-5 pb-4">
+          <div className="h-1.5 bg-white/30 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white rounded-full transition-[width] duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
         </div>
 
         {/* Bouton Écouter */}
-        <div className="px-5 py-5 flex justify-center">
+        <div className="px-5 pb-5 flex justify-center">
           <button
             onClick={handleToggle}
-            className="flex items-center gap-3 px-8 py-4 rounded-2xl font-bold text-white shadow-lg transition-transform active:scale-95"
-            style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColorSecondary})` }}
+            className="flex items-center gap-3 px-8 py-3.5 rounded-2xl font-bold text-sm shadow-lg transition-transform active:scale-95"
+            style={{
+              background: 'rgba(255,255,255,0.2)',
+              backdropFilter: 'blur(8px)',
+              color: 'white',
+            }}
           >
             {isPlaying ? (
               <>
-                <Pause size={22} fill="white" />
+                <Pause size={20} fill="white" />
                 <span>Pause</span>
               </>
             ) : (
               <>
-                <Play size={22} fill="white" className="ml-0.5" />
+                <Play size={20} fill="white" className="ml-0.5" />
                 <span>{isThisTrack && state.currentTime > 0 ? 'Reprendre' : 'Écouter'}</span>
               </>
             )}
           </button>
         </div>
-
-        {/* Message DPC */}
-        {(!isThisTrack || (isThisTrack && state.currentTime > 0 && state.currentTime < (state.duration || duration))) && (
-          <p className="text-center text-[11px] text-gray-400 pb-4 px-4">
-            Écoutez 100% du cours pour débloquer le quiz
-          </p>
-        )}
       </div>
     </div>
   )

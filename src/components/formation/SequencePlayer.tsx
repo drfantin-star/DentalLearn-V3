@@ -693,16 +693,26 @@ export default function SequencePlayer({
               <p className="text-gray-500 italic mb-6">Pas de contenu média pour cette séquence</p>
             )}
 
-            <button
-              onClick={() => setPlayerStep('quiz')}
-              disabled={hasMedia && !courseCompleted && !demoMode}
-              className="w-full max-w-xs py-4 rounded-2xl font-bold text-white disabled:opacity-40 transition-opacity"
-              style={{ background: categoryGradient.from }}
-            >
-              {hasMedia && !courseCompleted && !demoMode
-                ? `${isAudio ? 'Écoutez' : 'Regardez'} le cours (${courseProgress}%)`
-                : 'Passer au Quiz →'}
-            </button>
+            {hasMedia && !courseCompleted && !demoMode ? (
+              <>
+                <button
+                  disabled
+                  className="w-full max-w-xs py-4 rounded-2xl font-bold bg-gray-200 text-gray-400 cursor-not-allowed"
+                >
+                  Passer au Quiz
+                </button>
+                <p className="text-gray-400 text-xs text-center mt-2">
+                  Écoutez 100% du cours pour débloquer le quiz
+                </p>
+              </>
+            ) : (
+              <button
+                onClick={() => setPlayerStep('quiz')}
+                className="w-full max-w-xs py-4 rounded-2xl font-bold text-white bg-[#2D1B96] transition-transform active:scale-95"
+              >
+                Passer au Quiz →
+              </button>
+            )}
           </div>
         )}
 
