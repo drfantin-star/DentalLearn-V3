@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Upload } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface FormData {
   title: string;
@@ -11,6 +12,7 @@ interface FormData {
   instructor_name: string;
   description_short: string;
   description_long: string;
+  cover_image_url: string;
   category: string;
   level: string;
   total_sequences: number;
@@ -20,12 +22,14 @@ interface FormData {
 export default function EditFormationPage() {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     title: '',
     slug: '',
     instructor_name: '',
     description_short: '',
     description_long: '',
+    cover_image_url: '',
     category: 'esthetique',
     level: 'intermediate',
     total_sequences: 16,
@@ -57,6 +61,7 @@ export default function EditFormationPage() {
         instructor_name: data.instructor_name || '',
         description_short: data.description_short || '',
         description_long: data.description_long || '',
+        cover_image_url: data.cover_image_url || '',
         category: data.category || 'esthetique',
         level: data.level || 'intermediate',
         total_sequences: data.total_sequences || 16,
@@ -82,6 +87,44 @@ export default function EditFormationPage() {
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const title = e.target.value;
     setFormData({ ...formData, title, slug: generateSlug(title) });
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image trop lourde (max 2 Mo)');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = file.name.split('.').pop();
+      const fileName = `covers/${formationId}-${Date.now()}.${ext}`;
+
+      const { error } = await supabase.storage
+        .from('formations')
+        .upload(fileName, file, { upsert: true });
+
+      if (error) {
+        console.error('Upload error:', error);
+        alert('Erreur lors de l\'upload');
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('formations')
+        .getPublicUrl(fileName);
+
+      setFormData({ ...formData, cover_image_url: publicUrl });
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Erreur lors de l\'upload');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -162,6 +205,52 @@ export default function EditFormationPage() {
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
               placeholder="Résumé en 1-2 phrases"
             />
+          </div>
+
+          {/* Cover Image */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Image de couverture
+            </label>
+
+            {formData.cover_image_url ? (
+              <div className="relative w-full h-40 rounded-xl overflow-hidden mb-3">
+                <img
+                  src={formData.cover_image_url}
+                  alt="Couverture"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, cover_image_url: '' })}
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#2D1B96] hover:bg-gray-50 transition-colors">
+                {uploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#2D1B96] mb-2" />
+                    <span className="text-sm text-gray-500">Upload en cours...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload size={24} className="text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-500">Cliquer pour uploader</span>
+                    <span className="text-xs text-gray-400">PNG, JPG — 2 Mo max</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  onChange={handleCoverUpload}
+                  disabled={uploading}
+                />
+              </label>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
