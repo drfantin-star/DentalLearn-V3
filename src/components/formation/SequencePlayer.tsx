@@ -5,6 +5,8 @@ import {
   ChevronLeft,
   Check,
   X,
+  CheckCircle2,
+  XCircle,
   Lightbulb,
   Loader2,
   Square,
@@ -1138,28 +1140,62 @@ export default function SequencePlayer({
 
       {/* Overlay Feedback */}
       {showOverlay && overlayData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="relative w-full max-w-[360px] bg-white rounded-3xl overflow-hidden shadow-2xl">
-            <div className="px-6 py-5 text-center" style={{ background: overlayData.isCorrect ? 'linear-gradient(135deg, #34D399, #059669)' : 'linear-gradient(135deg, #F87171, #DC2626)' }}>
-              <div className="w-14 h-14 mx-auto mb-2 bg-white rounded-full flex items-center justify-center">
-                {overlayData.isCorrect ? <Check size={28} className="text-emerald-600" strokeWidth={3} /> : <X size={28} className="text-red-600" strokeWidth={3} />}
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="
+            bg-white w-full rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl
+            flex flex-col
+            max-h-[80vh]
+            sm:max-w-2xl sm:max-h-[75vh] sm:mx-6
+            lg:max-w-3xl
+          ">
+
+            {/* Header coloré — compact sur mobile */}
+            <div className={`flex items-center gap-4 px-6 py-4 shrink-0 ${
+              overlayData.isCorrect
+                ? 'bg-gradient-to-r from-emerald-400 to-emerald-600'
+                : 'bg-gradient-to-r from-red-400 to-red-600'
+            }`}>
+              <div className="w-10 h-10 shrink-0 bg-white rounded-full flex items-center justify-center">
+                {overlayData.isCorrect
+                  ? <CheckCircle2 size={22} className="text-emerald-500" />
+                  : <XCircle size={22} className="text-red-500" />
+                }
               </div>
-              <h3 className="text-xl font-extrabold text-white mb-2">{overlayData.isCorrect ? 'Bravo !' : 'Dommage !'}</h3>
-              {overlayData.points > 0 && <span className="bg-white/20 px-4 py-1 rounded-full text-white font-bold text-sm">+{overlayData.points} points</span>}
-            </div>
-            <div className="px-6 py-5 max-h-[200px] overflow-auto">
-              <div className="flex items-center gap-2 mb-2">
-                <Lightbulb size={16} className="text-amber-500" />
-                <span className="text-xs font-bold text-gray-400 uppercase">Explication</span>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-white font-black text-lg leading-tight">
+                  {overlayData.isCorrect ? 'Bravo !' : 'Pas tout à fait…'}
+                </h3>
+                <span className="text-white/80 text-sm font-semibold">
+                  {overlayData.isCorrect ? `+${overlayData.points} points` : '0 point'}
+                </span>
               </div>
-              <p className="text-[13px] text-gray-600 leading-relaxed">{overlayData.feedback || 'Aucun feedback disponible.'}</p>
             </div>
-            <div className="px-6 pb-5">
-              <button onClick={nextQuestion} className="w-full py-4 rounded-2xl font-bold text-white" style={{ background: categoryGradient.from }}>
+
+            {/* Feedback — scrollable si nécessaire */}
+            <div className="flex-1 overflow-y-auto px-6 py-5 min-h-0">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                Explication
+              </p>
+              <p className="text-sm text-gray-700 leading-relaxed sm:text-base">
+                {overlayData.feedback}
+              </p>
+            </div>
+
+            {/* Bouton fixe en bas */}
+            <div className="shrink-0 px-6 py-4 bg-white border-t border-gray-100">
+              <button
+                onClick={nextQuestion}
+                className="w-full py-4 rounded-2xl font-black text-white text-[15px] transition-all active:scale-[0.98] hover:opacity-95"
+                style={{
+                  background: overlayData.isCorrect
+                    ? 'linear-gradient(135deg, #34D399, #059669)'
+                    : 'linear-gradient(135deg, #F87171, #DC2626)'
+                }}
+              >
                 {overlayData.isLast ? 'Voir mes résultats' : 'Question suivante'}
               </button>
             </div>
+
           </div>
         </div>
       )}
