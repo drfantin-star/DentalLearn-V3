@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Play, Pause, Check } from 'lucide-react'
+import { Play, Pause, Check, Headphones } from 'lucide-react'
 import { useAudio } from '@/context/AudioContext'
 
 // ============================================
@@ -19,6 +19,7 @@ interface AudioPlayerProps {
   sequenceTitle?: string
   formationTitle?: string
   learningObjectives?: string[] | null
+  coverImageUrl?: string | null
   userId?: string
 }
 
@@ -49,6 +50,7 @@ export default function AudioPlayer({
   sequenceTitle = 'Cours audio',
   formationTitle = '',
   learningObjectives,
+  coverImageUrl,
   userId = '',
 }: AudioPlayerProps) {
   const { state, playAudio, pauseAudio } = useAudio()
@@ -83,11 +85,25 @@ export default function AudioPlayer({
       <div className="rounded-2xl shadow-sm overflow-hidden"
         style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColorSecondary})` }}
       >
-        {/* Icon + Title + Formation */}
-        <div className="pt-6 pb-4 flex flex-col items-center px-5">
-          <div className="w-12 h-12 rounded-full bg-white/15 flex items-center justify-center mb-3">
-            <span className="text-xl">🎧</span>
+        {/* Cover image or headphone icon */}
+        {coverImageUrl ? (
+          <div className="w-full h-40 overflow-hidden">
+            <img
+              src={coverImageUrl}
+              alt={sequenceTitle}
+              className="w-full h-full object-cover"
+            />
           </div>
+        ) : (
+          <div className="pt-6 pb-2 flex justify-center">
+            <div className="w-16 h-16 rounded-full bg-white/15 flex items-center justify-center">
+              <Headphones size={28} className="text-white" />
+            </div>
+          </div>
+        )}
+
+        {/* Title + Formation */}
+        <div className="px-5 pt-3 pb-4 flex flex-col items-center">
           <p className="text-white font-bold text-xl text-center leading-snug">
             {sequenceTitle}
           </p>

@@ -75,6 +75,7 @@ export default function PatientPage() {
   const [viewMode, setViewMode] = useState<'themes' | 'formation' | 'sequence'>('themes')
   const [selectedFormationId, setSelectedFormationId] = useState<string | null>(null)
   const [selectedAccessType, setSelectedAccessType] = useState<'demo' | 'full' | null>(null)
+  const [selectedCoverImageUrl, setSelectedCoverImageUrl] = useState<string | null>(null)
   const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
   const [sequenceGradient] = useState({ from: '#F59E0B', to: '#FCD34D' })
 
@@ -86,12 +87,13 @@ export default function PatientPage() {
       const supabase = createClient()
       const { data } = await supabase
         .from('formations')
-        .select('id, access_type')
+        .select('id, access_type, cover_image_url')
         .eq('slug', slug)
         .single()
       if (data) {
         setSelectedFormationId(data.id)
         setSelectedAccessType(data.access_type)
+        setSelectedCoverImageUrl(data.cover_image_url)
         setViewMode('formation')
       }
     } catch (err) {
@@ -130,6 +132,7 @@ export default function PatientPage() {
       <SequencePlayer
         sequence={selectedSequence}
         categoryGradient={sequenceGradient}
+        coverImageUrl={selectedCoverImageUrl}
         onBack={goBack}
         onComplete={handleSequenceComplete}
       />

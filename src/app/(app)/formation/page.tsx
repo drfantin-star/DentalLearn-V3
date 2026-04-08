@@ -214,6 +214,7 @@ export default function FormationPage() {
       <SequencePlayer
         sequence={selectedSequence}
         categoryGradient={sequenceGradient}
+        coverImageUrl={formations.find(f => f.id === selectedFormationId)?.cover_image_url}
         onBack={goBack}
         onComplete={handleSequenceComplete}
       />
