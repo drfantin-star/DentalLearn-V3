@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { HeartHandshake } from 'lucide-react'
 import ThemeCard, { type Theme } from '@/components/ui/ThemeCard'
 import ThemeDetail from '@/components/shared/ThemeDetail'
+import FormationDetail from '@/components/formation/FormationDetail'
+import SequencePlayer from '@/components/formation/SequencePlayer'
+import { useFormationBySlug, useUserFormationProgress, type Sequence } from '@/lib/supabase'
 
 // ============================================
 // DONNÉES — Thèmes Patient (Axe 3)
@@ -69,13 +72,78 @@ const PATIENT_THEMES: Theme[] = [
 
 export default function PatientPage() {
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null)
+  const [viewMode, setViewMode] = useState<'themes' | 'formation' | 'sequence'>('themes')
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
+  const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
+  const [sequenceGradient] = useState({ from: '#F59E0B', to: '#FCD34D' })
 
+  // Résoudre le slug en formation via le hook existant
+  const { formation } = useFormationBySlug(selectedSlug)
+  const formationId = formation?.id ?? null
+  const accessType = (formation?.access_type as 'demo' | 'full') ?? null
+
+  const { markCompleted } = useUserFormationProgress(formationId, accessType)
+
+  const handleContentClick = (slug: string) => {
+    setSelectedSlug(slug)
+    setViewMode('formation')
+  }
+
+  const openSequence = (seq: Sequence) => {
+    setSelectedSequence(seq)
+    setViewMode('sequence')
+  }
+
+  const handleSequenceComplete = async (score: number, totalPoints: number) => {
+    if (selectedSequence && formationId) {
+      markCompleted(selectedSequence.id, selectedSequence.sequence_number + 1)
+    }
+    try { await fetch('/api/streaks/update', { method: 'POST' }) } catch {}
+    setSelectedSequence(null)
+    setViewMode('formation')
+  }
+
+  const goBack = () => {
+    if (viewMode === 'sequence') {
+      setSelectedSequence(null)
+      setViewMode('formation')
+    } else if (viewMode === 'formation') {
+      setSelectedSlug(null)
+      setViewMode('themes')
+    }
+  }
+
+  // Rendu séquence
+  if (viewMode === 'sequence' && selectedSequence) {
+    return (
+      <SequencePlayer
+        sequence={selectedSequence}
+        categoryGradient={sequenceGradient}
+        onBack={goBack}
+        onComplete={handleSequenceComplete}
+      />
+    )
+  }
+
+  // Rendu formation
+  if (viewMode === 'formation' && formationId) {
+    return (
+      <FormationDetail
+        formationId={formationId}
+        onBack={goBack}
+        onStartSequence={openSequence}
+      />
+    )
+  }
+
+  // Rendu thème sélectionné
   if (selectedTheme) {
     return (
       <ThemeDetail
         theme={selectedTheme}
         accentColor="#F59E0B"
         onBack={() => setSelectedTheme(null)}
+        onFormationClick={handleContentClick}
       />
     )
   }
