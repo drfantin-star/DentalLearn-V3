@@ -85,6 +85,7 @@ export async function GET(request: NextRequest) {
           points,
           question_type,
           image_url,
+          recommended_time_seconds,
           sequence:sequences!questions_sequence_id_fkey (
             formation:formations!sequences_formation_id_fkey (
               title
@@ -115,6 +116,7 @@ export async function GET(request: NextRequest) {
         points: q.points,
         question_type: q.question_type,
         image_url: q.image_url || null,
+        recommended_time_seconds: q.recommended_time_seconds ?? null,
         formation_title: (q.sequence as Record<string, unknown>)?.formation
           ? ((q.sequence as Record<string, unknown>).formation as Record<string, unknown>).title
           : null,
