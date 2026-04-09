@@ -15,12 +15,9 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
     const categoryColor = catConfig.gradient.from
 
     return (
-      <div
-        className="flex-shrink-0 snap-start rounded-2xl overflow-hidden shadow-sm bg-white w-[calc(50vw-24px)] md:w-[calc(33vw-24px)]"
-        style={{ aspectRatio: '1/1' }}
-      >
-        {/* Image — prend les 2/3 de la hauteur */}
-        <div className="relative w-full" style={{ height: '65%' }}>
+      <div className="flex-shrink-0 snap-start rounded-2xl overflow-hidden shadow-sm bg-white w-[calc(50vw-24px)] md:w-64">
+        {/* Image carrée */}
+        <div className="w-full aspect-square overflow-hidden">
           {demarche.coverImageUrl ? (
             <img
               src={demarche.coverImageUrl}
@@ -37,14 +34,14 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
           )}
         </div>
 
-        {/* Bas de card — titre + bouton */}
-        <div className="p-3 flex flex-col justify-between" style={{ height: '35%' }}>
-          <p className="font-semibold text-gray-900 text-xs leading-snug line-clamp-2">
+        {/* Bas de card — compact */}
+        <div className="p-3 flex flex-col gap-2">
+          <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">
             {demarche.title}
           </p>
           <Link
             href={demarche.ctaUrl}
-            className="text-center text-xs font-semibold text-white py-1.5 rounded-xl mt-1"
+            className="text-center text-xs font-semibold text-white py-2 rounded-xl"
             style={{ background: 'linear-gradient(135deg, #2D1B96, #3D2BB6)' }}
           >
             Continuer →
@@ -57,7 +54,7 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
   // --- EPP / other cards: same width, existing layout preserved ---
   return (
     <div
-      className={`flex-shrink-0 snap-start bg-white rounded-2xl p-4 shadow-sm border ${demarche.accentColor} hover:shadow-md transition-all w-[calc(50vw-24px)] md:w-[calc(33vw-24px)]`}
+      className={`flex-shrink-0 snap-start bg-white rounded-2xl p-4 shadow-sm border ${demarche.accentColor} hover:shadow-md transition-all w-[calc(50vw-24px)] md:w-64`}
       style={{ borderWidth: '0.5px' }}
     >
       {/* Badge */}
