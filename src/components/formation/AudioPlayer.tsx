@@ -70,6 +70,7 @@ export default function AudioPlayer({
         sequenceId,
         userId,
         duration,
+        coverImageUrl: coverImageUrl || undefined,
         onComplete,
         onProgress,
       })
