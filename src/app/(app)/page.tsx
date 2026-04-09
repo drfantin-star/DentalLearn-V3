@@ -47,8 +47,8 @@ export default function HomePage() {
     <>
       {/* Header Accueil */}
       <header
-        className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 pb-4"
-        style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}
+        className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 pb-5"
+        style={{ paddingTop: 'max(48px, env(safe-area-inset-top))' }}
       >
         <div className="flex items-center justify-between">
 
