@@ -1,9 +1,9 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import Link from 'next/link'
 import {
-  GraduationCap, Bell,
+  GraduationCap, Bell, ChevronLeft, ChevronRight,
   BookOpen, Loader2, Zap,
 } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
@@ -26,6 +26,10 @@ import NewsSection from '@/components/home/NewsSection'
 export default function HomePage() {
   const [showDailyQuiz, setShowDailyQuiz] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
+  const scrollRight = () => scrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })
 
   // Hooks Supabase
   const { user, profile, displayName, streak, loading: userLoading, refetch: refetchUser } = useUser()
@@ -135,10 +139,32 @@ export default function HomePage() {
                   <Loader2 className="animate-spin text-gray-400" size={24} />
                 </div>
               ) : demarches.length > 0 ? (
-                <div className="flex gap-3 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4">
-                  {demarches.map((d) => (
-                    <DemarcheCard key={d.id} demarche={d} />
-                  ))}
+                <div className="relative">
+                  {/* Flèche gauche — desktop only */}
+                  <button
+                    onClick={scrollLeft}
+                    className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+
+                  {/* Carousel */}
+                  <div
+                    ref={scrollRef}
+                    className="flex gap-3 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4"
+                  >
+                    {demarches.map((d) => (
+                      <DemarcheCard key={d.id} demarche={d} />
+                    ))}
+                  </div>
+
+                  {/* Flèche droite — desktop only */}
+                  <button
+                    onClick={scrollRight}
+                    className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
                 </div>
               ) : (
                 <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
