@@ -46,42 +46,36 @@ export default function HomePage() {
   return (
     <>
       {/* Header Accueil */}
-      <header
-        className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 pb-5"
-        style={{ paddingTop: 'env(safe-area-inset-top)' }}
-      >
-        <div className="flex items-center justify-between">
+      <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 py-4">
+        <div className="flex items-center justify-between gap-3">
 
-          <div className="flex items-center gap-3">
-            {/* Avatar */}
-            <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-white/30 flex-shrink-0">
-              {profile?.profile_photo_url ? (
-                <img src={profile.profile_photo_url} alt="avatar" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-[#00D1C1] to-[#2D1B96] flex items-center justify-center">
-                  <span className="text-white font-bold text-base">
-                    {profile?.first_name?.[0] || 'U'}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Textes */}
-            <div>
-              <p className="text-white/60" style={{ fontSize: '11px' }}>Bonjour,</p>
-              <div className="flex items-center gap-2">
-                <p className="text-white uppercase" style={{ fontSize: '24px', fontWeight: '900', lineHeight: '1.2' }}>
-                  {profile?.first_name || 'Utilisateur'}
-                </p>
-                <p className="text-white/70 uppercase" style={{ fontSize: '13px', fontWeight: '700' }}>
-                  {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
-                </p>
+          {/* Avatar */}
+          <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/30 flex-shrink-0">
+            {profile?.profile_photo_url ? (
+              <img src={profile.profile_photo_url} alt="avatar" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-[#00D1C1] to-[#2D1B96] flex items-center justify-center">
+                <span className="text-white font-bold text-base">
+                  {profile?.first_name?.[0] || 'U'}
+                </span>
               </div>
-            </div>
+            )}
+          </div>
+
+          {/* Textes — flex-1 pour occuper tout l'espace jusqu'au bouton notif */}
+          <div className="flex-1 flex items-center gap-2 min-w-0">
+            <p className="text-white font-black uppercase truncate"
+               style={{ fontSize: '18px' }}>
+              Bonjour, {profile?.first_name || 'Utilisateur'}
+            </p>
+            <p className="text-white/60 font-bold uppercase truncate flex-shrink-0"
+               style={{ fontSize: '13px' }}>
+              {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
+            </p>
           </div>
 
           {/* Notif */}
-          <button className="relative w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
+          <button className="relative w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0">
             <Bell size={20} className="text-white" />
             <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-400 rounded-full" />
           </button>
