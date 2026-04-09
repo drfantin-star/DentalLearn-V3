@@ -676,6 +676,16 @@ export default function DailyQuizModal({
   // Normalize type names (API may use 'qcm' instead of 'mcq', 'case_study' behaves like 'mcq')
   const normalizedType = qType === 'qcm' ? 'mcq' : qType === 'qcm_image' ? 'mcq_image' : qType
 
+  // Détecter le sous-format case_study
+  const isCaseStudyStructured = q.question_type === 'case_study' && (() => {
+    try {
+      const raw = typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+      return raw && !Array.isArray(raw) && 'context' in raw && 'questions' in raw
+    } catch { return false }
+  })()
+  const isCaseStudyLegacy = q.question_type === 'case_study' && !isCaseStudyStructured
+  // Legacy = options est un tableau MCQ standard, question_text contient "CONTEXTE : ... QUESTION : ..."
+
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col">
       {/* Top bar */}
@@ -845,8 +855,56 @@ export default function DailyQuizModal({
               )
             })()}
 
+            {/* === CASE STUDY LEGACY (Axe 1) — options = tableau MCQ, contexte dans question_text === */}
+            {isCaseStudyLegacy && (() => {
+              const opts = (() => {
+                try {
+                  const raw = typeof q.options === 'string' ? JSON.parse(q.options) : q.options
+                  return Array.isArray(raw) ? raw as Array<{id: string; text: string; correct: boolean}> : []
+                } catch { return [] }
+              })()
+
+              return (
+                <div className="flex flex-col gap-2.5">
+                  {opts.map((opt, i) => {
+                    const isSelected = selectedAnswer === opt.id
+                    const isCorrectOpt = opt.correct
+                    let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155'
+                    if (isSelected && !showFeedback) { bg = '#F1F5F9'; border = '#94A3B8' }
+                    if (showFeedback) {
+                      if (isCorrectOpt) { bg = '#F0FDF4'; border = '#4ADE80' }
+                      else if (isSelected && !isCorrectOpt) { bg = '#FEF2F2'; border = '#FCA5A5' }
+                      else { textColor = '#94A3B8' }
+                    }
+                    return (
+                      <button
+                        key={opt.id}
+                        disabled={showFeedback}
+                        onClick={() => {
+                          if (showFeedback) return
+                          setSelectedAnswer(opt.id)
+                          const correct = opt.correct
+                          setIsCorrect(correct)
+                          if (correct) { setScore(s => s + 1); setTotalPoints(p => p + q.points) }
+                          setShowFeedback(true)
+                        }}
+                        className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
+                        style={{ background: bg, border: `2px solid ${border}`, cursor: showFeedback ? 'default' : 'pointer' }}
+                      >
+                        <span className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0"
+                          style={{ background: showFeedback && isCorrectOpt ? '#BBF7D0' : showFeedback && isSelected && !isCorrectOpt ? '#FECACA' : '#EEF2FF', color: showFeedback && isCorrectOpt ? '#166534' : showFeedback && isSelected && !isCorrectOpt ? '#991B1B' : '#4F46E5' }}>
+                          {showFeedback && isCorrectOpt ? '✓' : showFeedback && isSelected && !isCorrectOpt ? '✗' : String.fromCharCode(65 + i)}
+                        </span>
+                        <span className="flex-1 font-semibold text-sm" style={{ color: textColor }}>{opt.text}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+
             {/* === CASE_STUDY === */}
-            {q.question_type === 'case_study' && (() => {
+            {isCaseStudyStructured && (() => {
               // Parser les options case_study
               let caseOpts: { context?: { history?: string; chief_complaint?: string }; questions?: Array<{ id: string; text: string; choices: Array<{ id: string; text: string; correct: boolean }>; feedback?: string; points?: number }> } | null = null
               try {
