@@ -70,13 +70,10 @@ export default function HomePage() {
 
             {/* Textes */}
             <div>
-              <p className="text-white/70 text-xs font-normal">Bonjour,</p>
-              <p className="text-white font-bold text-lg leading-tight">
-                {profile?.first_name || 'Utilisateur'}
-              </p>
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className="text-base">{getAnonymousEmoji(user?.id || '')}</span>
-                <span className="text-white/60 text-xs">{getAnonymousName(user?.id || '')}</span>
+              <p className="text-white/60 text-xs">Bonjour,</p>
+              <div className="flex items-center gap-2">
+                <p className="text-white font-semibold text-base">{profile?.first_name || 'Utilisateur'}</p>
+                <span className="text-white/50 text-xs">{getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}</span>
               </div>
             </div>
           </Link>
