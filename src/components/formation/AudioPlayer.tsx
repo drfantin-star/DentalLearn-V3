@@ -97,11 +97,11 @@ export default function AudioPlayer({
       )}
 
       {/* LAYOUT DESKTOP — image collée au player, un seul bloc */}
-      <div className="md:flex md:gap-0 md:items-stretch md:w-full md:rounded-2xl md:overflow-hidden md:shadow-md">
+      <div className="md:flex md:gap-2 md:items-stretch md:w-full md:shadow-md">
 
         {/* Image desktop — carré fixe 280×280 */}
         {coverImageUrl && (
-          <div className="hidden md:flex md:items-center md:justify-center md:flex-shrink-0 bg-gradient-to-b from-[#F4A89A]/20 to-[#A8D4F4]/20"
+          <div className="hidden md:flex md:items-center md:justify-center md:flex-shrink-0 md:rounded-2xl overflow-hidden bg-gradient-to-b from-[#F4A89A]/20 to-[#A8D4F4]/20"
                style={{ width: '280px', minWidth: '280px' }}>
             <img
               src={coverImageUrl}
@@ -113,7 +113,7 @@ export default function AudioPlayer({
         )}
 
         {/* CARD PLAYER */}
-        <div className="flex-1 rounded-2xl md:rounded-none shadow-sm md:shadow-none p-6 flex flex-col justify-center gap-4"
+        <div className="flex-1 rounded-2xl shadow-sm md:shadow-none p-6 flex flex-col justify-center gap-4"
           style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColorSecondary})` }}
         >
           {/* Title + Formation */}
