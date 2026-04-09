@@ -46,13 +46,13 @@ export default function HomePage() {
   return (
     <>
       {/* Header Accueil */}
-      <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] sticky top-0 z-30 shadow-sm px-5 pt-12 pb-5">
+      <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] sticky top-0 z-30 shadow-sm px-5 pb-3" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
         <div className="flex items-center justify-between gap-4">
 
           {/* Gauche — Avatar + textes */}
-          <Link href="/profil" className="flex items-center gap-4">
+          <Link href="/profil" className="flex items-center gap-3">
             {/* Avatar — plus grand */}
-            <div className="w-14 h-14 rounded-full ring-2 ring-white/30 flex-shrink-0 overflow-hidden bg-gradient-to-br from-[#00D1C1] to-[#2D1B96] p-0.5">
+            <div className="w-11 h-11 rounded-full ring-2 ring-white/30 flex-shrink-0 overflow-hidden bg-gradient-to-br from-[#00D1C1] to-[#2D1B96] p-0.5">
               <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                 {profile?.profile_photo_url ? (
                   <img
@@ -70,19 +70,16 @@ export default function HomePage() {
 
             {/* Textes */}
             <div>
-              <p className="text-white/70 text-sm font-normal">Bonjour,</p>
-              <p className="text-white font-bold text-xl leading-tight">
-                {profile?.first_name || 'Utilisateur'}
-              </p>
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className="text-base">{getAnonymousEmoji(user?.id || '')}</span>
-                <span className="text-white/60 text-xs">{getAnonymousName(user?.id || '')}</span>
+              <p className="text-white/60 text-xs">Bonjour,</p>
+              <div className="flex items-center gap-2">
+                <p className="text-white font-semibold text-base">{profile?.first_name || 'Utilisateur'}</p>
+                <span className="text-white/50 text-xs">{getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}</span>
               </div>
             </div>
           </Link>
 
           {/* Droite — Notif */}
-          <button className="relative w-11 h-11 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors">
+          <button className="relative w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors">
             <Bell size={22} className="text-white" />
             <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-400 rounded-full border-2 border-transparent" />
           </button>
