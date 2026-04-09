@@ -16,6 +16,8 @@ export interface DemarcheEnCours {
   ctaLabel: string
   ctaUrl: string
   accentColor: string  // classe Tailwind border-xxx
+  coverImageUrl?: string | null
+  category?: string | null
 }
 
 export function useDemarches(userId?: string) {
@@ -54,7 +56,7 @@ export function useDemarches(userId?: string) {
         if (formationIds.length > 0) {
           const { data: fData, error: fError } = await supabase
             .from('formations')
-            .select('id, title, slug, category, total_sequences')
+            .select('id, title, slug, category, total_sequences, cover_image_url')
             .in('id', formationIds)
             .eq('is_published', true)
 
@@ -81,6 +83,8 @@ export function useDemarches(userId?: string) {
             ctaLabel: 'Continuer',
             ctaUrl: `/formation/${f.category}?formation=${f.slug}`,
             accentColor: 'border-purple-200',
+            coverImageUrl: f.cover_image_url || null,
+            category: f.category || null,
           }
         }).filter(Boolean) as DemarcheEnCours[]
 
