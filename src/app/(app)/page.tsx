@@ -63,13 +63,17 @@ export default function HomePage() {
           </div>
 
           {/* Textes — flex-1 pour occuper tout l'espace jusqu'au bouton notif */}
-          <div className="flex-1 flex items-center gap-2 min-w-0">
+          <div className="flex-1 min-w-0">
             <p className="text-white font-black uppercase truncate"
-               style={{ fontSize: '18px' }}>
+               style={{ fontSize: '18px', lineHeight: '1.3' }}>
               Bonjour, {profile?.first_name || 'Utilisateur'}
+              <span className="hidden md:inline ml-2 font-bold"
+                    style={{ fontSize: '13px', opacity: 0.6 }}>
+                {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
+              </span>
             </p>
-            <p className="text-white/60 font-bold uppercase truncate flex-shrink-0"
-               style={{ fontSize: '13px' }}>
+            <p className="md:hidden text-white/60 font-bold uppercase"
+               style={{ fontSize: '11px' }}>
               {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
             </p>
           </div>
