@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import {
   ChevronLeft,
+  ArrowLeft,
   Check,
   X,
   CheckCircle2,
@@ -618,34 +619,14 @@ export default function SequencePlayer({
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAFF] flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-3 hidden md:flex items-center gap-3">
         <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-lg">
           <ChevronLeft size={20} className="text-gray-600" />
         </button>
         <p className="flex-1 font-bold text-sm text-gray-800 truncate">{sequence.title}</p>
         <span className="font-bold text-[13px] text-amber-600">⭐ {totalPoints}</span>
-      </div>
-
-      {/* Stepper */}
-      <div className="bg-white px-4 py-3 flex items-center justify-center gap-2">
-        {steps.map((step, i) => {
-          const isActive = (playerStep === 'results' ? 'quiz' : playerStep) === step
-          const isDone = playerStep === 'results' || i < currentStepIdx
-          const label = step === 'video' ? (isAudio ? '🎧 Cours' : '🎬 Cours') : step === 'quiz' ? '📝 Quiz' : '📄 PDF'
-          return (
-            <div key={step} className="flex items-center gap-2">
-              <div
-                className="px-3.5 py-1.5 rounded-2xl text-xs font-semibold"
-                style={{ background: isActive ? categoryGradient.from : isDone ? '#DCFCE7' : '#F1F5F9', color: isActive ? 'white' : isDone ? '#15803D' : '#94A3B8' }}
-              >
-                {isDone && !isActive ? '✓ ' : ''}{label}
-              </div>
-              {i < steps.length - 1 && <div className="w-5 h-0.5" style={{ background: isDone ? '#86EFAC' : '#E2E8F0' }} />}
-            </div>
-          )
-        })}
       </div>
 
       {/* Contenu */}
@@ -712,12 +693,39 @@ export default function SequencePlayer({
                 </p>
               </>
             ) : (
-              <button
-                onClick={() => setPlayerStep('quiz')}
-                className="w-full max-w-xs py-4 rounded-2xl font-bold text-white bg-[#2D1B96] transition-transform active:scale-95"
-              >
-                Passer au Quiz →
-              </button>
+              <>
+                {/* Barre de navigation basse — mobile uniquement */}
+                <div className="md:hidden flex gap-3 mt-4">
+                  {/* Bouton retour */}
+                  <button
+                    onClick={onBack}
+                    className="flex items-center justify-center gap-2 px-4 py-3
+                               bg-gray-100 text-gray-700 font-semibold rounded-2xl"
+                  >
+                    <ArrowLeft size={18} />
+                    Retour
+                  </button>
+
+                  {/* Bouton Quiz — prend le reste de la largeur */}
+                  <button
+                    onClick={() => setPlayerStep('quiz')}
+                    className="flex-1 flex items-center justify-center gap-2 py-3
+                               bg-[#2D1B96] text-white font-semibold rounded-2xl"
+                  >
+                    Passer au Quiz →
+                  </button>
+                </div>
+
+                {/* Bouton Quiz desktop — inchangé */}
+                <div className="hidden md:block mt-4">
+                  <button
+                    onClick={() => setPlayerStep('quiz')}
+                    className="w-full max-w-xs py-4 rounded-2xl font-bold text-white bg-[#2D1B96] transition-transform active:scale-95"
+                  >
+                    Passer au Quiz →
+                  </button>
+                </div>
+              </>
             )}
           </div>
         )}
