@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import {
-  GraduationCap, Bell, ChevronRight,
+  GraduationCap, Bell,
   BookOpen, Loader2, Zap,
 } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
@@ -123,17 +123,11 @@ export default function HomePage() {
 
             {/* Mes démarches en cours */}
             <section>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center mb-4">
                 <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                   <BookOpen size={20} className="text-[#8B5CF6]" />
                   Mes démarches en cours
                 </h2>
-                <Link
-                  href="/formation"
-                  className="text-xs font-bold text-[#2D1B96] flex items-center gap-1 hover:underline"
-                >
-                  Tout voir <ChevronRight size={14} />
-                </Link>
               </div>
 
               {demarchesLoading ? (
@@ -141,7 +135,7 @@ export default function HomePage() {
                   <Loader2 className="animate-spin text-gray-400" size={24} />
                 </div>
               ) : demarches.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex gap-3 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4">
                   {demarches.map((d) => (
                     <DemarcheCard key={d.id} demarche={d} />
                   ))}
