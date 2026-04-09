@@ -1,6 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
 import { Play } from 'lucide-react'
+import { getCategoryConfig } from '@/lib/supabase/types'
 import type { DemarcheEnCours } from '@/lib/hooks/useDemarches'
 
 interface DemarcheCardProps {
@@ -8,6 +9,50 @@ interface DemarcheCardProps {
 }
 
 export default function DemarcheCard({ demarche }: DemarcheCardProps) {
+  // --- Formation cards: simplified layout ---
+  if (demarche.type === 'formation') {
+    const catConfig = getCategoryConfig(demarche.category ?? null)
+    const categoryColor = catConfig.gradient.from
+
+    return (
+      <div className="rounded-2xl overflow-hidden shadow-sm bg-white">
+        {/* Image cover — si disponible */}
+        {demarche.coverImageUrl ? (
+          <div className="w-full h-36 overflow-hidden">
+            <img
+              src={demarche.coverImageUrl}
+              alt={demarche.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        ) : (
+          /* Fallback — fond coloré avec emoji catégorie */
+          <div
+            className="w-full h-36 flex items-center justify-center text-5xl"
+            style={{ background: `linear-gradient(135deg, ${categoryColor}33, ${categoryColor}66)` }}
+          >
+            {catConfig.emoji}
+          </div>
+        )}
+
+        {/* Contenu bas de card */}
+        <div className="p-4 flex items-center justify-between gap-3">
+          <p className="font-semibold text-gray-900 text-sm leading-snug flex-1">
+            {demarche.title}
+          </p>
+          <Link
+            href={demarche.ctaUrl}
+            className="flex-shrink-0 px-4 py-2 rounded-xl text-white text-sm font-semibold"
+            style={{ background: `linear-gradient(135deg, #2D1B96, #3D2BB6)` }}
+          >
+            Continuer →
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  // --- EPP / other cards: existing layout preserved ---
   return (
     <div
       className={`bg-white rounded-2xl p-4 shadow-sm border ${demarche.accentColor} hover:shadow-md transition-all`}
