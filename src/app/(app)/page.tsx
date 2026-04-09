@@ -48,7 +48,7 @@ export default function HomePage() {
       {/* Header Accueil */}
       <header
         className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 pb-5"
-        style={{ paddingTop: 'max(48px, env(safe-area-inset-top))' }}
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
         <div className="flex items-center justify-between">
 
@@ -70,10 +70,10 @@ export default function HomePage() {
             <div>
               <p className="text-white/60" style={{ fontSize: '11px' }}>Bonjour,</p>
               <div className="flex items-center gap-2">
-                <p className="text-white font-bold" style={{ fontSize: '20px', lineHeight: '1.2' }}>
+                <p className="text-white uppercase" style={{ fontSize: '24px', fontWeight: '900', lineHeight: '1.2' }}>
                   {profile?.first_name || 'Utilisateur'}
                 </p>
-                <p className="text-white/50" style={{ fontSize: '12px' }}>
+                <p className="text-white/70 uppercase" style={{ fontSize: '13px', fontWeight: '700' }}>
                   {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
                 </p>
               </div>
