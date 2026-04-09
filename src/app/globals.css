@@ -29,6 +29,14 @@ body {
   scrollbar-width: none;
 }
 
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Safe area for mobile (notch, home indicator) */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);
