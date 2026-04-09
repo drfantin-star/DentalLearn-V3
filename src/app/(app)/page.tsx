@@ -46,42 +46,44 @@ export default function HomePage() {
   return (
     <>
       {/* Header Accueil */}
-      <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] sticky top-0 z-30 shadow-sm px-5 pb-3" style={{ paddingTop: 'max(12px, env(safe-area-inset-top))' }}>
-        <div className="flex items-center justify-between gap-4">
+      <header
+        className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 pb-4"
+        style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}
+      >
+        <div className="flex items-center justify-between">
 
-          {/* Gauche — Avatar + textes */}
-          <Link href="/profil" className="flex items-center gap-3">
-            {/* Avatar — plus grand */}
-            <div className="w-11 h-11 rounded-full ring-2 ring-white/30 flex-shrink-0 overflow-hidden bg-gradient-to-br from-[#00D1C1] to-[#2D1B96] p-0.5">
-              <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                {profile?.profile_photo_url ? (
-                  <img
-                    src={profile.profile_photo_url}
-                    alt="Photo de profil"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="text-[#2D1B96] font-bold text-base">
+          <div className="flex items-center gap-3">
+            {/* Avatar */}
+            <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-white/30 flex-shrink-0">
+              {profile?.profile_photo_url ? (
+                <img src={profile.profile_photo_url} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-[#00D1C1] to-[#2D1B96] flex items-center justify-center">
+                  <span className="text-white font-bold text-base">
                     {profile?.first_name?.[0] || 'U'}
                   </span>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Textes */}
             <div>
-              <p className="text-white/60 text-xs">Bonjour,</p>
+              <p className="text-white/60" style={{ fontSize: '11px' }}>Bonjour,</p>
               <div className="flex items-center gap-2">
-                <p className="text-white font-semibold text-base">{profile?.first_name || 'Utilisateur'}</p>
-                <span className="text-white/50 text-xs">{getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}</span>
+                <p className="text-white font-bold" style={{ fontSize: '20px', lineHeight: '1.2' }}>
+                  {profile?.first_name || 'Utilisateur'}
+                </p>
+                <p className="text-white/50" style={{ fontSize: '12px' }}>
+                  {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
+                </p>
               </div>
             </div>
-          </Link>
+          </div>
 
-          {/* Droite — Notif */}
-          <button className="relative w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors">
-            <Bell size={22} className="text-white" />
-            <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-400 rounded-full border-2 border-transparent" />
+          {/* Notif */}
+          <button className="relative w-10 h-10 rounded-full bg-white/15 flex items-center justify-center">
+            <Bell size={20} className="text-white" />
+            <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-400 rounded-full" />
           </button>
 
         </div>
