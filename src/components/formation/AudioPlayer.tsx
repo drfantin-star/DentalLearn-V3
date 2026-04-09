@@ -100,12 +100,12 @@ export default function AudioPlayer({
 
         {/* Image desktop — carré fixe 280×280 */}
         {coverImageUrl && (
-          <div className="hidden md:block md:flex-shrink-0"
+          <div className="hidden md:flex md:items-center md:justify-center md:flex-shrink-0 bg-gradient-to-b from-[#F4A89A]/20 to-[#A8D4F4]/20"
                style={{ width: '280px', minWidth: '280px' }}>
             <img
               src={coverImageUrl}
               alt={sequenceTitle}
-              className="w-full h-full object-cover object-center"
+              className="w-full object-contain"
               style={{ height: '280px' }}
             />
           </div>
