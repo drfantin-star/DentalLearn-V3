@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Play, CheckCircle2, Loader2 } from 'lucide-react'
+import { Play, CheckCircle, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface DailyQuizButtonProps {
@@ -53,39 +53,31 @@ export default function DailyQuizButton({ userId, onStart, refreshTrigger }: Dai
 
   if (alreadyDone) {
     return (
-      <div className="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 shadow-sm border border-emerald-400">
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-white/20 rounded-xl">
-            <CheckCircle2 className="w-7 h-7 text-white" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-bold text-white">Quiz du jour termine !</p>
-            <p className="text-xs text-white/80 mt-0.5">
-              Score : {score}/10 &bull; Reviens demain pour un nouveau quiz
-            </p>
-          </div>
+      <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl p-5 flex items-center gap-4 shadow-md">
+        <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+          <CheckCircle size={28} className="text-white" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <p className="text-white font-bold text-lg">Quiz du jour terminé !</p>
+          <p className="text-white/80 text-sm">
+            Score : {score}/10 · Reviens demain 🎯
+          </p>
         </div>
       </div>
     )
   }
 
   return (
-    <div>
-      <button
-        onClick={onStart}
-        className="w-full bg-gradient-to-r from-[#2D1B96] to-[#3D2BB6] rounded-2xl p-5 flex items-center justify-between shadow-lg hover:shadow-xl transition-all active:scale-[0.98] group"
-      >
-        <div className="text-left">
-          <p className="text-white font-bold text-lg">10 questions &bull; ~5 min</p>
-          <p className="text-white/70 text-sm mt-1">Testez vos connaissances du jour !</p>
-        </div>
-        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shrink-0 ml-4 group-hover:bg-white/30 transition-colors">
-          <Play className="w-6 h-6 text-white" fill="white" />
-        </div>
-      </button>
-      <p className="text-center text-xs text-gray-400 mt-2">
-        Bonus +50 pts si 100% &bull; Renouvellement &agrave; minuit
-      </p>
+    <div className="bg-gradient-to-br from-[#2D1B96] to-[#3D2BB6] rounded-2xl p-5 flex items-center justify-between gap-4 cursor-pointer active:scale-95 transition-transform shadow-md"
+         onClick={onStart}>
+      <div className="flex flex-col gap-1">
+        <p className="text-white font-bold text-lg leading-tight">Quiz du jour</p>
+        <p className="text-white/70 text-sm">10 questions · ~5 min</p>
+        <p className="text-white/50 text-xs">Testez vos connaissances !</p>
+      </div>
+      <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+        <Play size={28} className="text-white ml-1" fill="white" />
+      </div>
     </div>
   )
 }
