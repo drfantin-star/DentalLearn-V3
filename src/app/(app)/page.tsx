@@ -46,44 +46,47 @@ export default function HomePage() {
   return (
     <>
       {/* Header Accueil */}
-      <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <Link href="/profil" className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#00D1C1] to-[#2D1B96] p-0.5">
-                <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
-                  {profile?.profile_photo_url ? (
-                    <img
-                      src={profile.profile_photo_url}
-                      alt="Photo de profil"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <span className="text-[#2D1B96] font-bold text-sm">
-                      {profile?.first_name?.[0] || 'U'}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-white/70">Welcome,</p>
-                <h1 className="text-lg font-bold text-white">
-                  {profile?.first_name || 'Utilisateur'}
-                </h1>
-                <p className="text-xs text-white/60">
-                  {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
-                </p>
-              </div>
-            </Link>
+      <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] sticky top-0 z-30 shadow-sm px-5 pt-12 pb-5">
+        <div className="flex items-center justify-between gap-4">
 
-            <div className="flex items-center gap-2">
-              {/* Notifications */}
-              <button className="relative p-2.5 bg-white/20 text-white border-0 rounded-full hover:bg-white/30 transition-colors">
-                <Bell size={20} className="text-white" />
-                <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white" />
-              </button>
+          {/* Gauche — Avatar + textes */}
+          <Link href="/profil" className="flex items-center gap-4">
+            {/* Avatar — plus grand */}
+            <div className="w-14 h-14 rounded-full ring-2 ring-white/30 flex-shrink-0 overflow-hidden bg-gradient-to-br from-[#00D1C1] to-[#2D1B96] p-0.5">
+              <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                {profile?.profile_photo_url ? (
+                  <img
+                    src={profile.profile_photo_url}
+                    alt="Photo de profil"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-[#2D1B96] font-bold text-base">
+                    {profile?.first_name?.[0] || 'U'}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+
+            {/* Textes */}
+            <div>
+              <p className="text-white/70 text-sm font-normal">Bonjour,</p>
+              <p className="text-white font-bold text-xl leading-tight">
+                {profile?.first_name || 'Utilisateur'}
+              </p>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="text-base">{getAnonymousEmoji(user?.id || '')}</span>
+                <span className="text-white/60 text-xs">{getAnonymousName(user?.id || '')}</span>
+              </div>
+            </div>
+          </Link>
+
+          {/* Droite — Notif */}
+          <button className="relative w-11 h-11 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors">
+            <Bell size={22} className="text-white" />
+            <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-400 rounded-full border-2 border-transparent" />
+          </button>
+
         </div>
       </header>
 
