@@ -70,6 +70,7 @@ export default function AudioPlayer({
         sequenceId,
         userId,
         duration,
+        coverImageUrl: coverImageUrl || undefined,
         onComplete,
         onProgress,
       })
@@ -112,7 +113,7 @@ export default function AudioPlayer({
         )}
 
         {/* CARD PLAYER */}
-        <div className="flex-1 rounded-2xl md:rounded-none shadow-sm md:shadow-none overflow-hidden p-6 flex flex-col justify-center gap-4"
+        <div className="flex-1 rounded-2xl md:rounded-none shadow-sm md:shadow-none p-6 flex flex-col justify-center gap-4"
           style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColorSecondary})` }}
         >
           {/* Title + Formation */}

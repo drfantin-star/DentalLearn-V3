@@ -30,6 +30,7 @@ interface AudioState {
   accentColor: string
   sequenceId: string
   userId: string
+  coverImageUrl: string
 }
 
 interface PlayAudioParams {
@@ -40,6 +41,7 @@ interface PlayAudioParams {
   sequenceId: string
   userId: string
   duration?: number
+  coverImageUrl?: string
   onComplete?: () => void
   onProgress?: (percent: number) => void
 }
@@ -63,6 +65,7 @@ const defaultState: AudioState = {
   accentColor: '#2D1B96',
   sequenceId: '',
   userId: '',
+  coverImageUrl: '',
 }
 
 const AudioContext = createContext<AudioContextValue | null>(null)
@@ -293,6 +296,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
       accentColor: params.accentColor,
       sequenceId: params.sequenceId,
       userId: params.userId,
+      coverImageUrl: params.coverImageUrl || '',
     })
 
     // Start playback
