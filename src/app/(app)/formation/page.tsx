@@ -89,7 +89,8 @@ export default function FormationPage() {
   const router = useRouter()
 
   // Récupérer les formations depuis Supabase
-  const { formations, loading, error } = useFormations({ isPublished: true })
+  const { formations: allFormations, loading, error } = useFormations({ isPublished: true })
+  const formations = allFormations.filter(f => f.cp_axe_id === 1 || f.cp_axe_id === 2 || f.cp_axe_id === null)
 
   const { user } = useUser()
   const [formationProgress, setFormationProgress] = useState<Record<string, { isStarted: boolean; isCompleted: boolean }>>({})
