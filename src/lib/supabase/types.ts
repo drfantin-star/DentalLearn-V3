@@ -282,6 +282,16 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     shortName: 'Radio',
     type: 'cp',
   },
+  numerique: {
+    emoji: '🤖',
+    gradient: { from: '#6366F1', to: '#818CF8' },
+    bgColor: 'bg-indigo-50',
+    textColor: 'text-indigo-600',
+    isCP: true,
+    name: 'Numérique & IA',
+    shortName: 'Numérique',
+    type: 'cp',
+  },
   management: {
     emoji: '💼',
     gradient: { from: '#78716C', to: '#A8A29E' },
