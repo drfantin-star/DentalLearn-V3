@@ -9,7 +9,6 @@ import {
   ExternalLink,
   Loader2,
 } from 'lucide-react'
-import { formatRelativeDate } from '@/lib/hooks/useNews'
 import type { NewsArticle } from '@/types/database'
 
 interface NewsSectionProps {
@@ -20,40 +19,38 @@ interface NewsSectionProps {
 const categoryStyles = {
   reglementaire: {
     icon: Scale,
-    bg: 'bg-blue-50',
-    iconBg: 'bg-blue-100',
-    text: 'text-blue-700',
-    label: 'Réglementaire',
+    gradient: 'linear-gradient(135deg, #1D4ED8, #3B82F6)',
+    iconBg: 'bg-white/20',
+    text: 'text-white',
   },
   scientifique: {
     icon: FlaskConical,
-    bg: 'bg-violet-50',
-    iconBg: 'bg-violet-100',
-    text: 'text-violet-700',
-    label: 'Scientifique',
+    gradient: 'linear-gradient(135deg, #6D28D9, #8B5CF6)',
+    iconBg: 'bg-white/20',
+    text: 'text-white',
   },
   pratique: {
     icon: Stethoscope,
-    bg: 'bg-teal-50',
-    iconBg: 'bg-teal-100',
-    text: 'text-teal-700',
-    label: 'Pratique',
+    gradient: 'linear-gradient(135deg, #0F766E, #14B8A6)',
+    iconBg: 'bg-white/20',
+    text: 'text-white',
   },
   humour: {
     icon: PartyPopper,
-    bg: 'bg-pink-50',
-    iconBg: 'bg-pink-100',
-    text: 'text-pink-700',
-    label: 'Humour',
+    gradient: 'linear-gradient(135deg, #BE185D, #EC4899)',
+    iconBg: 'bg-white/20',
+    text: 'text-white',
   },
 }
 
 export default function NewsSection({ news, loading }: NewsSectionProps) {
+  const scrollRef = React.useRef<HTMLDivElement>(null)
+
   if (loading) {
     return (
       <section>
         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-          <Newspaper size={20} className="text-[#2D1B96]" /> Veille métier
+          <Newspaper size={20} className="text-[#2D1B96]" /> News
         </h2>
         <div className="flex justify-center py-8">
           <Loader2 className="animate-spin text-gray-400" size={24} />
@@ -66,7 +63,7 @@ export default function NewsSection({ news, loading }: NewsSectionProps) {
     return (
       <section>
         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
-          <Newspaper size={20} className="text-[#2D1B96]" /> Veille métier
+          <Newspaper size={20} className="text-[#2D1B96]" /> News
         </h2>
         <p className="text-gray-400 text-sm text-center py-8">
           Aucune actualité pour le moment
@@ -79,13 +76,17 @@ export default function NewsSection({ news, loading }: NewsSectionProps) {
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-          <Newspaper size={20} className="text-[#2D1B96]" /> Veille métier
+          <Newspaper size={20} className="text-[#2D1B96]" /> News
         </h2>
         <button className="text-xs font-bold text-[#2D1B96] flex items-center gap-1">
           Tout voir <ChevronRight size={14} />
         </button>
       </div>
-      <div className="space-y-3">
+      <div
+        ref={scrollRef}
+        className="flex gap-3 overflow-x-auto scroll-smooth
+                   snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-2"
+      >
         {news.map((item) => {
           const style = categoryStyles[item.category]
           const Icon = style.icon
@@ -95,34 +96,33 @@ export default function NewsSection({ news, loading }: NewsSectionProps) {
               href={item.external_url || '#'}
               target={item.external_url ? '_blank' : undefined}
               rel={item.external_url ? 'noopener noreferrer' : undefined}
-              className={`block ${style.bg} rounded-xl p-3 shadow-sm border border-gray-100 hover:shadow-md transition-all`}
+              className="flex-shrink-0 snap-start rounded-2xl overflow-hidden shadow-md
+                         hover:shadow-lg transition-all active:scale-95"
+              style={{
+                width: 'calc(75vw - 24px)',
+                maxWidth: '280px',
+                background: style.gradient,
+              }}
             >
-              <div className="flex gap-3">
-                <div
-                  className={`w-10 h-10 rounded-lg ${style.iconBg} ${style.text} flex items-center justify-center shrink-0`}
-                >
-                  <Icon size={18} />
+              <div className="p-4 flex flex-col gap-3 h-full">
+
+                {/* Icône catégorie */}
+                <div className={`w-10 h-10 rounded-xl ${style.iconBg}
+                                 flex items-center justify-center shrink-0`}>
+                  <Icon size={20} className="text-white" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span
-                      className={`text-[10px] font-bold uppercase ${style.text}`}
-                    >
-                      {style.label}
-                    </span>
-                    <span className="text-[10px] text-gray-300">•</span>
-                    <span className="text-[10px] text-gray-400">
-                      {formatRelativeDate(item.published_at)}
-                    </span>
-                  </div>
-                  <h3 className="text-sm font-semibold text-gray-900 leading-snug line-clamp-2">
-                    {item.title}
-                  </h3>
-                  <div className="flex items-center gap-1 text-[10px] text-gray-400 mt-1">
-                    <span>{item.source}</span>
-                    {item.external_url && <ExternalLink size={10} />}
-                  </div>
+
+                {/* Titre — 3 lignes max */}
+                <h3 className="text-white font-bold text-sm leading-snug line-clamp-3 flex-1">
+                  {item.title}
+                </h3>
+
+                {/* Source */}
+                <div className="flex items-center gap-1">
+                  <span className="text-white/60 text-xs truncate">{item.source}</span>
+                  {item.external_url && <ExternalLink size={10} className="text-white/40 flex-shrink-0" />}
                 </div>
+
               </div>
             </a>
           )
