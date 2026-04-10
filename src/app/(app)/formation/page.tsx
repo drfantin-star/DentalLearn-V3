@@ -4,11 +4,9 @@ import React, { useState, useEffect } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
-  Flame,
   BookOpen,
   Loader2,
   Heart,
-  ClipboardCheck,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
@@ -24,6 +22,7 @@ import {
   type CategoryConfig,
 } from '@/lib/supabase'
 import { createClient } from '@/lib/supabase/client'
+import { useUser } from '@/lib/hooks/useUser'
 
 // Composants
 import FormationDetail from '@/components/formation/FormationDetail'
@@ -35,48 +34,6 @@ import SequencePlayer from '@/components/formation/SequencePlayer'
 
 type ViewMode = 'catalog' | 'formation' | 'sequence'
 type Category = CategoryConfig & { id: string }
-
-// ============================================
-// COMPOSANTS — Grilles catégories
-// ============================================
-
-function CategoryGrid({
-  cats,
-  onSelect,
-  cols = 4,
-  eppSlugs,
-}: {
-  cats: Category[]
-  onSelect: (cat: Category) => void
-  cols?: number
-  eppSlugs: Set<string>
-}) {
-  const gridCols = cols === 3
-    ? 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6'
-    : 'grid-cols-4 md:grid-cols-6 lg:grid-cols-8'
-  return (
-    <div className={`grid ${gridCols} gap-3`}>
-      {cats.map((cat) => (
-        <button
-          key={cat.id}
-          onClick={() => onSelect(cat)}
-          className={`flex flex-col items-center p-3 rounded-2xl border transition-all hover:shadow-md active:scale-95 ${cat.bgColor} border-gray-100 relative`}
-        >
-          <span className="text-2xl mb-1">{cat.emoji}</span>
-          <span className={`text-[11px] font-semibold ${cat.textColor} text-center leading-tight`}>
-            {cat.shortName}
-          </span>
-          {eppSlugs.has(cat.id) && (
-            <span className="mt-1.5 inline-flex items-center gap-0.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-teal-100 text-teal-700">
-              <ClipboardCheck size={8} />
-              EPP
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
-  )
-}
 
 // ============================================
 // COMPOSANT — Carte formation
@@ -134,23 +91,30 @@ export default function FormationPage() {
   // Récupérer les formations depuis Supabase
   const { formations, loading, error } = useFormations({ isPublished: true })
 
-  // EPP : theme_slugs qui ont un audit publié
-  const [eppSlugs, setEppSlugs] = useState<Set<string>>(new Set())
+  const { user } = useUser()
+  const [formationProgress, setFormationProgress] = useState<Record<string, { isStarted: boolean; isCompleted: boolean }>>({})
 
   useEffect(() => {
-    async function fetchEppSlugs() {
+    if (!user?.id || formations.length === 0) return
+    async function fetchProgress() {
       const supabase = createClient()
       const { data } = await supabase
-        .from('epp_audits')
-        .select('theme_slug')
-        .eq('is_published', true)
-
+        .from('user_formations')
+        .select('formation_id, current_sequence, completed_at')
+        .eq('user_id', user!.id)
       if (data) {
-        setEppSlugs(new Set(data.map(d => d.theme_slug).filter(Boolean)))
+        const map: Record<string, { isStarted: boolean; isCompleted: boolean }> = {}
+        data.forEach((uf) => {
+          map[uf.formation_id] = {
+            isStarted: true,
+            isCompleted: !!uf.completed_at,
+          }
+        })
+        setFormationProgress(map)
       }
     }
-    fetchEppSlugs()
-  }, [])
+    fetchProgress()
+  }, [user?.id, formations])
 
   // États de navigation
   const [viewMode, setViewMode] = useState<ViewMode>('catalog')
@@ -164,7 +128,6 @@ export default function FormationPage() {
   const { isPreview } = usePreviewMode(selectedAccessType)
 
   const cpCategories = CATEGORIES.filter((c) => c.type === 'cp')
-  const bonusCategories = CATEGORIES.filter((c) => c.type === 'bonus')
 
   // Navigation handlers
   const openCategory = (cat: Category) => {
@@ -264,48 +227,101 @@ export default function FormationPage() {
 
   return (
     <>
-      <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
-          <h1 className="text-2xl font-black text-gray-900">Pratiques</h1>
-          <p className="text-sm text-gray-400 mt-0.5">
-            Connaissances, compétences, qualité des pratiques · Axes 1 &amp; 2 de la certification périodique
-          </p>
-        </div>
+      <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-4 py-4">
+        <h1 className="text-2xl font-black text-white">Pratiques</h1>
+        <p className="text-xs text-white/60 mt-1 leading-relaxed">
+          Connaissances, compétences, qualité des pratiques · Axes 1 &amp; 2 de la certification périodique
+        </p>
       </header>
 
       <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8">
         {/* Spécialités cliniques */}
         <section>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">
-            Spécialités cliniques
+          <h2 className="text-base font-bold text-gray-900 mb-3">
+            Explore par spécialité
           </h2>
-          <CategoryGrid cats={cpCategories} onSelect={openCategory} eppSlugs={eppSlugs} />
+          <div className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory">
+            {cpCategories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => openCategory(cat)}
+                className="flex-shrink-0 snap-start flex items-center gap-2.5 rounded-2xl px-3.5"
+                style={{
+                  width: '140px',
+                  height: '68px',
+                  background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})`,
+                }}
+              >
+                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-lg leading-none">
+                  {cat.emoji}
+                </div>
+                <span className="text-white text-xs font-semibold leading-snug text-left flex-1">
+                  {cat.name}
+                </span>
+              </button>
+            ))}
+          </div>
         </section>
 
-        {/* Développement professionnel */}
-        {bonusCategories.length > 0 && (
-          <section>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">
-              Développement professionnel
-            </h2>
-            <CategoryGrid cats={bonusCategories} onSelect={openCategory} cols={3} eppSlugs={eppSlugs} />
-          </section>
-        )}
-
-        {/* Populaires */}
+        {/* Fraîchement arrivé */}
         <section>
-          <div className="flex items-center gap-2 mb-4">
-            <Flame size={20} className="text-orange-500" />
-            <h2 className="text-lg font-bold text-gray-900">Populaires</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {formations.slice(0, 5).map((f) => (
-              <FormationCard
-                key={f.id}
-                formation={f}
-                onSelect={() => openFormation(f)}
-              />
-            ))}
+          <h2 className="text-base font-bold text-gray-900 mb-3">
+            ⚡ Fraîchement arrivé
+          </h2>
+          <div className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory">
+            {[...formations]
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .slice(0, 6)
+              .map((f) => {
+                const config = getCategoryConfig(f.category)
+                const progress = formationProgress[f.id]
+                const ctaLabel = progress?.isCompleted
+                  ? '✓ Terminé'
+                  : progress?.isStarted
+                  ? 'Continuer →'
+                  : 'Découvrir'
+                const ctaGradient = progress?.isCompleted
+                  ? 'linear-gradient(135deg, #059669, #10B981)'
+                  : 'linear-gradient(135deg, #2D1B96, #3D2BB6)'
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => openFormation(f)}
+                    className="flex-shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 text-left"
+                    style={{ width: 'calc(50vw - 24px)', maxWidth: '160px' }}
+                  >
+                    <div
+                      className="w-full aspect-square flex items-center justify-center"
+                      style={{
+                        background: !f.cover_image_url
+                          ? `linear-gradient(135deg, ${config.gradient.from}33, ${config.gradient.from}66)`
+                          : undefined,
+                      }}
+                    >
+                      {f.cover_image_url ? (
+                        <img
+                          src={f.cover_image_url}
+                          alt={f.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-5xl">{config.emoji}</span>
+                      )}
+                    </div>
+                    <div className="p-2.5 flex flex-col gap-2">
+                      <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2">
+                        {f.title}
+                      </p>
+                      <div
+                        className="w-full text-center text-xs font-semibold text-white py-1.5 rounded-xl"
+                        style={{ background: ctaGradient }}
+                      >
+                        {ctaLabel}
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
           </div>
           {formations.length === 0 && (
             <p className="text-gray-400 text-sm text-center py-4">
