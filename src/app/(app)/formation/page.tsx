@@ -268,15 +268,15 @@ export default function FormationPage() {
                   style={{
                     width: 'calc(25vw - 20px)',
                     maxWidth: '200px',
-                    minWidth: '140px',
-                    height: '72px',
+                    minWidth: '148px',
+                    height: '80px',
                     background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})`,
                   }}
                 >
                   <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-lg leading-none">
                     {cat.emoji}
                   </div>
-                  <span className="text-white text-xs font-semibold leading-snug text-left flex-1">
+                  <span className="text-white font-semibold leading-snug text-left flex-1 text-xs md:text-sm">
                     {cat.name}
                   </span>
                 </button>
