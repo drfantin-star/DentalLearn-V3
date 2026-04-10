@@ -3,7 +3,7 @@
 import React, { useState, useRef } from 'react'
 import Link from 'next/link'
 import {
-  GraduationCap, Bell, ChevronLeft, ChevronRight,
+  GraduationCap, UserCircle, ChevronLeft, ChevronRight,
   BookOpen, Loader2, Zap,
 } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
@@ -79,10 +79,10 @@ export default function HomePage() {
           </div>
 
           {/* Notif */}
-          <button className="relative w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0">
-            <Bell size={20} className="text-white" />
-            <div className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-400 rounded-full" />
-          </button>
+          <Link href="/profile"
+                className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors">
+            <UserCircle size={24} className="text-white" />
+          </Link>
 
         </div>
       </header>
