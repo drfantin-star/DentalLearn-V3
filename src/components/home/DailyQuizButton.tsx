@@ -68,7 +68,8 @@ export default function DailyQuizButton({ userId, onStart, refreshTrigger }: Dai
   }
 
   return (
-    <div className="bg-gradient-to-br from-[#2D1B96] to-[#3D2BB6] rounded-2xl p-5 flex items-center justify-between gap-4 cursor-pointer active:scale-95 transition-transform shadow-md"
+    <div className="rounded-2xl p-5 flex items-center justify-between gap-4 cursor-pointer active:scale-95 transition-transform shadow-md"
+         style={{ background: 'linear-gradient(135deg, #2D1B96, #8B5CF6)' }}
          onClick={onStart}>
       <div className="flex flex-col gap-1">
         <p className="text-white font-bold text-lg leading-tight">Quiz du jour</p>
