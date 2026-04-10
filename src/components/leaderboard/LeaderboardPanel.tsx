@@ -33,7 +33,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
   // ─── Loading ───
   if (loading) {
     return (
-      <div className={`bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 rounded-[20px] shadow-lg ${compact ? 'p-4' : 'p-6'} text-white h-full flex flex-col`}>
+      <div className={`bg-gradient-to-br from-[#0F766E] to-[#00D1C1] rounded-[20px] shadow-lg ${compact ? 'p-4' : 'p-6'} text-white h-full flex flex-col`}>
         <div className={`flex items-center justify-center flex-1 ${compact ? 'min-h-[100px]' : 'min-h-[200px]'}`}>
           <Loader2 className={`${compact ? 'w-6 h-6' : 'w-8 h-8'} text-white animate-spin`} />
         </div>
@@ -44,7 +44,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
   // ─── Error ───
   if (error) {
     return (
-      <div className={`bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 rounded-[20px] shadow-lg ${compact ? 'p-4' : 'p-6'} text-white h-full flex flex-col`}>
+      <div className={`bg-gradient-to-br from-[#0F766E] to-[#00D1C1] rounded-[20px] shadow-lg ${compact ? 'p-4' : 'p-6'} text-white h-full flex flex-col`}>
         <div className="flex flex-col items-center justify-center flex-1 gap-2">
           <Trophy className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} text-white/60`} />
           <p className="text-xs text-white/80">{error}</p>
@@ -63,7 +63,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
   // ─── Empty state ───
   if (leaderboard.length === 0) {
     return (
-      <div className={`bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 rounded-[20px] shadow-lg ${compact ? 'p-4' : 'p-6'} text-white h-full flex flex-col`}>
+      <div className={`bg-gradient-to-br from-[#0F766E] to-[#00D1C1] rounded-[20px] shadow-lg ${compact ? 'p-4' : 'p-6'} text-white h-full flex flex-col`}>
         <div className="flex flex-col items-center">
           <div className="p-2.5 md:p-3 bg-white/20 rounded-xl">
             <Trophy className="w-7 h-7 md:w-8 md:h-8 text-white" />
@@ -87,7 +87,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
     const isUserInTop3 = currentUser ? currentUser.rank <= 3 : false;
 
     return (
-      <div className="bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 rounded-[20px] shadow-lg p-4 md:p-5 text-white h-full flex flex-col">
+      <div className="bg-gradient-to-br from-[#0F766E] to-[#00D1C1] rounded-[20px] shadow-lg p-4 md:p-5 text-white h-full flex flex-col">
         <style jsx>{`
           @keyframes bounce-slow {
             0%, 100% { transform: translateY(0); }

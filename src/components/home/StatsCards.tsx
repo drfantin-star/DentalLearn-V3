@@ -13,7 +13,7 @@ export default function StatsCards({ userId, currentStreak, refreshTrigger }: St
   return (
     <div className="grid grid-cols-5 gap-3">
       {/* Jours de suite (Streak) */}
-      <div className="col-span-2 bg-gradient-to-br from-[#8B5CF6] to-[#7C3AED] rounded-[20px] shadow-lg p-4 md:p-5 text-white h-full flex flex-col">
+      <div className="col-span-2 bg-gradient-to-br from-[#2D1B96] to-[#4C1D95] rounded-[20px] shadow-lg p-4 md:p-5 text-white h-full flex flex-col">
         <div className="flex flex-col items-center">
           <div className="p-2.5 md:p-3 bg-white/20 rounded-xl">
             <Flame className="w-7 h-7 md:w-8 md:h-8 text-white" />
