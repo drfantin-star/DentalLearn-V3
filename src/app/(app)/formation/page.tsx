@@ -266,9 +266,9 @@ export default function FormationPage() {
     <>
       <header className="bg-white sticky top-0 z-30 shadow-sm">
         <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
-          <h1 className="text-2xl font-black text-gray-900">Formations</h1>
+          <h1 className="text-2xl font-black text-gray-900">Pratiques</h1>
           <p className="text-sm text-gray-400 mt-0.5">
-            Connaissances &amp; compétences · Axes 1 &amp; 2
+            Connaissances, compétences, qualité des pratiques · Axes 1 &amp; 2 de la certification périodique
           </p>
         </div>
       </header>

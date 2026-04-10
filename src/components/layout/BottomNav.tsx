@@ -19,7 +19,7 @@ interface NavTab {
 
 const tabs: NavTab[] = [
   { href: '/', icon: Home, label: 'Accueil' },
-  { href: '/formation', icon: GraduationCap, label: 'Formation' },
+  { href: '/formation', icon: GraduationCap, label: 'Pratiques' },
   { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
   { href: '/patient', icon: HeartHandshake, label: 'Patient' },
   { href: '/sante', icon: HeartPulse, label: 'Santé Pro' },
