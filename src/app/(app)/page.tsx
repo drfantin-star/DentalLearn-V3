@@ -79,7 +79,7 @@ export default function HomePage() {
           </div>
 
           {/* Notif */}
-          <Link href="/profile"
+          <Link href="/profil"
                 className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors">
             <UserCircle size={24} className="text-white" />
           </Link>
