@@ -2,6 +2,7 @@ import React from 'react'
 import {
   Newspaper,
   ChevronRight,
+  ChevronLeft,
   Scale,
   FlaskConical,
   Stethoscope,
@@ -45,6 +46,8 @@ const categoryStyles = {
 
 export default function NewsSection({ news, loading }: NewsSectionProps) {
   const scrollRef = React.useRef<HTMLDivElement>(null)
+  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -260, behavior: 'smooth' })
+  const scrollRight = () => scrollRef.current?.scrollBy({ left: 260, behavior: 'smooth' })
 
   if (loading) {
     return (
@@ -74,59 +77,69 @@ export default function NewsSection({ news, loading }: NewsSectionProps) {
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center mb-4">
         <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
           <Newspaper size={20} className="text-[#2D1B96]" /> News
         </h2>
-        <button className="text-xs font-bold text-[#2D1B96] flex items-center gap-1">
-          Tout voir <ChevronRight size={14} />
-        </button>
       </div>
-      <div
-        ref={scrollRef}
-        className="flex gap-3 overflow-x-auto scroll-smooth
-                   snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-2"
-      >
-        {news.map((item) => {
-          const style = categoryStyles[item.category]
-          const Icon = style.icon
-          return (
-            <a
-              key={item.id}
-              href={item.external_url || '#'}
-              target={item.external_url ? '_blank' : undefined}
-              rel={item.external_url ? 'noopener noreferrer' : undefined}
-              className="flex-shrink-0 snap-start rounded-2xl overflow-hidden shadow-md
-                         hover:shadow-lg transition-all active:scale-95"
-              style={{
-                width: 'calc(75vw - 24px)',
-                maxWidth: '280px',
-                background: style.gradient,
-              }}
-            >
-              <div className="p-4 flex flex-col gap-3 h-full">
+      <div className="relative">
+        <button onClick={scrollLeft}
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4
+                           z-10 w-10 h-10 rounded-full bg-white shadow-md
+                           items-center justify-center text-gray-600 hover:bg-gray-50">
+          <ChevronLeft size={20} />
+        </button>
 
-                {/* Icône catégorie */}
-                <div className={`w-10 h-10 rounded-xl ${style.iconBg}
-                                 flex items-center justify-center shrink-0`}>
-                  <Icon size={20} className="text-white" />
+        <div
+          ref={scrollRef}
+          className="flex gap-3 overflow-x-auto scroll-smooth
+                     snap-x snap-mandatory scrollbar-hide -mx-4 px-4 pb-2"
+        >
+          {news.map((item) => {
+            const style = categoryStyles[item.category]
+            const Icon = style.icon
+            return (
+              <a
+                key={item.id}
+                href={item.external_url || '#'}
+                target={item.external_url ? '_blank' : undefined}
+                rel={item.external_url ? 'noopener noreferrer' : undefined}
+                className="flex-shrink-0 snap-start rounded-2xl overflow-hidden shadow-md
+                           hover:shadow-lg transition-all active:scale-95"
+                style={{
+                  width: 'calc(60vw - 24px)',
+                  maxWidth: '224px',
+                  background: style.gradient,
+                }}
+              >
+                <div className="p-4 flex flex-col gap-3 h-full">
+                  {/* Ligne icône + titre alignés */}
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className={`w-10 h-10 rounded-xl ${style.iconBg}
+                                     flex items-center justify-center shrink-0`}>
+                      <Icon size={20} className="text-white" />
+                    </div>
+                    <h3 className="text-white font-bold text-sm leading-snug line-clamp-3">
+                      {item.title}
+                    </h3>
+                  </div>
+                  {/* Source */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-white/60 text-xs truncate">{item.source}</span>
+                    {item.external_url && <ExternalLink size={10} className="text-white/40 flex-shrink-0" />}
+                  </div>
                 </div>
+              </a>
+            )
+          })}
+        </div>
 
-                {/* Titre — 3 lignes max */}
-                <h3 className="text-white font-bold text-sm leading-snug line-clamp-3 flex-1">
-                  {item.title}
-                </h3>
-
-                {/* Source */}
-                <div className="flex items-center gap-1">
-                  <span className="text-white/60 text-xs truncate">{item.source}</span>
-                  {item.external_url && <ExternalLink size={10} className="text-white/40 flex-shrink-0" />}
-                </div>
-
-              </div>
-            </a>
-          )
-        })}
+        <button onClick={scrollRight}
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4
+                           z-10 w-10 h-10 rounded-full bg-white shadow-md
+                           items-center justify-center text-gray-600 hover:bg-gray-50">
+          <ChevronRight size={20} />
+        </button>
       </div>
     </section>
   )
