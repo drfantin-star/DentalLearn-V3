@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
@@ -93,6 +93,14 @@ export default function FormationPage() {
 
   const { user } = useUser()
   const [formationProgress, setFormationProgress] = useState<Record<string, { isStarted: boolean; isCompleted: boolean }>>({})
+
+  const catScrollRef = useRef<HTMLDivElement>(null)
+  const catScrollLeft = () => catScrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
+  const catScrollRight = () => catScrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })
+
+  const nouveautesScrollRef = useRef<HTMLDivElement>(null)
+  const nouveautesScrollLeft = () => nouveautesScrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
+  const nouveautesScrollRight = () => nouveautesScrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })
 
   useEffect(() => {
     if (!user?.id || formations.length === 0) return
@@ -240,26 +248,47 @@ export default function FormationPage() {
           <h2 className="text-base font-bold text-gray-900 mb-3">
             Explore par spécialité
           </h2>
-          <div className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory">
-            {cpCategories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => openCategory(cat)}
-                className="flex-shrink-0 snap-start flex items-center gap-2.5 rounded-2xl px-3.5"
-                style={{
-                  width: '140px',
-                  height: '68px',
-                  background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})`,
-                }}
-              >
-                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-lg leading-none">
-                  {cat.emoji}
-                </div>
-                <span className="text-white text-xs font-semibold leading-snug text-left flex-1">
-                  {cat.name}
-                </span>
-              </button>
-            ))}
+          <div className="relative">
+            <button
+              onClick={catScrollLeft}
+              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+            >
+              <ChevronLeft size={20} />
+            </button>
+
+            <div
+              ref={catScrollRef}
+              className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+            >
+              {cpCategories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => openCategory(cat)}
+                  className="flex-shrink-0 snap-start flex items-center gap-2.5 rounded-2xl px-3.5"
+                  style={{
+                    width: 'calc(25vw - 20px)',
+                    maxWidth: '200px',
+                    minWidth: '140px',
+                    height: '72px',
+                    background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})`,
+                  }}
+                >
+                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-lg leading-none">
+                    {cat.emoji}
+                  </div>
+                  <span className="text-white text-xs font-semibold leading-snug text-left flex-1">
+                    {cat.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={catScrollRight}
+              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+            >
+              <ChevronRight size={20} />
+            </button>
           </div>
         </section>
 
@@ -268,60 +297,83 @@ export default function FormationPage() {
           <h2 className="text-base font-bold text-gray-900 mb-3">
             ⚡ Fraîchement arrivé
           </h2>
-          <div className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory">
-            {[...formations]
-              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-              .slice(0, 6)
-              .map((f) => {
-                const config = getCategoryConfig(f.category)
-                const progress = formationProgress[f.id]
-                const ctaLabel = progress?.isCompleted
-                  ? '✓ Terminé'
-                  : progress?.isStarted
-                  ? 'Continuer →'
-                  : 'Découvrir'
-                const ctaGradient = progress?.isCompleted
-                  ? 'linear-gradient(135deg, #059669, #10B981)'
-                  : 'linear-gradient(135deg, #2D1B96, #3D2BB6)'
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => openFormation(f)}
-                    className="flex-shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 text-left"
-                    style={{ width: 'calc(50vw - 24px)', maxWidth: '160px' }}
-                  >
-                    <div
-                      className="w-full aspect-square flex items-center justify-center"
+          <div className="relative">
+            <button
+              onClick={nouveautesScrollLeft}
+              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+            >
+              <ChevronLeft size={20} />
+            </button>
+
+            <div
+              ref={nouveautesScrollRef}
+              className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+            >
+              {[...formations]
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .slice(0, 6)
+                .map((f) => {
+                  const config = getCategoryConfig(f.category)
+                  const progress = formationProgress[f.id]
+                  const ctaLabel = progress?.isCompleted
+                    ? '✓ Terminé'
+                    : progress?.isStarted
+                    ? 'Continuer →'
+                    : 'Découvrir'
+                  const ctaGradient = progress?.isCompleted
+                    ? 'linear-gradient(135deg, #059669, #10B981)'
+                    : 'linear-gradient(135deg, #2D1B96, #3D2BB6)'
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => openFormation(f)}
+                      className="flex-shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 text-left"
                       style={{
-                        background: !f.cover_image_url
-                          ? `linear-gradient(135deg, ${config.gradient.from}33, ${config.gradient.from}66)`
-                          : undefined,
+                        width: 'calc(50vw - 24px)',
+                        maxWidth: '220px',
+                        minWidth: '148px',
                       }}
                     >
-                      {f.cover_image_url ? (
-                        <img
-                          src={f.cover_image_url}
-                          alt={f.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-5xl">{config.emoji}</span>
-                      )}
-                    </div>
-                    <div className="p-2.5 flex flex-col gap-2">
-                      <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2">
-                        {f.title}
-                      </p>
                       <div
-                        className="w-full text-center text-xs font-semibold text-white py-1.5 rounded-xl"
-                        style={{ background: ctaGradient }}
+                        className="w-full aspect-square flex items-center justify-center"
+                        style={{
+                          background: !f.cover_image_url
+                            ? `linear-gradient(135deg, ${config.gradient.from}33, ${config.gradient.from}66)`
+                            : undefined,
+                        }}
                       >
-                        {ctaLabel}
+                        {f.cover_image_url ? (
+                          <img
+                            src={f.cover_image_url}
+                            alt={f.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-5xl">{config.emoji}</span>
+                        )}
                       </div>
-                    </div>
-                  </button>
-                )
-              })}
+                      <div className="p-2.5 flex flex-col gap-2">
+                        <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2">
+                          {f.title}
+                        </p>
+                        <div
+                          className="w-full text-center text-xs font-semibold text-white py-1.5 rounded-xl"
+                          style={{ background: ctaGradient }}
+                        >
+                          {ctaLabel}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+            </div>
+
+            <button
+              onClick={nouveautesScrollRight}
+              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+            >
+              <ChevronRight size={20} />
+            </button>
           </div>
           {formations.length === 0 && (
             <p className="text-gray-400 text-sm text-center py-4">
