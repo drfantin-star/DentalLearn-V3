@@ -266,14 +266,14 @@ export default function FormationPage() {
                   onClick={() => openCategory(cat)}
                   className="flex-shrink-0 snap-start flex items-center gap-2.5 rounded-2xl px-3.5"
                   style={{
-                    width: 'calc(25vw - 20px)',
-                    maxWidth: '200px',
-                    minWidth: '148px',
-                    height: '80px',
+                    width: 'calc(25vw - 16px)',
+                    maxWidth: '220px',
+                    minWidth: '160px',
+                    height: '88px',
                     background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})`,
                   }}
                 >
-                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-lg leading-none">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-xl leading-none">
                     {cat.emoji}
                   </div>
                   <span className="text-white font-semibold leading-snug text-left flex-1 text-xs md:text-sm">
