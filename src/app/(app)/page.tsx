@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react'
 import Link from 'next/link'
 import {
   GraduationCap, UserCircle, ChevronLeft, ChevronRight,
-  BookOpen, Loader2, Zap,
+  BookOpen, Loader2,
 } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useFormations } from '@/lib/hooks/useFormations'
@@ -95,32 +95,20 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            {/* Mes stats */}
+            {/* Quiz du jour — EN PREMIER, sans titre */}
             <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Zap size={20} className="text-[#F59E0B]" />
-                  Mes stats
-                </h2>
-              </div>
-              <StatsCards
+              <DailyQuizButton
                 userId={user?.id}
-                currentStreak={streak?.current_streak || 0}
+                onStart={() => setShowDailyQuiz(true)}
                 refreshTrigger={refreshTrigger}
               />
             </section>
 
-            {/* Quiz du jour */}
+            {/* Mes stats — EN SECOND, sans titre */}
             <section>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Zap size={20} className="text-[#F59E0B]" />
-                  Quiz du jour
-                </h2>
-              </div>
-              <DailyQuizButton
+              <StatsCards
                 userId={user?.id}
-                onStart={() => setShowDailyQuiz(true)}
+                currentStreak={streak?.current_streak || 0}
                 refreshTrigger={refreshTrigger}
               />
             </section>
