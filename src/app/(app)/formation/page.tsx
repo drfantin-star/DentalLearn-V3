@@ -277,7 +277,8 @@ export default function FormationPage() {
                     {cat.emoji}
                   </div>
                   <span className="text-white font-semibold leading-snug text-left flex-1 text-xs md:text-sm">
-                    {cat.name}
+                    <span className="md:hidden">{cat.shortName}</span>
+                    <span className="hidden md:inline">{cat.name}</span>
                   </span>
                 </button>
               ))}
