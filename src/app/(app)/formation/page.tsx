@@ -243,16 +243,16 @@ export default function FormationPage() {
         </p>
       </header>
 
-      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8">
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen" style={{ background: '#0F0F0F' }}>
         {/* Spécialités cliniques */}
         <section>
-          <h2 className="text-base font-bold text-gray-900 mb-3">
+          <h2 className="text-base font-bold text-[#e5e5e5] mb-3">
             Explore par spécialité
           </h2>
           <div className="relative">
             <button
               onClick={catScrollLeft}
-              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
             >
               <ChevronLeft size={20} />
             </button>
@@ -289,7 +289,7 @@ export default function FormationPage() {
 
             <button
               onClick={catScrollRight}
-              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
             >
               <ChevronRight size={20} />
             </button>
@@ -298,13 +298,13 @@ export default function FormationPage() {
 
         {/* Fraîchement arrivé */}
         <section>
-          <h2 className="text-base font-bold text-gray-900 mb-3">
+          <h2 className="text-base font-bold text-[#e5e5e5] mb-3">
             ⚡ Fraîchement arrivé
           </h2>
           <div className="relative">
             <button
               onClick={nouveautesScrollLeft}
-              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
             >
               <ChevronLeft size={20} />
             </button>
@@ -331,12 +331,8 @@ export default function FormationPage() {
                     <button
                       key={f.id}
                       onClick={() => openFormation(f)}
-                      className="flex-shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 text-left"
-                      style={{
-                        width: 'calc(50vw - 24px)',
-                        maxWidth: '220px',
-                        minWidth: '148px',
-                      }}
+                      className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
+                      style={{ width: 'calc(50vw - 24px)', maxWidth: '220px', minWidth: '148px', background: '#242424', border: '0.5px solid #333' }}
                     >
                       <div
                         className="w-full aspect-square flex items-center justify-center"
@@ -357,7 +353,7 @@ export default function FormationPage() {
                         )}
                       </div>
                       <div className="p-2.5 flex flex-col gap-2">
-                        <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2">
+                        <p className="text-xs font-semibold text-[#e5e5e5] leading-snug line-clamp-2">
                           {f.title}
                         </p>
                         <div
@@ -374,7 +370,7 @@ export default function FormationPage() {
 
             <button
               onClick={nouveautesScrollRight}
-              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
             >
               <ChevronRight size={20} />
             </button>
@@ -388,9 +384,9 @@ export default function FormationPage() {
 
         {/* Info mode preview */}
         {isPreview && (
-          <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100 flex items-start gap-3">
+          <div className="p-4 flex items-start gap-3" style={{ background: '#1a2744', border: '0.5px solid #1e3a8a', borderRadius: '16px' }}>
             <BookOpen size={20} className="text-blue-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-blue-700">
+            <p className="text-sm text-blue-300">
               🔓 <strong>Mode Preview</strong> — Toutes les séquences sont accessibles
               pour tester. Connectez-vous pour sauvegarder votre progression.
             </p>
