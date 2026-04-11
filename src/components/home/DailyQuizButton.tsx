@@ -45,7 +45,7 @@ export default function DailyQuizButton({ userId, onStart, refreshTrigger }: Dai
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex items-center justify-center">
+      <div className="rounded-2xl p-6 shadow-sm flex items-center justify-center" style={{ background: '#242424', border: '0.5px solid #333' }}>
         <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
       </div>
     )
