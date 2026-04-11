@@ -260,7 +260,7 @@ export default function SantePage() {
     <>
       <header className="bg-gradient-to-br from-[#EC4899] to-[#A78BFA] px-4 py-4">
         <h1 className="text-2xl font-black text-white">Santé Praticien</h1>
-        <p className="text-xs font-semibold text-white/80 mt-1 leading-relaxed">
+        <p className="text-sm font-semibold text-white/80 mt-1 leading-relaxed">
           Mieux prendre en compte sa santé personnelle · Axe 4 de la certification périodique
         </p>
       </header>
@@ -301,7 +301,7 @@ export default function SantePage() {
                     <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-xl leading-none">
                       {cat.emoji}
                     </div>
-                    <span className="text-white font-semibold leading-snug text-left flex-1 text-xs md:text-sm">
+                    <span className="text-white font-semibold leading-snug text-left flex-1 text-sm md:text-base">
                       <span className="md:hidden">{cat.shortName}</span>
                       <span className="hidden md:inline">{cat.name}</span>
                     </span>
