@@ -57,23 +57,23 @@ function SequenceCard({
   const isNotUnlocked = accessibility.reason === 'not_unlocked'
 
   // Styles conditionnels
-  let bgColor = '#FAFAFF'
-  let borderColor = '#E8E5F5'
+  let bgColor = '#1e1e1e'
+  let borderColor = '#333'
 
   if (isCompleted) {
-    bgColor = '#F0FDF4'
+    bgColor = '#052e16'
     borderColor = '#86EFAC'
   } else if (isCurrent && !isCompleted) {
-    bgColor = 'white'
+    bgColor = '#242424'
     borderColor = gradient.from
   } else if (isLocked || isNotUnlocked) {
-    bgColor = '#FAFAFA'
-    borderColor = '#E8E5F5'
+    bgColor = '#1a1a1a'
+    borderColor = '#333'
   }
 
   // Couleur du badge numéro
-  let badgeBg = '#E2E8F0'
-  let badgeColor = '#64748B'
+  let badgeBg = '#333'
+  let badgeColor = '#a3a3a3'
 
   if (isCompleted) {
     badgeBg = '#22C55E'
@@ -126,7 +126,7 @@ function SequenceCard({
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
             <p
               className={`font-semibold text-[13px] leading-snug ${
-                isLocked || isNotUnlocked ? 'text-gray-400' : 'text-gray-800'
+                isLocked || isNotUnlocked ? 'text-gray-400' : 'text-[#e5e5e5]'
               }`}
             >
               {sequence.title}
@@ -145,14 +145,14 @@ function SequenceCard({
 
           <div className="flex items-center gap-2 flex-wrap">
             {hasMedia && (
-              <span className="text-[10px] text-gray-500">
+              <span className="text-[10px] text-[#6b7280]">
                 {sequence.course_media_type === 'audio' ? '🎧' : '📹'} {sequence.course_duration_seconds ? Math.round(sequence.course_duration_seconds / 60) : duration} min
               </span>
             )}
-            <span className="text-[10px] text-gray-500">
+            <span className="text-[10px] text-[#6b7280]">
               📝 4Q
             </span>
-            <span className="text-[10px] text-gray-500">
+            <span className="text-[10px] text-[#6b7280]">
               ⏱️ {duration} min
             </span>
           </div>
@@ -194,7 +194,7 @@ function CompletionModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center animate-in fade-in zoom-in duration-300">
+      <div className="rounded-3xl max-w-sm w-full p-6 text-center animate-in fade-in zoom-in duration-300" style={{ background: '#242424' }}>
         {/* Confettis / Trophy */}
         <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center"
           style={{ background: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})` }}>
@@ -202,17 +202,17 @@ function CompletionModal({
         </div>
 
         {/* Titre */}
-        <h2 className="text-xl font-extrabold text-gray-900 mb-1">
+        <h2 className="text-xl font-extrabold text-[#e5e5e5] mb-1">
           🎉 Formation terminée !
         </h2>
-        <p className="text-sm text-gray-500 mb-4">{formation.title}</p>
+        <p className="text-sm text-[#6b7280] mb-4">{formation.title}</p>
 
         {/* Score */}
-        <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-2xl p-4 mb-4">
+        <div className="rounded-2xl p-4 mb-4" style={{ background: '#2a2010' }}>
           <div className="flex items-center justify-center gap-2 mb-2">
             <Star size={20} className="text-amber-500 fill-amber-500" />
-            <span className="text-2xl font-extrabold text-gray-900">{earnedPoints}</span>
-            <span className="text-gray-500 font-medium">/ {totalPoints} pts</span>
+            <span className="text-2xl font-extrabold text-[#e5e5e5]">{earnedPoints}</span>
+            <span className="text-[#6b7280] font-medium">/ {totalPoints} pts</span>
           </div>
           <div className="w-full h-2 bg-amber-200 rounded-full overflow-hidden">
             <div
@@ -226,7 +226,7 @@ function CompletionModal({
         </div>
 
         {/* Like */}
-        <p className="text-sm text-gray-600 mb-3">
+        <p className="text-sm text-[#a3a3a3] mb-3">
           Cette formation vous a plu ?
         </p>
         <button
@@ -234,7 +234,7 @@ function CompletionModal({
           className={`inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all ${
             isLiked
               ? 'bg-pink-100 text-pink-600'
-              : 'bg-gray-100 text-gray-600 hover:bg-pink-50 hover:text-pink-500'
+              : 'bg-[#333] text-[#a3a3a3] hover:bg-pink-50 hover:text-pink-500'
           }`}
         >
           <Heart size={20} className={isLiked ? 'fill-pink-500' : ''} />
@@ -322,7 +322,7 @@ export default function FormationDetail({
   }
 
   return (
-    <div className="pb-24">
+    <div className="pb-24 min-h-screen" style={{ background: '#0F0F0F' }}>
       {/* Modal de fin */}
       {showCompletionModal && (
         <CompletionModal
@@ -401,14 +401,14 @@ export default function FormationDetail({
 
       {/* Statistiques de progression */}
       <div className="px-4 pt-4">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <div className="rounded-2xl p-4" style={{ background: '#242424', border: '0.5px solid #333' }}>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-gray-700">Votre progression</span>
-            <span className="text-xs text-gray-500">{completedInFormation}/{sequences.length} séquences</span>
+            <span className="text-sm font-semibold text-[#e5e5e5]">Votre progression</span>
+            <span className="text-xs text-[#6b7280]">{completedInFormation}/{sequences.length} séquences</span>
           </div>
-          
+
           {/* Barre de progression */}
-          <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden mb-3">
+          <div className="w-full h-2.5 bg-[#333] rounded-full overflow-hidden mb-3">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{
@@ -421,12 +421,12 @@ export default function FormationDetail({
           {/* Points */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-amber-900/30 flex items-center justify-center">
                 <Star size={16} className="text-amber-600" />
               </div>
               <div>
-                <p className="text-xs text-gray-500">Points gagnés</p>
-                <p className="font-bold text-gray-900">{earnedPoints} <span className="text-gray-400 font-normal">/ {totalPoints}</span></p>
+                <p className="text-xs text-[#6b7280]">Points gagnés</p>
+                <p className="font-bold text-[#e5e5e5]">{earnedPoints} <span className="text-gray-400 font-normal">/ {totalPoints}</span></p>
               </div>
             </div>
             
@@ -443,7 +443,7 @@ export default function FormationDetail({
       {/* Description */}
       {formation.description_short && (
         <div className="px-4 pt-4">
-          <p className="text-sm text-gray-600 leading-relaxed">
+          <p className="text-sm text-[#a3a3a3] leading-relaxed">
             {formation.description_short}
           </p>
         </div>
@@ -461,7 +461,7 @@ export default function FormationDetail({
 
       {/* Liste des séquences */}
       <div className="px-4 pt-5">
-        <h3 className="text-[15px] font-bold text-gray-800 mb-4">
+        <h3 className="text-[15px] font-bold text-[#e5e5e5] mb-4">
           Séquences ({sequences.length})
         </h3>
 
@@ -487,7 +487,7 @@ export default function FormationDetail({
       </div>
 
       {/* CTA fixe en bas */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 bg-white border-t border-gray-100 shadow-lg z-20">
+      <div className="fixed bottom-20 left-0 right-0 p-4 shadow-lg z-20" style={{ background: '#1a1a1a', borderTop: '0.5px solid #2a2a2a' }}>
         <div className="max-w-lg mx-auto">
           {nextSequence ? (
             <button
