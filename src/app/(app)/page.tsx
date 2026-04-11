@@ -127,7 +127,7 @@ export default function HomePage() {
             <button
               key={cat.id}
               onClick={() => window.location.href = `/formation/${cat.id}`}
-              className="flex-shrink-0 snap-start rounded-2xl flex flex-col items-center justify-center gap-2 py-4 px-2"
+              className="flex-shrink-0 snap-start rounded-2xl flex flex-col items-start gap-2.5 p-3"
               style={{
                 width: 'calc(50vw - 24px)',
                 maxWidth: '160px',
@@ -143,13 +143,11 @@ export default function HomePage() {
                 {cat.emoji}
               </div>
               <span
-                className="font-bold text-center leading-snug text-xs w-full px-1"
+                className="font-bold leading-tight text-sm w-full"
                 style={{
                   color: cat.gradient.from,
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
+                  wordBreak: 'break-word',
+                  hyphens: 'auto',
                 }}
               >
                 {cat.name}
