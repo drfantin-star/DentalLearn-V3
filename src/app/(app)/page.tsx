@@ -127,27 +127,46 @@ export default function HomePage() {
             <button
               key={cat.id}
               onClick={() => window.location.href = `/formation/${cat.id}`}
-              className="flex-shrink-0 snap-start rounded-2xl flex flex-col items-start gap-2.5 p-3"
+              className="flex-shrink-0 snap-start rounded-2xl"
               style={{
-                width: 'calc(50vw - 24px)',
-                maxWidth: '160px',
-                minWidth: '120px',
+                width: '140px',
+                minWidth: '140px',
+                height: '140px',
                 background: '#242424',
                 border: '0.5px solid #333',
+                position: 'relative',
               }}
             >
               <div
-                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-2xl leading-none"
-                style={{ background: `${cat.gradient.from}25` }}
+                style={{
+                  width: '68px',
+                  height: '68px',
+                  borderRadius: '18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '34px',
+                  position: 'absolute',
+                  top: '12px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: `${cat.gradient.from}25`,
+                }}
               >
                 {cat.emoji}
               </div>
               <span
-                className="font-bold leading-tight text-sm w-full"
                 style={{
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  lineHeight: 1.2,
+                  textAlign: 'center',
+                  width: '100%',
+                  position: 'absolute',
+                  bottom: '10px',
+                  left: 0,
+                  padding: '0 8px',
                   color: cat.gradient.from,
-                  wordBreak: 'break-word',
-                  hyphens: 'auto',
                 }}
               >
                 {cat.name}
