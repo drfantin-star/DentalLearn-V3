@@ -114,7 +114,7 @@ export default function HomePage() {
       <div className="px-4 py-3 relative" style={{ background: 'transparent' }}>
         <button
           onClick={() => scroll(scrollRef, 'left')}
-          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
         >
           <ChevronLeft size={18} />
         </button>
@@ -127,19 +127,20 @@ export default function HomePage() {
             <button
               key={cat.id}
               onClick={() => window.location.href = `/formation/${cat.id}`}
-              className="flex-shrink-0 snap-start flex items-center gap-2.5 bg-white rounded-2xl px-3"
+              className="flex-shrink-0 snap-start flex items-center gap-2.5 rounded-2xl px-3"
               style={{
                 width: 'calc(25vw - 16px)',
                 maxWidth: '200px',
                 minWidth: '148px',
                 height: '72px',
-                border: 'none',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                background: '#242424',
+                border: '0.5px solid #333',
+                boxShadow: 'none',
               }}
             >
               <div
                 className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg leading-none"
-                style={{ background: `${cat.gradient.from}18` }}
+                style={{ background: `${cat.gradient.from}25` }}
               >
                 {cat.emoji}
               </div>
@@ -156,7 +157,7 @@ export default function HomePage() {
 
         <button
           onClick={() => scroll(scrollRef, 'right')}
-          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
         >
           <ChevronRight size={18} />
         </button>
@@ -210,7 +211,7 @@ export default function HomePage() {
 
         {/* Fraîchement arrivé */}
         <section>
-          <h2 className="text-base font-bold text-gray-900 mb-3">⚡ Fraîchement arrivé</h2>
+          <h2 className="text-base font-bold text-[#e5e5e5] mb-3">⚡ Fraîchement arrivé</h2>
           {recentLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="animate-spin text-gray-400" size={24} />
@@ -219,7 +220,7 @@ export default function HomePage() {
             <div className="relative">
               <button
                 onClick={() => scroll(recentScrollRef, 'left')}
-                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
               >
                 <ChevronLeft size={20} />
               </button>
@@ -239,8 +240,8 @@ export default function HomePage() {
                     <button
                       key={f.id}
                       onClick={() => window.location.href = `/formation/${f.category}?formation=${f.slug}`}
-                      className="flex-shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 text-left"
-                      style={{ width: 'calc(50vw - 24px)', maxWidth: '220px', minWidth: '148px', display: 'flex', flexDirection: 'column' }}
+                      className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
+                      style={{ width: 'calc(50vw - 24px)', maxWidth: '220px', minWidth: '148px', display: 'flex', flexDirection: 'column', background: '#242424', border: '0.5px solid #333' }}
                     >
                       <div
                         className="w-full aspect-square flex items-center justify-center"
@@ -253,7 +254,7 @@ export default function HomePage() {
                         )}
                       </div>
                       <div className="p-2.5 flex flex-col gap-2" style={{ flex: 1 }}>
-                        <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2" style={{ flex: 1, marginBottom: '6px' }}>
+                        <p className="text-xs font-semibold text-[#e5e5e5] leading-snug line-clamp-2" style={{ flex: 1, marginBottom: '6px' }}>
                           {f.title}
                         </p>
                         <div
@@ -269,7 +270,7 @@ export default function HomePage() {
               </div>
               <button
                 onClick={() => scroll(recentScrollRef, 'right')}
-                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
               >
                 <ChevronRight size={20} />
               </button>
