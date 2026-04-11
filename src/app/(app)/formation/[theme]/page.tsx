@@ -8,10 +8,8 @@ import {
   Loader2,
   Gamepad2,
   ClipboardCheck,
-  Clock,
   FileText,
   CheckCircle2,
-  AlertCircle,
   Lock,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -447,51 +445,101 @@ export default function ThemePage() {
           </div>
 
           {eppAudit ? (
-            <div className="bg-teal-50 rounded-2xl border border-teal-200 p-4">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center shrink-0">
-                  <ClipboardCheck size={20} className="text-teal-700" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 text-sm">{eppAudit.title}</h3>
-                  <p className="text-xs text-gray-500 mt-1 line-clamp-2">{eppAudit.description}</p>
+            (() => {
+              const eppCatConfig = getCategoryConfig(themeSlug)
+              const eppBgColor = eppCatConfig.gradient.from
+              const eppT1 = eppSessions.find(s => s.tour === 1)
+              const eppT2 = eppSessions.find(s => s.tour === 2)
+              const isValidated = !!eppT2?.completed_at
+              const isT2 = !!eppT2 && !eppT2.completed_at
+              const ctaLabel = eppStatus.status === 'not_started'
+                ? 'Commencer l\'audit'
+                : isValidated ? 'Voir attestation'
+                : 'Continuer l\'audit'
+              const ctaGradient = isValidated
+                ? 'linear-gradient(135deg, #059669, #10B981)'
+                : `linear-gradient(135deg, ${eppBgColor}, ${eppCatConfig.gradient.to})`
 
-                  <div className="flex items-center gap-3 mt-2 text-[11px] text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <FileText size={12} />
-                      {eppAudit.nb_dossiers_min}-{eppAudit.nb_dossiers_max} dossiers
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={12} />
-                      Délai T2 : {eppAudit.delai_t2_mois_min}-{eppAudit.delai_t2_mois_max} mois
-                    </span>
+              return (
+                <div
+                  className="bg-white rounded-2xl overflow-hidden border border-gray-100"
+                  style={{
+                    width: 'calc(50vw - 24px)',
+                    maxWidth: '220px',
+                    minWidth: '148px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}
+                >
+                  <div
+                    className="w-full flex items-center justify-center relative"
+                    style={{ aspectRatio: '1/1', background: isValidated ? '#059669' : eppBgColor, flexShrink: 0 }}
+                  >
+                    <svg width="108" height="108" viewBox="0 0 108 108"
+                      style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 1 }}>
+                      <circle cx="54" cy="54" r="44" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="5"/>
+                      <circle cx="54" cy="54" r="44" fill="none" stroke="white" strokeWidth="5"
+                        strokeDasharray={isValidated ? '276 276' : isT2 ? '207 276' : eppT1?.completed_at ? '138 276' : '0 276'}
+                        strokeLinecap="round" transform="rotate(-90 54 54)" opacity="0.9"/>
+                    </svg>
+                    <div style={{
+                      width: '80px', height: '80px', borderRadius: '50%',
+                      background: 'white', display: 'flex', flexDirection: 'column',
+                      alignItems: 'center', justifyContent: 'center', gap: '2px',
+                      position: 'relative', zIndex: 2,
+                      border: isValidated ? '2px solid #10B981' : 'none',
+                    }}>
+                      {isValidated ? (
+                        <>
+                          <CheckCircle2 size={26} className="text-emerald-600" />
+                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#059669', textTransform: 'uppercase' }}>Validée</span>
+                        </>
+                      ) : isT2 ? (
+                        <>
+                          <FileText size={26} style={{ color: eppBgColor }} />
+                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#374151', textTransform: 'uppercase' }}>Tour 2</span>
+                          <span style={{ fontSize: '11px', fontWeight: 900, color: eppBgColor }}>en cours</span>
+                        </>
+                      ) : eppT1?.completed_at ? (
+                        <>
+                          <ClipboardCheck size={26} style={{ color: eppBgColor }} />
+                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#374151', textTransform: 'uppercase' }}>Tour 1</span>
+                          <span style={{ fontSize: '13px', fontWeight: 900, color: eppBgColor }}>✓</span>
+                        </>
+                      ) : (
+                        <>
+                          <ClipboardCheck size={26} style={{ color: eppBgColor }} />
+                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#374151', textTransform: 'uppercase' }}>Audit</span>
+                          <span style={{ fontSize: '11px', fontWeight: 900, color: eppBgColor }}>EPP</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Statut EPP */}
-                  <div className="flex items-center gap-2 mt-3">
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                      eppStatus.color === 'green' ? 'bg-green-100 text-green-700' :
-                      eppStatus.color === 'amber' ? 'bg-amber-100 text-amber-700' :
-                      eppStatus.color === 'blue' ? 'bg-blue-100 text-blue-700' :
-                      'bg-gray-100 text-gray-500'
-                    }`}>
-                      {eppStatus.color === 'green' && <CheckCircle2 size={10} className="inline mr-1" />}
-                      {eppStatus.label}
-                    </span>
+                  <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                    <p style={{
+                      fontSize: '12px', fontWeight: 600, lineHeight: 1.3,
+                      flex: 1, marginBottom: '6px',
+                      display: '-webkit-box', WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                      color: 'var(--color-text-primary, #111827)'
+                    }}>
+                      {eppAudit.title}
+                    </p>
+                    <Link
+                      href={`/formation/${themeSlug}/epp`}
+                      style={{
+                        display: 'block', textAlign: 'center',
+                        fontSize: '11px', fontWeight: 600, color: 'white',
+                        padding: '6px', borderRadius: '10px',
+                        background: ctaGradient, textDecoration: 'none',
+                      }}
+                    >
+                      {ctaLabel}
+                    </Link>
                   </div>
                 </div>
-              </div>
-
-              <Link
-                href={`/formation/${themeSlug}/epp`}
-                className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 bg-[#0F7B6C] text-white text-sm font-semibold rounded-xl hover:bg-[#0a5f54] transition-colors active:scale-[0.98]"
-              >
-                {eppStatus.status === 'not_started' ? 'Commencer l\'audit' :
-                 eppStatus.status === 'completed' ? 'Voir les résultats' :
-                 'Continuer l\'audit'}
-                <ChevronRight size={16} />
-              </Link>
-            </div>
+              )
+            })()
           ) : (
             <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 opacity-60">
               <div className="flex items-center gap-3">
