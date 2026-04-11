@@ -129,12 +129,16 @@ export default function HomePage() {
               onClick={() => window.location.href = `/formation/${cat.id}`}
               className="flex-shrink-0 snap-start rounded-2xl"
               style={{
-                width: '140px',
-                minWidth: '140px',
-                height: '140px',
+                width: 'calc(50vw - 24px)',
+                maxWidth: '220px',
+                minWidth: '148px',
+                height: 'calc(50vw - 24px)',
+                maxHeight: '220px',
+                minHeight: '148px',
                 background: '#242424',
                 border: '0.5px solid #333',
                 position: 'relative',
+                flexShrink: 0,
               }}
             >
               <div
