@@ -72,9 +72,9 @@ export default function DailyQuizButton({ userId, onStart, refreshTrigger }: Dai
          style={{ background: 'linear-gradient(135deg, #2D1B96, #8B5CF6)' }}
          onClick={onStart}>
       <div className="flex flex-col gap-1">
-        <p className="text-white font-bold text-lg leading-tight">Quiz du jour</p>
-        <p className="text-white/70 text-sm">10 questions · ~5 min</p>
-        <p className="text-white/50 text-xs">Viens tester tes connaissances !</p>
+        <p className="text-white font-black text-xl leading-tight">Quiz du jour</p>
+        <p className="text-white/80 text-sm font-semibold">10 questions · ~5 min</p>
+        <p className="text-white/70 text-sm font-medium">Viens tester tes connaissances !</p>
       </div>
       <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0">
         <img
