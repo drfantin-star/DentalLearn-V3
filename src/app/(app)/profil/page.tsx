@@ -17,7 +17,7 @@ import Link from 'next/link'
 export default function ProfilPage() {
   const router = useRouter()
   const supabase = createClient()
-  const { user, profile, streak } = useUser()
+  const { user, streak } = useUser()
   const { demarches, loading: demarchesLoading } = useDemarches(user?.id)
   const [refreshTrigger] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -53,12 +53,6 @@ export default function ProfilPage() {
     load()
   }, [])
 
-  const getInitials = () => {
-    if (profile?.first_name && profile?.last_name)
-      return `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
-    return profile?.first_name?.[0]?.toUpperCase() || 'U'
-  }
-
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-24">
       <Loader2 className="animate-spin text-[#2D1B96]" size={32} />
@@ -70,38 +64,19 @@ export default function ProfilPage() {
 
       {/* Header */}
       <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 py-4">
-        <p className="text-sm font-semibold text-white/80">Mon espace personnel</p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-white/80">Mon espace personnel</p>
+          <Link
+            href="/profil/edit"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-colors"
+          >
+            <Settings className="w-4 h-4 text-white" />
+            <span className="text-xs font-semibold text-white">Éditer mon profil</span>
+          </Link>
+        </div>
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-
-        {/* Identité + bouton éditer */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full overflow-hidden ring-2 ring-gray-100 flex-shrink-0">
-            {profile?.profile_photo_url ? (
-              <img src={profile.profile_photo_url} alt="avatar" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] flex items-center justify-center">
-                <span className="text-white font-bold text-lg">{getInitials()}</span>
-              </div>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-bold text-gray-900 text-base">
-              {profile?.first_name && profile?.last_name
-                ? `Dr ${profile.first_name} ${profile.last_name}`
-                : profile?.first_name || 'Mon profil'}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">Chirurgien-dentiste</p>
-          </div>
-          <Link
-            href="/profil/edit"
-            className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors text-sm font-medium text-gray-700"
-          >
-            <Settings className="w-4 h-4" />
-            <span className="hidden sm:inline">Éditer</span>
-          </Link>
-        </div>
 
         {/* Stats */}
         <StatsCards
