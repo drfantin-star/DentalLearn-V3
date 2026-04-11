@@ -138,20 +138,20 @@ export default function HomePage() {
                 background: '#242424',
                 border: '0.5px solid #333',
                 position: 'relative',
-                flexShrink: 0,
               }}
             >
+              {/* Icône — position fixe en haut, centrée horizontalement */}
               <div
                 style={{
-                  width: '68px',
-                  height: '68px',
-                  borderRadius: '18px',
+                  width: '72px',
+                  height: '72px',
+                  borderRadius: '20px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '34px',
+                  fontSize: '36px',
                   position: 'absolute',
-                  top: '12px',
+                  top: '14px',
                   left: '50%',
                   transform: 'translateX(-50%)',
                   background: `${cat.gradient.from}25`,
@@ -159,6 +159,7 @@ export default function HomePage() {
               >
                 {cat.emoji}
               </div>
+              {/* Label — position fixe en bas, centré */}
               <span
                 style={{
                   fontSize: '15px',
@@ -167,7 +168,7 @@ export default function HomePage() {
                   textAlign: 'center',
                   width: '100%',
                   position: 'absolute',
-                  bottom: '10px',
+                  bottom: '12px',
                   left: 0,
                   padding: '0 8px',
                   color: cat.gradient.from,
