@@ -31,7 +31,10 @@ export default function BottomNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-2 py-2 z-40 safe-bottom">
+    <nav
+      className="fixed bottom-0 left-0 right-0 px-2 py-2 z-40 safe-bottom"
+      style={{ background: '#1a1a1a', borderTop: '0.5px solid #2a2a2a' }}
+    >
       <div className="max-w-lg mx-auto flex justify-around">
         {tabs.map((tab) => {
           const active = isActive(tab.href)
@@ -49,12 +52,12 @@ export default function BottomNav() {
             >
               <Icon
                 size={22}
-                className={active ? 'text-[#2D1B96]' : 'text-gray-400'}
+                className={active ? 'text-[#2D1B96]' : 'text-[#6b7280]'}
                 strokeWidth={active ? 2.5 : 2}
               />
               <span
                 className={`text-[10px] mt-1 font-medium ${
-                  active ? 'text-[#2D1B96]' : 'text-gray-400'
+                  active ? 'text-[#2D1B96]' : 'text-[#6b7280]'
                 }`}
               >
                 {tab.label}
