@@ -127,29 +127,32 @@ export default function HomePage() {
             <button
               key={cat.id}
               onClick={() => window.location.href = `/formation/${cat.id}`}
-              className="flex-shrink-0 snap-start flex items-center gap-2.5 rounded-2xl px-3"
+              className="flex-shrink-0 snap-start rounded-2xl flex flex-col items-center justify-center gap-2 py-4 px-2"
               style={{
-                width: 'calc(25vw - 16px)',
-                maxWidth: '200px',
-                minWidth: '148px',
-                height: '72px',
+                width: 'calc(50vw - 24px)',
+                maxWidth: '160px',
+                minWidth: '120px',
                 background: '#242424',
                 border: '0.5px solid #333',
-                boxShadow: 'none',
               }}
             >
               <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg leading-none"
+                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-2xl leading-none"
                 style={{ background: `${cat.gradient.from}25` }}
               >
                 {cat.emoji}
               </div>
               <span
-                className="font-bold leading-snug text-left flex-1 text-xs md:text-sm"
-                style={{ color: cat.gradient.from }}
+                className="font-bold text-center leading-snug text-xs w-full px-1"
+                style={{
+                  color: cat.gradient.from,
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
               >
-                <span className="md:hidden">{cat.shortName}</span>
-                <span className="hidden md:inline">{cat.name}</span>
+                {cat.name}
               </span>
             </button>
           ))}
