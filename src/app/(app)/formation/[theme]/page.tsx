@@ -1,12 +1,11 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Heart,
   Gamepad2,
   ClipboardCheck,
   Clock,
@@ -23,6 +22,7 @@ import {
   type Formation,
   type Sequence,
 } from '@/lib/supabase'
+import { useUser } from '@/lib/hooks/useUser'
 import FormationDetail from '@/components/formation/FormationDetail'
 import SequencePlayer from '@/components/formation/SequencePlayer'
 
@@ -92,11 +92,20 @@ export default function ThemePage() {
   const themeSlug = params.theme
   const formationSlugParam = searchParams.get('formation')
 
+  const { user } = useUser()
   const [formations, setFormations] = useState<Formation[]>([])
   const [eppAudit, setEppAudit] = useState<EppAudit | null>(null)
   const [eppSessions, setEppSessions] = useState<UserEppSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
+  const [formationProgress, setFormationProgress] = useState<
+    Record<string, { isStarted: boolean; isCompleted: boolean }>
+  >({})
+  const formationsScrollRef = useRef<HTMLDivElement>(null)
+  const formationsScrollLeft = () =>
+    formationsScrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
+  const formationsScrollRight = () =>
+    formationsScrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })
 
   // ViewMode pour la navigation interne (formation detail + sequence player)
   const [viewMode, setViewMode] = useState<ViewMode>('theme')
@@ -122,6 +131,28 @@ export default function ThemePage() {
       }
     }
   }, [formationSlugParam, formations])
+
+  useEffect(() => {
+    if (!user?.id || formations.length === 0) return
+    async function fetchProgress() {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('user_formations')
+        .select('formation_id, current_sequence, completed_at')
+        .eq('user_id', user!.id)
+      if (data) {
+        const map: Record<string, { isStarted: boolean; isCompleted: boolean }> = {}
+        data.forEach((uf) => {
+          map[uf.formation_id] = {
+            isStarted: true,
+            isCompleted: !!uf.completed_at,
+          }
+        })
+        setFormationProgress(map)
+      }
+    }
+    fetchProgress()
+  }, [user?.id, formations])
 
   const loadData = async () => {
     try {
@@ -321,44 +352,84 @@ export default function ThemePage() {
               </span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              {formations.map((f) => {
-                const config = getCategoryConfig(f.category)
-                return (
-                  <button
-                    key={f.id}
-                    onClick={() => openFormation(f)}
-                    className="w-full flex items-center gap-3 p-3 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all text-left"
-                  >
-                    <div className={`w-10 h-10 rounded-xl ${config.bgColor} flex items-center justify-center shrink-0`}>
-                      <span className="text-xl">{config.emoji}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                        <h3 className="font-semibold text-sm text-gray-800 truncate">
-                          {f.title}
-                        </h3>
-                        {f.cp_eligible && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-200">
-                            CP
-                          </span>
+            <div className="relative">
+              <button
+                onClick={formationsScrollLeft}
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4
+                           z-10 w-10 h-10 rounded-full bg-white shadow-md
+                           items-center justify-center text-gray-600 hover:bg-gray-50"
+              >
+                <ChevronLeft size={20} />
+              </button>
+
+              <div
+                ref={formationsScrollRef}
+                className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+              >
+                {formations.map((f) => {
+                  const config = getCategoryConfig(f.category)
+                  const progress = formationProgress[f.id]
+                  const ctaLabel = progress?.isCompleted
+                    ? '✓ Terminé'
+                    : progress?.isStarted
+                    ? 'Continuer →'
+                    : 'Découvrir'
+                  const ctaGradient = progress?.isCompleted
+                    ? 'linear-gradient(135deg, #059669, #10B981)'
+                    : `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => openFormation(f)}
+                      className="flex-shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 text-left"
+                      style={{
+                        width: 'calc(50vw - 24px)',
+                        maxWidth: '220px',
+                        minWidth: '148px',
+                      }}
+                    >
+                      <div
+                        className="w-full aspect-square flex items-center justify-center"
+                        style={{
+                          background: !f.cover_image_url
+                            ? `linear-gradient(135deg, ${config.gradient.from}33, ${config.gradient.from}66)`
+                            : undefined,
+                        }}
+                      >
+                        {f.cover_image_url ? (
+                          <img
+                            src={f.cover_image_url}
+                            alt={f.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-5xl">{config.emoji}</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] text-gray-400">
-                        <span>{f.instructor_name}</span>
-                        <span>{f.total_sequences} séq.</span>
+                      <div className="p-2.5 flex flex-col gap-2">
+                        <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2">
+                          {f.title}
+                        </p>
+                        <div
+                          className="w-full text-center text-xs font-semibold text-white py-1.5 rounded-xl"
+                          style={{ background: ctaGradient }}
+                        >
+                          {ctaLabel}
+                        </div>
                       </div>
-                    </div>
-                    {f.likes_count > 0 && (
-                      <div className="flex items-center gap-1 text-pink-500 shrink-0 mr-1">
-                        <Heart size={14} className="fill-pink-500" />
-                        <span className="text-xs font-semibold">{f.likes_count}</span>
-                      </div>
-                    )}
-                    <ChevronRight size={16} className="text-gray-300 shrink-0" />
-                  </button>
-                )
-              })}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <button
+                onClick={formationsScrollRight}
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4
+                           z-10 w-10 h-10 rounded-full bg-white shadow-md
+                           items-center justify-center text-gray-600 hover:bg-gray-50"
+              >
+                <ChevronRight size={20} />
+              </button>
             </div>
           </section>
         )}
