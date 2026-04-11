@@ -12,12 +12,25 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
   // --- Formation cards: square card with cover image ---
   if (demarche.type === 'formation') {
     const catConfig = getCategoryConfig(demarche.category ?? null)
-    const categoryColor = catConfig.gradient.from
 
     return (
-      <div className="flex-shrink-0 snap-start rounded-2xl overflow-hidden shadow-sm bg-white w-[calc(50vw-24px)] md:w-64">
-        {/* Image carrée */}
-        <div className="w-full aspect-square overflow-hidden">
+      <div
+        className="flex-shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 text-left"
+        style={{
+          width: 'calc(50vw - 24px)',
+          maxWidth: '220px',
+          minWidth: '148px',
+        }}
+      >
+        {/* Cover image carrée */}
+        <div
+          className="w-full aspect-square flex items-center justify-center"
+          style={{
+            background: !demarche.coverImageUrl
+              ? `linear-gradient(135deg, ${catConfig.gradient.from}33, ${catConfig.gradient.from}66)`
+              : undefined,
+          }}
+        >
           {demarche.coverImageUrl ? (
             <img
               src={demarche.coverImageUrl}
@@ -25,24 +38,21 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div
-              className="w-full h-full flex items-center justify-center text-5xl"
-              style={{ background: `linear-gradient(135deg, ${categoryColor}33, ${categoryColor}66)` }}
-            >
-              {catConfig.emoji}
-            </div>
+            <span className="text-5xl">{catConfig.emoji}</span>
           )}
         </div>
 
-        {/* Bas de card — compact */}
-        <div className="p-3 flex flex-col gap-2">
-          <p className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2">
+        {/* Corps */}
+        <div className="p-2.5 flex flex-col gap-2">
+          <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2">
             {demarche.title}
           </p>
           <Link
             href={demarche.ctaUrl}
-            className="text-center text-xs font-semibold text-white py-2 rounded-xl"
-            style={{ background: 'linear-gradient(135deg, #2D1B96, #3D2BB6)' }}
+            className="w-full text-center text-xs font-semibold text-white py-1.5 rounded-xl"
+            style={{
+              background: `linear-gradient(135deg, ${catConfig.gradient.from}, ${catConfig.gradient.to})`,
+            }}
           >
             Continuer →
           </Link>
