@@ -324,7 +324,7 @@ export default function FormationPage() {
                     : 'Découvrir'
                   const ctaGradient = progress?.isCompleted
                     ? 'linear-gradient(135deg, #059669, #10B981)'
-                    : 'linear-gradient(135deg, #2D1B96, #3D2BB6)'
+                    : `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
                   return (
                     <button
                       key={f.id}
