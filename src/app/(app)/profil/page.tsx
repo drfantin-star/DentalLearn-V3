@@ -60,7 +60,7 @@ export default function ProfilPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
 
       {/* Header */}
       <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 py-4">
@@ -87,7 +87,7 @@ export default function ProfilPage() {
 
         {/* Mes démarches en cours */}
         <section>
-          <h2 className="text-base font-bold text-gray-900 flex items-center gap-2 mb-3">
+          <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2 mb-3">
             <BookOpen size={18} className="text-[#8B5CF6]" />
             Mes démarches en cours
           </h2>
@@ -98,7 +98,7 @@ export default function ProfilPage() {
           ) : demarches.length > 0 ? (
             <div className="relative">
               <button onClick={scrollLeft}
-                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50">
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50">
                 <ChevronLeft size={20} />
               </button>
               <div ref={demarchesScrollRef}
@@ -106,13 +106,13 @@ export default function ProfilPage() {
                 {demarches.map(d => <DemarcheCard key={d.id} demarche={d} />)}
               </div>
               <button onClick={scrollRight}
-                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50">
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50">
                 <ChevronRight size={20} />
               </button>
             </div>
           ) : (
-            <div className="bg-white rounded-2xl p-5 border border-gray-100 text-center">
-              <p className="text-gray-400 text-sm">Aucune démarche en cours</p>
+            <div className="p-5 text-center" style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}>
+              <p className="text-[#6b7280] text-sm">Aucune démarche en cours</p>
             </div>
           )}
         </section>

@@ -75,7 +75,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
   const totalObjectif = OBJECTIF_PAR_AXE * 4; // 8 actions minimum
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px', overflow: 'hidden' }}>
 
       {/* Header */}
       <div className="bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] px-4 py-3">
@@ -89,16 +89,16 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
 
         {/* Barre de progression temporelle */}
         <div>
-          <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+          <div className="flex justify-between text-xs text-[#6b7280] mb-1.5">
             <span>{periode.debut.getFullYear()}</span>
-            <span className="font-semibold text-gray-700">
+            <span className="font-semibold text-[#a3a3a3]">
               {tempsRestant.ans > 0
                 ? `${tempsRestant.ans} an${tempsRestant.ans > 1 ? 's' : ''}${tempsRestant.moisRestants > 0 ? ` et ${tempsRestant.moisRestants} mois` : ''} restants`
                 : `${tempsRestant.mois} mois restants`}
             </span>
             <span>{periode.fin.getFullYear()}</span>
           </div>
-          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-[#333] rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] rounded-full transition-all duration-500"
               style={{ width: `${tempsRestant.pourcentageEcoule}%` }}
@@ -107,7 +107,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
         </div>
 
         {/* Liste compacte axes */}
-        <div className="rounded-xl overflow-hidden border border-gray-100">
+        <div className="rounded-xl overflow-hidden" style={{ border: '0.5px solid #333' }}>
           {axes.map((axe, index) => {
             const isComplete = axe.count >= OBJECTIF_PAR_AXE
             const dots = Array.from({ length: OBJECTIF_PAR_AXE }, (_, i) => i < axe.count)
@@ -121,7 +121,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
               <div
                 key={axe.id}
                 className={`flex items-center gap-3 px-3 py-2.5 ${
-                  index < axes.length - 1 ? 'border-b border-gray-100' : ''
+                  index < axes.length - 1 ? 'border-b border-[#333]' : ''
                 }`}
               >
                 {/* Pastille */}
@@ -133,7 +133,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
                 </div>
 
                 {/* Label */}
-                <span className="flex-1 text-sm font-medium text-gray-800">
+                <span className="flex-1 text-sm font-medium text-[#e5e5e5]">
                   {axe.label}
                 </span>
 
@@ -165,8 +165,8 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
 
         {/* Total */}
         <div className="flex justify-between items-center pt-1">
-          <span className="text-xs text-gray-500">Total validées</span>
-          <span className="text-sm font-bold text-gray-900">
+          <span className="text-xs text-[#6b7280]">Total validées</span>
+          <span className="text-sm font-bold text-[#e5e5e5]">
             {totalActions} / {totalObjectif} actions min.
           </span>
         </div>

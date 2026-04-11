@@ -197,16 +197,16 @@ export default function EditProfilPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24">
+    <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
       <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
 
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-10">
+      <header className="sticky top-0 z-10" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-2 -ml-2 hover:bg-gray-100 rounded-xl transition-colors">
-            <ChevronLeft className="w-5 h-5 text-gray-600" />
+          <button onClick={() => router.back()} className="p-2 -ml-2 hover:bg-[#242424] rounded-xl transition-colors">
+            <ChevronLeft className="w-5 h-5 text-gray-300" />
           </button>
-          <h1 className="text-lg font-bold text-gray-900">Éditer mon profil</h1>
+          <h1 className="text-lg font-bold text-[#e5e5e5]">Éditer mon profil</h1>
         </div>
       </header>
 
@@ -251,8 +251,8 @@ export default function EditProfilPage() {
         )}
 
         {/* Photo + Nom + Prénom */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-4">
-          <h3 className="font-semibold text-gray-900">Informations personnelles</h3>
+        <div className="rounded-2xl p-5 space-y-4" style={{ background: '#242424', border: '0.5px solid #333' }}>
+          <h3 className="font-semibold text-[#e5e5e5]">Informations personnelles</h3>
 
           {/* Photo */}
           <div className="flex items-center gap-4">
@@ -271,32 +271,34 @@ export default function EditProfilPage() {
               >
                 {uploadingPhoto
                   ? <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2D1B96]" />
-                  : <Camera className="w-3.5 h-3.5 text-gray-600" />}
+                  : <Camera className="w-3.5 h-3.5 text-[#6b7280]" />}
               </button>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-900">Photo de profil</p>
-              <p className="text-xs text-gray-400">JPG, PNG — max 2 MB</p>
+              <p className="text-sm font-medium text-[#e5e5e5]">Photo de profil</p>
+              <p className="text-xs text-[#6b7280]">JPG, PNG — max 2 MB</p>
             </div>
           </div>
 
           {/* Prénom + Nom */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Prénom</label>
+              <label className="block text-xs font-medium text-[#6b7280] mb-1">Prénom</label>
               <input
                 type="text" value={firstName}
                 onChange={e => setFirstName(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                style={{ background: '#1a1a1a', borderColor: '#333', color: '#e5e5e5' }}
                 placeholder="Prénom"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Nom</label>
+              <label className="block text-xs font-medium text-[#6b7280] mb-1">Nom</label>
               <input
                 type="text" value={lastName}
                 onChange={e => setLastName(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                style={{ background: '#1a1a1a', borderColor: '#333', color: '#e5e5e5' }}
                 placeholder="Nom"
               />
             </div>
@@ -304,10 +306,10 @@ export default function EditProfilPage() {
 
           {/* Email lecture seule */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Email</label>
-            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl">
-              <Mail className="w-4 h-4 text-gray-400" />
-              <span className="text-sm text-gray-500">{email}</span>
+            <label className="block text-xs font-medium text-[#6b7280] mb-1">Email</label>
+            <div className="flex items-center gap-2 px-3 py-2" style={{ background: '#1a1a1a', border: '0.5px solid #333', borderRadius: '12px' }}>
+              <Mail className="w-4 h-4 text-[#6b7280]" />
+              <span className="text-sm text-[#6b7280]">{email}</span>
             </div>
           </div>
 
@@ -322,19 +324,20 @@ export default function EditProfilPage() {
         </div>
 
         {/* Inscription à l'Ordre */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5 space-y-3">
-          <h3 className="font-semibold text-gray-900">Inscription à l'Ordre</h3>
+        <div className="rounded-2xl p-5 space-y-3" style={{ background: '#242424', border: '0.5px solid #333' }}>
+          <h3 className="font-semibold text-[#e5e5e5]">Inscription à l'Ordre</h3>
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Date d'inscription</label>
+            <label className="block text-xs font-medium text-[#6b7280] mb-1">Date d'inscription</label>
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-400 shrink-0" />
+              <Calendar className="w-4 h-4 text-[#6b7280] shrink-0" />
               <input
                 type="date" value={ordreDate}
                 onChange={e => setOrdreDate(e.target.value)}
                 className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                style={{ background: '#1a1a1a', borderColor: '#333', color: '#e5e5e5' }}
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1.5">
+            <p className="text-xs text-[#6b7280] mt-1.5">
               Détermine votre période de certification périodique.
             </p>
           </div>
@@ -349,51 +352,53 @@ export default function EditProfilPage() {
         </div>
 
         {/* Notifications */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <div className="rounded-2xl p-5" style={{ background: '#242424', border: '0.5px solid #333' }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-blue-50 rounded-xl">
               <Bell className="w-4 h-4 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">Notifications</h3>
-              <p className="text-xs text-gray-400">Rappels et résultats</p>
+              <h3 className="font-semibold text-[#e5e5e5]">Notifications</h3>
+              <p className="text-xs text-[#6b7280]">Rappels et résultats</p>
             </div>
           </div>
           <PushNotificationToggle />
         </div>
 
         {/* Mot de passe */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-5">
+        <div className="rounded-2xl p-5" style={{ background: '#242424', border: '0.5px solid #333' }}>
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-gray-100 rounded-xl">
-              <Lock className="w-4 h-4 text-gray-600" />
+              <Lock className="w-4 h-4 text-[#6b7280]" />
             </div>
-            <h3 className="font-semibold text-gray-900">Sécurité</h3>
+            <h3 className="font-semibold text-[#e5e5e5]">Sécurité</h3>
           </div>
 
           {showPasswordForm ? (
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Nouveau mot de passe</label>
+                <label className="block text-xs font-medium text-[#6b7280] mb-1">Nouveau mot de passe</label>
                 <div className="relative">
                   <input
                     type={showNewPassword ? 'text' : 'password'}
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm pr-10"
+                    style={{ background: '#1a1a1a', borderColor: '#333', color: '#e5e5e5' }}
                     placeholder="Minimum 8 caractères"
                   />
                   <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7280]">
                     {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Confirmer</label>
+                <label className="block text-xs font-medium text-[#6b7280] mb-1">Confirmer</label>
                 <input type="password" value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm" />
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
+                  style={{ background: '#1a1a1a', borderColor: '#333', color: '#e5e5e5' }} />
               </div>
               <div className="flex gap-2">
                 <button onClick={handleChangePassword} disabled={passwordSaving || !newPassword || !confirmPassword}
@@ -402,7 +407,7 @@ export default function EditProfilPage() {
                   Changer
                 </button>
                 <button onClick={() => { setShowPasswordForm(false); setNewPassword(''); setConfirmPassword('') }}
-                  className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-xl">
+                  className="px-4 py-2.5 text-sm text-[#6b7280] hover:bg-gray-100 rounded-xl">
                   Annuler
                 </button>
               </div>
@@ -410,16 +415,16 @@ export default function EditProfilPage() {
           ) : (
             <button onClick={() => setShowPasswordForm(true)}
               className="flex items-center justify-between w-full py-2 text-left hover:bg-gray-50 rounded-xl px-2 -mx-2">
-              <span className="text-sm text-gray-700">Changer mon mot de passe</span>
-              <ChevronLeft className="w-4 h-4 text-gray-400 rotate-180" />
+              <span className="text-sm text-[#a3a3a3]">Changer mon mot de passe</span>
+              <ChevronLeft className="w-4 h-4 text-[#6b7280] rotate-180" />
             </button>
           )}
         </div>
 
         {/* Zone danger — Suppression compte */}
-        <div className="bg-white rounded-2xl border border-red-100 p-5">
+        <div className="rounded-2xl border border-red-100 p-5" style={{ background: '#242424' }}>
           <h3 className="font-semibold text-red-700 mb-1">Zone dangereuse</h3>
-          <p className="text-xs text-gray-400 mb-4">
+          <p className="text-xs text-[#6b7280] mb-4">
             La suppression est irréversible après 30 jours. Toutes vos données seront effacées.
           </p>
 
@@ -449,7 +454,7 @@ export default function EditProfilPage() {
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-100 rounded-xl"
+                  className="px-4 py-2.5 text-sm text-[#6b7280] hover:bg-gray-100 rounded-xl"
                 >
                   Annuler
                 </button>
