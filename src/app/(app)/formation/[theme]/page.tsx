@@ -286,7 +286,7 @@ export default function ThemePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0F0F0F' }}>
         <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
       </div>
     )
@@ -294,12 +294,12 @@ export default function ThemePage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0F0F0F' }}>
         <div className="text-center">
           <p className="text-red-500 mb-4">Erreur : {error.message}</p>
           <button
             onClick={() => router.push('/formation')}
-            className="px-4 py-2 bg-gray-100 rounded-xl text-sm"
+            className="px-4 py-2 bg-[#242424] rounded-xl text-sm text-[#e5e5e5]"
           >
             Retour aux thématiques
           </button>
@@ -312,19 +312,19 @@ export default function ThemePage() {
 
   return (
     <>
-      <header className="bg-white sticky top-0 z-30 shadow-sm">
+      <header className="sticky top-0 z-30" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
         <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
             <Link
               href="/formation"
-              className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors"
+              className="p-2 -ml-2 hover:bg-[#242424] rounded-xl transition-colors"
             >
-              <ChevronLeft size={20} className="text-gray-600" />
+              <ChevronLeft size={20} className="text-gray-300" />
             </Link>
             <div className="flex items-center gap-2">
               <span className="text-2xl">{themeConfig.icon}</span>
               <div>
-                <h1 className="text-lg font-bold text-gray-900">{themeConfig.label}</h1>
+                <h1 className="text-lg font-bold text-[#e5e5e5]">{themeConfig.label}</h1>
                 <p className="text-xs text-gray-400">
                   {formations.length} formation{formations.length > 1 ? 's' : ''}
                   {eppAudit ? ' • 1 audit EPP' : ''}
@@ -335,7 +335,7 @@ export default function ThemePage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-6">
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-6 min-h-screen" style={{ background: '#0F0F0F' }}>
 
         {/* ============================================ */}
         {/* SECTION 1 : Formation gamifiée (Axe 1) */}
@@ -344,7 +344,7 @@ export default function ThemePage() {
           <section>
             <div className="flex items-center gap-2 mb-3">
               <Gamepad2 size={18} className="text-purple-600" />
-              <h2 className="text-base font-bold text-gray-900">Formation gamifiée</h2>
+              <h2 className="text-base font-bold text-[#e5e5e5]">Formation gamifiée</h2>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
                 Axe 1
               </span>
@@ -354,8 +354,8 @@ export default function ThemePage() {
               <button
                 onClick={formationsScrollLeft}
                 className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4
-                           z-10 w-10 h-10 rounded-full bg-white shadow-md
-                           items-center justify-center text-gray-600 hover:bg-gray-50"
+                           z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md
+                           items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
               >
                 <ChevronLeft size={20} />
               </button>
@@ -379,11 +379,13 @@ export default function ThemePage() {
                     <button
                       key={f.id}
                       onClick={() => openFormation(f)}
-                      className="flex-shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 text-left"
+                      className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
                       style={{
                         width: 'calc(50vw - 24px)',
                         maxWidth: '220px',
                         minWidth: '148px',
+                        background: '#242424',
+                        border: '0.5px solid #333',
                       }}
                     >
                       <div
@@ -405,7 +407,7 @@ export default function ThemePage() {
                         )}
                       </div>
                       <div className="p-2.5 flex flex-col gap-2">
-                        <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2">
+                        <p className="text-xs font-semibold text-[#e5e5e5] leading-snug line-clamp-2">
                           {f.title}
                         </p>
                         <div
@@ -423,8 +425,8 @@ export default function ThemePage() {
               <button
                 onClick={formationsScrollRight}
                 className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4
-                           z-10 w-10 h-10 rounded-full bg-white shadow-md
-                           items-center justify-center text-gray-600 hover:bg-gray-50"
+                           z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md
+                           items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
               >
                 <ChevronRight size={20} />
               </button>
@@ -438,7 +440,7 @@ export default function ThemePage() {
         <section>
           <div className="flex items-center gap-2 mb-3">
             <ClipboardCheck size={18} className="text-teal-600" />
-            <h2 className="text-base font-bold text-gray-900">Audit EPP</h2>
+            <h2 className="text-base font-bold text-[#e5e5e5]">Audit EPP</h2>
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
               Axe 2
             </span>
@@ -462,13 +464,15 @@ export default function ThemePage() {
 
               return (
                 <div
-                  className="bg-white rounded-2xl overflow-hidden border border-gray-100"
+                  className="rounded-2xl overflow-hidden"
                   style={{
                     width: 'calc(50vw - 24px)',
                     maxWidth: '220px',
                     minWidth: '148px',
                     display: 'flex',
                     flexDirection: 'column',
+                    background: '#242424',
+                    border: '0.5px solid #333',
                   }}
                 >
                   <div
@@ -497,19 +501,19 @@ export default function ThemePage() {
                       ) : isT2 ? (
                         <>
                           <FileText size={26} style={{ color: eppBgColor }} />
-                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#374151', textTransform: 'uppercase' }}>Tour 2</span>
+                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>Tour 2</span>
                           <span style={{ fontSize: '11px', fontWeight: 900, color: eppBgColor }}>en cours</span>
                         </>
                       ) : eppT1?.completed_at ? (
                         <>
                           <ClipboardCheck size={26} style={{ color: eppBgColor }} />
-                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#374151', textTransform: 'uppercase' }}>Tour 1</span>
+                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>Tour 1</span>
                           <span style={{ fontSize: '13px', fontWeight: 900, color: eppBgColor }}>✓</span>
                         </>
                       ) : (
                         <>
                           <ClipboardCheck size={26} style={{ color: eppBgColor }} />
-                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#374151', textTransform: 'uppercase' }}>Audit</span>
+                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>Audit</span>
                           <span style={{ fontSize: '11px', fontWeight: 900, color: eppBgColor }}>EPP</span>
                         </>
                       )}
@@ -521,7 +525,7 @@ export default function ThemePage() {
                       flex: 1, marginBottom: '6px',
                       display: '-webkit-box', WebkitLineClamp: 2,
                       WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                      color: 'var(--color-text-primary, #111827)'
+                      color: '#e5e5e5'
                     }}>
                       {eppAudit.title}
                     </p>
@@ -541,13 +545,13 @@ export default function ThemePage() {
               )
             })()
           ) : (
-            <div className="bg-gray-50 rounded-2xl border border-gray-200 p-4 opacity-60">
+            <div className="rounded-2xl p-4 opacity-60" style={{ background: '#242424', border: '0.5px solid #333' }}>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-[#333] flex items-center justify-center shrink-0">
                   <Lock size={20} className="text-gray-400" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-500 text-sm">Audit EPP</h3>
+                  <h3 className="font-semibold text-[#6b7280] text-sm">Audit EPP</h3>
                   <p className="text-xs text-gray-400 mt-0.5">Bientôt disponible pour cette thématique</p>
                 </div>
               </div>
