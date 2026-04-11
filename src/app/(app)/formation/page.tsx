@@ -272,6 +272,8 @@ export default function FormationPage() {
                     minWidth: '160px',
                     height: '88px',
                     background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})`,
+                    border: '1px solid rgba(255,255,255,0.35)',
+                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2)',
                   }}
                 >
                   <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-xl leading-none">
