@@ -101,7 +101,7 @@ export default function HomePage() {
     bandeauSubtitle: string
   }) => (
     <div
-      className="overflow-hidden -mx-4"
+      className="overflow-hidden -mx-4 px-0"
       style={{ background: bandeauGradient }}
     >
       {/* Bandeau header */}
@@ -111,7 +111,7 @@ export default function HomePage() {
       </div>
 
       {/* Zone cards */}
-      <div className="px-4 py-3 relative" style={{ background: 'transparent' }}>
+      <div className="py-3 relative" style={{ background: 'transparent', paddingLeft: '16px', paddingRight: '0' }}>
         <button
           onClick={() => scroll(scrollRef, 'left')}
           className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
@@ -121,7 +121,7 @@ export default function HomePage() {
 
         <div
           ref={scrollRef}
-          className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory"
+          className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory pr-4"
         >
           {categories.map((cat) => (
             <button
