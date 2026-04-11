@@ -260,7 +260,7 @@ export default function SantePage() {
     <>
       <header className="bg-gradient-to-br from-[#EC4899] to-[#A78BFA] px-4 py-4">
         <h1 className="text-2xl font-black text-white">Santé Praticien</h1>
-        <p className="text-xs text-white/60 mt-1 leading-relaxed">
+        <p className="text-xs font-semibold text-white/80 mt-1 leading-relaxed">
           Mieux prendre en compte sa santé personnelle · Axe 4 de la certification périodique
         </p>
       </header>

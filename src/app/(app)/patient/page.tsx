@@ -220,7 +220,7 @@ export default function PatientPage() {
     <>
       <header className="bg-gradient-to-br from-[#F97316] to-[#FBBF24] px-4 py-4">
         <h1 className="text-2xl font-black text-white">Relation Patient</h1>
-        <p className="text-xs text-white/60 mt-1 leading-relaxed">
+        <p className="text-xs font-semibold text-white/80 mt-1 leading-relaxed">
           Améliorer la relation avec les patients · Axe 3 de la certification périodique
         </p>
       </header>
