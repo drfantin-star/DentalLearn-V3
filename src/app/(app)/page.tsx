@@ -101,7 +101,7 @@ export default function HomePage() {
     bandeauSubtitle: string
   }) => (
     <div
-      className="rounded-2xl overflow-hidden -mx-4"
+      className="overflow-hidden -mx-4"
       style={{ background: bandeauGradient }}
     >
       {/* Bandeau header */}
