@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Play, CheckCircle, Loader2 } from 'lucide-react'
+import { CheckCircle, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 interface DailyQuizButtonProps {
@@ -72,12 +72,16 @@ export default function DailyQuizButton({ userId, onStart, refreshTrigger }: Dai
          style={{ background: 'linear-gradient(135deg, #2D1B96, #8B5CF6)' }}
          onClick={onStart}>
       <div className="flex flex-col gap-1">
-        <p className="text-white font-bold text-lg leading-tight">Quiz du jour</p>
-        <p className="text-white/70 text-sm">10 questions · ~5 min</p>
-        <p className="text-white/50 text-xs">Viens tester tes connaissances !</p>
+        <p className="text-white font-black text-xl leading-tight">Quiz du jour</p>
+        <p className="text-white/80 text-sm font-semibold">10 questions · ~5 min</p>
+        <p className="text-white/70 text-sm font-medium">Viens tester tes connaissances !</p>
       </div>
-      <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
-        <Play size={28} className="text-white ml-1" fill="white" />
+      <div className="w-14 h-14 rounded-2xl overflow-hidden flex-shrink-0">
+        <img
+          src="https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/quizz.jpg"
+          alt="Quiz"
+          className="w-full h-full object-cover"
+        />
       </div>
     </div>
   )
