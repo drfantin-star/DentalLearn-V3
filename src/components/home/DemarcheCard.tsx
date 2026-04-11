@@ -14,11 +14,13 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
 
     return (
       <div
-        className="flex-shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 text-left"
+        className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
         style={{
           width: 'calc(50vw - 24px)',
           maxWidth: '220px',
           minWidth: '148px',
+          background: '#242424',
+          border: '0.5px solid #333',
         }}
       >
         {/* Cover image carrée */}
@@ -43,7 +45,7 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
 
         {/* Corps */}
         <div className="p-2.5 flex flex-col gap-2">
-          <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2">
+          <p className="text-xs font-semibold text-[#e5e5e5] leading-snug line-clamp-2">
             {demarche.title}
           </p>
           <Link
@@ -68,13 +70,15 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
 
   return (
     <div
-      className="flex-shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 text-left"
+      className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
       style={{
         width: 'calc(50vw - 24px)',
         maxWidth: '220px',
         minWidth: '148px',
         display: 'flex',
         flexDirection: 'column',
+        background: '#242424',
+        border: '0.5px solid #333',
       }}
     >
       {/* Zone image — fond couleur catégorie foncée */}
@@ -154,7 +158,7 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
       {/* Corps */}
       <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', flex: 1 }}>
         <p style={{
-          fontSize: '12px', fontWeight: 600, color: 'var(--color-text-primary, #111827)',
+          fontSize: '12px', fontWeight: 600, color: '#e5e5e5',
           lineHeight: 1.3, flex: 1, marginBottom: '6px',
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'
         }}>

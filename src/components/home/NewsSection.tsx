@@ -52,7 +52,7 @@ export default function NewsSection({ news, loading }: NewsSectionProps) {
   if (loading) {
     return (
       <section>
-        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+        <h2 className="text-lg font-bold text-[#e5e5e5] flex items-center gap-2 mb-4">
           <Newspaper size={20} className="text-[#2D1B96]" /> News
         </h2>
         <div className="flex justify-center py-8">
@@ -65,7 +65,7 @@ export default function NewsSection({ news, loading }: NewsSectionProps) {
   if (news.length === 0) {
     return (
       <section>
-        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2 mb-4">
+        <h2 className="text-lg font-bold text-[#e5e5e5] flex items-center gap-2 mb-4">
           <Newspaper size={20} className="text-[#2D1B96]" /> News
         </h2>
         <p className="text-gray-400 text-sm text-center py-8">
@@ -78,15 +78,15 @@ export default function NewsSection({ news, loading }: NewsSectionProps) {
   return (
     <section>
       <div className="flex items-center mb-4">
-        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+        <h2 className="text-lg font-bold text-[#e5e5e5] flex items-center gap-2">
           <Newspaper size={20} className="text-[#2D1B96]" /> News
         </h2>
       </div>
       <div className="relative">
         <button onClick={scrollLeft}
                 className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4
-                           z-10 w-10 h-10 rounded-full bg-white shadow-md
-                           items-center justify-center text-gray-600 hover:bg-gray-50">
+                           z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md
+                           items-center justify-center text-gray-300 hover:bg-gray-50">
           <ChevronLeft size={20} />
         </button>
 
@@ -136,8 +136,8 @@ export default function NewsSection({ news, loading }: NewsSectionProps) {
 
         <button onClick={scrollRight}
                 className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4
-                           z-10 w-10 h-10 rounded-full bg-white shadow-md
-                           items-center justify-center text-gray-600 hover:bg-gray-50">
+                           z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md
+                           items-center justify-center text-gray-300 hover:bg-gray-50">
           <ChevronRight size={20} />
         </button>
       </div>
