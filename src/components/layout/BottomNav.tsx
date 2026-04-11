@@ -2,14 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  Home,
-  GraduationCap,
-  ShieldCheck,
-  HeartHandshake,
-  HeartPulse,
-  type LucideIcon,
-} from 'lucide-react'
+import { Home, UserCircle, ShieldCheck, type LucideIcon } from 'lucide-react'
 
 interface NavTab {
   href: string
@@ -19,10 +12,8 @@ interface NavTab {
 
 const tabs: NavTab[] = [
   { href: '/', icon: Home, label: 'Accueil' },
-  { href: '/formation', icon: GraduationCap, label: 'Pratiques' },
+  { href: '/profil', icon: UserCircle, label: 'Profil' },
   { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
-  { href: '/patient', icon: HeartHandshake, label: 'Patient' },
-  { href: '/sante', icon: HeartPulse, label: 'Santé Pro' },
 ]
 
 export default function BottomNav() {

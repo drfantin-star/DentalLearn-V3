@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import {
-  ArrowLeft,
   Camera,
   Save,
   Lock,
@@ -15,10 +14,17 @@ import {
   Bell,
   Mail,
   Calendar,
-  ChevronRight
+  ChevronLeft,
+  ChevronRight,
+  BookOpen,
+  Loader2,
 } from 'lucide-react';
 import { PushNotificationToggle } from '@/components/PushNotificationToggle';
 import RadarCP from '@/components/profile/RadarCP';
+import StatsCards from '@/components/home/StatsCards';
+import DemarcheCard from '@/components/home/DemarcheCard';
+import { useDemarches } from '@/lib/hooks/useDemarches';
+import { useUser } from '@/lib/hooks/useUser';
 
 interface UserProfile {
   id: string;
@@ -57,6 +63,15 @@ const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const supabase = createClient();
+
+  const { streak } = useUser();
+  const { demarches, loading: demarchesLoading } = useDemarches(user?.id);
+  const [refreshTrigger] = useState(0);
+  const demarchesScrollRef = useRef<HTMLDivElement>(null);
+  const demarchesScrollLeft = () =>
+    demarchesScrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' });
+  const demarchesScrollRight = () =>
+    demarchesScrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' });
 
   useEffect(() => {
     checkUserAndLoadData();
@@ -286,17 +301,12 @@ const [loading, setLoading] = useState(true);
       />
 
       {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-          <button
-            onClick={() => router.back()}
-            className="p-2 -ml-2 hover:bg-gray-100 rounded-xl transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
-          </button>
-          <h1 className="text-xl font-bold text-gray-900">Mon Profil</h1>
-        </div>
-      </div>
+      <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 py-4">
+        <h1 className="text-3xl font-black text-white">Profil</h1>
+        <p className="text-sm font-semibold text-white/80 mt-1">
+          Mon espace personnel
+        </p>
+      </header>
 
       {/* Message */}
       {message && (
@@ -421,6 +431,55 @@ const [loading, setLoading] = useState(true);
             )}
           </div>
         </div>
+
+        {/* Stats */}
+        <StatsCards
+          userId={user?.id}
+          currentStreak={streak?.current_streak || 0}
+          refreshTrigger={refreshTrigger}
+        />
+
+        {/* Mes démarches en cours */}
+        <section>
+          <div className="flex items-center mb-3">
+            <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+              <BookOpen size={18} className="text-[#8B5CF6]" />
+              Mes démarches en cours
+            </h2>
+          </div>
+          {demarchesLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="animate-spin text-gray-400" size={24} />
+            </div>
+          ) : demarches.length > 0 ? (
+            <div className="relative">
+              <button
+                onClick={demarchesScrollLeft}
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div
+                ref={demarchesScrollRef}
+                className="flex gap-3 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4"
+              >
+                {demarches.map((d) => (
+                  <DemarcheCard key={d.id} demarche={d} />
+                ))}
+              </div>
+              <button
+                onClick={demarchesScrollRight}
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl p-5 border border-gray-100 text-center">
+              <p className="text-gray-400 text-sm">Aucune démarche en cours</p>
+            </div>
+          )}
+        </section>
 
         {/* Radar Certification Périodique */}
         <RadarCP

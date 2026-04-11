@@ -1,41 +1,79 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
-import Link from 'next/link'
-import {
-  GraduationCap, UserCircle, ChevronLeft, ChevronRight,
-  BookOpen, Loader2,
-} from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { ChevronLeft, ChevronRight, Loader2, UserCircle } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
-import { useFormations } from '@/lib/hooks/useFormations'
-import { useDemarches } from '@/lib/hooks/useDemarches'
 import { useNews } from '@/lib/hooks/useNews'
+import { createClient } from '@/lib/supabase/client'
+import { CATEGORIES, getCategoryConfig } from '@/lib/supabase/types'
+import type { Formation } from '@/lib/supabase/types'
 import { getAnonymousName, getAnonymousEmoji } from '@/lib/utils/anonymousNames'
-
-// Composants
-import StatsCards from '@/components/home/StatsCards'
+import Link from 'next/link'
 import DailyQuizButton from '@/components/home/DailyQuizButton'
 import DailyQuizModal from '@/components/home/DailyQuizModal'
-import DemarcheCard from '@/components/home/DemarcheCard'
 import NewsSection from '@/components/home/NewsSection'
-
-// ============================================
-// PAGE PRINCIPALE — ACCUEIL
-// ============================================
 
 export default function HomePage() {
   const [showDailyQuiz, setShowDailyQuiz] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
-  const scrollRef = useRef<HTMLDivElement>(null)
 
-  const scrollLeft = () => scrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
-  const scrollRight = () => scrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })
-
-  // Hooks Supabase
-  const { user, profile, displayName, streak, loading: userLoading, refetch: refetchUser } = useUser()
-  const { currentFormation, loading: formationLoading } = useFormations(user?.id)
-  const { demarches, loading: demarchesLoading } = useDemarches(user?.id)
+  const { user, profile, streak, loading: userLoading, refetch: refetchUser } = useUser()
   const { news, loading: newsLoading } = useNews(4)
+
+  // Formations "Fraîchement arrivé" — 5 dernières tous axes
+  const [recentFormations, setRecentFormations] = useState<Formation[]>([])
+  const [recentLoading, setRecentLoading] = useState(true)
+  const [formationProgress, setFormationProgress] = useState<
+    Record<string, { isStarted: boolean; isCompleted: boolean }>
+  >({})
+
+  // Refs carousels
+  const recentScrollRef = useRef<HTMLDivElement>(null)
+  const axe12ScrollRef = useRef<HTMLDivElement>(null)
+  const axe3ScrollRef = useRef<HTMLDivElement>(null)
+  const axe4ScrollRef = useRef<HTMLDivElement>(null)
+
+  const scroll = (ref: React.RefObject<HTMLDivElement>, dir: 'left' | 'right') => {
+    ref.current?.scrollBy({ left: dir === 'left' ? -320 : 320, behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    async function fetchRecent() {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('formations')
+        .select('*')
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(5)
+      if (data) setRecentFormations(data)
+      setRecentLoading(false)
+    }
+    fetchRecent()
+  }, [])
+
+  useEffect(() => {
+    if (!user?.id || recentFormations.length === 0) return
+    async function fetchProgress() {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('user_formations')
+        .select('formation_id, current_sequence, completed_at')
+        .eq('user_id', user!.id)
+      if (data) {
+        const map: Record<string, { isStarted: boolean; isCompleted: boolean }> = {}
+        data.forEach((uf) => {
+          map[uf.formation_id] = {
+            isStarted: true,
+            isCompleted: !!uf.completed_at,
+          }
+        })
+        setFormationProgress(map)
+      }
+    }
+    fetchProgress()
+  }, [user?.id, recentFormations])
 
   const handleDailyQuizComplete = async (score: number, totalPoints: number) => {
     setShowDailyQuiz(false)
@@ -43,13 +81,69 @@ export default function HomePage() {
     refetchUser()
   }
 
+  // Catégories par axe
+  const axe12Categories = CATEGORIES.filter(c => c.type === 'cp')
+  const axe3Categories = CATEGORIES.filter(c => c.type === 'axe3')
+  const axe4Categories = CATEGORIES.filter(c => c.type === 'axe4')
+
+  // Composant carousel catégories réutilisable
+  const CategoryCarousel = ({
+    categories,
+    scrollRef,
+  }: {
+    categories: typeof CATEGORIES
+    scrollRef: React.RefObject<HTMLDivElement>
+  }) => (
+    <div className="relative">
+      <button
+        onClick={() => scroll(scrollRef, 'left')}
+        className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+      >
+        <ChevronLeft size={20} />
+      </button>
+      <div
+        ref={scrollRef}
+        className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+      >
+        {categories.map((cat) => (
+          <button
+            key={cat.id}
+            onClick={() => window.location.href = `/formation/${cat.id}`}
+            className="flex-shrink-0 snap-start flex items-center gap-2.5 rounded-2xl px-3.5"
+            style={{
+              width: 'calc(25vw - 16px)',
+              maxWidth: '220px',
+              minWidth: '160px',
+              height: '88px',
+              background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})`,
+              border: '1px solid rgba(255,255,255,0.35)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2)',
+            }}
+          >
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-xl leading-none">
+              {cat.emoji}
+            </div>
+            <span className="text-white font-semibold leading-snug text-left flex-1 text-sm md:text-base">
+              <span className="md:hidden">{cat.shortName}</span>
+              <span className="hidden md:inline">{cat.name}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <button
+        onClick={() => scroll(scrollRef, 'right')}
+        className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+      >
+        <ChevronRight size={20} />
+      </button>
+    </div>
+  )
+
   return (
     <>
-      {/* Header Accueil */}
+      {/* Header */}
       <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 py-4">
         <div className="flex items-center justify-between gap-3">
-
-          {/* Avatar */}
           <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/30 flex-shrink-0">
             {profile?.profile_photo_url ? (
               <img src={profile.profile_photo_url} alt="avatar" className="w-full h-full object-cover" />
@@ -61,124 +155,126 @@ export default function HomePage() {
               </div>
             )}
           </div>
-
-          {/* Textes — flex-1 pour occuper tout l'espace jusqu'au bouton notif */}
           <div className="flex-1 min-w-0">
-            <p className="text-white font-black uppercase truncate"
-               style={{ fontSize: '18px', lineHeight: '1.3' }}>
+            <p className="text-white font-black uppercase truncate" style={{ fontSize: '18px', lineHeight: '1.3' }}>
               Bonjour, {profile?.first_name || 'Utilisateur'}
-              <span className="hidden md:inline ml-2 font-bold"
-                    style={{ fontSize: '13px', opacity: 0.6 }}>
+              <span className="hidden md:inline ml-2 font-bold" style={{ fontSize: '13px', opacity: 0.6 }}>
                 {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
               </span>
             </p>
-            <p className="md:hidden text-white/60 font-bold uppercase"
-               style={{ fontSize: '11px' }}>
+            <p className="md:hidden text-white/60 font-bold uppercase" style={{ fontSize: '11px' }}>
               {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
             </p>
           </div>
-
-          {/* Notif */}
-          <Link href="/profil"
-                className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors">
+          <Link href="/profil" className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors">
             <UserCircle size={24} className="text-white" />
           </Link>
-
         </div>
       </header>
 
-      {/* Contenu */}
-      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-6">
-        {userLoading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="animate-spin text-[#2D1B96]" size={32} />
-          </div>
-        ) : (
-          <>
-            {/* Quiz du jour — EN PREMIER, sans titre */}
-            <section>
-              <DailyQuizButton
-                userId={user?.id}
-                onStart={() => setShowDailyQuiz(true)}
-                refreshTrigger={refreshTrigger}
-              />
-            </section>
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8">
 
-            {/* Mes stats — EN SECOND, sans titre */}
-            <section>
-              <StatsCards
-                userId={user?.id}
-                currentStreak={streak?.current_streak || 0}
-                refreshTrigger={refreshTrigger}
-              />
-            </section>
+        {/* Quiz du jour */}
+        <section>
+          <DailyQuizButton
+            userId={user?.id}
+            onStart={() => setShowDailyQuiz(true)}
+            refreshTrigger={refreshTrigger}
+          />
+        </section>
 
-            {/* Mes démarches en cours */}
-            <section>
-              <div className="flex items-center mb-4">
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <BookOpen size={20} className="text-[#8B5CF6]" />
-                  Mes démarches en cours
-                </h2>
+        {/* Fraîchement arrivé */}
+        <section>
+          <h2 className="text-base font-bold text-gray-900 mb-3">⚡ Fraîchement arrivé</h2>
+          {recentLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="animate-spin text-gray-400" size={24} />
+            </div>
+          ) : (
+            <div className="relative">
+              <button
+                onClick={() => scroll(recentScrollRef, 'left')}
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div
+                ref={recentScrollRef}
+                className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+              >
+                {recentFormations.map((f) => {
+                  const config = getCategoryConfig(f.category)
+                  const progress = formationProgress[f.id]
+                  const ctaLabel = progress?.isCompleted ? '✓ Terminé'
+                    : progress?.isStarted ? 'Continuer →' : 'Découvrir'
+                  const ctaGradient = progress?.isCompleted
+                    ? 'linear-gradient(135deg, #059669, #10B981)'
+                    : `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => window.location.href = `/formation/${f.category}?formation=${f.slug}`}
+                      className="flex-shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 text-left"
+                      style={{ width: 'calc(50vw - 24px)', maxWidth: '220px', minWidth: '148px', display: 'flex', flexDirection: 'column' }}
+                    >
+                      <div
+                        className="w-full aspect-square flex items-center justify-center"
+                        style={{ background: !f.cover_image_url ? `linear-gradient(135deg, ${config.gradient.from}33, ${config.gradient.from}66)` : undefined }}
+                      >
+                        {f.cover_image_url ? (
+                          <img src={f.cover_image_url} alt={f.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-5xl">{config.emoji}</span>
+                        )}
+                      </div>
+                      <div className="p-2.5 flex flex-col gap-2" style={{ flex: 1 }}>
+                        <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2" style={{ flex: 1, marginBottom: '6px' }}>
+                          {f.title}
+                        </p>
+                        <div
+                          className="w-full text-center text-xs font-semibold text-white py-1.5 rounded-xl"
+                          style={{ background: ctaGradient, marginTop: 'auto' }}
+                        >
+                          {ctaLabel}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
+              <button
+                onClick={() => scroll(recentScrollRef, 'right')}
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
+        </section>
 
-              {demarchesLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="animate-spin text-gray-400" size={24} />
-                </div>
-              ) : demarches.length > 0 ? (
-                <div className="relative">
-                  {/* Flèche gauche — desktop only */}
-                  <button
-                    onClick={scrollLeft}
-                    className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
+        {/* Pratiques cliniques — Axe 1+2 */}
+        <section>
+          <h2 className="text-base font-bold text-gray-900 mb-3">🔬 Pratiques cliniques</h2>
+          <CategoryCarousel categories={axe12Categories} scrollRef={axe12ScrollRef} />
+        </section>
 
-                  {/* Carousel */}
-                  <div
-                    ref={scrollRef}
-                    className="flex gap-3 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4"
-                  >
-                    {demarches.map((d) => (
-                      <DemarcheCard key={d.id} demarche={d} />
-                    ))}
-                  </div>
+        {/* Relation Patient — Axe 3 */}
+        <section>
+          <h2 className="text-base font-bold text-gray-900 mb-3">🤝 Relation Patient</h2>
+          <CategoryCarousel categories={axe3Categories} scrollRef={axe3ScrollRef} />
+        </section>
 
-                  {/* Flèche droite — desktop only */}
-                  <button
-                    onClick={scrollRight}
-                    className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
-                  >
-                    <ChevronRight size={20} />
-                  </button>
-                </div>
-              ) : (
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 text-center">
-                  <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-violet-50 flex items-center justify-center">
-                    <GraduationCap size={24} className="text-violet-400" />
-                  </div>
-                  <p className="text-gray-500 text-sm mb-4">
-                    Aucune démarche en cours
-                  </p>
-                  <Link
-                    href="/formation"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#00D1C1] text-white rounded-xl text-sm font-bold hover:bg-[#00b8a9] transition-colors"
-                  >
-                    Commencer une formation
-                  </Link>
-                </div>
-              )}
-            </section>
+        {/* Santé Praticien — Axe 4 */}
+        <section>
+          <h2 className="text-base font-bold text-gray-900 mb-3">💚 Santé Praticien</h2>
+          <CategoryCarousel categories={axe4Categories} scrollRef={axe4ScrollRef} />
+        </section>
 
-            {/* Veille métier */}
-            <NewsSection news={news} loading={newsLoading} />
-          </>
-        )}
+        {/* News */}
+        <NewsSection news={news} loading={newsLoading} />
+
       </main>
 
-      {/* Modal Daily Quiz */}
       {showDailyQuiz && user && (
         <DailyQuizModal
           userId={user.id}
