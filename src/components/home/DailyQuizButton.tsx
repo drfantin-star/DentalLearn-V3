@@ -74,7 +74,7 @@ export default function DailyQuizButton({ userId, onStart, refreshTrigger }: Dai
       <div className="flex flex-col gap-1">
         <p className="text-white font-bold text-lg leading-tight">Quiz du jour</p>
         <p className="text-white/70 text-sm">10 questions · ~5 min</p>
-        <p className="text-white/50 text-xs">Testez vos connaissances !</p>
+        <p className="text-white/50 text-xs">Viens tester tes connaissances !</p>
       </div>
       <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
         <Play size={28} className="text-white ml-1" fill="white" />
