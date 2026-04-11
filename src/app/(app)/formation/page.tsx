@@ -236,7 +236,7 @@ export default function FormationPage() {
 
   return (
     <>
-      <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-4 py-4">
+      <header className="bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] px-4 py-4">
         <h1 className="text-2xl font-black text-white">Pratiques</h1>
         <p className="text-xs text-white/60 mt-1 leading-relaxed">
           Connaissances, compétences, qualité des pratiques · Axes 1 &amp; 2 de la certification périodique
