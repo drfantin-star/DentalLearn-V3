@@ -93,27 +93,25 @@ export default function HomePage() {
     bandeauGradient,
     bandeauTitle,
     bandeauSubtitle,
-    bgTint,
   }: {
     categories: typeof CATEGORIES
     scrollRef: React.RefObject<HTMLDivElement>
     bandeauGradient: string
     bandeauTitle: string
     bandeauSubtitle: string
-    bgTint: string
   }) => (
-    <div className="rounded-2xl overflow-hidden -mx-4">
+    <div
+      className="rounded-2xl overflow-hidden -mx-4"
+      style={{ background: bandeauGradient }}
+    >
       {/* Bandeau header */}
-      <div
-        className="px-5 py-3"
-        style={{ background: bandeauGradient }}
-      >
+      <div className="px-5 py-3">
         <h2 className="text-base font-bold text-white">{bandeauTitle}</h2>
         <p className="text-xs text-white/70 mt-0.5">{bandeauSubtitle}</p>
       </div>
 
       {/* Zone cards */}
-      <div className="px-4 py-3 relative" style={{ background: bgTint }}>
+      <div className="px-4 py-3 relative" style={{ background: 'transparent' }}>
         <button
           onClick={() => scroll(scrollRef, 'left')}
           className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
@@ -135,7 +133,8 @@ export default function HomePage() {
                 maxWidth: '200px',
                 minWidth: '148px',
                 height: '72px',
-                border: `1.5px solid ${cat.gradient.from}33`,
+                border: 'none',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
               }}
             >
               <div
@@ -286,7 +285,6 @@ export default function HomePage() {
             bandeauGradient="linear-gradient(135deg, #1E40AF, #3B82F6)"
             bandeauTitle="🔬 Pratiques cliniques"
             bandeauSubtitle="Axe 1 & 2 · Certification Périodique"
-            bgTint="#EFF6FF"
           />
         </section>
 
@@ -298,7 +296,6 @@ export default function HomePage() {
             bandeauGradient="linear-gradient(135deg, #F97316, #FBBF24)"
             bandeauTitle="🤝 Relation Patient"
             bandeauSubtitle="Axe 3 · Certification Périodique"
-            bgTint="#FFF7ED"
           />
         </section>
 
@@ -310,7 +307,6 @@ export default function HomePage() {
             bandeauGradient="linear-gradient(135deg, #EC4899, #A78BFA)"
             bandeauTitle="💚 Santé Praticien"
             bandeauSubtitle="Axe 4 · Certification Périodique"
-            bgTint="#FDF4FF"
           />
         </section>
 
