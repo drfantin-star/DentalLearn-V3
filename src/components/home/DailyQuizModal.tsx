@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   X,
   CheckCircle2,
@@ -229,6 +230,7 @@ export default function DailyQuizModal({
   onClose,
   onComplete,
 }: DailyQuizModalProps) {
+  const router = useRouter()
   const [questions, setQuestions] = useState<DailyQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -649,14 +651,17 @@ export default function DailyQuizModal({
             </div>
 
             <button
-              onClick={() => onComplete(finalScore, totalPoints + bonusPoints)}
+              onClick={async () => {
+                await onComplete(finalScore, totalPoints + bonusPoints)
+                router.push('/profil')
+              }}
               disabled={saving}
               className="w-full py-3.5 bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="w-5 h-5 animate-spin mx-auto" />
               ) : (
-                "Retour a l'accueil"
+                "Voir mon profil →"
               )}
             </button>
           </div>
