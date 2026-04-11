@@ -90,52 +90,78 @@ export default function HomePage() {
   const CategoryCarousel = ({
     categories,
     scrollRef,
+    bandeauGradient,
+    bandeauTitle,
+    bandeauSubtitle,
+    bgTint,
   }: {
     categories: typeof CATEGORIES
     scrollRef: React.RefObject<HTMLDivElement>
+    bandeauGradient: string
+    bandeauTitle: string
+    bandeauSubtitle: string
+    bgTint: string
   }) => (
-    <div className="relative">
-      <button
-        onClick={() => scroll(scrollRef, 'left')}
-        className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
-      >
-        <ChevronLeft size={20} />
-      </button>
+    <div className="rounded-2xl overflow-hidden -mx-4">
+      {/* Bandeau header */}
       <div
-        ref={scrollRef}
-        className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+        className="px-5 py-3"
+        style={{ background: bandeauGradient }}
       >
-        {categories.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => window.location.href = `/formation/${cat.id}`}
-            className="flex-shrink-0 snap-start flex items-center gap-2.5 rounded-2xl px-3.5"
-            style={{
-              width: 'calc(25vw - 16px)',
-              maxWidth: '220px',
-              minWidth: '160px',
-              height: '88px',
-              background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})`,
-              border: '1px solid rgba(255,255,255,0.35)',
-              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2)',
-            }}
-          >
-            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-xl leading-none">
-              {cat.emoji}
-            </div>
-            <span className="text-white font-semibold leading-snug text-left flex-1 text-sm md:text-base">
-              <span className="md:hidden">{cat.shortName}</span>
-              <span className="hidden md:inline">{cat.name}</span>
-            </span>
-          </button>
-        ))}
+        <h2 className="text-base font-bold text-white">{bandeauTitle}</h2>
+        <p className="text-xs text-white/70 mt-0.5">{bandeauSubtitle}</p>
       </div>
-      <button
-        onClick={() => scroll(scrollRef, 'right')}
-        className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
-      >
-        <ChevronRight size={20} />
-      </button>
+
+      {/* Zone cards */}
+      <div className="px-4 py-3 relative" style={{ background: bgTint }}>
+        <button
+          onClick={() => scroll(scrollRef, 'left')}
+          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+        >
+          <ChevronLeft size={18} />
+        </button>
+
+        <div
+          ref={scrollRef}
+          className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory"
+        >
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => window.location.href = `/formation/${cat.id}`}
+              className="flex-shrink-0 snap-start flex items-center gap-2.5 bg-white rounded-2xl px-3"
+              style={{
+                width: 'calc(25vw - 16px)',
+                maxWidth: '200px',
+                minWidth: '148px',
+                height: '72px',
+                border: `1.5px solid ${cat.gradient.from}33`,
+              }}
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 text-lg leading-none"
+                style={{ background: `${cat.gradient.from}18` }}
+              >
+                {cat.emoji}
+              </div>
+              <span
+                className="font-bold leading-snug text-left flex-1 text-xs md:text-sm"
+                style={{ color: cat.gradient.from }}
+              >
+                <span className="md:hidden">{cat.shortName}</span>
+                <span className="hidden md:inline">{cat.name}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => scroll(scrollRef, 'right')}
+          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-white shadow-md items-center justify-center text-gray-600 hover:bg-gray-50"
+        >
+          <ChevronRight size={18} />
+        </button>
+      </div>
     </div>
   )
 
@@ -254,20 +280,38 @@ export default function HomePage() {
 
         {/* Pratiques cliniques — Axe 1+2 */}
         <section>
-          <h2 className="text-base font-bold text-gray-900 mb-3">🔬 Pratiques cliniques</h2>
-          <CategoryCarousel categories={axe12Categories} scrollRef={axe12ScrollRef} />
+          <CategoryCarousel
+            categories={axe12Categories}
+            scrollRef={axe12ScrollRef}
+            bandeauGradient="linear-gradient(135deg, #1E40AF, #3B82F6)"
+            bandeauTitle="🔬 Pratiques cliniques"
+            bandeauSubtitle="Axe 1 & 2 · Certification Périodique"
+            bgTint="#EFF6FF"
+          />
         </section>
 
         {/* Relation Patient — Axe 3 */}
         <section>
-          <h2 className="text-base font-bold text-gray-900 mb-3">🤝 Relation Patient</h2>
-          <CategoryCarousel categories={axe3Categories} scrollRef={axe3ScrollRef} />
+          <CategoryCarousel
+            categories={axe3Categories}
+            scrollRef={axe3ScrollRef}
+            bandeauGradient="linear-gradient(135deg, #F97316, #FBBF24)"
+            bandeauTitle="🤝 Relation Patient"
+            bandeauSubtitle="Axe 3 · Certification Périodique"
+            bgTint="#FFF7ED"
+          />
         </section>
 
         {/* Santé Praticien — Axe 4 */}
         <section>
-          <h2 className="text-base font-bold text-gray-900 mb-3">💚 Santé Praticien</h2>
-          <CategoryCarousel categories={axe4Categories} scrollRef={axe4ScrollRef} />
+          <CategoryCarousel
+            categories={axe4Categories}
+            scrollRef={axe4ScrollRef}
+            bandeauGradient="linear-gradient(135deg, #EC4899, #A78BFA)"
+            bandeauTitle="💚 Santé Praticien"
+            bandeauSubtitle="Axe 4 · Certification Périodique"
+            bgTint="#FDF4FF"
+          />
         </section>
 
         {/* News */}
