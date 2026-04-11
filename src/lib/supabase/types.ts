@@ -313,8 +313,8 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     type: 'bonus',
   },
   'soft-skills': {
-    emoji: '🤝',
-    gradient: { from: '#D97706', to: '#F59E0B' },
+    emoji: '🌿',
+    gradient: { from: '#4D7C0F', to: '#84CC16' },
     bgColor: 'bg-yellow-50',
     textColor: 'text-yellow-700',
     isCP: false,
