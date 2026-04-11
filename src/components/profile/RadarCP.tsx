@@ -76,6 +76,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+
       {/* Header */}
       <div className="bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] px-4 py-3">
         <h3 className="text-white font-bold text-sm">Certification Périodique</h3>
@@ -85,19 +86,19 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
       </div>
 
       <div className="p-4 space-y-4">
+
         {/* Barre de progression temporelle */}
         <div>
-          <div className="flex justify-between text-xs text-gray-500 mb-1">
+          <div className="flex justify-between text-xs text-gray-500 mb-1.5">
             <span>{periode.debut.getFullYear()}</span>
-            <span className="font-medium text-gray-700">
+            <span className="font-semibold text-gray-700">
               {tempsRestant.ans > 0
-                ? `${tempsRestant.ans} an${tempsRestant.ans > 1 ? 's' : ''} ${tempsRestant.moisRestants > 0 ? `et ${tempsRestant.moisRestants} mois` : ''} restants`
-                : `${tempsRestant.mois} mois restants`
-              }
+                ? `${tempsRestant.ans} an${tempsRestant.ans > 1 ? 's' : ''}${tempsRestant.moisRestants > 0 ? ` et ${tempsRestant.moisRestants} mois` : ''} restants`
+                : `${tempsRestant.mois} mois restants`}
             </span>
             <span>{periode.fin.getFullYear()}</span>
           </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] rounded-full transition-all duration-500"
               style={{ width: `${tempsRestant.pourcentageEcoule}%` }}
@@ -105,47 +106,69 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
           </div>
         </div>
 
-        {/* Compteurs par axe */}
-        <div className="grid grid-cols-2 gap-2">
-          {axes.map((axe) => {
-            const isComplete = axe.count >= OBJECTIF_PAR_AXE;
+        {/* Liste compacte axes */}
+        <div className="rounded-xl overflow-hidden border border-gray-100">
+          {axes.map((axe, index) => {
+            const isComplete = axe.count >= OBJECTIF_PAR_AXE
+            const dots = Array.from({ length: OBJECTIF_PAR_AXE }, (_, i) => i < axe.count)
+            const pastilleBg: Record<string, string> = {
+              axe1: '#EEF2FF',
+              axe2: '#F0FDFA',
+              axe3: '#FFF7ED',
+              axe4: '#FDF2F8',
+            }
             return (
               <div
                 key={axe.id}
-                className={`rounded-xl p-3 border ${
-                  isComplete
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-gray-50 border-gray-100'
+                className={`flex items-center gap-3 px-3 py-2.5 ${
+                  index < axes.length - 1 ? 'border-b border-gray-100' : ''
                 }`}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">{axe.icon}</span>
-                  <span className="text-xs font-medium text-gray-700 truncate">
-                    {axe.label}
-                  </span>
+                {/* Pastille */}
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-base"
+                  style={{ background: pastilleBg[axe.id] }}
+                >
+                  {axe.icon}
                 </div>
-                <div className="flex items-baseline gap-1">
-                  <span
-                    className="text-xl font-bold"
-                    style={{ color: isComplete ? '#16A34A' : axe.color }}
-                  >
-                    {axe.count}
-                  </span>
-                  <span className="text-xs text-gray-400">/ {OBJECTIF_PAR_AXE}</span>
-                  {isComplete && <span className="text-green-500 text-sm ml-1">✓</span>}
+
+                {/* Label */}
+                <span className="flex-1 text-sm font-medium text-gray-800">
+                  {axe.label}
+                </span>
+
+                {/* Dots progression */}
+                <div className="flex items-center gap-1.5">
+                  {dots.map((filled, i) => (
+                    <div
+                      key={i}
+                      className="w-2.5 h-2.5 rounded-full transition-all"
+                      style={filled
+                        ? { background: axe.color }
+                        : { border: `2px solid ${axe.color}`, opacity: 0.3 }
+                      }
+                    />
+                  ))}
                 </div>
+
+                {/* Compteur */}
+                <span
+                  className="text-xs font-bold min-w-[32px] text-right"
+                  style={{ color: isComplete ? '#16A34A' : axe.color }}
+                >
+                  {isComplete ? `${axe.count}/2 ✓` : `${axe.count}/2`}
+                </span>
               </div>
-            );
+            )
           })}
         </div>
 
         {/* Total */}
-        <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between">
-          <span className="text-sm text-gray-600">Total actions validées</span>
-          <div className="flex items-baseline gap-1">
-            <span className="text-xl font-bold text-gray-900">{totalActions}</span>
-            <span className="text-xs text-gray-400">/ {totalObjectif} min.</span>
-          </div>
+        <div className="flex justify-between items-center pt-1">
+          <span className="text-xs text-gray-500">Total validées</span>
+          <span className="text-sm font-bold text-gray-900">
+            {totalActions} / {totalObjectif} actions min.
+          </span>
         </div>
 
         {/* Alerte si en retard */}
@@ -157,7 +180,8 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
             </p>
           </div>
         )}
+
       </div>
     </div>
-  );
+  )
 }
