@@ -10,7 +10,7 @@ export default function AppLayout({
 }) {
   return (
     <AudioProvider>
-      <div className="min-h-screen bg-gray-50 pb-24">
+      <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
         {children}
         <PWAInstallBanner />
         <MiniPlayer />
