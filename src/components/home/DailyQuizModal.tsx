@@ -553,6 +553,7 @@ export default function DailyQuizModal({
     try {
       const perfectBonus = score === questions.length ? 50 : 0
 
+      // Sauvegarder les résultats du quiz
       await fetch('/api/daily-quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -564,6 +565,10 @@ export default function DailyQuizModal({
           question_ids: questions.map(q => q.id),
         }),
       })
+
+      // Mettre à jour le streak APRÈS la sauvegarde
+      await fetch('/api/streaks/update', { method: 'POST' })
+
     } catch (err) {
       console.error('Error saving quiz results:', err)
     } finally {
@@ -661,7 +666,7 @@ export default function DailyQuizModal({
               {saving ? (
                 <Loader2 className="w-5 h-5 animate-spin mx-auto" />
               ) : (
-                "Voir mon profil →"
+                "Voir mes stats →"
               )}
             </button>
           </div>
