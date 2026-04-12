@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Gamepad2,
   ClipboardCheck,
   FileText,
   CheckCircle2,
@@ -321,16 +320,7 @@ export default function ThemePage() {
             >
               <ChevronLeft size={20} className="text-gray-300" />
             </Link>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{themeConfig.icon}</span>
-              <div>
-                <h1 className="text-lg font-bold text-[#e5e5e5]">{themeConfig.label}</h1>
-                <p className="text-xs text-gray-400">
-                  {formations.length} formation{formations.length > 1 ? 's' : ''}
-                  {eppAudit ? ' • 1 audit EPP' : ''}
-                </p>
-              </div>
-            </div>
+            <h1 className="text-lg font-bold text-white">{themeConfig.label}</h1>
           </div>
         </div>
       </header>
@@ -342,13 +332,9 @@ export default function ThemePage() {
         {/* ============================================ */}
         {formations.length > 0 && (
           <section>
-            <div className="flex items-center gap-2 mb-3">
-              <Gamepad2 size={18} className="text-purple-600" />
-              <h2 className="text-base font-bold text-[#e5e5e5]">Formation gamifiée</h2>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
-                Axe 1
-              </span>
-            </div>
+            <h2 className="text-lg font-bold text-white mb-3">
+              Formation — Axe 1
+            </h2>
 
             <div className="relative">
               <button
@@ -438,13 +424,9 @@ export default function ThemePage() {
         {/* SECTION 2 : Audit EPP (Axe 2) */}
         {/* ============================================ */}
         <section>
-          <div className="flex items-center gap-2 mb-3">
-            <ClipboardCheck size={18} className="text-teal-600" />
-            <h2 className="text-base font-bold text-[#e5e5e5]">Audit EPP</h2>
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
-              Axe 2
-            </span>
-          </div>
+          <h2 className="text-lg font-bold text-white mb-3">
+            EPP — Axe 2
+          </h2>
 
           {eppAudit ? (
             (() => {
