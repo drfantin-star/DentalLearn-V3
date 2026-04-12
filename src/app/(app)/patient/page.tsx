@@ -158,6 +158,7 @@ export default function PatientPage() {
         accentColor="#F59E0B"
         onBack={() => setSelectedTheme(null)}
         onFormationClick={handleContentClick}
+        fromPage="/patient"
       />
     )
   }
