@@ -1,8 +1,7 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState } from 'react'
 import {
-  ChevronLeft,
   ChevronRight,
   BookOpen,
   Loader2,
@@ -21,8 +20,6 @@ import {
   type Sequence,
   type CategoryConfig,
 } from '@/lib/supabase'
-import { createClient } from '@/lib/supabase/client'
-import { useUser } from '@/lib/hooks/useUser'
 
 // Composants
 import FormationDetail from '@/components/formation/FormationDetail'
@@ -91,39 +88,6 @@ export default function FormationPage() {
   // Récupérer les formations depuis Supabase
   const { formations: allFormations, loading, error } = useFormations({ isPublished: true })
   const formations = allFormations.filter(f => f.cp_axe_id === 1 || f.cp_axe_id === 2 || f.cp_axe_id === null)
-
-  const { user } = useUser()
-  const [formationProgress, setFormationProgress] = useState<Record<string, { isStarted: boolean; isCompleted: boolean }>>({})
-
-  const catScrollRef = useRef<HTMLDivElement>(null)
-  const catScrollLeft = () => catScrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
-  const catScrollRight = () => catScrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })
-
-  const nouveautesScrollRef = useRef<HTMLDivElement>(null)
-  const nouveautesScrollLeft = () => nouveautesScrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
-  const nouveautesScrollRight = () => nouveautesScrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })
-
-  useEffect(() => {
-    if (!user?.id || formations.length === 0) return
-    async function fetchProgress() {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('user_formations')
-        .select('formation_id, current_sequence, completed_at')
-        .eq('user_id', user!.id)
-      if (data) {
-        const map: Record<string, { isStarted: boolean; isCompleted: boolean }> = {}
-        data.forEach((uf) => {
-          map[uf.formation_id] = {
-            isStarted: true,
-            isCompleted: !!uf.completed_at,
-          }
-        })
-        setFormationProgress(map)
-      }
-    }
-    fetchProgress()
-  }, [user?.id, formations])
 
   // États de navigation
   const [viewMode, setViewMode] = useState<ViewMode>('catalog')
@@ -244,142 +208,49 @@ export default function FormationPage() {
       </header>
 
       <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen" style={{ background: '#0F0F0F' }}>
-        {/* Spécialités cliniques */}
         <section>
-          <h2 className="text-base font-bold text-[#e5e5e5] mb-3">
-            Explore par spécialité
+          <h2 className="text-xl font-black text-white mb-4">
+            🔍 Explorer par spécialité
           </h2>
-          <div className="relative">
-            <button
-              onClick={catScrollLeft}
-              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
-            >
-              <ChevronLeft size={20} />
-            </button>
-
-            <div
-              ref={catScrollRef}
-              className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
-            >
-              {cpCategories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => openCategory(cat)}
-                  className="flex-shrink-0 snap-start flex items-center gap-2.5 rounded-2xl px-3.5"
+          <div className="grid grid-cols-2 gap-3">
+            {cpCategories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => openCategory(cat)}
+                className="relative rounded-2xl overflow-hidden"
+                style={{ aspectRatio: '3/2' }}
+              >
+                {cat.labelImageUrl ? (
+                  <img
+                    src={cat.labelImageUrl}
+                    alt={cat.name}
+                    className="w-full h-full object-cover absolute inset-0"
+                  />
+                ) : (
+                  <div
+                    className="w-full h-full absolute inset-0"
+                    style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
+                  />
+                )}
+                <div
+                  className="absolute inset-0"
+                  style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
+                />
+                <span
+                  className="absolute font-bold text-white leading-tight"
                   style={{
-                    width: 'calc(25vw - 16px)',
-                    maxWidth: '220px',
-                    minWidth: '160px',
-                    height: '88px',
-                    background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})`,
-                    border: '1px solid rgba(255,255,255,0.35)',
-                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2)',
+                    bottom: '10px',
+                    left: '12px',
+                    fontSize: '16px',
+                    textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                    maxWidth: 'calc(100% - 24px)',
                   }}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0 text-xl leading-none">
-                    {cat.emoji}
-                  </div>
-                  <span className="text-white font-semibold leading-snug text-left flex-1 text-sm md:text-base">
-                    <span className="md:hidden">{cat.shortName}</span>
-                    <span className="hidden md:inline">{cat.name}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={catScrollRight}
-              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
-            >
-              <ChevronRight size={20} />
-            </button>
+                  {cat.name}
+                </span>
+              </button>
+            ))}
           </div>
-        </section>
-
-        {/* Fraîchement arrivé */}
-        <section>
-          <h2 className="text-base font-bold text-[#e5e5e5] mb-3">
-            ⚡ Fraîchement arrivé
-          </h2>
-          <div className="relative">
-            <button
-              onClick={nouveautesScrollLeft}
-              className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
-            >
-              <ChevronLeft size={20} />
-            </button>
-
-            <div
-              ref={nouveautesScrollRef}
-              className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
-            >
-              {[...formations]
-                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                .slice(0, 6)
-                .map((f) => {
-                  const config = getCategoryConfig(f.category)
-                  const progress = formationProgress[f.id]
-                  const ctaLabel = progress?.isCompleted
-                    ? '✓ Terminé'
-                    : progress?.isStarted
-                    ? 'Continuer →'
-                    : 'Découvrir'
-                  const ctaGradient = progress?.isCompleted
-                    ? 'linear-gradient(135deg, #059669, #10B981)'
-                    : `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
-                  return (
-                    <button
-                      key={f.id}
-                      onClick={() => openFormation(f)}
-                      className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
-                      style={{ width: 'calc(50vw - 24px)', maxWidth: '220px', minWidth: '148px', background: '#242424', border: '0.5px solid #333' }}
-                    >
-                      <div
-                        className="w-full aspect-square flex items-center justify-center"
-                        style={{
-                          background: !f.cover_image_url
-                            ? `linear-gradient(135deg, ${config.gradient.from}33, ${config.gradient.from}66)`
-                            : undefined,
-                        }}
-                      >
-                        {f.cover_image_url ? (
-                          <img
-                            src={f.cover_image_url}
-                            alt={f.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-5xl">{config.emoji}</span>
-                        )}
-                      </div>
-                      <div className="p-2.5 flex flex-col gap-2">
-                        <p className="text-xs font-semibold text-[#e5e5e5] leading-snug line-clamp-2">
-                          {f.title}
-                        </p>
-                        <div
-                          className="w-full text-center text-xs font-semibold text-white py-1.5 rounded-xl"
-                          style={{ background: ctaGradient }}
-                        >
-                          {ctaLabel}
-                        </div>
-                      </div>
-                    </button>
-                  )
-                })}
-            </div>
-
-            <button
-              onClick={nouveautesScrollRight}
-              className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </div>
-          {formations.length === 0 && (
-            <p className="text-gray-400 text-sm text-center py-4">
-              Aucune formation publiée
-            </p>
-          )}
         </section>
 
         {/* Info mode preview */}
