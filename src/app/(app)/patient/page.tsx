@@ -81,7 +81,10 @@ function PatientPageContent() {
     const themeId = searchParams.get('theme')
     if (themeId) {
       const found = PATIENT_THEMES.find(t => t.id === themeId)
-      if (found) setSelectedTheme(found)
+      if (found) {
+        setSelectedTheme(found)
+        router.replace('/patient')
+      }
     }
   }, [])
 
