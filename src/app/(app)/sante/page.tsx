@@ -1,6 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { ChevronLeft } from 'lucide-react'
 import { CATEGORIES } from '@/lib/supabase/types'
 import ThemeDetail from '@/components/shared/ThemeDetail'
 import type { Theme } from '@/components/ui/ThemeCard'
@@ -73,8 +75,18 @@ const SANTE_THEMES: Theme[] = [
   },
 ]
 
-export default function SantePage() {
+function SantePageContent() {
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  useEffect(() => {
+    const themeId = searchParams.get('theme')
+    if (themeId) {
+      const found = SANTE_THEMES.find(t => t.id === themeId)
+      if (found) setSelectedTheme(found)
+    }
+  }, [])
 
   if (selectedTheme) {
     return (
@@ -92,7 +104,15 @@ export default function SantePage() {
   return (
     <>
       <header className="bg-gradient-to-br from-[#EC4899] to-[#A78BFA] px-4 py-4">
-        <h1 className="text-2xl font-black text-white">Santé Praticien</h1>
+        <div className="flex items-center gap-3 mb-1">
+          <button
+            onClick={() => router.push('/')}
+            className="p-2 -ml-2 hover:bg-white/20 rounded-xl transition-colors"
+          >
+            <ChevronLeft size={20} className="text-white" />
+          </button>
+          <h1 className="text-2xl font-black text-white">Santé Praticien</h1>
+        </div>
         <p className="text-sm font-semibold text-white/80 mt-1 leading-relaxed">
           Mieux prendre en compte sa santé personnelle · Axe 4 de la certification périodique
         </p>
@@ -146,5 +166,13 @@ export default function SantePage() {
         </div>
       </main>
     </>
+  )
+}
+
+export default function SantePage() {
+  return (
+    <Suspense>
+      <SantePageContent />
+    </Suspense>
   )
 }
