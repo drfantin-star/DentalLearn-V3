@@ -1,6 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
+import { ChevronLeft } from 'lucide-react'
 import { CATEGORIES } from '@/lib/supabase/types'
 import { type Theme } from '@/components/ui/ThemeCard'
 import ThemeDetail from '@/components/shared/ThemeDetail'
@@ -72,6 +74,17 @@ const PATIENT_THEMES: Theme[] = [
 
 export default function PatientPage() {
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  useEffect(() => {
+    const themeId = searchParams.get('theme')
+    if (themeId) {
+      const found = PATIENT_THEMES.find(t => t.id === themeId)
+      if (found) setSelectedTheme(found)
+    }
+  }, [])
+
   const [viewMode, setViewMode] = useState<'themes' | 'formation' | 'sequence'>('themes')
   const [selectedFormationId, setSelectedFormationId] = useState<string | null>(null)
   const [selectedAccessType, setSelectedAccessType] = useState<'demo' | 'full' | null>(null)
@@ -168,7 +181,15 @@ export default function PatientPage() {
   return (
     <>
       <header className="bg-gradient-to-br from-[#F97316] to-[#FBBF24] px-4 py-4">
-        <h1 className="text-2xl font-black text-white">Relation Patient</h1>
+        <div className="flex items-center gap-3 mb-1">
+          <button
+            onClick={() => router.push('/')}
+            className="p-2 -ml-2 hover:bg-white/20 rounded-xl transition-colors"
+          >
+            <ChevronLeft size={20} className="text-white" />
+          </button>
+          <h1 className="text-2xl font-black text-white">Relation Patient</h1>
+        </div>
         <p className="text-sm font-semibold text-white/80 mt-1 leading-relaxed">
           Améliorer la relation avec les patients · Axe 3 de la certification périodique
         </p>
