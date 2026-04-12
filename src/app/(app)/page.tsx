@@ -90,28 +90,13 @@ export default function HomePage() {
   const CategoryCarousel = ({
     categories,
     scrollRef,
-    bandeauGradient,
-    bandeauTitle,
-    bandeauSubtitle,
   }: {
     categories: typeof CATEGORIES
     scrollRef: React.RefObject<HTMLDivElement>
-    bandeauGradient: string
-    bandeauTitle: string
-    bandeauSubtitle: string
   }) => (
-    <div
-      className="overflow-hidden -mx-4 px-0"
-      style={{ background: bandeauGradient }}
-    >
-      {/* Bandeau header */}
-      <div className="px-5 py-3">
-        <h2 className="text-base font-bold text-white">{bandeauTitle}</h2>
-        <p className="text-xs text-white/70 mt-0.5">{bandeauSubtitle}</p>
-      </div>
-
+    <div className="-mx-4">
       {/* Zone cards */}
-      <div className="py-3 relative" style={{ background: 'transparent', paddingLeft: '16px', paddingRight: '0' }}>
+      <div className="py-2 relative" style={{ paddingLeft: '16px', paddingRight: '0' }}>
         <button
           onClick={() => scroll(scrollRef, 'left')}
           className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
@@ -296,36 +281,25 @@ export default function HomePage() {
           )}
         </section>
 
-        {/* Pratiques cliniques — Axe 1+2 */}
+        {/* Explorer */}
         <section>
+          <h2 className="text-base font-bold text-[#e5e5e5] mb-2 flex items-center gap-2">
+            🔍 Explorer
+          </h2>
+          <p className="text-xs text-[#6b7280] mb-3">Pratiques cliniques · Axe 1 & 2</p>
           <CategoryCarousel
             categories={axe12Categories}
             scrollRef={axe12ScrollRef}
-            bandeauGradient="linear-gradient(135deg, #1E40AF, #3B82F6)"
-            bandeauTitle="🔬 Pratiques cliniques"
-            bandeauSubtitle="Axe 1 & 2 · Certification Périodique"
           />
-        </section>
-
-        {/* Relation Patient — Axe 3 */}
-        <section>
+          <p className="text-xs text-[#6b7280] mt-5 mb-3">Relation Patient · Axe 3</p>
           <CategoryCarousel
             categories={axe3Categories}
             scrollRef={axe3ScrollRef}
-            bandeauGradient="linear-gradient(135deg, #F97316, #FBBF24)"
-            bandeauTitle="🤝 Relation Patient"
-            bandeauSubtitle="Axe 3 · Certification Périodique"
           />
-        </section>
-
-        {/* Santé Praticien — Axe 4 */}
-        <section>
+          <p className="text-xs text-[#6b7280] mt-5 mb-3">Santé Praticien · Axe 4</p>
           <CategoryCarousel
             categories={axe4Categories}
             scrollRef={axe4ScrollRef}
-            bandeauGradient="linear-gradient(135deg, #EC4899, #A78BFA)"
-            bandeauTitle="💚 Santé Praticien"
-            bandeauSubtitle="Axe 4 · Certification Périodique"
           />
         </section>
 
