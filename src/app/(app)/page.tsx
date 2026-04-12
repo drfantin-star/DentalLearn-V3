@@ -113,7 +113,15 @@ export default function HomePage() {
           {categories.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => window.location.href = getHref ? getHref(cat) : `/formation/${cat.id}?from=/`}
+              onClick={() => {
+                if (cat.type === 'axe3') {
+                  window.location.href = `/patient?theme=${cat.id}`
+                } else if (cat.type === 'axe4') {
+                  window.location.href = `/sante?theme=${cat.id}`
+                } else {
+                  window.location.href = `/formation/${cat.id}?from=/`
+                }
+              }}
               className="flex-shrink-0 snap-start rounded-2xl overflow-hidden"
               style={{
                 width: 'calc(50vw - 24px)',
