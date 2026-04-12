@@ -314,12 +314,12 @@ export default function ThemePage() {
       <header className="sticky top-0 z-30" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
         <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
-            <Link
-              href="/formation"
+            <button
+              onClick={() => router.back()}
               className="p-2 -ml-2 hover:bg-[#242424] rounded-xl transition-colors"
             >
               <ChevronLeft size={20} className="text-gray-300" />
-            </Link>
+            </button>
             <h1 className="text-lg font-bold text-white">{themeConfig.label}</h1>
           </div>
         </div>
