@@ -104,7 +104,7 @@ export default function FormationPage() {
 
   // Navigation handlers
   const openCategory = (cat: Category) => {
-    router.push(`/formation/${cat.id}`)
+    router.push(`/formation/${cat.id}?from=/formation`)
   }
 
   const openFormation = (f: Formation) => {
