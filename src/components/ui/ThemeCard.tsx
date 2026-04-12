@@ -5,7 +5,7 @@ export interface ThemeContent {
   type: string
   icon: string
   status: 'available' | 'coming'
-  tag: 'cp' | 'bonus'
+  tag?: 'cp' | 'bonus'
   slug?: string
 }
 

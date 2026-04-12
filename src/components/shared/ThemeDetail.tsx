@@ -98,25 +98,22 @@ export default function ThemeDetail({
 
   return (
     <>
-      <header className="bg-white sticky top-0 z-30 shadow-sm">
+      <header className="sticky top-0 z-30" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
         <div className="max-w-lg mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
             <button
               onClick={onBack}
-              className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors"
+              className="p-2 -ml-2 hover:bg-[#242424] rounded-xl transition-colors"
             >
-              <ChevronLeft size={20} className="text-gray-600" />
+              <ChevronLeft size={20} className="text-gray-300" />
             </button>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{theme.emoji}</span>
-              <h1 className="text-lg font-bold text-gray-900">{theme.title}</h1>
-            </div>
+            <h1 className="text-lg font-bold text-white">{theme.title}</h1>
           </div>
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-6 space-y-3">
-        <p className="text-sm text-gray-500 mb-2">{theme.description}</p>
+      <main className="max-w-lg mx-auto px-4 py-6 space-y-3 min-h-screen" style={{ background: '#0F0F0F' }}>
+        <p className="text-sm text-[#a3a3a3] mb-2">{theme.description}</p>
 
         {/* Filtres CP / Bonus */}
         {showFilters && (
@@ -142,8 +139,8 @@ export default function ThemeDetail({
                   <button
                     onClick={scrollLeft}
                     className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4
-                               z-10 w-10 h-10 rounded-full bg-white shadow-md
-                               items-center justify-center text-gray-600 hover:bg-gray-50"
+                               z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md
+                               items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
                   >
                     <ChevronLeft size={20} />
                   </button>
@@ -179,16 +176,18 @@ export default function ThemeDetail({
                                   onFormationClick(content.slug)
                                 } else {
                                   router.push(
-                                    `/formation/relation-patient?formation=${content.slug}`
+                                    `/formation/${theme.id}?formation=${content.slug}`
                                   )
                                 }
                               }
                             }}
-                            className="flex-shrink-0 snap-start bg-white rounded-2xl overflow-hidden border border-gray-100 text-left"
+                            className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
                             style={{
                               width: 'calc(50vw - 24px)',
                               maxWidth: '220px',
                               minWidth: '148px',
+                              background: '#242424',
+                              border: '0.5px solid #333',
                             }}
                           >
                             <div
@@ -212,7 +211,7 @@ export default function ThemeDetail({
                               )}
                             </div>
                             <div className="p-2.5 flex flex-col gap-2">
-                              <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2">
+                              <p className="text-xs font-semibold text-[#e5e5e5] leading-snug line-clamp-2">
                                 {f?.title || content.type}
                               </p>
                               <div
@@ -231,8 +230,8 @@ export default function ThemeDetail({
                   <button
                     onClick={scrollRight}
                     className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4
-                               z-10 w-10 h-10 rounded-full bg-white shadow-md
-                               items-center justify-center text-gray-600 hover:bg-gray-50"
+                               z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md
+                               items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
                   >
                     <ChevronRight size={20} />
                   </button>
@@ -246,17 +245,22 @@ export default function ThemeDetail({
                   <button
                     key={i}
                     disabled={!isAvailable}
-                    className={`w-full bg-white rounded-xl p-4 border text-left transition-all ${
-                      isAvailable
-                        ? 'border-gray-100 shadow-sm hover:shadow-md cursor-pointer'
-                        : 'border-gray-50 opacity-50 cursor-not-allowed'
-                    }`}
+                    style={{
+                      background: '#242424',
+                      border: `0.5px solid ${isAvailable ? '#444' : '#333'}`,
+                      borderRadius: '12px',
+                      padding: '16px',
+                      width: '100%',
+                      textAlign: 'left',
+                      opacity: isAvailable ? 1 : 0.5,
+                      cursor: isAvailable ? 'pointer' : 'not-allowed',
+                    }}
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{content.icon}</span>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-gray-900 text-sm">
+                          <h3 className="font-semibold text-[#e5e5e5] text-sm">
                             {content.type}
                           </h3>
                           {content.tag && (
@@ -271,7 +275,7 @@ export default function ThemeDetail({
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-gray-400 mt-0.5">
+                        <p className="text-[11px] text-[#6b7280] mt-0.5">
                           {isAvailable ? 'Disponible' : 'Prochainement'}
                         </p>
                       </div>
