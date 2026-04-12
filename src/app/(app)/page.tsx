@@ -111,7 +111,7 @@ export default function HomePage() {
           {categories.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => window.location.href = `/formation/${cat.id}`}
+              onClick={() => window.location.href = `/formation/${cat.id}?from=/`}
               className="flex-shrink-0 snap-start rounded-2xl overflow-hidden"
               style={{
                 width: 'calc(50vw - 24px)',

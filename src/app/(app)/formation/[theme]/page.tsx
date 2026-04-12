@@ -88,6 +88,7 @@ export default function ThemePage() {
   const searchParams = useSearchParams()
   const themeSlug = params.theme
   const formationSlugParam = searchParams.get('formation')
+  const fromPage = searchParams.get('from') || '/formation'
 
   const { user } = useUser()
   const [formations, setFormations] = useState<Formation[]>([])
@@ -315,7 +316,7 @@ export default function ThemePage() {
         <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push(fromPage)}
               className="p-2 -ml-2 hover:bg-[#242424] rounded-xl transition-colors"
             >
               <ChevronLeft size={20} className="text-gray-300" />
