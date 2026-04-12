@@ -114,13 +114,14 @@ export default function HomePage() {
             <button
               key={cat.id}
               onClick={() => {
-                if (cat.type === 'axe3') {
-                  window.location.href = `/patient?theme=${cat.id}`
-                } else if (cat.type === 'axe4') {
-                  window.location.href = `/sante?theme=${cat.id}`
-                } else {
-                  window.location.href = `/formation/${cat.id}?from=/`
-                }
+                const href = getHref
+                  ? getHref(cat)
+                  : cat.type === 'axe3'
+                  ? `/patient?theme=${cat.id}`
+                  : cat.type === 'axe4'
+                  ? `/sante?theme=${cat.id}`
+                  : `/formation/${cat.id}?from=/`
+                window.location.href = href
               }}
               className="flex-shrink-0 snap-start rounded-2xl overflow-hidden"
               style={{
