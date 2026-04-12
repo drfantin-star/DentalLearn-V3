@@ -1,6 +1,5 @@
 import React from 'react'
 import {
-  Newspaper,
   ChevronRight,
   ChevronLeft,
   Scale,
@@ -52,8 +51,8 @@ export default function NewsSection({ news, loading }: NewsSectionProps) {
   if (loading) {
     return (
       <section>
-        <h2 className="text-lg font-bold text-[#e5e5e5] flex items-center gap-2 mb-4">
-          <Newspaper size={20} className="text-[#2D1B96]" /> News
+        <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2 mb-4">
+          📰 Actualités
         </h2>
         <div className="flex justify-center py-8">
           <Loader2 className="animate-spin text-gray-400" size={24} />
@@ -65,8 +64,8 @@ export default function NewsSection({ news, loading }: NewsSectionProps) {
   if (news.length === 0) {
     return (
       <section>
-        <h2 className="text-lg font-bold text-[#e5e5e5] flex items-center gap-2 mb-4">
-          <Newspaper size={20} className="text-[#2D1B96]" /> News
+        <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2 mb-4">
+          📰 Actualités
         </h2>
         <p className="text-gray-400 text-sm text-center py-8">
           Aucune actualité pour le moment
@@ -78,8 +77,8 @@ export default function NewsSection({ news, loading }: NewsSectionProps) {
   return (
     <section>
       <div className="flex items-center mb-4">
-        <h2 className="text-lg font-bold text-[#e5e5e5] flex items-center gap-2">
-          <Newspaper size={20} className="text-[#2D1B96]" /> News
+        <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2">
+          📰 Actualités
         </h2>
       </div>
       <div className="relative">
