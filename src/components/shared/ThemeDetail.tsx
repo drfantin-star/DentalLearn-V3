@@ -15,6 +15,7 @@ interface ThemeDetailProps {
   accentColor: string // couleur du Play button (#F59E0B pour Patient, #EC4899 pour Santé)
   onBack: () => void
   onFormationClick?: (slug: string) => void
+  fromPage?: string
 }
 
 export default function ThemeDetail({
@@ -22,6 +23,7 @@ export default function ThemeDetail({
   accentColor,
   onBack,
   onFormationClick,
+  fromPage = '/formation',
 }: ThemeDetailProps) {
   const router = useRouter()
   const [filter, setFilter] = useState<FilterTab>('tous')
@@ -176,7 +178,7 @@ export default function ThemeDetail({
                                   onFormationClick(content.slug)
                                 } else {
                                   router.push(
-                                    `/formation/${theme.id}?formation=${content.slug}`
+                                    `/formation/${theme.id}?formation=${content.slug}&from=${fromPage}`
                                   )
                                 }
                               }

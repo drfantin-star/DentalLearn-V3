@@ -82,6 +82,7 @@ export default function SantePage() {
         theme={selectedTheme}
         accentColor="#EC4899"
         onBack={() => setSelectedTheme(null)}
+        fromPage="/sante"
       />
     )
   }
