@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import {
+  ChevronLeft,
   ChevronRight,
   BookOpen,
   Loader2,
@@ -201,7 +202,15 @@ export default function FormationPage() {
   return (
     <>
       <header className="bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] px-4 py-4">
-        <h1 className="text-2xl font-black text-white">Pratiques</h1>
+        <div className="flex items-center gap-3 mb-1">
+          <button
+            onClick={() => router.push('/')}
+            className="p-2 -ml-2 hover:bg-white/20 rounded-xl transition-colors"
+          >
+            <ChevronLeft size={20} className="text-white" />
+          </button>
+          <h1 className="text-2xl font-black text-white">Pratiques</h1>
+        </div>
         <p className="text-sm font-semibold text-white/80 mt-1 leading-relaxed">
           Connaissances, compétences, qualité des pratiques · Axes 1 &amp; 2 de la certification périodique
         </p>
