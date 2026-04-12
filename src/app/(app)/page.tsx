@@ -90,9 +90,11 @@ export default function HomePage() {
   const CategoryCarousel = ({
     categories,
     scrollRef,
+    getHref,
   }: {
     categories: typeof CATEGORIES
     scrollRef: React.RefObject<HTMLDivElement>
+    getHref?: (cat: (typeof CATEGORIES)[number]) => string
   }) => (
     <div className="-mx-4">
       {/* Zone cards */}
@@ -111,7 +113,7 @@ export default function HomePage() {
           {categories.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => window.location.href = `/formation/${cat.id}?from=/`}
+              onClick={() => window.location.href = getHref ? getHref(cat) : `/formation/${cat.id}?from=/`}
               className="flex-shrink-0 snap-start rounded-2xl overflow-hidden"
               style={{
                 width: 'calc(50vw - 24px)',
@@ -299,6 +301,7 @@ export default function HomePage() {
           <CategoryCarousel
             categories={axe3Categories}
             scrollRef={axe3ScrollRef}
+            getHref={(cat) => `/patient?theme=${cat.id}`}
           />
           <h3 className="text-base font-bold text-white mt-6 mb-3">
             Santé Praticien
@@ -306,6 +309,7 @@ export default function HomePage() {
           <CategoryCarousel
             categories={axe4Categories}
             scrollRef={axe4ScrollRef}
+            getHref={(cat) => `/sante?theme=${cat.id}`}
           />
         </section>
 
