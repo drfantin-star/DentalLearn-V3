@@ -84,7 +84,10 @@ function SantePageContent() {
     const themeId = searchParams.get('theme')
     if (themeId) {
       const found = SANTE_THEMES.find(t => t.id === themeId)
-      if (found) setSelectedTheme(found)
+      if (found) {
+        setSelectedTheme(found)
+        router.replace('/sante')
+      }
     }
   }, [])
 

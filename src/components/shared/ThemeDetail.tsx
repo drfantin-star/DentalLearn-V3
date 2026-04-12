@@ -104,7 +104,7 @@ export default function ThemeDetail({
         <div className="max-w-lg mx-auto px-4 py-4">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => router.push(fromPage)}
+              onClick={onBack}
               className="p-2 -ml-2 hover:bg-[#242424] rounded-xl transition-colors"
             >
               <ChevronLeft size={20} className="text-gray-300" />
