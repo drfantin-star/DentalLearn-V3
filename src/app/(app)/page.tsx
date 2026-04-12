@@ -127,51 +127,44 @@ export default function HomePage() {
             <button
               key={cat.id}
               onClick={() => window.location.href = `/formation/${cat.id}`}
-              className="flex-shrink-0 snap-start rounded-2xl"
+              className="flex-shrink-0 snap-start rounded-2xl overflow-hidden"
               style={{
                 width: 'calc(50vw - 24px)',
                 maxWidth: '220px',
                 minWidth: '148px',
-                height: 'calc(50vw - 24px)',
-                maxHeight: '180px',
-                minHeight: '130px',
-                background: '#242424',
-                border: '0.5px solid #333',
+                aspectRatio: '3/2',
                 position: 'relative',
+                border: 'none',
+                flexShrink: 0,
               }}
             >
-              {/* Icône — position fixe en haut, centrée horizontalement */}
+              {/* Image de fond pleine */}
+              {cat.labelImageUrl ? (
+                <img
+                  src={cat.labelImageUrl}
+                  alt={cat.name}
+                  className="w-full h-full object-cover absolute inset-0"
+                />
+              ) : (
+                <div
+                  className="w-full h-full absolute inset-0"
+                  style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
+                />
+              )}
+              {/* Overlay gradient pour lisibilité texte */}
               <div
-                style={{
-                  width: '72px',
-                  height: '72px',
-                  borderRadius: '20px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '36px',
-                  position: 'absolute',
-                  top: '18px',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  background: `${cat.gradient.from}25`,
-                }}
-              >
-                {cat.emoji}
-              </div>
-              {/* Label — position fixe en bas, centré */}
+                className="absolute inset-0"
+                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
+              />
+              {/* Label texte */}
               <span
+                className="absolute font-bold text-white leading-tight"
                 style={{
+                  bottom: '10px',
+                  left: '10px',
                   fontSize: '15px',
-                  fontWeight: 700,
-                  lineHeight: 1.2,
-                  textAlign: 'center',
-                  width: '100%',
-                  position: 'absolute',
-                  bottom: '16px',
-                  left: 0,
-                  padding: '0 8px',
-                  color: cat.gradient.from,
+                  textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                  maxWidth: 'calc(100% - 20px)',
                 }}
               >
                 {cat.name}

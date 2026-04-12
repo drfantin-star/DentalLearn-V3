@@ -198,6 +198,7 @@ export interface CategoryConfig {
   isCP: boolean
   name: string
   shortName: string
+  labelImageUrl?: string
   type: 'cp' | 'axe3' | 'axe4' | 'bonus'
 }
 
@@ -210,6 +211,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Esthétique',
     shortName: 'Esthétique',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-esthetique.png',
     type: 'cp',
   },
   restauratrice: {
@@ -220,6 +222,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Dentisterie Restauratrice',
     shortName: 'Restauratrice',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-restauratrice.png',
     type: 'cp',
   },
   chirurgie: {
@@ -230,6 +233,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Chirurgie Orale',
     shortName: 'Chirurgie',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-chirurgie.png',
     type: 'cp',
   },
   implant: {
@@ -240,6 +244,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Implantologie',
     shortName: 'Implant',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-implanto.png',
     type: 'cp',
   },
   prothese: {
@@ -250,6 +255,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Prothèse',
     shortName: 'Prothèse',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-prothese.png',
     type: 'cp',
   },
   parodontologie: {
@@ -260,6 +266,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Parodontologie',
     shortName: 'Paro',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-paro.png',
     type: 'cp',
   },
   endodontie: {
@@ -270,6 +277,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Endodontie',
     shortName: 'Endo',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-endo.png',
     type: 'cp',
   },
   radiologie: {
@@ -280,6 +288,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Radiologie',
     shortName: 'Radio',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-radio.png',
     type: 'cp',
   },
   numerique: {
@@ -290,6 +299,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Numérique & IA',
     shortName: 'Numérique',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-numerique.png',
     type: 'cp',
   },
   management: {
@@ -332,6 +342,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Communication',
     shortName: 'Communi.',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-communication.png',
     type: 'axe3',
   },
   consentement: {
@@ -342,6 +353,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Consentement éclairé',
     shortName: 'Consentement',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-consentement.png',
     type: 'axe3',
   },
   conflits: {
@@ -352,6 +364,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Gestion des conflits',
     shortName: 'Conflits',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-conflit.png',
     type: 'axe3',
   },
   'decision-partagee': {
@@ -362,6 +375,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Décision partagée',
     shortName: 'Décision',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-decision.png',
     type: 'axe3',
   },
   'annonce-diagnostic': {
@@ -372,6 +386,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Annonce de diagnostic',
     shortName: 'Annonce',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-annonce-diag.png',
     type: 'axe3',
   },
   'education-therapeutique': {
@@ -382,6 +397,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Éducation thérapeutique',
     shortName: 'Éducation',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-edu-therapeutique.png',
     type: 'axe3',
   },
   'ethique-deontologie': {
@@ -392,6 +408,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Éthique & Déontologie',
     shortName: 'Éthique',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-ethique.png',
     type: 'axe3',
   },
   'numerique-relation': {
@@ -402,6 +419,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Numérique & Relation',
     shortName: 'Numérique',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-num-relation.png',
     type: 'axe3',
   },
 
@@ -414,6 +432,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Ergonomie',
     shortName: 'Ergonomie',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-ergonomie.png',
     type: 'axe4',
   },
   'stress-burnout': {
@@ -424,6 +443,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Stress & Burn-out',
     shortName: 'Stress',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-stress.png',
     type: 'axe4',
   },
   'risques-pro': {
@@ -434,6 +454,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Risques professionnels',
     shortName: 'Risques',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-risques-pro.png',
     type: 'axe4',
   },
   violences: {
@@ -444,6 +465,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Violences en milieu de soin',
     shortName: 'Violences',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-violences.png',
     type: 'axe4',
   },
   'pratique-reflexive': {
@@ -454,6 +476,7 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     isCP: true,
     name: 'Pratique réflexive',
     shortName: 'Réflexive',
+    labelImageUrl: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/label-pratiques-reflex.png',
     type: 'axe4',
   },
 }
