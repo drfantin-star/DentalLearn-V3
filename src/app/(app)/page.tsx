@@ -112,7 +112,12 @@ export default function HomePage() {
             <button
               key={cat.id}
               onClick={() => {
-                window.location.href = `/formation/${cat.id}?from=/`
+                const from = cat.type === 'axe3'
+                  ? '/patient'
+                  : cat.type === 'axe4'
+                  ? '/sante'
+                  : '/formation'
+                window.location.href = `/formation/${cat.id}?from=${from}`
               }}
               className="flex-shrink-0 snap-start rounded-2xl overflow-hidden"
               style={{
@@ -244,7 +249,15 @@ export default function HomePage() {
                   return (
                     <button
                       key={f.id}
-                      onClick={() => window.location.href = `/formation/${f.category}?formation=${f.slug}`}
+                      onClick={() => {
+                        const config = getCategoryConfig(f.category)
+                        const from = config.type === 'axe3'
+                          ? '/patient'
+                          : config.type === 'axe4'
+                          ? '/sante'
+                          : '/formation'
+                        window.location.href = `/formation/${f.category}?formation=${f.slug}&from=${from}`
+                      }}
                       className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
                       style={{ width: 'calc(50vw - 24px)', maxWidth: '220px', minWidth: '148px', display: 'flex', flexDirection: 'column', background: '#242424', border: '0.5px solid #333' }}
                     >
