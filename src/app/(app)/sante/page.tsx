@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { CATEGORIES } from '@/lib/supabase/types'
@@ -75,7 +75,7 @@ const SANTE_THEMES: Theme[] = [
   },
 ]
 
-export default function SantePage() {
+function SantePageContent() {
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -166,5 +166,13 @@ export default function SantePage() {
         </div>
       </main>
     </>
+  )
+}
+
+export default function SantePage() {
+  return (
+    <Suspense>
+      <SantePageContent />
+    </Suspense>
   )
 }

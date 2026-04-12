@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { CATEGORIES } from '@/lib/supabase/types'
@@ -72,7 +72,7 @@ const PATIENT_THEMES: Theme[] = [
 // PAGE
 // ============================================
 
-export default function PatientPage() {
+function PatientPageContent() {
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -243,5 +243,13 @@ export default function PatientPage() {
         </div>
       </main>
     </>
+  )
+}
+
+export default function PatientPage() {
+  return (
+    <Suspense>
+      <PatientPageContent />
+    </Suspense>
   )
 }
