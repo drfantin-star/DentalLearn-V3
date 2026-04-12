@@ -1,11 +1,12 @@
 'use client'
 
 import React, { useState } from 'react'
-import { ChevronRight, ChevronLeft, Play } from 'lucide-react'
 import { CATEGORIES } from '@/lib/supabase/types'
+import ThemeDetail from '@/components/shared/ThemeDetail'
+import type { Theme } from '@/components/ui/ThemeCard'
 
 // Thèmes Santé Pro — basé sur le prototype V5
-const SANTE_THEMES = [
+const SANTE_THEMES: Theme[] = [
   {
     id: 'ergonomie',
     emoji: '🧘',
@@ -72,126 +73,6 @@ const SANTE_THEMES = [
   },
 ]
 
-type Theme = (typeof SANTE_THEMES)[number]
-
-function ThemeCard({
-  theme,
-  onOpen,
-}: {
-  theme: Theme
-  onOpen: (t: Theme) => void
-}) {
-  const hasEPP = theme.contents.some(
-    (c) => c.type === 'EPP - Audit clinique'
-  )
-
-  return (
-    <button
-      onClick={() => onOpen(theme)}
-      className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:shadow-md hover:scale-[1.01] transition-all active:scale-[0.99]"
-    >
-      <div className="flex items-start gap-3">
-        <span className="text-3xl">{theme.emoji}</span>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-bold text-gray-900 text-sm">{theme.title}</h3>
-            {hasEPP && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E0F7F5] text-[#00D1C1]">
-                EPP
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            {theme.description}
-          </p>
-          <div className="flex items-center gap-1 mt-2">
-            {theme.contents.map((content, i) => (
-              <span
-                key={i}
-                className={`text-sm ${
-                  content.status === 'coming' ? 'opacity-40' : ''
-                }`}
-                title={content.type}
-              >
-                {content.icon}
-              </span>
-            ))}
-          </div>
-        </div>
-        <ChevronRight size={16} className="text-gray-300 mt-2 shrink-0" />
-      </div>
-    </button>
-  )
-}
-
-function ThemeDetail({
-  theme,
-  onBack,
-}: {
-  theme: Theme
-  onBack: () => void
-}) {
-  return (
-    <>
-      <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBack}
-              className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors"
-            >
-              <ChevronLeft size={20} className="text-gray-600" />
-            </button>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{theme.emoji}</span>
-              <h1 className="text-lg font-bold text-gray-900">{theme.title}</h1>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-3">
-        <p className="text-sm text-gray-500 mb-4">{theme.description}</p>
-
-        {theme.contents.map((content, i) => {
-          const isAvailable = content.status === 'available'
-
-          return (
-            <button
-              key={i}
-              disabled={!isAvailable}
-              className={`w-full bg-white rounded-xl p-4 border text-left transition-all ${
-                isAvailable
-                  ? 'border-gray-100 shadow-sm hover:shadow-md'
-                  : 'border-gray-50 opacity-50'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{content.icon}</span>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-sm">
-                    {content.type}
-                  </h3>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    {isAvailable ? 'Disponible' : 'Prochainement'}
-                  </p>
-                </div>
-                {isAvailable ? (
-                  <Play size={16} className="text-[#EC4899] shrink-0" />
-                ) : (
-                  <span className="text-[10px] text-gray-300 font-medium">
-                    Bientôt
-                  </span>
-                )}
-              </div>
-            </button>
-          )
-        })}
-      </main>
-    </>
-  )
-}
-
 export default function SantePage() {
   const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null)
 
@@ -199,6 +80,7 @@ export default function SantePage() {
     return (
       <ThemeDetail
         theme={selectedTheme}
+        accentColor="#EC4899"
         onBack={() => setSelectedTheme(null)}
       />
     )
