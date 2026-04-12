@@ -294,6 +294,7 @@ export default function HomePage() {
           <CategoryCarousel
             categories={axe12Categories}
             scrollRef={axe12ScrollRef}
+            getHref={(cat) => `/formation/${cat.id}?from=/formation`}
           />
           <h3 className="text-base font-bold text-white mt-6 mb-3">
             Relation Patient
