@@ -283,20 +283,26 @@ export default function HomePage() {
 
         {/* Explorer */}
         <section>
-          <h2 className="text-base font-bold text-[#e5e5e5] mb-2 flex items-center gap-2">
+          <h2 className="text-xl font-black text-white mb-4 flex items-center gap-2">
             🔍 Explorer
           </h2>
-          <p className="text-xs text-[#6b7280] mb-3">Pratiques cliniques · Axe 1 & 2</p>
+          <h3 className="text-base font-bold text-white mb-3">
+            Pratiques cliniques
+          </h3>
           <CategoryCarousel
             categories={axe12Categories}
             scrollRef={axe12ScrollRef}
           />
-          <p className="text-xs text-[#6b7280] mt-5 mb-3">Relation Patient · Axe 3</p>
+          <h3 className="text-base font-bold text-white mt-6 mb-3">
+            Relation Patient
+          </h3>
           <CategoryCarousel
             categories={axe3Categories}
             scrollRef={axe3ScrollRef}
           />
-          <p className="text-xs text-[#6b7280] mt-5 mb-3">Santé Praticien · Axe 4</p>
+          <h3 className="text-base font-bold text-white mt-6 mb-3">
+            Santé Praticien
+          </h3>
           <CategoryCarousel
             categories={axe4Categories}
             scrollRef={axe4ScrollRef}
