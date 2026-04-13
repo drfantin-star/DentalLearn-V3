@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useUser } from '@/lib/hooks/useUser'
 import { getCategoryConfig } from '@/lib/supabase/types'
 import type { Formation } from '@/lib/supabase/types'
+import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 
 interface ThemeDetailProps {
   theme: Theme
@@ -158,72 +159,23 @@ export default function ThemeDetail({
                     ) : (
                       formationContents.map((content, i) => {
                         const f = content.slug ? formations[content.slug] : null
-                        const config = f ? getCategoryConfig(f.category) : null
-                        const progress = f ? formationProgress[f.id] : null
-                        const ctaLabel = progress?.isCompleted
-                          ? '✓ Terminé'
-                          : progress?.isStarted
-                          ? 'Continuer →'
-                          : 'Découvrir'
-                        const ctaStyle = progress?.isCompleted
-                          ? 'linear-gradient(135deg, #059669, #10B981)'
-                          : `linear-gradient(135deg, ${accentColor}, ${accentColor}CC)`
-
+                        if (!f) return null
                         return (
-                          <button
+                          <FormationCardOverlay
                             key={i}
+                            formation={f}
+                            progress={formationProgress[f.id]}
                             onClick={() => {
-                              if (content.slug) {
-                                if (onFormationClick) {
-                                  onFormationClick(content.slug)
-                                } else {
-                                  router.push(
-                                    `/formation/${theme.id}?formation=${content.slug}&from=${fromPage}`
-                                  )
-                                }
+                              if (onFormationClick) {
+                                onFormationClick(content.slug!)
+                              } else {
+                                router.push(
+                                  `/formation/${theme.id}?formation=${content.slug}&from=${fromPage}`
+                                )
                               }
                             }}
-                            className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
-                            style={{
-                              width: 'calc(50vw - 24px)',
-                              maxWidth: '220px',
-                              minWidth: '148px',
-                              background: '#242424',
-                              border: '0.5px solid #333',
-                            }}
-                          >
-                            <div
-                              className="w-full aspect-square flex items-center justify-center"
-                              style={{
-                                background: f?.cover_image_url
-                                  ? undefined
-                                  : config
-                                  ? `linear-gradient(135deg, ${config.gradient.from}33, ${config.gradient.from}66)`
-                                  : `${accentColor}22`,
-                              }}
-                            >
-                              {f?.cover_image_url ? (
-                                <img
-                                  src={f.cover_image_url}
-                                  alt={f.title}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <span className="text-5xl">{content.icon}</span>
-                              )}
-                            </div>
-                            <div className="p-2.5 flex flex-col gap-2">
-                              <p className="text-xs font-semibold text-[#e5e5e5] leading-snug line-clamp-2">
-                                {f?.title || content.type}
-                              </p>
-                              <div
-                                className="w-full text-center text-xs font-semibold text-white py-1.5 rounded-xl"
-                                style={{ background: ctaStyle }}
-                              >
-                                {ctaLabel}
-                              </div>
-                            </div>
-                          </button>
+                            accentGradient={`linear-gradient(135deg, ${accentColor}, ${accentColor}CC)`}
+                          />
                         )
                       })
                     )}
