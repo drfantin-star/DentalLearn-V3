@@ -22,6 +22,7 @@ import {
 import { useUser } from '@/lib/hooks/useUser'
 import FormationDetail from '@/components/formation/FormationDetail'
 import SequencePlayer from '@/components/formation/SequencePlayer'
+import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 
 // ============================================
 // THEMES CONFIG
@@ -351,62 +352,14 @@ export default function ThemePage() {
                 ref={formationsScrollRef}
                 className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
               >
-                {formations.map((f) => {
-                  const config = getCategoryConfig(f.category)
-                  const progress = formationProgress[f.id]
-                  const ctaLabel = progress?.isCompleted
-                    ? '✓ Terminé'
-                    : progress?.isStarted
-                    ? 'Continuer →'
-                    : 'Découvrir'
-                  const ctaGradient = progress?.isCompleted
-                    ? 'linear-gradient(135deg, #059669, #10B981)'
-                    : `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
-                  return (
-                    <button
-                      key={f.id}
-                      onClick={() => openFormation(f)}
-                      className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
-                      style={{
-                        width: 'calc(50vw - 24px)',
-                        maxWidth: '220px',
-                        minWidth: '148px',
-                        background: '#242424',
-                        border: '0.5px solid #333',
-                      }}
-                    >
-                      <div
-                        className="w-full aspect-square flex items-center justify-center"
-                        style={{
-                          background: !f.cover_image_url
-                            ? `linear-gradient(135deg, ${config.gradient.from}33, ${config.gradient.from}66)`
-                            : undefined,
-                        }}
-                      >
-                        {f.cover_image_url ? (
-                          <img
-                            src={f.cover_image_url}
-                            alt={f.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-5xl">{config.emoji}</span>
-                        )}
-                      </div>
-                      <div className="p-2.5 flex flex-col gap-2">
-                        <p className="text-xs font-semibold text-[#e5e5e5] leading-snug line-clamp-2">
-                          {f.title}
-                        </p>
-                        <div
-                          className="w-full text-center text-xs font-semibold text-white py-1.5 rounded-xl"
-                          style={{ background: ctaGradient }}
-                        >
-                          {ctaLabel}
-                        </div>
-                      </div>
-                    </button>
-                  )
-                })}
+                {formations.map((f) => (
+                  <FormationCardOverlay
+                    key={f.id}
+                    formation={f}
+                    progress={formationProgress[f.id]}
+                    onClick={() => openFormation(f)}
+                  />
+                ))}
               </div>
 
               <button

@@ -13,6 +13,7 @@ import Link from 'next/link'
 import DailyQuizButton from '@/components/home/DailyQuizButton'
 import DailyQuizModal from '@/components/home/DailyQuizModal'
 import NewsSection from '@/components/home/NewsSection'
+import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 
 export default function HomePage() {
   const [showDailyQuiz, setShowDailyQuiz] = useState(false)
@@ -240,49 +241,20 @@ export default function HomePage() {
               >
                 {recentFormations.map((f) => {
                   const config = getCategoryConfig(f.category)
-                  const progress = formationProgress[f.id]
-                  const ctaLabel = progress?.isCompleted ? '✓ Terminé'
-                    : progress?.isStarted ? 'Continuer →' : 'Découvrir'
-                  const ctaGradient = progress?.isCompleted
-                    ? 'linear-gradient(135deg, #059669, #10B981)'
-                    : `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
+                  const from = config.type === 'axe3'
+                    ? '/patient'
+                    : config.type === 'axe4'
+                    ? '/sante'
+                    : '/formation'
                   return (
-                    <button
+                    <FormationCardOverlay
                       key={f.id}
+                      formation={f}
+                      progress={formationProgress[f.id]}
                       onClick={() => {
-                        const config = getCategoryConfig(f.category)
-                        const from = config.type === 'axe3'
-                          ? '/patient'
-                          : config.type === 'axe4'
-                          ? '/sante'
-                          : '/formation'
                         window.location.href = `/formation/${f.category}?formation=${f.slug}&from=${from}`
                       }}
-                      className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
-                      style={{ width: 'calc(50vw - 24px)', maxWidth: '220px', minWidth: '148px', display: 'flex', flexDirection: 'column', background: '#242424', border: '0.5px solid #333' }}
-                    >
-                      <div
-                        className="w-full aspect-square flex items-center justify-center"
-                        style={{ background: !f.cover_image_url ? `linear-gradient(135deg, ${config.gradient.from}33, ${config.gradient.from}66)` : undefined }}
-                      >
-                        {f.cover_image_url ? (
-                          <img src={f.cover_image_url} alt={f.title} className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-5xl">{config.emoji}</span>
-                        )}
-                      </div>
-                      <div className="p-2.5 flex flex-col gap-2" style={{ flex: 1 }}>
-                        <p className="text-xs font-semibold text-[#e5e5e5] leading-snug line-clamp-2" style={{ flex: 1, marginBottom: '6px' }}>
-                          {f.title}
-                        </p>
-                        <div
-                          className="w-full text-center text-xs font-semibold text-white py-1.5 rounded-xl"
-                          style={{ background: ctaGradient, marginTop: 'auto' }}
-                        >
-                          {ctaLabel}
-                        </div>
-                      </div>
-                    </button>
+                    />
                   )
                 })}
               </div>
