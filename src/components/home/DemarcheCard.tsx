@@ -1,7 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
-import { getCategoryConfig } from '@/lib/supabase/types'
 import type { DemarcheEnCours } from '@/lib/hooks/useDemarches'
+import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 
 interface DemarcheCardProps {
   demarche: DemarcheEnCours
@@ -10,55 +10,25 @@ interface DemarcheCardProps {
 export default function DemarcheCard({ demarche }: DemarcheCardProps) {
   // --- Formation cards: square card with cover image ---
   if (demarche.type === 'formation') {
-    const catConfig = getCategoryConfig(demarche.category ?? null)
+    const formation = {
+      id: demarche.id,
+      title: demarche.title,
+      category: demarche.category ?? '',
+      cover_image_url: demarche.coverImageUrl ?? null,
+      slug: demarche.ctaUrl.split('/').pop() ?? '',
+    } as any
+
+    const progress = {
+      isStarted: true,
+      isCompleted: demarche.subtitle?.includes('Terminé') || false,
+    }
 
     return (
-      <div
-        className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
-        style={{
-          width: 'calc(50vw - 24px)',
-          maxWidth: '220px',
-          minWidth: '148px',
-          background: '#242424',
-          border: '0.5px solid #333',
-        }}
-      >
-        {/* Cover image carrée */}
-        <div
-          className="w-full aspect-square flex items-center justify-center"
-          style={{
-            background: !demarche.coverImageUrl
-              ? `linear-gradient(135deg, ${catConfig.gradient.from}33, ${catConfig.gradient.from}66)`
-              : undefined,
-          }}
-        >
-          {demarche.coverImageUrl ? (
-            <img
-              src={demarche.coverImageUrl}
-              alt={demarche.title}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <span className="text-5xl">{catConfig.emoji}</span>
-          )}
-        </div>
-
-        {/* Corps */}
-        <div className="p-2.5 flex flex-col gap-2">
-          <p className="text-xs font-semibold text-[#e5e5e5] leading-snug line-clamp-2">
-            {demarche.title}
-          </p>
-          <Link
-            href={demarche.ctaUrl}
-            className="w-full text-center text-xs font-semibold text-white py-1.5 rounded-xl"
-            style={{
-              background: `linear-gradient(135deg, ${catConfig.gradient.from}, ${catConfig.gradient.to})`,
-            }}
-          >
-            Continuer →
-          </Link>
-        </div>
-      </div>
+      <FormationCardOverlay
+        formation={formation}
+        progress={progress}
+        onClick={() => { window.location.href = demarche.ctaUrl }}
+      />
     )
   }
 
