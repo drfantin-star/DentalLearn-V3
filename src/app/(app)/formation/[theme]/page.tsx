@@ -6,9 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  ClipboardCheck,
-  FileText,
-  CheckCircle2,
   Lock,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -23,6 +20,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import FormationDetail from '@/components/formation/FormationDetail'
 import SequencePlayer from '@/components/formation/SequencePlayer'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
+import DemarcheCard from '@/components/home/DemarcheCard'
 
 // ============================================
 // THEMES CONFIG
@@ -384,100 +382,38 @@ export default function ThemePage() {
 
           {eppAudit ? (
             (() => {
-              const eppCatConfig = getCategoryConfig(themeSlug)
-              const eppBgColor = eppCatConfig.gradient.from
               const eppT1 = eppSessions.find(s => s.tour === 1)
               const eppT2 = eppSessions.find(s => s.tour === 2)
               const isValidated = !!eppT2?.completed_at
               const isT2 = !!eppT2 && !eppT2.completed_at
               const ctaLabel = eppStatus.status === 'not_started'
-                ? 'Commencer l\'audit'
-                : isValidated ? 'Voir attestation'
-                : 'Continuer l\'audit'
-              const ctaGradient = isValidated
-                ? 'linear-gradient(135deg, #059669, #10B981)'
-                : `linear-gradient(135deg, ${eppBgColor}, ${eppCatConfig.gradient.to})`
+                ? "Commencer l'audit"
+                : isValidated
+                ? 'Voir attestation'
+                : "Continuer l'audit"
+              const subtitle = isValidated
+                ? 'validé'
+                : isT2
+                ? 'Tour 2 en cours'
+                : eppT1?.completed_at
+                ? 'Tour 1 terminé'
+                : ''
 
               return (
-                <div
-                  className="rounded-2xl overflow-hidden"
-                  style={{
-                    width: 'calc(50vw - 24px)',
-                    maxWidth: '220px',
-                    minWidth: '148px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    background: '#242424',
-                    border: '0.5px solid #333',
+                <DemarcheCard
+                  demarche={{
+                    id: eppAudit.id,
+                    type: 'epp',
+                    title: eppAudit.title,
+                    subtitle,
+                    badge: '',
+                    badgeColor: '',
+                    accentColor: '',
+                    ctaUrl: `/formation/${themeSlug}/epp`,
+                    ctaLabel,
+                    category: themeSlug,
                   }}
-                >
-                  <div
-                    className="w-full flex items-center justify-center relative"
-                    style={{ aspectRatio: '1/1', background: isValidated ? '#059669' : eppBgColor, flexShrink: 0 }}
-                  >
-                    <svg width="108" height="108" viewBox="0 0 108 108"
-                      style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 1 }}>
-                      <circle cx="54" cy="54" r="44" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="5"/>
-                      <circle cx="54" cy="54" r="44" fill="none" stroke="white" strokeWidth="5"
-                        strokeDasharray={isValidated ? '276 276' : isT2 ? '207 276' : eppT1?.completed_at ? '138 276' : '0 276'}
-                        strokeLinecap="round" transform="rotate(-90 54 54)" opacity="0.9"/>
-                    </svg>
-                    <div style={{
-                      width: '80px', height: '80px', borderRadius: '50%',
-                      background: 'white', display: 'flex', flexDirection: 'column',
-                      alignItems: 'center', justifyContent: 'center', gap: '2px',
-                      position: 'relative', zIndex: 2,
-                      border: isValidated ? '2px solid #10B981' : 'none',
-                    }}>
-                      {isValidated ? (
-                        <>
-                          <CheckCircle2 size={26} className="text-emerald-600" />
-                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#059669', textTransform: 'uppercase' }}>Validée</span>
-                        </>
-                      ) : isT2 ? (
-                        <>
-                          <FileText size={26} style={{ color: eppBgColor }} />
-                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>Tour 2</span>
-                          <span style={{ fontSize: '11px', fontWeight: 900, color: eppBgColor }}>en cours</span>
-                        </>
-                      ) : eppT1?.completed_at ? (
-                        <>
-                          <ClipboardCheck size={26} style={{ color: eppBgColor }} />
-                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>Tour 1</span>
-                          <span style={{ fontSize: '13px', fontWeight: 900, color: eppBgColor }}>✓</span>
-                        </>
-                      ) : (
-                        <>
-                          <ClipboardCheck size={26} style={{ color: eppBgColor }} />
-                          <span style={{ fontSize: '9px', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>Audit</span>
-                          <span style={{ fontSize: '11px', fontWeight: 900, color: eppBgColor }}>EPP</span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ padding: '10px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                    <p style={{
-                      fontSize: '12px', fontWeight: 600, lineHeight: 1.3,
-                      flex: 1, marginBottom: '6px',
-                      display: '-webkit-box', WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                      color: '#e5e5e5'
-                    }}>
-                      {eppAudit.title}
-                    </p>
-                    <Link
-                      href={`/formation/${themeSlug}/epp`}
-                      style={{
-                        display: 'block', textAlign: 'center',
-                        fontSize: '11px', fontWeight: 600, color: 'white',
-                        padding: '6px', borderRadius: '10px',
-                        background: ctaGradient, textDecoration: 'none',
-                      }}
-                    >
-                      {ctaLabel}
-                    </Link>
-                  </div>
-                </div>
+                />
               )
             })()
           ) : (
