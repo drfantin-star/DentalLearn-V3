@@ -71,7 +71,7 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
           position: 'absolute',
           top: '50%',
           left: '50%',
-          transform: 'translate(-50%, -60%)',
+          transform: 'translate(-50%, -85%)',
           zIndex: 1,
         }}
       >
