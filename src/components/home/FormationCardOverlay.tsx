@@ -30,76 +30,85 @@ export default function FormationCardOverlay({
   return (
     <button
       onClick={onClick}
-      className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left"
+      className="flex-shrink-0 snap-start rounded-2xl overflow-hidden"
       style={{
         width: 'calc(50vw - 24px)',
         maxWidth: '220px',
         minWidth: '148px',
-        display: 'flex',
-        flexDirection: 'column',
         border: '0.5px solid #333',
         position: 'relative',
+        aspectRatio: '3/4',
+        display: 'block',
       }}
     >
-      {/* Cover — carré */}
-      <div
-        className="w-full flex items-center justify-center relative"
-        style={{
-          aspectRatio: '1/1',
-          background: !formation.cover_image_url
-            ? `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
-            : undefined,
-        }}
-      >
-        {formation.cover_image_url ? (
-          <img
-            src={formation.cover_image_url}
-            alt={formation.title}
-            className="w-full h-full object-cover absolute inset-0"
-          />
-        ) : (
-          <span className="text-5xl z-10">{config.emoji}</span>
-        )}
-
-        {/* Overlay gradient */}
-        <div
-          className="absolute inset-0"
+      {/* Image pleine carte */}
+      {formation.cover_image_url ? (
+        <img
+          src={formation.cover_image_url}
+          alt={formation.title}
           style={{
-            background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.3) 40%, transparent 65%)',
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
           }}
         />
-
-        {/* Badge podcast haut droite */}
+      ) : (
         <div
-          className="absolute flex items-center justify-center"
           style={{
-            top: '10px',
-            right: '10px',
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            background: 'rgba(0,0,0,0.45)',
-            backdropFilter: 'blur(4px)',
-            border: '1.5px solid rgba(255,255,255,0.3)',
-            zIndex: 2,
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '48px',
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
-            <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/>
-            <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
-          </svg>
+          {config.emoji}
         </div>
+      )}
+
+      {/* Overlay gradient sombre en bas */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.3) 45%, transparent 70%)',
+        }}
+      />
+
+      {/* Badge podcast haut droite */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          width: '32px',
+          height: '32px',
+          borderRadius: '50%',
+          background: 'rgba(0,0,0,0.45)',
+          backdropFilter: 'blur(4px)',
+          border: '1.5px solid rgba(255,255,255,0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 2,
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
+          <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/>
+          <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
+        </svg>
       </div>
 
-      {/* Phantom body — force la hauteur totale identique à l'ancienne carte */}
-      <div style={{ height: '70px', flexShrink: 0, position: 'relative' }} />
-
-      {/* Contenu overlay — titre + CTA */}
+      {/* Titre + CTA en bas */}
       <div
-        className="absolute"
         style={{
+          position: 'absolute',
           bottom: '10px',
           left: '10px',
           right: '10px',
@@ -110,20 +119,30 @@ export default function FormationCardOverlay({
         }}
       >
         <p
-          className="font-bold text-white leading-snug"
           style={{
-            fontSize: '12px',
+            fontSize: '13px',
+            fontWeight: 700,
+            color: 'white',
+            lineHeight: 1.3,
             display: '-webkit-box',
             WebkitLineClamp: 3,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
+            textShadow: '0 1px 3px rgba(0,0,0,0.5)',
           }}
         >
           {formation.title}
         </p>
         <div
-          className="w-full text-center text-xs font-semibold text-white py-1.5 rounded-xl"
-          style={{ background: ctaGradient }}
+          style={{
+            background: ctaGradient,
+            color: 'white',
+            fontSize: '12px',
+            fontWeight: 600,
+            textAlign: 'center',
+            padding: '7px',
+            borderRadius: '10px',
+          }}
         >
           {ctaLabel}
         </div>
