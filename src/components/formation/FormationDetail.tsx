@@ -404,7 +404,13 @@ export default function FormationDetail({
               <Play size={18} />
               {completedInFormation === 0
                 ? 'Commencer la formation'
-                : `Continuer — Séquence ${nextSequence.sequence_number}`}
+                : `Continuer — ${
+                    nextSequence.sequence_number === 0
+                      ? 'Intro'
+                      : nextSequence.sequence_number === sequences.length - 1
+                      ? 'Conclusion'
+                      : `Séquence ${nextSequence.sequence_number}`
+                  }`}
             </button>
           ) : completedInFormation === sequences.length && sequences.length > 0 ? (
             <button
