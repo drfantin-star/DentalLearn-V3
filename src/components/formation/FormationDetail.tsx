@@ -319,25 +319,23 @@ export default function FormationDetail({
           background: `linear-gradient(135deg, ${categoryConfig.gradient.from}, ${categoryConfig.gradient.to})`,
         }}
       >
-        {/* Bouton retour */}
-        <div className="flex items-center mb-3">
+        {/* Bouton retour + Titre sur la même ligne */}
+        <div className="flex items-start gap-3 mb-2">
           <button
             onClick={onBack}
-            className="p-2 rounded-xl text-white hover:bg-white/20 transition-colors"
+            className="p-2 rounded-xl text-white hover:bg-white/20 transition-colors shrink-0 mt-0.5"
             style={{ background: 'rgba(255,255,255,0.2)' }}
           >
             <ChevronLeft size={20} />
           </button>
+          <h1 className="text-xl font-extrabold text-white leading-tight">
+            {formation.title}
+          </h1>
         </div>
 
-        {/* Titre */}
-        <h1 className="text-xl font-extrabold text-white leading-tight mb-2">
-          {formation.title}
-        </h1>
-
-        {/* Descriptif court */}
+        {/* Descriptif court — indenté sous le titre */}
         {formation.description_short && (
-          <p className="text-white/85 text-[13px] leading-relaxed">
+          <p className="text-white/85 text-[13px] leading-relaxed" style={{ paddingLeft: '44px' }}>
             {formation.description_short}
           </p>
         )}
