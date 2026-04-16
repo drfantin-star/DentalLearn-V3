@@ -583,9 +583,9 @@ export default function DailyQuizModal({
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/70 backdrop-blur-sm">
-        <div className="bg-white w-full max-w-sm rounded-3xl p-8 text-center">
+        <div className="w-full max-w-sm rounded-3xl p-8 text-center" style={{ background: '#1a1a1a' }}>
           <Loader2 className="w-10 h-10 animate-spin text-[#2D1B96] mx-auto mb-4" />
-          <p className="text-gray-600 font-medium">Chargement du quiz...</p>
+          <p className="font-medium" style={{ color: '#a3a3a3' }}>Chargement du quiz...</p>
         </div>
       </div>
     )
@@ -594,17 +594,17 @@ export default function DailyQuizModal({
   if (error || questions.length === 0) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-gray-900/70 backdrop-blur-sm">
-        <div className="bg-white w-full max-w-sm rounded-3xl p-6 text-center">
+        <div className="w-full max-w-sm rounded-3xl p-6 text-center" style={{ background: '#1a1a1a' }}>
           <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <p className="text-gray-700 font-medium mb-2">
+          <p className="font-medium mb-2" style={{ color: '#e5e5e5' }}>
             {error || 'Aucune question disponible'}
           </p>
-          <p className="text-sm text-gray-500 mb-6">
+          <p className="text-sm mb-6" style={{ color: '#a3a3a3' }}>
             Revenez plus tard ou contactez le support.
           </p>
           <button
             onClick={onClose}
-            className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-200 transition-colors"
+            className="w-full py-3 rounded-xl font-bold text-sm transition-colors" style={{ background: '#242424', color: '#e5e5e5' }}
           >
             Fermer
           </button>
@@ -622,34 +622,34 @@ export default function DailyQuizModal({
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-gray-900/70 backdrop-blur-sm">
         <Confetti active={true} />
-        <div className="bg-white w-full max-w-sm rounded-3xl p-6 text-center relative overflow-hidden">
+        <div className="w-full max-w-sm rounded-3xl p-6 text-center relative overflow-hidden" style={{ background: '#1a1a1a' }}>
 
           <div className="relative z-10">
             <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#2D1B96]/10 to-[#00D1C1]/10 flex items-center justify-center">
               <Trophy size={40} className="text-[#2D1B96]" />
             </div>
 
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold mb-2" style={{ color: '#e5e5e5' }}>
               {isPerfect ? 'Parfait !' : finalScore >= 7 ? 'Bravo !' : 'Bien joue !'}
             </h2>
 
-            <p className="text-gray-500 mb-6">Quiz du jour termine</p>
+            <p className="mb-6" style={{ color: '#a3a3a3' }}>Quiz du jour termine</p>
 
-            <div className="bg-gray-50 rounded-2xl p-4 mb-4">
+            <div className="rounded-2xl p-4 mb-4" style={{ background: '#242424' }}>
               <div className="text-3xl font-black text-[#2D1B96]">
                 {finalScore}/{questions.length}
               </div>
-              <div className="text-xs text-gray-400 mt-1">bonnes reponses</div>
+              <div className="text-xs mt-1" style={{ color: '#6b7280' }}>bonnes reponses</div>
             </div>
 
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-3 mb-6 text-left space-y-1">
+            <div className="rounded-xl p-3 mb-6 text-left space-y-1" style={{ background: '#292010', border: '1px solid #92400e' }}>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Points gagnes</span>
+                <span style={{ color: '#a3a3a3' }}>Points gagnes</span>
                 <span className="font-bold text-amber-700">+{totalPoints} pts</span>
               </div>
               {isPerfect && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Bonus 100%</span>
+                  <span style={{ color: '#a3a3a3' }}>Bonus 100%</span>
                   <span className="font-bold text-emerald-600">+{bonusPoints} pts</span>
                 </div>
               )}
@@ -697,29 +697,30 @@ export default function DailyQuizModal({
   // Legacy = options est un tableau MCQ standard, question_text contient "CONTEXTE : ... QUESTION : ..."
 
   return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col">
+    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#0F0F0F' }}>
       {/* Top bar */}
       <div className="flex-shrink-0">
-        <div className="h-1.5 bg-gray-100">
+        <div className="h-1.5" style={{ background: '#242424' }}>
           <div
             className="h-full bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
 
-        <div className="px-4 py-3 flex items-center justify-between">
+        <div className="px-4 py-3 flex items-center justify-between" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-gray-700">
+            <span className="text-sm font-bold" style={{ color: '#e5e5e5' }}>
               {current + 1}/{questions.length}
             </span>
             <div
               className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
                 timeLeft <= 10
-                  ? 'bg-red-100 text-red-600'
+                  ? 'bg-red-900/40 text-red-400'
                   : timeLeft <= 30
-                    ? 'bg-amber-100 text-amber-600'
-                    : 'bg-gray-100 text-gray-600'
+                    ? 'bg-amber-900/40 text-amber-400'
+                    : 'text-[#a3a3a3]'
               }`}
+              style={timeLeft > 30 ? { background: '#242424' } : undefined}
             >
               <Clock size={12} />
               {timeLeft}s
@@ -732,7 +733,9 @@ export default function DailyQuizModal({
             </span>
             <button
               onClick={onClose}
-              className="p-2 text-gray-300 hover:text-gray-500 hover:bg-gray-50 rounded-full transition-colors"
+              className="p-2 rounded-full transition-colors" style={{ color: '#6b7280' }}
+              onMouseEnter={e => (e.currentTarget.style.background = '#242424')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             >
               <X size={20} />
             </button>
@@ -744,13 +747,13 @@ export default function DailyQuizModal({
       <div className="flex-1 overflow-y-auto px-5 py-4">
         {/* Formation tag */}
         {q.formation_title && (
-          <div className="inline-flex items-center px-2.5 py-1 rounded-lg bg-[#2D1B96]/10 text-[#2D1B96] text-xs font-medium mb-3">
+          <div className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium mb-3" style={{ background: 'rgba(45,27,150,0.3)', color: '#a78bfa' }}>
             {q.formation_title}
           </div>
         )}
 
         {/* Type badge */}
-        <span className="inline-block bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[11px] font-semibold mb-3 ml-1">
+        <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold mb-3 ml-1" style={{ background: '#242424', color: '#a3a3a3' }}>
           {typeLabels[qType] || qType.toUpperCase()}
         </span>
 
@@ -766,7 +769,7 @@ export default function DailyQuizModal({
           {/* Question + Options — right side on desktop when image present */}
           <div className={q.image_url ? "w-full md:w-1/2" : ""}>
             {/* Question text */}
-            <h3 className="text-lg font-bold text-gray-900 leading-snug mb-6">
+            <h3 className="text-lg font-bold leading-snug mb-6" style={{ color: '#e5e5e5' }}>
               {q.question_text}
             </h3>
 
@@ -786,21 +789,21 @@ export default function DailyQuizModal({
                         disabled={selectedAnswer !== null}
                         className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
                         style={{
-                          background: isSelected ? '#F1F5F9' : '#FAFAFF',
-                          border: `2px solid ${isSelected ? '#94A3B8' : '#E2E8F0'}`,
+                          background: isSelected ? 'rgba(45,27,150,0.25)' : '#242424',
+                          border: `2px solid ${isSelected ? '#2D1B96' : '#333'}`,
                           cursor: selectedAnswer ? 'default' : 'pointer',
                         }}
                       >
                         <span
                           className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0"
                           style={{
-                            background: isSelected ? '#475569' : '#E2E8F0',
-                            color: isSelected ? 'white' : '#64748B',
+                            background: isSelected ? '#2D1B96' : '#333',
+                            color: isSelected ? 'white' : '#a3a3a3',
                           }}
                         >
                           {String.fromCharCode(65 + i)}
                         </span>
-                        <span className="flex-1 font-semibold text-sm text-gray-800">{opt.text}</span>
+                        <span className="flex-1 font-semibold text-sm" style={{ color: '#e5e5e5' }}>{opt.text}</span>
                       </button>
                     )
                   })}
@@ -822,18 +825,17 @@ export default function DailyQuizModal({
                           key={opt.id}
                           onClick={() => handleSingleAnswer(opt.id)}
                           disabled={selectedAnswer !== null}
-                          className={`h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 hover:scale-[1.02] transition-all active:scale-95 ${
-                            isVrai
-                              ? 'bg-emerald-50 border-emerald-100 hover:bg-emerald-100 hover:border-emerald-300'
-                              : 'bg-red-50 border-red-100 hover:bg-red-100 hover:border-red-300'
-                          }`}
+                          className="h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 hover:scale-[1.02] transition-all active:scale-95"
+                          style={isVrai
+                            ? { background: 'rgba(6,78,59,0.3)', borderColor: '#059669' }
+                            : { background: 'rgba(69,10,10,0.3)', borderColor: '#ef4444' }}
                         >
                           {isVrai ? (
                             <CheckCircle2 size={28} className="text-emerald-600" />
                           ) : (
                             <X size={28} className="text-red-600" />
                           )}
-                          <span className={`text-lg font-black ${isVrai ? 'text-emerald-700' : 'text-red-700'}`}>
+                          <span className={`text-lg font-black ${isVrai ? 'text-emerald-400' : 'text-red-400'}`}>
                             {opt.text}
                           </span>
                         </button>
@@ -848,18 +850,18 @@ export default function DailyQuizModal({
                   <button
                     onClick={() => handleSingleAnswer('true')}
                     disabled={selectedAnswer !== null}
-                    className="h-24 rounded-2xl bg-emerald-50 border-2 border-emerald-100 flex flex-col items-center justify-center gap-2 hover:bg-emerald-100 hover:border-emerald-300 hover:scale-[1.02] transition-all active:scale-95"
+                    className="h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 hover:scale-[1.02] transition-all active:scale-95" style={{ background: 'rgba(6,78,59,0.3)', borderColor: '#059669' }}
                   >
                     <CheckCircle2 size={28} className="text-emerald-600" />
-                    <span className="text-lg font-black text-emerald-700">VRAI</span>
+                    <span className="text-lg font-black text-emerald-400">VRAI</span>
                   </button>
                   <button
                     onClick={() => handleSingleAnswer('false')}
                     disabled={selectedAnswer !== null}
-                    className="h-24 rounded-2xl bg-red-50 border-2 border-red-100 flex flex-col items-center justify-center gap-2 hover:bg-red-100 hover:border-red-300 hover:scale-[1.02] transition-all active:scale-95"
+                    className="h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 hover:scale-[1.02] transition-all active:scale-95" style={{ background: 'rgba(69,10,10,0.3)', borderColor: '#ef4444' }}
                   >
                     <X size={28} className="text-red-600" />
-                    <span className="text-lg font-black text-red-700">FAUX</span>
+                    <span className="text-lg font-black text-red-400">FAUX</span>
                   </button>
                 </div>
               )
@@ -931,10 +933,10 @@ export default function DailyQuizModal({
                 <div className="space-y-4">
                   {/* Contexte clinique — affiché uniquement si plusieurs sous-questions */}
                   {caseOpts.questions && caseOpts.questions.length > 1 && caseOpts.context?.history && (
-                    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
-                      <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wide mb-2">Contexte clinique</p>
-                      <p className="text-sm text-gray-700 leading-relaxed">{caseOpts.context.history}</p>
-                      {caseOpts.context?.chief_complaint && <p className="text-sm text-gray-600 mt-1 italic">{caseOpts.context.chief_complaint}</p>}
+                    <div className="rounded-2xl p-4" style={{ background: '#0f172a', border: '1px solid #1e3a5f' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: '#60a5fa' }}>Contexte clinique</p>
+                      <p className="text-sm leading-relaxed" style={{ color: '#e5e5e5' }}>{caseOpts.context.history}</p>
+                      {caseOpts.context?.chief_complaint && <p className="text-sm mt-1 italic" style={{ color: '#a3a3a3' }}>{caseOpts.context.chief_complaint}</p>}
                     </div>
                   )}
 
@@ -994,7 +996,7 @@ export default function DailyQuizModal({
               const opts = parseStandardOptions(q.options)
               return (
                 <>
-                  <p className="text-xs text-blue-600 mb-3">Plusieurs reponses possibles — cochez puis validez</p>
+                  <p className="text-xs mb-3" style={{ color: '#60a5fa' }}>Plusieurs reponses possibles — cochez puis validez</p>
                   <div className="flex flex-col gap-2.5">
                     {opts.map(opt => {
                       const isSelected = selectedAnswers.includes(opt.id)
@@ -1008,8 +1010,8 @@ export default function DailyQuizModal({
                           )}
                           className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
                           style={{
-                            background: isSelected ? '#F1F5F9' : '#FAFAFF',
-                            border: `2px solid ${isSelected ? '#94A3B8' : '#E2E8F0'}`,
+                            background: isSelected ? 'rgba(45,27,150,0.25)' : '#242424',
+                            border: `2px solid ${isSelected ? '#2D1B96' : '#333'}`,
                           }}
                         >
                           <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
@@ -1018,7 +1020,7 @@ export default function DailyQuizModal({
                               : <Square size={24} className="text-gray-400" />
                             }
                           </span>
-                          <span className="flex-1 font-semibold text-sm text-gray-800">{opt.text}</span>
+                          <span className="flex-1 font-semibold text-sm" style={{ color: '#e5e5e5' }}>{opt.text}</span>
                         </button>
                       )
                     })}
@@ -1040,7 +1042,7 @@ export default function DailyQuizModal({
               const opts = parseStandardOptions(q.options)
               return (
                 <>
-                  <p className="text-xs text-rose-600 mb-3">Barrez les intrus en les selectionnant</p>
+                  <p className="text-xs mb-3" style={{ color: '#fb7185' }}>Barrez les intrus en les selectionnant</p>
                   <div className="flex flex-col gap-2.5">
                     {opts.map(opt => {
                       const isSelected = selectedAnswers.includes(opt.id)
@@ -1054,8 +1056,8 @@ export default function DailyQuizModal({
                           )}
                           className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
                           style={{
-                            background: isSelected ? '#FEF2F2' : '#FAFAFF',
-                            border: `2px solid ${isSelected ? '#FCA5A5' : '#E2E8F0'}`,
+                            background: isSelected ? 'rgba(69,10,10,0.35)' : '#242424',
+                            border: `2px solid ${isSelected ? '#ef4444' : '#333'}`,
                           }}
                         >
                           <span
@@ -1098,12 +1100,12 @@ export default function DailyQuizModal({
                     {hasWordBank ? 'Selectionnez un mot de la banque pour chaque blanc' : 'Tapez votre reponse'}
                   </p>
 
-                  <div className="bg-white p-4 rounded-2xl border-2 border-gray-100 mb-4 space-y-3">
+                  <div className="p-4 rounded-2xl border-2 mb-4 space-y-3" style={{ background: '#1a1a1a', borderColor: '#333' }}>
                     {opts.blanks.map((blank, idx) => {
                       const answer = fillBlankAnswers[blank.id]
                       return (
                         <div key={blank.id} className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm text-gray-600 font-medium">
+                          <span className="text-sm font-medium" style={{ color: '#a3a3a3' }}>
                             {opts.blanks.length > 1 ? `Blanc ${idx + 1}:` : 'Reponse:'}
                           </span>
 
@@ -1130,7 +1132,7 @@ export default function DailyQuizModal({
                               onChange={e => setFillBlankAnswers(prev => ({ ...prev, [blank.id]: e.target.value }))}
                               placeholder="Tapez votre reponse..."
                               className="flex-1 min-w-[150px] px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all outline-none"
-                              style={{ borderColor: '#CBD5E1', background: 'white', color: '#334155' }}
+                              style={{ borderColor: '#333', background: '#242424', color: '#e5e5e5' }}
                             />
                           )}
                         </div>
@@ -1203,7 +1205,7 @@ export default function DailyQuizModal({
                         <div
                           key={itemId}
                           className="flex items-center gap-2 p-3 rounded-2xl border-2 transition-all"
-                          style={{ background: '#FAFAFF', borderColor: '#E2E8F0' }}
+                          style={{ background: '#242424', borderColor: '#333' }}
                         >
                           <span
                             className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white"
@@ -1211,21 +1213,21 @@ export default function DailyQuizModal({
                           >
                             {index + 1}
                           </span>
-                          <span className="flex-1 text-sm font-semibold text-gray-700">{item.text}</span>
+                          <span className="flex-1 text-sm font-semibold" style={{ color: '#e5e5e5' }}>{item.text}</span>
                           <div className="flex flex-col">
                             <button
                               onClick={() => moveItem(index, index - 1)}
                               disabled={index === 0}
                               className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
                             >
-                              <ChevronUp size={16} className="text-gray-500" />
+                              <ChevronUp size={16} style={{ color: '#a3a3a3' }} />
                             </button>
                             <button
                               onClick={() => moveItem(index, index + 1)}
                               disabled={index === orderingOrder.length - 1}
                               className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
                             >
-                              <ChevronDown size={16} className="text-gray-500" />
+                              <ChevronDown size={16} style={{ color: '#a3a3a3' }} />
                             </button>
                           </div>
                         </div>
@@ -1261,7 +1263,7 @@ export default function DailyQuizModal({
                   <div className="grid grid-cols-2 gap-3">
                     {/* Colonne gauche */}
                     <div className="flex flex-col gap-2">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">À associer</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#6b7280' }}>À associer</p>
                       {pairs.map((pair) => {
                         const isSelected = selectedLeftMatching === pair.left
                         const isMatched = !!matchingMatches[pair.left]
@@ -1275,7 +1277,7 @@ export default function DailyQuizModal({
                             style={{
                               background: isCorrectMatch ? '#F0FDF4' : isWrongMatch ? '#FEF2F2' : isSelected ? '#EEF2FF' : isMatched ? '#F8FAFC' : '#FAFAFF',
                               border: `2px solid ${isCorrectMatch ? '#4ADE80' : isWrongMatch ? '#FCA5A5' : isSelected ? '#6366F1' : isMatched ? '#CBD5E1' : '#E2E8F0'}`,
-                              color: '#334155'
+                              color: '#e5e5e5'
                             }}>
                             {pair.left}
                           </button>
@@ -1284,7 +1286,7 @@ export default function DailyQuizModal({
                     </div>
                     {/* Colonne droite */}
                     <div className="flex flex-col gap-2">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Options</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#6b7280' }}>Options</p>
                       {pairs.map((pair) => {
                         const isAssignedTo = Object.entries(matchingMatches).find(([, v]) => v === pair.right)
                         return (
@@ -1299,7 +1301,7 @@ export default function DailyQuizModal({
                             style={{
                               background: isAssignedTo ? '#F8FAFC' : selectedLeftMatching ? '#FAFFFE' : '#FAFAFF',
                               border: `2px solid ${isAssignedTo ? '#CBD5E1' : selectedLeftMatching ? '#00D1C1' : '#E2E8F0'}`,
-                              color: '#334155'
+                              color: '#e5e5e5'
                             }}>
                             {pair.right}
                           </button>
@@ -1414,7 +1416,7 @@ function FeedbackPanel({
             {opts.map((opt, i) => {
               const isSelected = selectedAnswer === opt.id
               const optCorrect = opt.correct
-              let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#94A3B8'
+              let bg = '#1a1a1a', border = '#333', textColor = '#6b7280'
               if (optCorrect) { bg = '#F0FDF4'; border = '#4ADE80'; textColor = '#334155' }
               else if (isSelected) { bg = '#FEF2F2'; border = '#FCA5A5'; textColor = '#334155' }
               return (
@@ -1442,7 +1444,7 @@ function FeedbackPanel({
             {opts.map(opt => {
               const isSelected = selectedAnswers.includes(opt.id)
               const optCorrect = opt.correct
-              let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#94A3B8'
+              let bg = '#1a1a1a', border = '#333', textColor = '#6b7280'
               if (optCorrect) { bg = '#F0FDF4'; border = '#4ADE80'; textColor = '#334155' }
               else if (isSelected) { bg = '#FEF2F2'; border = '#FCA5A5'; textColor = '#334155' }
               return (
@@ -1489,14 +1491,14 @@ function FeedbackPanel({
         const opts = parseFillBlankOptions(q.options)
         if (!opts) return null
         return (
-          <div className="bg-white p-4 rounded-2xl border-2 border-gray-100 mb-4 space-y-3">
+          <div className="p-4 rounded-2xl border-2 mb-4 space-y-3" style={{ background: '#1a1a1a', borderColor: '#333' }}>
             {opts.blanks.map((blank, idx) => {
               const answer = fillBlankAnswers[blank.id] || ''
               const correct = answer.toLowerCase().trim() === blank.correctAnswer.toLowerCase().trim() ||
                 (blank.alternatives?.some(a => a.toLowerCase().trim() === answer.toLowerCase().trim()) ?? false)
               return (
                 <div key={blank.id} className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm text-gray-600 font-medium">
+                  <span className="text-sm font-medium" style={{ color: '#a3a3a3' }}>
                     {opts.blanks.length > 1 ? `Blanc ${idx + 1}:` : 'Reponse:'}
                   </span>
                   <span className="px-3 py-1.5 rounded-xl border-2 text-sm font-semibold"
@@ -1535,7 +1537,7 @@ function FeedbackPanel({
                     style={{ background: isCorrectPos ? '#22C55E' : '#EF4444' }}>
                     {index + 1}
                   </span>
-                  <span className="flex-1 text-sm font-semibold text-gray-700">{item.text}</span>
+                  <span className="flex-1 text-sm font-semibold" style={{ color: '#e5e5e5' }}>{item.text}</span>
                   {!isCorrectPos && <span className="text-xs text-emerald-600">&rarr; Pos. {item.correctPosition}</span>}
                 </div>
               )
@@ -1562,8 +1564,8 @@ function FeedbackPanel({
                     background: isCorrectMatch ? '#F0FDF4' : '#FEF2F2',
                     borderColor: isCorrectMatch ? '#4ADE80' : '#FCA5A5',
                   }}>
-                  <span className="text-sm font-semibold text-gray-700">{pair.left}</span>
-                  <span className="text-gray-400 mx-1">&rarr;</span>
+                  <span className="text-sm font-semibold" style={{ color: '#e5e5e5' }}>{pair.left}</span>
+                  <span className="mx-1" style={{ color: '#6b7280' }}>&rarr;</span>
                   <span className="text-sm font-semibold" style={{ color: isCorrectMatch ? '#16A34A' : '#DC2626' }}>
                     {userAnswer || '?'}
                   </span>
@@ -1589,11 +1591,10 @@ function FeedbackPanel({
 
       {/* Feedback card */}
       <div
-        className={`rounded-2xl p-5 ${
-          isCorrect
-            ? 'bg-emerald-50 border border-emerald-100'
-            : 'bg-red-50 border border-red-100'
-        }`}
+        className="rounded-2xl p-5"
+        style={isCorrect
+          ? { background: 'rgba(6,78,59,0.25)', border: '1px solid #059669' }
+          : { background: 'rgba(69,10,10,0.25)', border: '1px solid #ef4444' }}
       >
         <div className="flex items-center gap-3 mb-3">
           <div
@@ -1608,7 +1609,7 @@ function FeedbackPanel({
           <div>
             <span
               className={`text-lg font-bold ${
-                isCorrect ? 'text-emerald-800' : 'text-red-800'
+                isCorrect ? 'text-emerald-400' : 'text-red-400'
               }`}
             >
               {isCorrect ? 'Exact !' : 'Incorrect'}
@@ -1618,12 +1619,12 @@ function FeedbackPanel({
             )}
           </div>
         </div>
-        <p className="text-sm text-gray-700 leading-relaxed mb-4">
+        <p className="text-sm leading-relaxed mb-4" style={{ color: '#e5e5e5' }}>
           {isCorrect ? q.feedback_correct : q.feedback_incorrect}
         </p>
         <button
           onClick={onNext}
-          className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors"
+          className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors" style={{ background: '#e5e5e5', color: '#0F0F0F' }}
         >
           {current < total - 1 ? 'Suivant' : 'Voir mon score'}
           <ArrowRight size={16} />
