@@ -101,8 +101,8 @@ export default function AudioPlayer({
 
         {/* Image desktop — carré fixe 280×280 */}
         {coverImageUrl && (
-          <div className="hidden md:flex md:items-center md:justify-center md:flex-shrink-0 md:rounded-2xl overflow-hidden bg-gradient-to-b from-[#F4A89A]/20 to-[#A8D4F4]/20"
-               style={{ width: '280px', minWidth: '280px' }}>
+          <div className="hidden md:flex md:items-center md:justify-center md:flex-shrink-0 md:rounded-2xl overflow-hidden"
+               style={{ background: '#1a1a1a', width: '280px', minWidth: '280px' }}>
             <img
               src={coverImageUrl}
               alt={sequenceTitle}
