@@ -363,10 +363,10 @@ export default function FormationDetail({
           {/* Points */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-900/30 flex items-center justify-center">
-                <Star size={16} className="text-amber-500" fill="#F59E0B" />
+              <div className="w-9 h-9 rounded-lg bg-amber-900/30 flex items-center justify-center shrink-0">
+                <Star size={20} className="text-amber-500" fill="#F59E0B" />
               </div>
-              <div>
+              <div className="flex items-center gap-2">
                 <p className="text-sm text-[#a3a3a3]">Points gagnés</p>
                 <p className="text-sm font-bold text-[#e5e5e5]">{earnedPoints} <span className="text-sm text-[#a3a3a3] font-normal">/ {totalPoints}</span></p>
               </div>
