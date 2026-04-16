@@ -524,7 +524,7 @@ export default function SequencePlayer({
 
   if (loadingQuestions) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAFAFF]">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0F0F0F' }}>
         <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
       </div>
     )
@@ -532,10 +532,10 @@ export default function SequencePlayer({
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FAFAFF] p-4">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: '#0F0F0F' }}>
         <div className="text-center">
-          <p className="text-gray-500 mb-4">{error.message}</p>
-          <button onClick={onBack} className="px-4 py-2 bg-gray-100 rounded-xl text-sm">Retour</button>
+          <p className="mb-4" style={{ color: '#a3a3a3' }}>{error.message}</p>
+          <button onClick={onBack} className="px-4 py-2 rounded-xl text-sm" style={{ background: '#242424', color: '#e5e5e5' }}>Retour</button>
         </div>
       </div>
     )
@@ -544,13 +544,13 @@ export default function SequencePlayer({
   // Séquence sans questions mais avec média (ex: intro avec audio uniquement)
   if (questions.length === 0 && hasMedia) {
     return (
-      <div className="min-h-screen bg-[#FAFAFF] flex flex-col">
+      <div className="min-h-screen flex flex-col" style={{ background: '#0F0F0F' }}>
         {/* Header */}
-        <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-          <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-lg">
-            <ChevronLeft size={20} className="text-gray-600" />
+        <div className="sticky top-0 z-20 px-4 py-3 flex items-center gap-3" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
+          <button onClick={onBack} className="p-1 rounded-lg" style={{ color: '#a3a3a3' }}>
+            <ChevronLeft size={20} />
           </button>
-          <p className="flex-1 font-bold text-sm text-gray-800 truncate">{sequence.title}</p>
+          <p className="flex-1 font-bold text-sm truncate" style={{ color: '#e5e5e5' }}>{sequence.title}</p>
         </div>
 
         <div className="flex-1 p-4">
@@ -579,7 +579,7 @@ export default function SequencePlayer({
                 className="w-full rounded-2xl"
               />
               {sequence.course_duration_seconds && (
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm mt-2" style={{ color: '#a3a3a3' }}>
                   Durée : {Math.floor(sequence.course_duration_seconds / 60)} min
                 </p>
               )}
@@ -604,9 +604,9 @@ export default function SequencePlayer({
   // Séquence sans questions et sans média — aucun contenu
   if (questions.length === 0) {
     return (
-      <div className="min-h-screen bg-[#FAFAFF] p-4 flex flex-col items-center justify-center">
-        <p className="text-gray-500 mb-4">Aucun contenu disponible</p>
-        <button onClick={onBack} className="px-4 py-2 bg-gray-100 rounded-xl text-sm">Retour</button>
+      <div className="min-h-screen p-4 flex flex-col items-center justify-center" style={{ background: '#0F0F0F' }}>
+        <p className="mb-4" style={{ color: '#a3a3a3' }}>Aucun contenu disponible</p>
+        <button onClick={onBack} className="px-4 py-2 rounded-xl text-sm" style={{ background: '#242424', color: '#e5e5e5' }}>Retour</button>
       </div>
     )
   }
@@ -619,13 +619,13 @@ export default function SequencePlayer({
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ background: '#0F0F0F' }}>
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-3 hidden md:flex items-center gap-3">
-        <button onClick={onBack} className="p-1 hover:bg-gray-100 rounded-lg">
-          <ChevronLeft size={20} className="text-gray-600" />
+      <div className="sticky top-0 z-20 px-4 py-3 hidden md:flex items-center gap-3" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
+        <button onClick={onBack} className="p-1 rounded-lg" style={{ color: '#a3a3a3' }}>
+          <ChevronLeft size={20} />
         </button>
-        <p className="flex-1 font-bold text-sm text-gray-800 truncate">{sequence.title}</p>
+        <p className="flex-1 font-bold text-sm truncate" style={{ color: '#e5e5e5' }}>{sequence.title}</p>
         <span className="font-bold text-[13px] text-amber-600">⭐ {totalPoints}</span>
       </div>
 
@@ -668,7 +668,7 @@ export default function SequencePlayer({
                   }}
                 />
                 {sequence.course_duration_seconds && (
-                  <p className="text-sm text-gray-500 mt-2">
+                  <p className="text-sm mt-2" style={{ color: '#a3a3a3' }}>
                     Durée : {Math.floor(sequence.course_duration_seconds / 60)} min
                   </p>
                 )}
@@ -699,8 +699,8 @@ export default function SequencePlayer({
                   {/* Bouton retour */}
                   <button
                     onClick={onBack}
-                    className="flex items-center justify-center gap-2 px-4 py-3
-                               bg-gray-100 text-gray-700 font-semibold rounded-2xl"
+                    className="flex items-center justify-center gap-2 px-4 py-3 font-semibold rounded-2xl"
+                    style={{ background: '#242424', color: '#e5e5e5' }}
                   >
                     <ArrowLeft size={18} />
                     Retour
@@ -750,16 +750,16 @@ export default function SequencePlayer({
               {/* Progress */}
               <div className="mb-4">
                 <div className="flex justify-between mb-1.5">
-                  <span className="text-xs text-gray-500">Question {currentQ + 1}/{questions.length}</span>
-                  <span className="text-xs text-gray-500">⭐ {totalPoints} pts</span>
+                  <span className="text-xs" style={{ color: '#a3a3a3' }}>Question {currentQ + 1}/{questions.length}</span>
+                  <span className="text-xs" style={{ color: '#a3a3a3' }}>⭐ {totalPoints} pts</span>
                 </div>
-                <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#242424' }}>
                   <div className="h-full rounded-full transition-all duration-500" style={{ background: `linear-gradient(90deg, ${categoryGradient.from}, ${categoryGradient.to})`, width: `${((currentQ + 1) / questions.length) * 100}%` }} />
                 </div>
               </div>
 
               {/* Type badge */}
-              <span className="inline-block bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[11px] font-semibold mb-3">
+              <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold mb-3" style={{ background: '#242424', color: '#a3a3a3' }}>
                 {typeLabels[qType] || qType.toUpperCase()}
               </span>
 
@@ -775,7 +775,7 @@ export default function SequencePlayer({
                 {/* Question + Options — right side on desktop when image present */}
                 <div className={q.image_url ? "w-full md:w-1/2" : ""}>
                   {/* Question text */}
-                  <h2 className="text-[16px] font-bold text-gray-800 leading-relaxed mb-5">{q.question_text}</h2>
+                  <h2 className="text-[16px] font-bold leading-relaxed mb-5" style={{ color: '#e5e5e5' }}>{q.question_text}</h2>
 
               {/* === MCQ / TRUE_FALSE / MCQ_IMAGE === */}
               {(qType === 'mcq' || qType === 'true_false' || qType === 'mcq_image' || qType === 'image') && (
@@ -783,9 +783,9 @@ export default function SequencePlayer({
                   {parseStandardOptions(q.options).map((opt, i) => {
                     const isSelected = selectedAnswer === opt.id
                     const isCorrect = opt.correct
-                    let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155', badgeBg = '#E2E8F0', badgeColor = '#64748B'
-                    
-                    if (isSelected && !showFeedback) { bg = '#F1F5F9'; border = '#94A3B8'; badgeBg = '#475569'; badgeColor = 'white' }
+                    let bg = '#242424', border = '#333', textColor = '#e5e5e5', badgeBg = '#333', badgeColor = '#a3a3a3'
+
+                    if (isSelected && !showFeedback) { bg = 'rgba(45,27,150,0.25)'; border = '#2D1B96'; badgeBg = '#2D1B96'; badgeColor = 'white' }
                     if (showFeedback) {
                       if (isCorrect) { bg = '#F0FDF4'; border = '#4ADE80'; badgeBg = '#22C55E'; badgeColor = 'white' }
                       else if (isSelected) { bg = '#FEF2F2'; border = '#FCA5A5'; badgeBg = '#EF4444'; badgeColor = 'white' }
@@ -822,8 +822,8 @@ export default function SequencePlayer({
                     {opts.map((opt, i) => {
                       const isSelected = selectedAnswer === opt.id
                       const isCorrectOpt = opt.correct
-                      let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155'
-                      if (isSelected && !showFeedback) { bg = '#F1F5F9'; border = '#94A3B8' }
+                      let bg = '#242424', border = '#333', textColor = '#e5e5e5'
+                      if (isSelected && !showFeedback) { bg = 'rgba(45,27,150,0.25)'; border = '#2D1B96' }
                       if (showFeedback) {
                         if (isCorrectOpt) { bg = '#F0FDF4'; border = '#4ADE80' }
                         else if (isSelected && !isCorrectOpt) { bg = '#FEF2F2'; border = '#FCA5A5' }
@@ -868,15 +868,15 @@ export default function SequencePlayer({
                   <div className="space-y-4">
                     {/* Contexte clinique — affiché uniquement si plusieurs sous-questions */}
                     {caseOpts.questions && caseOpts.questions.length > 1 && caseOpts.context?.history && (
-                      <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4">
-                        <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wide mb-2">
+                      <div className="rounded-2xl p-4" style={{ background: '#0f172a', border: '1px solid #1e3a5f' }}>
+                        <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: '#60a5fa' }}>
                           Contexte clinique
                         </p>
-                        <p className="text-sm text-gray-700 leading-relaxed">
+                        <p className="text-sm leading-relaxed" style={{ color: '#e5e5e5' }}>
                           {caseOpts.context.history}
                         </p>
                         {caseOpts.context?.chief_complaint && (
-                          <p className="text-sm text-gray-600 mt-1 italic">
+                          <p className="text-sm mt-1 italic" style={{ color: '#a3a3a3' }}>
                             {caseOpts.context.chief_complaint}
                           </p>
                         )}
@@ -885,11 +885,11 @@ export default function SequencePlayer({
 
                     {/* Sous-question */}
                     {caseOpts.questions.length > 1 && (
-                      <p className="text-[11px] text-gray-400">
+                      <p className="text-[11px]" style={{ color: '#6b7280' }}>
                         Question {caseStudyCurrentQ + 1} / {caseOpts.questions.length}
                       </p>
                     )}
-                    <p className="font-bold text-gray-900 text-[15px] leading-snug">
+                    <p className="font-bold text-[15px] leading-snug" style={{ color: '#e5e5e5' }}>
                       {subQ.text}
                     </p>
 
@@ -898,8 +898,8 @@ export default function SequencePlayer({
                       {(subQ.choices || []).map((choice, i) => {
                         const isSelected = caseStudyAnswers[subQ.id] === choice.id
                         const isCorrect = choice.correct
-                        let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155'
-                        if (isSelected && !showFeedback) { bg = '#F1F5F9'; border = '#94A3B8' }
+                        let bg = '#242424', border = '#333', textColor = '#e5e5e5'
+                        if (isSelected && !showFeedback) { bg = 'rgba(45,27,150,0.25)'; border = '#2D1B96' }
                         if (showFeedback) {
                           if (isCorrect) { bg = '#F0FDF4'; border = '#4ADE80' }
                           else if (isSelected && !isCorrect) { bg = '#FEF2F2'; border = '#FCA5A5' }
@@ -965,13 +965,13 @@ export default function SequencePlayer({
               {/* === CHECKBOX === */}
               {qType === 'checkbox' && (
                 <>
-                  <p className="text-xs text-blue-600 mb-3">☑️ Plusieurs réponses possibles — cochez puis validez</p>
+                  <p className="text-xs mb-3" style={{ color: '#60a5fa' }}>☑️ Plusieurs réponses possibles — cochez puis validez</p>
                   <div className="flex flex-col gap-2.5">
                     {parseStandardOptions(q.options).map((opt) => {
                       const isSelected = selectedAnswers.includes(opt.id)
                       const isCorrect = opt.correct
-                      let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155'
-                      if (isSelected && !showFeedback) { bg = '#F1F5F9'; border = '#94A3B8' }
+                      let bg = '#242424', border = '#333', textColor = '#e5e5e5'
+                      if (isSelected && !showFeedback) { bg = 'rgba(45,27,150,0.25)'; border = '#2D1B96' }
                       if (showFeedback) {
                         if (isCorrect) { bg = '#F0FDF4'; border = '#4ADE80' }
                         else if (isSelected) { bg = '#FEF2F2'; border = '#FCA5A5' }
@@ -1002,13 +1002,13 @@ export default function SequencePlayer({
               {/* === HIGHLIGHT === */}
               {qType === 'highlight' && (
                 <>
-                  <p className="text-xs text-rose-600 mb-3">🚫 Barrez les intrus en les sélectionnant</p>
+                  <p className="text-xs mb-3" style={{ color: '#fb7185' }}>🚫 Barrez les intrus en les sélectionnant</p>
                   <div className="flex flex-col gap-2.5">
                     {parseStandardOptions(q.options).map((opt) => {
                       const isSelected = selectedAnswers.includes(opt.id)
                       const isIntrus = !opt.correct
-                      let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155', textDeco = 'none'
-                      if (isSelected && !showFeedback) { bg = '#FEF2F2'; border = '#FCA5A5'; textDeco = 'line-through' }
+                      let bg = '#242424', border = '#333', textColor = '#e5e5e5', textDeco = 'none'
+                      if (isSelected && !showFeedback) { bg = 'rgba(69,10,10,0.35)'; border = '#ef4444'; textDeco = 'line-through' }
                       if (showFeedback) {
                         if (isIntrus) { bg = '#FEF2F2'; border = '#FCA5A5'; textDeco = 'line-through'; textColor = '#DC2626' }
                         else if (isSelected) { bg = '#FEF2F2'; border = '#EF4444'; textColor = '#EF4444' }
@@ -1044,12 +1044,12 @@ export default function SequencePlayer({
                 
                 return (
                   <>
-                    <p className="text-xs text-indigo-600 mb-3">
+                    <p className="text-xs mb-3" style={{ color: '#818cf8' }}>
                       {hasWordBank ? '📝 Sélectionnez un mot de la banque pour chaque blanc' : '📝 Tapez votre réponse'}
                     </p>
                     
                     {/* Blanks */}
-                    <div className="bg-white p-4 rounded-2xl border-2 border-gray-100 mb-4 space-y-3">
+                    <div className="p-4 rounded-2xl border-2 mb-4 space-y-3" style={{ background: '#1a1a1a', borderColor: '#333' }}>
                       {opts.blanks.map((blank, idx) => {
                         const answer = fillBlankAnswers[blank.id]
                         const isCorrect = answer && (
@@ -1059,7 +1059,7 @@ export default function SequencePlayer({
                         
                         return (
                           <div key={blank.id} className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm text-gray-600 font-medium">
+                            <span className="text-sm font-medium" style={{ color: '#a3a3a3' }}>
                               {opts.blanks.length > 1 ? `Blanc ${idx + 1}:` : 'Réponse:'}
                             </span>
                             
@@ -1091,9 +1091,9 @@ export default function SequencePlayer({
                                 placeholder="Tapez votre réponse..."
                                 className="flex-1 min-w-[150px] px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all outline-none"
                                 style={{
-                                  borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : '#CBD5E1',
-                                  background: showFeedback ? (isCorrect ? '#F0FDF4' : '#FEF2F2') : 'white',
-                                  color: showFeedback ? (isCorrect ? '#16A34A' : '#DC2626') : '#334155',
+                                  borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : '#333',
+                                  background: showFeedback ? (isCorrect ? '#052e16' : '#450a0a') : '#242424',
+                                  color: showFeedback ? (isCorrect ? '#4ade80' : '#f87171') : '#e5e5e5',
                                 }}
                               />
                             )}
@@ -1172,21 +1172,21 @@ export default function SequencePlayer({
                         return (
                           <div key={itemId} className="flex items-center gap-2 p-3 rounded-2xl border-2 transition-all"
                             style={{
-                              background: showFeedback ? (isCorrectPos ? '#F0FDF4' : '#FEF2F2') : '#FAFAFF',
-                              borderColor: showFeedback ? (isCorrectPos ? '#4ADE80' : '#FCA5A5') : '#E2E8F0',
+                              background: showFeedback ? (isCorrectPos ? '#052e16' : '#450a0a') : '#242424',
+                              borderColor: showFeedback ? (isCorrectPos ? '#4ADE80' : '#FCA5A5') : '#333',
                             }}>
                             <span className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold"
                               style={{ background: showFeedback ? (isCorrectPos ? '#22C55E' : '#EF4444') : categoryGradient.from, color: 'white' }}>
                               {index + 1}
                             </span>
-                            <span className="flex-1 text-sm font-semibold text-gray-700">{item.text}</span>
+                            <span className="flex-1 text-sm font-semibold" style={{ color: '#e5e5e5' }}>{item.text}</span>
                             {!showFeedback && (
                               <div className="flex flex-col">
                                 <button onClick={() => moveItem(index, index - 1)} disabled={index === 0} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
-                                  <ChevronUp size={16} className="text-gray-500" />
+                                  <ChevronUp size={16} style={{ color: '#a3a3a3' }} />
                                 </button>
                                 <button onClick={() => moveItem(index, index + 1)} disabled={index === orderingOrder.length - 1} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
-                                  <ChevronDown size={16} className="text-gray-500" />
+                                  <ChevronDown size={16} style={{ color: '#a3a3a3' }} />
                                 </button>
                               </div>
                             )}
@@ -1211,7 +1211,7 @@ export default function SequencePlayer({
 
                 return (
                   <>
-                    <p className="text-xs text-teal-600 mb-3">🔗 Cliquez sur un élément gauche puis son correspondant à droite</p>
+                    <p className="text-xs mb-3" style={{ color: '#2DD4BF' }}>🔗 Cliquez sur un élément gauche puis son correspondant à droite</p>
                     <div className="grid grid-cols-2 gap-3">
                       {/* Gauche */}
                       <div className="flex flex-col gap-2">
@@ -1225,9 +1225,9 @@ export default function SequencePlayer({
                               disabled={showFeedback || !!isMatched}
                               className="p-3 rounded-xl border-2 text-left text-sm font-semibold transition-all"
                               style={{
-                                background: showFeedback ? (isCorrect ? '#F0FDF4' : '#FEF2F2') : isSelected ? `${categoryGradient.from}15` : isMatched ? '#F1F5F9' : '#FAFAFF',
-                                borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : isSelected ? categoryGradient.from : isMatched ? '#94A3B8' : '#E2E8F0',
-                                color: '#334155', opacity: isMatched && !showFeedback ? 0.7 : 1,
+                                background: showFeedback ? (isCorrect ? '#052e16' : '#450a0a') : isSelected ? `${categoryGradient.from}30` : isMatched ? '#2a2a2a' : '#242424',
+                                borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : isSelected ? categoryGradient.from : isMatched ? '#444' : '#333',
+                                color: '#e5e5e5', opacity: isMatched && !showFeedback ? 0.7 : 1,
                               }}>
                               {pair.left}
                             </button>
@@ -1248,8 +1248,8 @@ export default function SequencePlayer({
                               disabled={showFeedback || isMatched}
                               className="p-3 rounded-xl border-2 text-left text-sm font-semibold transition-all"
                               style={{
-                                background: isMatched ? '#F1F5F9' : selectedLeftMatching ? `${categoryGradient.from}10` : '#FAFAFF',
-                                borderColor: isMatched ? '#94A3B8' : '#E2E8F0',
+                                background: isMatched ? '#2a2a2a' : selectedLeftMatching ? `${categoryGradient.from}20` : '#242424',
+                                borderColor: isMatched ? '#444' : '#333',
                                 opacity: isMatched ? 0.6 : 1,
                               }}>
                               {pair.right}
@@ -1272,7 +1272,7 @@ export default function SequencePlayer({
               {!['mcq', 'true_false', 'mcq_image', 'image', 'checkbox', 'highlight', 'fill_blank', 'ordering', 'matching', 'drag_drop', 'case_study'].includes(qType) && (
                 <div className="text-center py-8">
                   <AlertCircle size={48} className="text-amber-500 mx-auto mb-3" />
-                  <p className="text-gray-600 mb-2">Type &quot;{qType}&quot; non encore implémenté</p>
+                  <p className="mb-2" style={{ color: '#a3a3a3' }}>Type &quot;{qType}&quot; non encore implémenté</p>
                   <button onClick={skipQuestion} className="px-6 py-3 rounded-xl text-white font-bold" style={{ background: categoryGradient.from }}>
                     Passer cette question
                   </button>
@@ -1290,14 +1290,14 @@ export default function SequencePlayer({
         {playerStep === 'results' && (
           <div className="text-center py-5">
             <div className="w-28 h-28 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: `conic-gradient(${score >= 75 ? '#22C55E' : score >= 50 ? '#FBBF24' : '#EF4444'} ${score * 3.6}deg, #E2E8F0 0deg)` }}>
-              <div className="w-[88px] h-[88px] rounded-full bg-white flex items-center justify-center">
-                <span className="text-3xl font-extrabold text-gray-800">{score}%</span>
+              <div className="w-[88px] h-[88px] rounded-full flex items-center justify-center" style={{ background: '#0F0F0F' }}>
+                <span className="text-3xl font-extrabold" style={{ color: '#e5e5e5' }}>{score}%</span>
               </div>
             </div>
-            <h2 className="text-[22px] font-extrabold text-gray-800 mb-1">
+            <h2 className="text-[22px] font-extrabold mb-1" style={{ color: '#e5e5e5' }}>
               {score === 100 ? 'Parfait ! 🏆' : score >= 75 ? 'Excellent ! ✨' : score >= 50 ? 'Bien joué ! 💪' : 'Continue ! 📚'}
             </h2>
-            <p className="text-sm text-gray-500 mb-6">{correctCount}/{questions.length} bonnes réponses</p>
+            <p className="text-sm mb-6" style={{ color: '#a3a3a3' }}>{correctCount}/{questions.length} bonnes réponses</p>
             <div className="inline-flex items-center gap-3 bg-gradient-to-r from-amber-100 to-amber-200 rounded-2xl px-5 py-4 mb-6">
               <span className="text-3xl">⭐</span>
               <div className="text-left">
@@ -1332,12 +1332,12 @@ export default function SequencePlayer({
       {showOverlay && overlayData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="
-            bg-white w-full rounded-3xl overflow-hidden shadow-2xl
+            w-full rounded-3xl overflow-hidden shadow-2xl
             flex flex-col
             max-h-[80vh]
             sm:max-w-2xl sm:max-h-[75vh]
             lg:max-w-3xl
-          ">
+          " style={{ background: '#1a1a1a' }}>
 
             {/* Header coloré — compact sur mobile */}
             <div className={`flex items-center gap-4 px-6 py-4 shrink-0 ${
@@ -1363,16 +1363,16 @@ export default function SequencePlayer({
 
             {/* Feedback — scrollable si nécessaire */}
             <div className="flex-1 overflow-y-auto px-6 py-5 min-h-0">
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+              <p className="text-[11px] font-bold uppercase tracking-wider mb-2" style={{ color: '#6b7280' }}>
                 Explication
               </p>
-              <p className="text-sm text-gray-700 leading-relaxed sm:text-base">
+              <p className="text-sm leading-relaxed sm:text-base" style={{ color: '#e5e5e5' }}>
                 {overlayData.feedback}
               </p>
             </div>
 
             {/* Bouton fixe en bas */}
-            <div className="shrink-0 px-6 py-4 bg-white border-t border-gray-100">
+            <div className="shrink-0 px-6 py-4" style={{ background: '#1a1a1a', borderTop: '0.5px solid #2a2a2a' }}>
               <button
                 onClick={nextQuestion}
                 className="w-full py-4 rounded-2xl font-black text-white text-[15px] transition-all active:scale-[0.98] hover:opacity-95"
