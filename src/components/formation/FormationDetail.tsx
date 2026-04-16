@@ -347,8 +347,8 @@ export default function FormationDetail({
       <div className="px-4 pt-4">
         <div className="rounded-2xl p-4" style={{ background: '#242424', border: '0.5px solid #333' }}>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-[#e5e5e5]">Votre progression</span>
-            <span className="text-xs text-[#6b7280]">{completedInFormation}/{sequences.length} séquences</span>
+            <span className="text-sm font-semibold text-[#e5e5e5]">Ta progression</span>
+            <span className="text-sm text-[#a3a3a3]">{completedInFormation}/{sequences.length} séquences</span>
           </div>
 
           {/* Barre de progression */}
@@ -366,11 +366,11 @@ export default function FormationDetail({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-amber-900/30 flex items-center justify-center">
-                <Star size={16} className="text-amber-600" />
+                <Star size={16} className="text-amber-500" fill="#F59E0B" />
               </div>
               <div>
-                <p className="text-xs text-[#6b7280]">Points gagnés</p>
-                <p className="font-bold text-[#e5e5e5]">{earnedPoints} <span className="text-gray-400 font-normal">/ {totalPoints}</span></p>
+                <p className="text-sm text-[#a3a3a3]">Points gagnés</p>
+                <p className="text-sm font-bold text-[#e5e5e5]">{earnedPoints} <span className="text-sm text-[#a3a3a3] font-normal">/ {totalPoints}</span></p>
               </div>
             </div>
             
