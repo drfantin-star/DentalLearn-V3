@@ -7,7 +7,6 @@ import {
   Lock,
   Play,
   Loader2,
-  Heart,
   Star,
   Trophy,
   Sparkles,
@@ -17,7 +16,6 @@ import {
   useUserFormationProgress,
   usePremiumAccess,
   usePreviewMode,
-  useFormationLike,
   useFormationPoints,
   useFormationCompletion,
   isSequenceAccessible,
@@ -177,16 +175,12 @@ function CompletionModal({
   formation,
   earnedPoints,
   totalPoints,
-  isLiked,
-  onToggleLike,
   onClose,
   gradient,
 }: {
   formation: { title: string; instructor_name: string }
   earnedPoints: number
   totalPoints: number
-  isLiked: boolean
-  onToggleLike: () => void
   onClose: () => void
   gradient: { from: string; to: string }
 }) {
@@ -225,22 +219,6 @@ function CompletionModal({
           </p>
         </div>
 
-        {/* Like */}
-        <p className="text-sm text-[#a3a3a3] mb-3">
-          Cette formation vous a plu ?
-        </p>
-        <button
-          onClick={onToggleLike}
-          className={`inline-flex items-center gap-2 px-6 py-3 rounded-2xl font-bold text-sm transition-all ${
-            isLiked
-              ? 'bg-pink-100 text-pink-600'
-              : 'bg-[#333] text-[#a3a3a3] hover:bg-pink-50 hover:text-pink-500'
-          }`}
-        >
-          <Heart size={20} className={isLiked ? 'fill-pink-500' : ''} />
-          {isLiked ? 'Merci pour votre like !' : 'Liker cette formation'}
-        </button>
-
         {/* Fermer */}
         <button
           onClick={onClose}
@@ -267,7 +245,7 @@ export default function FormationDetail({
   const { currentSequence, completedSequenceIds } = useUserFormationProgress(formationId, formation?.access_type)
   const { isPremium } = usePremiumAccess()
   const { isPreview } = usePreviewMode(formation?.access_type)
-  const { isLiked, likesCount, toggleLike } = useFormationLike(formationId)
+  // like supprimé
   const { totalPoints, earnedPoints } = useFormationPoints(formationId)
   const { completionPercent } = useFormationCompletion(formationId, sequences, completedSequenceIds)
 
@@ -329,22 +307,20 @@ export default function FormationDetail({
           formation={formation}
           earnedPoints={earnedPoints}
           totalPoints={totalPoints}
-          isLiked={isLiked}
-          onToggleLike={toggleLike}
           onClose={() => setShowCompletionModal(false)}
           gradient={categoryConfig.gradient}
         />
       )}
 
-      {/* Header gradient */}
+      {/* Header gradient — compact */}
       <div
-        className="pt-14 pb-6 px-4 rounded-b-[28px] relative"
+        className="pt-4 pb-5 px-4 rounded-b-[28px] relative"
         style={{
           background: `linear-gradient(135deg, ${categoryConfig.gradient.from}, ${categoryConfig.gradient.to})`,
         }}
       >
-        {/* Bouton retour + Like */}
-        <div className="flex justify-between items-center mb-3">
+        {/* Bouton retour */}
+        <div className="flex items-center mb-3">
           <button
             onClick={onBack}
             className="p-2 rounded-xl text-white hover:bg-white/20 transition-colors"
@@ -352,51 +328,19 @@ export default function FormationDetail({
           >
             <ChevronLeft size={20} />
           </button>
-          
-          {/* Bouton Like */}
-          <button
-            onClick={toggleLike}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl transition-all"
-            style={{ background: isLiked ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.2)' }}
-          >
-            <Heart
-              size={18}
-              className={isLiked ? 'text-pink-500 fill-pink-500' : 'text-white'}
-            />
-            <span className={`text-sm font-bold ${isLiked ? 'text-pink-500' : 'text-white'}`}>
-              {likesCount}
-            </span>
-          </button>
         </div>
 
         {/* Titre */}
-        <h1 className="text-xl font-extrabold text-white leading-tight mb-1">
+        <h1 className="text-xl font-extrabold text-white leading-tight mb-2">
           {formation.title}
         </h1>
 
-        {/* Instructeur */}
-        <p className="text-white/85 text-[13px] mb-3">{formation.instructor_name}</p>
-
-        {/* Tags */}
-        <div className="flex flex-wrap gap-2">
-          <span className="bg-white/20 text-white px-3 py-1 rounded-xl text-xs">
-            {sequences.length} séquences
-          </span>
-          {formation.cp_eligible ? (
-            <span className="bg-white/25 text-white px-3 py-1 rounded-xl text-xs font-bold">
-              🏅 CP validante
-            </span>
-          ) : (
-            <span className="bg-white/25 text-white px-3 py-1 rounded-xl text-xs font-bold">
-              💼 Bonus
-            </span>
-          )}
-          {formation.dpc_hours && (
-            <span className="bg-white/20 text-white px-3 py-1 rounded-xl text-xs">
-              {formation.dpc_hours}h DPC
-            </span>
-          )}
-        </div>
+        {/* Descriptif court */}
+        {formation.description_short && (
+          <p className="text-white/85 text-[13px] leading-relaxed">
+            {formation.description_short}
+          </p>
+        )}
       </div>
 
       {/* Statistiques de progression */}
@@ -440,14 +384,7 @@ export default function FormationDetail({
         </div>
       </div>
 
-      {/* Description */}
-      {formation.description_short && (
-        <div className="px-4 pt-4">
-          <p className="text-sm text-[#a3a3a3] leading-relaxed">
-            {formation.description_short}
-          </p>
-        </div>
-      )}
+      {/* Description déplacée dans le header */}
 
       {/* Mode Preview Banner */}
       {isPreview && (
