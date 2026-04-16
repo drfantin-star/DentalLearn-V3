@@ -119,49 +119,18 @@ function SequenceCard({
           )}
         </div>
 
-        {/* Infos */}
+        {/* Titre uniquement */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-            <p
-              className={`font-semibold text-[13px] leading-snug ${
-                isLocked || isNotUnlocked ? 'text-gray-400' : 'text-[#e5e5e5]'
-              }`}
-            >
-              {sequence.title}
-            </p>
-            {isFree && (
-              <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-lg text-[10px] font-bold">
-                GRATUIT
-              </span>
-            )}
-            {sequence.is_evaluation && (
-              <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg text-[10px] font-bold">
-                ÉVALUATION
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            {hasMedia && (
-              <span className="text-[10px] text-[#6b7280]">
-                {sequence.course_media_type === 'audio' ? '🎧' : '📹'} {sequence.course_duration_seconds ? Math.round(sequence.course_duration_seconds / 60) : duration} min
-              </span>
-            )}
-            <span className="text-[10px] text-[#6b7280]">
-              📝 4Q
-            </span>
-            <span className="text-[10px] text-[#6b7280]">
-              ⏱️ {duration} min
-            </span>
-          </div>
+          <p
+            className={`font-semibold text-[15px] leading-snug ${
+              isLocked || isNotUnlocked ? 'text-gray-400' : 'text-[#e5e5e5]'
+            }`}
+          >
+            {sequence.title}
+          </p>
         </div>
 
-        {/* Badge Premium */}
-        {isLocked && (
-          <span className="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-lg text-[10px] font-bold shrink-0">
-            Premium
-          </span>
-        )}
+        {/* badge premium supprimé */}
       </div>
     </button>
   )
