@@ -881,8 +881,8 @@ export default function DailyQuizModal({
                   {opts.map((opt, i) => {
                     const isSelected = selectedAnswer === opt.id
                     const isCorrectOpt = opt.correct
-                    let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155'
-                    if (isSelected && !showFeedback) { bg = '#F1F5F9'; border = '#94A3B8' }
+                    let bg = '#242424', border = '#333', textColor = '#e5e5e5'
+                    if (isSelected && !showFeedback) { bg = 'rgba(45,27,150,0.25)'; border = '#2D1B96' }
                     if (showFeedback) {
                       if (isCorrectOpt) { bg = '#F0FDF4'; border = '#4ADE80' }
                       else if (isSelected && !isCorrectOpt) { bg = '#FEF2F2'; border = '#FCA5A5' }
@@ -943,14 +943,14 @@ export default function DailyQuizModal({
                   {caseOpts.questions && caseOpts.questions.length > 1 && (
                     <p className="text-[11px] text-gray-400">Question {caseStudyCurrentQ + 1} / {caseOpts.questions.length}</p>
                   )}
-                  <p className="font-bold text-gray-900 text-[15px] leading-snug">{subQ.text}</p>
+                  <p className="font-bold text-[15px] leading-snug" style={{ color: '#e5e5e5' }}>{subQ.text}</p>
 
                   <div className="flex flex-col gap-2.5">
                     {subQ.choices.map((choice, i) => {
                       const isSelected = caseStudyAnswers[subQ.id] === choice.id
                       const isCorrectChoice = choice.correct
-                      let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155'
-                      if (isSelected && !showFeedback) { bg = '#F1F5F9'; border = '#94A3B8' }
+                      let bg = '#242424', border = '#333', textColor = '#e5e5e5'
+                      if (isSelected && !showFeedback) { bg = 'rgba(45,27,150,0.25)'; border = '#2D1B96' }
                       if (showFeedback) {
                         if (isCorrectChoice) { bg = '#F0FDF4'; border = '#4ADE80' }
                         else if (isSelected && !isCorrectChoice) { bg = '#FEF2F2'; border = '#FCA5A5' }
@@ -1063,7 +1063,7 @@ export default function DailyQuizModal({
                           <span
                             className="flex-1 font-semibold text-sm"
                             style={{
-                              color: isSelected ? '#DC2626' : '#334155',
+                              color: isSelected ? '#f87171' : '#e5e5e5',
                               textDecoration: isSelected ? 'line-through' : 'none',
                             }}
                           >
@@ -1119,8 +1119,8 @@ export default function DailyQuizModal({
                               className="min-w-[100px] px-4 py-2 rounded-xl border-2 border-dashed text-sm font-semibold transition-all"
                               style={{
                                 borderColor: answer ? GRADIENT_FROM : '#CBD5E1',
-                                background: answer ? `${GRADIENT_FROM}10` : 'white',
-                                color: '#334155',
+                                background: answer ? `${GRADIENT_FROM}30` : '#242424',
+                                color: '#e5e5e5',
                               }}
                             >
                               {answer || '________'}
@@ -1257,7 +1257,7 @@ export default function DailyQuizModal({
 
               return (
                 <div className="space-y-4">
-                  <p className="text-xs text-indigo-600 font-medium">
+                  <p className="text-xs font-medium" style={{ color: '#818cf8' }}>
                     Cliquez sur un élément gauche puis son correspondant à droite
                   </p>
                   <div className="grid grid-cols-2 gap-3">
@@ -1275,8 +1275,8 @@ export default function DailyQuizModal({
                             disabled={showFeedback || isMatched}
                             className="w-full p-2.5 rounded-xl text-left text-xs font-bold transition-all"
                             style={{
-                              background: isCorrectMatch ? '#F0FDF4' : isWrongMatch ? '#FEF2F2' : isSelected ? '#EEF2FF' : isMatched ? '#F8FAFC' : '#FAFAFF',
-                              border: `2px solid ${isCorrectMatch ? '#4ADE80' : isWrongMatch ? '#FCA5A5' : isSelected ? '#6366F1' : isMatched ? '#CBD5E1' : '#E2E8F0'}`,
+                              background: isCorrectMatch ? '#052e16' : isWrongMatch ? '#450a0a' : isSelected ? 'rgba(99,102,241,0.25)' : isMatched ? '#2a2a2a' : '#242424',
+                              border: `2px solid ${isCorrectMatch ? '#4ADE80' : isWrongMatch ? '#FCA5A5' : isSelected ? '#6366F1' : isMatched ? '#444' : '#333'}`,
                               color: '#e5e5e5'
                             }}>
                             {pair.left}
@@ -1299,8 +1299,8 @@ export default function DailyQuizModal({
                             disabled={showFeedback || !!isAssignedTo}
                             className="w-full p-2.5 rounded-xl text-left text-xs font-semibold transition-all"
                             style={{
-                              background: isAssignedTo ? '#F8FAFC' : selectedLeftMatching ? '#FAFFFE' : '#FAFAFF',
-                              border: `2px solid ${isAssignedTo ? '#CBD5E1' : selectedLeftMatching ? '#00D1C1' : '#E2E8F0'}`,
+                              background: isAssignedTo ? '#2a2a2a' : selectedLeftMatching ? 'rgba(0,209,193,0.15)' : '#242424',
+                              border: `2px solid ${isAssignedTo ? '#444' : selectedLeftMatching ? '#00D1C1' : '#333'}`,
                               color: '#e5e5e5'
                             }}>
                             {pair.right}
@@ -1322,7 +1322,7 @@ export default function DailyQuizModal({
                       }}
                       disabled={!allMatched}
                       className="w-full py-3 rounded-2xl font-bold text-sm text-white disabled:opacity-40 transition-all"
-                      style={{ background: allMatched ? 'linear-gradient(135deg, #6366F1, #00D1C1)' : '#E2E8F0' }}>
+                      style={{ background: allMatched ? 'linear-gradient(135deg, #6366F1, #00D1C1)' : '#333' }}>
                       Valider les associations
                     </button>
                   )}
