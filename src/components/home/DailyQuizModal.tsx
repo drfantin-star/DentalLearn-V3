@@ -625,34 +625,41 @@ export default function DailyQuizModal({
         <div className="w-full max-w-sm rounded-3xl p-6 text-center relative overflow-hidden" style={{ background: '#1a1a1a' }}>
 
           <div className="relative z-10">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#2D1B96]/10 to-[#00D1C1]/10 flex items-center justify-center">
-              <Trophy size={40} className="text-[#2D1B96]" />
+            {/* Trophée */}
+            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #2D1B96, #00D1C1)' }}>
+              <Trophy size={36} className="text-white" />
             </div>
 
-            <h2 className="text-2xl font-bold mb-2" style={{ color: '#e5e5e5' }}>
-              {isPerfect ? 'Parfait !' : finalScore >= 7 ? 'Bravo !' : 'Bien joue !'}
+            {/* Titre */}
+            <h2 className="text-2xl font-bold mb-1" style={{ color: '#e5e5e5' }}>
+              {isPerfect ? 'Parfait !' : finalScore >= 7 ? 'Bravo !' : 'Bien joué !'}
             </h2>
+            <p className="text-sm mb-5" style={{ color: '#a3a3a3' }}>Quiz du jour terminé</p>
 
-            <p className="mb-6" style={{ color: '#a3a3a3' }}>Quiz du jour termine</p>
-
-            <div className="rounded-2xl p-4 mb-4" style={{ background: '#242424' }}>
-              <div className="text-3xl font-black text-[#2D1B96]">
-                {finalScore}/{questions.length}
+            {/* Score card */}
+            <div className="rounded-2xl p-5 mb-3 text-center"
+              style={{ background: 'linear-gradient(135deg, #2D1B96, #00D1C1)' }}>
+              <div className="text-5xl font-black text-white mb-1">
+                {finalScore}<span className="text-2xl font-bold opacity-70">/{questions.length}</span>
               </div>
-              <div className="text-xs mt-1" style={{ color: '#6b7280' }}>bonnes reponses</div>
-            </div>
+              <div className="text-sm text-white/70">bonnes réponses</div>
 
-            <div className="rounded-xl p-3 mb-6 text-left space-y-1" style={{ background: '#292010', border: '1px solid #92400e' }}>
-              <div className="flex justify-between text-sm">
-                <span style={{ color: '#a3a3a3' }}>Points gagnes</span>
-                <span className="font-bold text-amber-700">+{totalPoints} pts</span>
-              </div>
-              {isPerfect && (
-                <div className="flex justify-between text-sm">
-                  <span style={{ color: '#a3a3a3' }}>Bonus 100%</span>
-                  <span className="font-bold text-emerald-600">+{bonusPoints} pts</span>
+              <div className="mt-4 pt-4 border-t border-white/20 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">⭐</span>
+                  <div className="text-left">
+                    <p className="text-xs text-white/60">Points gagnés</p>
+                    <p className="text-xl font-black text-white">+{totalPoints}</p>
+                  </div>
                 </div>
-              )}
+                {isPerfect && (
+                  <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+                    <p className="text-xs text-white/70">Bonus</p>
+                    <p className="text-sm font-black text-white">+{bonusPoints} 🎯</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <button
@@ -881,8 +888,8 @@ export default function DailyQuizModal({
                   {opts.map((opt, i) => {
                     const isSelected = selectedAnswer === opt.id
                     const isCorrectOpt = opt.correct
-                    let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155'
-                    if (isSelected && !showFeedback) { bg = '#F1F5F9'; border = '#94A3B8' }
+                    let bg = '#242424', border = '#333', textColor = '#e5e5e5'
+                    if (isSelected && !showFeedback) { bg = 'rgba(45,27,150,0.25)'; border = '#2D1B96' }
                     if (showFeedback) {
                       if (isCorrectOpt) { bg = '#F0FDF4'; border = '#4ADE80' }
                       else if (isSelected && !isCorrectOpt) { bg = '#FEF2F2'; border = '#FCA5A5' }
@@ -943,14 +950,14 @@ export default function DailyQuizModal({
                   {caseOpts.questions && caseOpts.questions.length > 1 && (
                     <p className="text-[11px] text-gray-400">Question {caseStudyCurrentQ + 1} / {caseOpts.questions.length}</p>
                   )}
-                  <p className="font-bold text-gray-900 text-[15px] leading-snug">{subQ.text}</p>
+                  <p className="font-bold text-[15px] leading-snug" style={{ color: '#e5e5e5' }}>{subQ.text}</p>
 
                   <div className="flex flex-col gap-2.5">
                     {subQ.choices.map((choice, i) => {
                       const isSelected = caseStudyAnswers[subQ.id] === choice.id
                       const isCorrectChoice = choice.correct
-                      let bg = '#FAFAFF', border = '#E2E8F0', textColor = '#334155'
-                      if (isSelected && !showFeedback) { bg = '#F1F5F9'; border = '#94A3B8' }
+                      let bg = '#242424', border = '#333', textColor = '#e5e5e5'
+                      if (isSelected && !showFeedback) { bg = 'rgba(45,27,150,0.25)'; border = '#2D1B96' }
                       if (showFeedback) {
                         if (isCorrectChoice) { bg = '#F0FDF4'; border = '#4ADE80' }
                         else if (isSelected && !isCorrectChoice) { bg = '#FEF2F2'; border = '#FCA5A5' }
@@ -1063,7 +1070,7 @@ export default function DailyQuizModal({
                           <span
                             className="flex-1 font-semibold text-sm"
                             style={{
-                              color: isSelected ? '#DC2626' : '#334155',
+                              color: isSelected ? '#f87171' : '#e5e5e5',
                               textDecoration: isSelected ? 'line-through' : 'none',
                             }}
                           >
@@ -1119,8 +1126,8 @@ export default function DailyQuizModal({
                               className="min-w-[100px] px-4 py-2 rounded-xl border-2 border-dashed text-sm font-semibold transition-all"
                               style={{
                                 borderColor: answer ? GRADIENT_FROM : '#CBD5E1',
-                                background: answer ? `${GRADIENT_FROM}10` : 'white',
-                                color: '#334155',
+                                background: answer ? `${GRADIENT_FROM}30` : '#242424',
+                                color: '#e5e5e5',
                               }}
                             >
                               {answer || '________'}
@@ -1257,7 +1264,7 @@ export default function DailyQuizModal({
 
               return (
                 <div className="space-y-4">
-                  <p className="text-xs text-indigo-600 font-medium">
+                  <p className="text-xs font-medium" style={{ color: '#818cf8' }}>
                     Cliquez sur un élément gauche puis son correspondant à droite
                   </p>
                   <div className="grid grid-cols-2 gap-3">
@@ -1275,8 +1282,8 @@ export default function DailyQuizModal({
                             disabled={showFeedback || isMatched}
                             className="w-full p-2.5 rounded-xl text-left text-xs font-bold transition-all"
                             style={{
-                              background: isCorrectMatch ? '#F0FDF4' : isWrongMatch ? '#FEF2F2' : isSelected ? '#EEF2FF' : isMatched ? '#F8FAFC' : '#FAFAFF',
-                              border: `2px solid ${isCorrectMatch ? '#4ADE80' : isWrongMatch ? '#FCA5A5' : isSelected ? '#6366F1' : isMatched ? '#CBD5E1' : '#E2E8F0'}`,
+                              background: isCorrectMatch ? '#052e16' : isWrongMatch ? '#450a0a' : isSelected ? 'rgba(99,102,241,0.25)' : isMatched ? '#2a2a2a' : '#242424',
+                              border: `2px solid ${isCorrectMatch ? '#4ADE80' : isWrongMatch ? '#FCA5A5' : isSelected ? '#6366F1' : isMatched ? '#444' : '#333'}`,
                               color: '#e5e5e5'
                             }}>
                             {pair.left}
@@ -1299,8 +1306,8 @@ export default function DailyQuizModal({
                             disabled={showFeedback || !!isAssignedTo}
                             className="w-full p-2.5 rounded-xl text-left text-xs font-semibold transition-all"
                             style={{
-                              background: isAssignedTo ? '#F8FAFC' : selectedLeftMatching ? '#FAFFFE' : '#FAFAFF',
-                              border: `2px solid ${isAssignedTo ? '#CBD5E1' : selectedLeftMatching ? '#00D1C1' : '#E2E8F0'}`,
+                              background: isAssignedTo ? '#2a2a2a' : selectedLeftMatching ? 'rgba(0,209,193,0.15)' : '#242424',
+                              border: `2px solid ${isAssignedTo ? '#444' : selectedLeftMatching ? '#00D1C1' : '#333'}`,
                               color: '#e5e5e5'
                             }}>
                             {pair.right}
@@ -1322,7 +1329,7 @@ export default function DailyQuizModal({
                       }}
                       disabled={!allMatched}
                       className="w-full py-3 rounded-2xl font-bold text-sm text-white disabled:opacity-40 transition-all"
-                      style={{ background: allMatched ? 'linear-gradient(135deg, #6366F1, #00D1C1)' : '#E2E8F0' }}>
+                      style={{ background: allMatched ? 'linear-gradient(135deg, #6366F1, #00D1C1)' : '#333' }}>
                       Valider les associations
                     </button>
                   )}
