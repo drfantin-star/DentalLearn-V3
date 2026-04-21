@@ -87,7 +87,7 @@ export default function AudioPlayer({
       {/* IMAGE MOBILE — 240×240 carré centré */}
       {coverImageUrl && (
         <div className="md:hidden mx-auto mb-3 rounded-2xl overflow-hidden"
-             style={{ width: '240px', height: '240px' }}>
+             style={{ width: '100%', maxWidth: '280px', aspectRatio: '1/1' }}>
           <img
             src={coverImageUrl}
             alt={sequenceTitle}
