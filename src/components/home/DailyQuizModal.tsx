@@ -625,34 +625,41 @@ export default function DailyQuizModal({
         <div className="w-full max-w-sm rounded-3xl p-6 text-center relative overflow-hidden" style={{ background: '#1a1a1a' }}>
 
           <div className="relative z-10">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#2D1B96]/10 to-[#00D1C1]/10 flex items-center justify-center">
-              <Trophy size={40} className="text-[#2D1B96]" />
+            {/* Trophée */}
+            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, #2D1B96, #00D1C1)' }}>
+              <Trophy size={36} className="text-white" />
             </div>
 
-            <h2 className="text-2xl font-bold mb-2" style={{ color: '#e5e5e5' }}>
-              {isPerfect ? 'Parfait !' : finalScore >= 7 ? 'Bravo !' : 'Bien joue !'}
+            {/* Titre */}
+            <h2 className="text-2xl font-bold mb-1" style={{ color: '#e5e5e5' }}>
+              {isPerfect ? 'Parfait !' : finalScore >= 7 ? 'Bravo !' : 'Bien joué !'}
             </h2>
+            <p className="text-sm mb-5" style={{ color: '#a3a3a3' }}>Quiz du jour terminé</p>
 
-            <p className="mb-6" style={{ color: '#a3a3a3' }}>Quiz du jour termine</p>
-
-            <div className="rounded-2xl p-4 mb-4" style={{ background: '#242424' }}>
-              <div className="text-3xl font-black text-[#2D1B96]">
-                {finalScore}/{questions.length}
+            {/* Score card */}
+            <div className="rounded-2xl p-5 mb-3 text-center"
+              style={{ background: 'linear-gradient(135deg, #2D1B96, #00D1C1)' }}>
+              <div className="text-5xl font-black text-white mb-1">
+                {finalScore}<span className="text-2xl font-bold opacity-70">/{questions.length}</span>
               </div>
-              <div className="text-xs mt-1" style={{ color: '#6b7280' }}>bonnes reponses</div>
-            </div>
+              <div className="text-sm text-white/70">bonnes réponses</div>
 
-            <div className="rounded-xl p-3 mb-6 text-left space-y-1" style={{ background: '#292010', border: '1px solid #92400e' }}>
-              <div className="flex justify-between text-sm">
-                <span style={{ color: '#a3a3a3' }}>Points gagnes</span>
-                <span className="font-bold text-amber-700">+{totalPoints} pts</span>
-              </div>
-              {isPerfect && (
-                <div className="flex justify-between text-sm">
-                  <span style={{ color: '#a3a3a3' }}>Bonus 100%</span>
-                  <span className="font-bold text-emerald-600">+{bonusPoints} pts</span>
+              <div className="mt-4 pt-4 border-t border-white/20 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">⭐</span>
+                  <div className="text-left">
+                    <p className="text-xs text-white/60">Points gagnés</p>
+                    <p className="text-xl font-black text-white">+{totalPoints}</p>
+                  </div>
                 </div>
-              )}
+                {isPerfect && (
+                  <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
+                    <p className="text-xs text-white/70">Bonus</p>
+                    <p className="text-sm font-black text-white">+{bonusPoints} 🎯</p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <button
