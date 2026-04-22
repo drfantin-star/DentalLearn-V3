@@ -648,10 +648,8 @@ export default function DailyQuizModal({
               <div className="mt-4 pt-4 border-t border-white/20 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">⭐</span>
-                  <div className="text-left">
-                    <p className="text-xs text-white/60">Points gagnés</p>
-                    <p className="text-xl font-black text-white">+{totalPoints}</p>
-                  </div>
+                  <p className="text-xs text-white/60">Points gagnés</p>
+                  <p className="text-xl font-black text-white">+{totalPoints}</p>
                 </div>
                 {isPerfect && (
                   <div className="bg-white/20 rounded-xl px-3 py-2 text-center">
