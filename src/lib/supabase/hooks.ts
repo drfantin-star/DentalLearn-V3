@@ -389,7 +389,7 @@ export function useSubmitSequenceResult() {
             user_id: user.id,
             sequence_id: result.sequenceId,
             points_earned: result.totalPoints,
-            reason: 'sequence_completed',
+            reason: 'perfect_sequence',
           })
 
         if (pointsErr) {
