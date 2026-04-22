@@ -91,7 +91,8 @@ export default function AudioPlayer({
           <img
             src={coverImageUrl}
             alt={sequenceTitle}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
+            style={{ objectPosition: 'center top' }}
           />
         </div>
       )}
