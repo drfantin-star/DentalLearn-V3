@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, BookOpen,
-  Loader2, Settings
+  Loader2, Settings, Award
 } from 'lucide-react'
 import StatsCards from '@/components/home/StatsCards'
 import DemarcheCard from '@/components/home/DemarcheCard'
@@ -122,6 +122,28 @@ export default function ProfilPage() {
           ordreInscriptionDate={ordreDate}
           actionsParAxe={actionsParAxe}
         />
+
+        {/* Mes attestations */}
+        <Link
+          href="/profil/attestations"
+          className="block p-4 hover:border-[#444] transition-colors"
+          style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
+              <Award className="w-5 h-5 text-amber-400" />
+            </div>
+            <div className="flex-1">
+              <div className="font-semibold text-[#e5e5e5] text-sm">
+                Mes attestations
+              </div>
+              <div className="text-xs text-[#6b7280]">
+                Formations et audits EPP
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-[#6b7280]" />
+          </div>
+        </Link>
 
       </div>
     </div>
