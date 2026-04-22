@@ -111,7 +111,7 @@ export default function ThemePage() {
   const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
   const [sequenceGradient, setSequenceGradient] = useState<{ from: string; to: string }>({ from: '#8B5CF6', to: '#A78BFA' })
 
-  const { markCompleted } = useUserFormationProgress(selectedFormationId, selectedAccessType)
+  const { markCompleted } = useUserFormationProgress(selectedFormationId)
 
   const themeConfig = getThemeConfig(themeSlug)
 

@@ -15,7 +15,6 @@ import {
   useFormation,
   useUserFormationProgress,
   usePremiumAccess,
-  usePreviewMode,
   useFormationPoints,
   useFormationCompletion,
   isSequenceAccessible,
@@ -212,10 +211,8 @@ export default function FormationDetail({
   onStartSequence,
 }: FormationDetailProps) {
   const { formation, sequences, loading, error } = useFormation(formationId)
-  const { currentSequence, completedSequenceIds } = useUserFormationProgress(formationId, formation?.access_type)
+  const { currentSequence, completedSequenceIds } = useUserFormationProgress(formationId)
   const { isPremium } = usePremiumAccess()
-  const { isPreview } = usePreviewMode(formation?.access_type)
-  // like supprimé
   const { totalPoints, earnedPoints } = useFormationPoints(formationId)
   const { completionPercent } = useFormationCompletion(formationId, sequences, completedSequenceIds)
 
@@ -236,15 +233,15 @@ export default function FormationDetail({
     
     // Chercher la première séquence accessible et non complétée
     for (const seq of sequences) {
-      const access = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium, isPreview)
+      const access = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium)
       if (access.accessible && access.reason !== 'completed') {
         return seq
       }
     }
-    
+
     // Si toutes complétées, retourner null (formation terminée)
     return null
-  }, [sequences, currentSequence, completedSequenceIds, isPremium, isPreview])
+  }, [sequences, currentSequence, completedSequenceIds, isPremium])
 
   // Loading state
   if (loading) {
@@ -354,16 +351,6 @@ export default function FormationDetail({
 
       {/* Description déplacée dans le header */}
 
-      {/* Mode Preview Banner */}
-      {isPreview && (
-        <div className="mx-4 mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3">
-          <p className="text-xs text-blue-700">
-            🔓 <strong>Mode Preview</strong> — Toutes les séquences sont accessibles pour tester. 
-            La progression n&apos;est pas sauvegardée.
-          </p>
-        </div>
-      )}
-
       {/* Liste des séquences */}
       <div className="px-4 pt-5">
         <h3 className="text-[15px] font-bold text-[#e5e5e5] mb-4">
@@ -371,7 +358,7 @@ export default function FormationDetail({
         </h3>
 
         {sequences.map((seq) => {
-          const accessibility = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium, isPreview)
+          const accessibility = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium)
           
           return (
             <SequenceCard

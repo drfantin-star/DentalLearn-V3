@@ -30,7 +30,6 @@ export {
 
 // Hooks
 export {
-  usePreviewMode,
   useFormations,
   useFormation,
   useFormationBySlug,

@@ -14,7 +14,6 @@ import { useRouter } from 'next/navigation'
 import {
   useFormations,
   useUserFormationProgress,
-  usePreviewMode,
   getCategoryConfig,
   CATEGORIES,
   type Formation,
@@ -98,8 +97,7 @@ export default function FormationPage() {
   const [sequenceGradient, setSequenceGradient] = useState<{ from: string; to: string }>({ from: '#8B5CF6', to: '#A78BFA' })
 
   // Hook pour la progression
-  const { markCompleted } = useUserFormationProgress(selectedFormationId, selectedAccessType)
-  const { isPreview } = usePreviewMode(selectedAccessType)
+  const { markCompleted } = useUserFormationProgress(selectedFormationId)
 
   const cpCategories = CATEGORIES.filter((c) => c.type === 'cp')
 
@@ -261,17 +259,6 @@ export default function FormationPage() {
             ))}
           </div>
         </section>
-
-        {/* Info mode preview */}
-        {isPreview && (
-          <div className="p-4 flex items-start gap-3" style={{ background: '#1a2744', border: '0.5px solid #1e3a8a', borderRadius: '16px' }}>
-            <BookOpen size={20} className="text-blue-500 shrink-0 mt-0.5" />
-            <p className="text-sm text-blue-300">
-              🔓 <strong>Mode Preview</strong> — Toutes les séquences sont accessibles
-              pour tester. Connectez-vous pour sauvegarder votre progression.
-            </p>
-          </div>
-        )}
       </main>
     </>
   )
