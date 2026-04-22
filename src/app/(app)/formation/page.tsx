@@ -98,7 +98,7 @@ export default function FormationPage() {
   const [sequenceGradient, setSequenceGradient] = useState<{ from: string; to: string }>({ from: '#8B5CF6', to: '#A78BFA' })
 
   // Hook pour la progression
-  const { markCompleted } = useUserFormationProgress(selectedFormationId, selectedAccessType)
+  const { markCompleted } = useUserFormationProgress(selectedFormationId)
   const { isPreview } = usePreviewMode(selectedAccessType)
 
   const cpCategories = CATEGORIES.filter((c) => c.type === 'cp')

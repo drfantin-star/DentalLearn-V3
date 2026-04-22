@@ -240,109 +240,111 @@ export function useSequenceQuestions(sequenceId: string | null) {
 }
 
 // ============================================
-// HOOK — Progression utilisateur
+// HOOK — Progression utilisateur (vraie DB)
 // ============================================
 
-export function useUserFormationProgress(formationId: string | null, accessType?: 'demo' | 'full' | null) {
-  const { isPreview } = usePreviewMode(accessType)
+export function useUserFormationProgress(formationId: string | null) {
   const [currentSequence, setCurrentSequence] = useState(1)
   const [completedSequenceIds, setCompletedSequenceIds] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  // Charger la progression depuis la BDD quand authentifié
-  const fetchProgress = useCallback(async () => {
-    if (isPreview || !formationId) return
+  const load = useCallback(async () => {
+    if (!formationId) {
+      setCompletedSequenceIds([])
+      setCurrentSequence(1)
+      setLoading(false)
+      return
+    }
 
     try {
       setLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        setCompletedSequenceIds([])
+        setCurrentSequence(1)
+        setLoading(false)
+        return
+      }
 
-      // Récupérer l'inscription user_formations
+      const { data: completed, error: completedErr } = await supabase
+        .rpc('get_user_completed_sequences', {
+          p_user_id: user.id,
+          p_formation_id: formationId,
+        })
+
+      if (completedErr) {
+        console.error('Erreur get_user_completed_sequences:', completedErr)
+        setCompletedSequenceIds([])
+      } else {
+        setCompletedSequenceIds((completed || []).map((c: any) => c.sequence_id))
+      }
+
       const { data: userFormation } = await supabase
         .from('user_formations')
         .select('current_sequence')
-        .eq('formation_id', formationId)
         .eq('user_id', user.id)
-        .single()
-
-      if (userFormation) {
-        setCurrentSequence(userFormation.current_sequence || 1)
-      }
-
-      // Récupérer les séquences complétées
-      const { data: sequences } = await supabase
-        .from('sequences')
-        .select('id')
         .eq('formation_id', formationId)
+        .maybeSingle()
 
-      if (sequences && sequences.length > 0) {
-        const sequenceIds = sequences.map(s => s.id)
-        const { data: completedSeqs } = await supabase
-          .from('user_sequences')
-          .select('sequence_id')
-          .eq('user_id', user.id)
-          .in('sequence_id', sequenceIds)
-          .not('completed_at', 'is', null)
-
-        if (completedSeqs) {
-          setCompletedSequenceIds(completedSeqs.map(s => s.sequence_id))
-        }
-      }
+      setCurrentSequence(userFormation?.current_sequence || 1)
     } catch (err) {
-      console.error('Erreur fetchProgress:', err)
+      console.error('Erreur chargement progression:', err)
     } finally {
       setLoading(false)
     }
-  }, [formationId, isPreview])
+  }, [formationId])
 
   useEffect(() => {
-    fetchProgress()
-  }, [fetchProgress])
+    load()
+  }, [load])
 
   const markCompleted = useCallback(async (sequenceId: string, nextSeqNumber: number) => {
-    if (!completedSequenceIds.includes(sequenceId)) {
-      setCompletedSequenceIds(prev => [...prev, sequenceId])
-      setCurrentSequence(nextSeqNumber)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || !formationId) return
 
-      // Persister current_sequence en BDD si authentifié
-      if (!isPreview && formationId) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            await supabase
-              .from('user_formations')
-              .update({ current_sequence: nextSeqNumber })
-              .eq('user_id', user.id)
-              .eq('formation_id', formationId)
-          }
-        } catch (err) {
-          console.error('Erreur mise à jour current_sequence:', err)
-        }
-      }
-    }
-  }, [completedSequenceIds, isPreview, formationId])
+      await supabase
+        .from('user_sequences')
+        .upsert({
+          user_id: user.id,
+          sequence_id: sequenceId,
+          completed_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,sequence_id',
+          ignoreDuplicates: false,
+        })
 
-  const refresh = useCallback(() => {
-    if (isPreview) {
-      setCurrentSequence(1)
-      setCompletedSequenceIds([])
-    } else {
-      fetchProgress()
+      await supabase
+        .from('user_formations')
+        .upsert({
+          user_id: user.id,
+          formation_id: formationId,
+          current_sequence: nextSeqNumber,
+          is_active: true,
+          access_type: 'full',
+          started_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,formation_id',
+          ignoreDuplicates: false,
+        })
+
+      await load()
+    } catch (err) {
+      console.error('Erreur markCompleted:', err)
     }
-  }, [isPreview, fetchProgress])
+  }, [formationId, load])
 
   return {
     currentSequence,
     completedSequenceIds,
     loading,
-    refresh,
+    refresh: load,
     markCompleted,
   }
 }
 
 // ============================================
-// HOOK — Accès premium (MODE PREVIEW)
+// HOOK — Accès premium
 // ============================================
 
 export function usePremiumAccess() {
@@ -353,12 +355,11 @@ export function usePremiumAccess() {
 }
 
 // ============================================
-// HOOK — Soumettre résultats
+// HOOK — Soumettre résultats séquence (vraie DB)
 // ============================================
 
 interface SequenceResult {
   sequenceId: string
-  formationId?: string
   score: number
   totalPoints: number
   timeSpentSeconds: number
@@ -379,34 +380,12 @@ export function useSubmitSequenceResult() {
       setLoading(true)
       setError(null)
 
-      // Vérifier auth : si non connecté, mode preview (pas de sauvegarde)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        console.log('📊 [Preview] Résultats séquence:', {
-          score: result.score,
-          points: result.totalPoints,
-          temps: result.timeSpentSeconds + 's',
-        })
-        await new Promise(resolve => setTimeout(resolve, 300))
-        return true
+        throw new Error('Utilisateur non authentifié')
       }
 
-      // Vérifier access_type si formationId fourni
-      if (result.formationId) {
-        const { data: formation } = await supabase
-          .from('formations')
-          .select('access_type')
-          .eq('id', result.formationId)
-          .single()
-
-        if (formation && formation.access_type !== 'full') {
-          console.log('📊 [Demo] Résultats non sauvegardés (formation demo)')
-          return true
-        }
-      }
-
-      // 1. Upsert dans user_sequences
-      const { error: seqError } = await supabase
+      const { error: seqErr } = await supabase
         .from('user_sequences')
         .upsert({
           user_id: user.id,
@@ -414,62 +393,64 @@ export function useSubmitSequenceResult() {
           completed_at: new Date().toISOString(),
           score: result.score,
           time_spent_seconds: result.timeSpentSeconds,
-          answers: result.answers,
+          attempts_count: 1,
+          answers: result.answers as any,
         }, {
           onConflict: 'user_id,sequence_id',
+          ignoreDuplicates: false,
         })
 
-      if (seqError) {
-        console.error('Erreur user_sequences upsert:', seqError)
-        // Si le upsert échoue (pas de contrainte unique), essayer un insert
-        if (seqError.code === '42P10' || seqError.message?.includes('unique')) {
-          await supabase
-            .from('user_sequences')
-            .insert({
-              user_id: user.id,
-              sequence_id: result.sequenceId,
-              completed_at: new Date().toISOString(),
-              score: result.score,
-              time_spent_seconds: result.timeSpentSeconds,
-              answers: result.answers,
-            })
+      if (seqErr) {
+        console.error('Erreur user_sequences:', seqErr)
+        throw seqErr
+      }
+
+      if (result.totalPoints > 0) {
+        const { error: pointsErr } = await supabase
+          .from('user_points')
+          .insert({
+            user_id: user.id,
+            sequence_id: result.sequenceId,
+            points_earned: result.totalPoints,
+            reason: 'sequence_completed',
+          })
+
+        if (pointsErr) {
+          console.error('Erreur user_points:', pointsErr)
         }
       }
 
-      // 2. Assurer l'inscription dans user_formations si formationId fourni
-      if (result.formationId) {
-        const { data: existingUf } = await supabase
-          .from('user_formations')
-          .select('id, total_points, best_score')
-          .eq('user_id', user.id)
-          .eq('formation_id', result.formationId)
-          .single()
+      const { data: seqData } = await supabase
+        .from('sequences')
+        .select('formation_id')
+        .eq('id', result.sequenceId)
+        .single()
 
-        if (existingUf) {
-          // Mettre à jour les points et le score
-          const newTotal = (existingUf.total_points || 0) + result.totalPoints
-          const newBest = Math.max(existingUf.best_score || 0, result.score)
-          await supabase
-            .from('user_formations')
-            .update({
-              total_points: newTotal,
-              best_score: newBest,
-            })
-            .eq('id', existingUf.id)
-        } else {
-          // Créer l'inscription
-          await supabase
-            .from('user_formations')
-            .insert({
-              user_id: user.id,
-              formation_id: result.formationId,
-              is_active: true,
-              current_sequence: 1,
-              access_type: 'full',
-              total_points: result.totalPoints,
-              best_score: result.score,
-            })
-        }
+      if (seqData?.formation_id) {
+        const { data: allPoints } = await supabase
+          .from('user_points')
+          .select('points_earned, sequence_id, sequences!inner(formation_id)')
+          .eq('user_id', user.id)
+          .eq('sequences.formation_id', seqData.formation_id)
+
+        const totalFormationPoints = (allPoints || []).reduce(
+          (sum, p: any) => sum + (p.points_earned || 0),
+          0
+        )
+
+        await supabase
+          .from('user_formations')
+          .upsert({
+            user_id: user.id,
+            formation_id: seqData.formation_id,
+            total_points: totalFormationPoints,
+            best_score: result.score,
+            access_type: 'full',
+            is_active: true,
+          }, {
+            onConflict: 'user_id,formation_id',
+            ignoreDuplicates: false,
+          })
       }
 
       return true
@@ -493,21 +474,11 @@ export function isSequenceAccessible(
   sequence: Sequence,
   currentSequence: number,
   completedSequenceIds: string[],
-  isPremium: boolean,
-  isPreview: boolean = false
-): { 
+  isPremium: boolean
+): {
   accessible: boolean
-  reason: 'free' | 'unlocked' | 'completed' | 'premium_required' | 'not_unlocked' 
+  reason: 'free' | 'unlocked' | 'completed' | 'premium_required' | 'not_unlocked'
 } {
-  
-  // Mode Preview : toutes les séquences sont accessibles
-  if (isPreview) {
-    if (completedSequenceIds.includes(sequence.id)) {
-      return { accessible: true, reason: 'completed' }
-    }
-    return { accessible: true, reason: 'unlocked' }
-  }
-  
   if (completedSequenceIds.includes(sequence.id)) {
     return { accessible: true, reason: 'completed' }
   }
@@ -528,22 +499,19 @@ export function isSequenceAccessible(
 }
 
 // ============================================
-// HOOK — Like formation (MODE PREVIEW)
+// HOOK — Like formation
 // ============================================
 
 export function useFormationLike(formationId: string | null) {
-  const { isPreview } = usePreviewMode()
   const [isLiked, setIsLiked] = useState(false)
   const [likesCount, setLikesCount] = useState(0)
   const [loading, setLoading] = useState(false)
 
-  // Charger l'état initial du like
   useEffect(() => {
     if (!formationId) return
 
     async function fetchLikeStatus() {
       try {
-        // Récupérer le nombre de likes
         const { data: formation } = await supabase
           .from('formations')
           .select('likes_count')
@@ -554,10 +522,6 @@ export function useFormationLike(formationId: string | null) {
           setLikesCount(formation.likes_count || 0)
         }
 
-        // En mode preview, on ne vérifie pas le like utilisateur
-        if (isPreview) return
-
-        // Vérifier si l'utilisateur a liké (nécessite auth)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
@@ -575,18 +539,10 @@ export function useFormationLike(formationId: string | null) {
     }
 
     fetchLikeStatus()
-  }, [formationId, isPreview])
+  }, [formationId])
 
   const toggleLike = useCallback(async () => {
     if (!formationId) return
-
-    // Mode preview: toggle local seulement
-    if (isPreview) {
-      setIsLiked(prev => !prev)
-      setLikesCount(prev => isLiked ? prev - 1 : prev + 1)
-      console.log('💜 [Preview] Like toggled:', !isLiked)
-      return
-    }
 
     try {
       setLoading(true)
@@ -594,21 +550,19 @@ export function useFormationLike(formationId: string | null) {
       if (!user) throw new Error('Non authentifié')
 
       if (isLiked) {
-        // Retirer le like
         await supabase
           .from('formation_likes')
           .delete()
           .eq('formation_id', formationId)
           .eq('user_id', user.id)
-        
+
         setIsLiked(false)
         setLikesCount(prev => Math.max(0, prev - 1))
       } else {
-        // Ajouter le like
         await supabase
           .from('formation_likes')
           .insert({ formation_id: formationId, user_id: user.id })
-        
+
         setIsLiked(true)
         setLikesCount(prev => prev + 1)
       }
@@ -617,17 +571,16 @@ export function useFormationLike(formationId: string | null) {
     } finally {
       setLoading(false)
     }
-  }, [formationId, isLiked, isPreview])
+  }, [formationId, isLiked])
 
   return { isLiked, likesCount, toggleLike, loading }
 }
 
 // ============================================
-// HOOK — Points formation (MODE PREVIEW)
+// HOOK — Points formation
 // ============================================
 
 export function useFormationPoints(formationId: string | null) {
-  const { isPreview } = usePreviewMode()
   const [totalPoints, setTotalPoints] = useState(0)
   const [earnedPoints, setEarnedPoints] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -642,7 +595,6 @@ export function useFormationPoints(formationId: string | null) {
       try {
         setLoading(true)
 
-        // 1. Récupérer les IDs des séquences de cette formation
         const { data: sequences } = await supabase
           .from('sequences')
           .select('id')
@@ -650,8 +602,7 @@ export function useFormationPoints(formationId: string | null) {
 
         if (sequences && sequences.length > 0) {
           const sequenceIds = sequences.map(s => s.id)
-          
-          // 2. Calculer le total des points possibles
+
           const { data: questionsData } = await supabase
             .from('questions')
             .select('points')
@@ -661,13 +612,6 @@ export function useFormationPoints(formationId: string | null) {
           setTotalPoints(total)
         }
 
-        // En mode preview, pas de points gagnés persistés
-        if (isPreview) {
-          setEarnedPoints(0)
-          return
-        }
-
-        // 3. Récupérer les points gagnés par l'utilisateur
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
@@ -689,7 +633,7 @@ export function useFormationPoints(formationId: string | null) {
     }
 
     fetchPoints()
-  }, [formationId, isPreview])
+  }, [formationId])
 
   const addPoints = useCallback((points: number) => {
     setEarnedPoints(prev => prev + points)

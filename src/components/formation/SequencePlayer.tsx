@@ -504,7 +504,6 @@ export default function SequencePlayer({
     try {
       await submitResult({
         sequenceId: sequence.id,
-        formationId: sequence.formation_id,
         score: Math.round((correctCount / questions.length) * 100),
         totalPoints,
         timeSpentSeconds: Math.round((Date.now() - startTime) / 1000),

@@ -95,7 +95,7 @@ function PatientPageContent() {
   const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
   const [sequenceGradient] = useState({ from: '#F59E0B', to: '#FCD34D' })
 
-  const { markCompleted } = useUserFormationProgress(selectedFormationId, selectedAccessType)
+  const { markCompleted } = useUserFormationProgress(selectedFormationId)
 
   const handleContentClick = async (slug: string) => {
     try {
