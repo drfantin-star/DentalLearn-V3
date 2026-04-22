@@ -110,6 +110,11 @@ async function generateFormationPDF(data: any): Promise<Buffer> {
         Author: ORGANISME.nom_court,
       },
     })
+    const fontsDir = path.join(process.cwd(), 'public', 'fonts')
+    doc.registerFont('Helvetica', path.join(fontsDir, 'Inter-Regular.ttf'))
+    doc.registerFont('Helvetica-Bold', path.join(fontsDir, 'Inter-Bold.ttf'))
+    doc.registerFont('Helvetica-Oblique', path.join(fontsDir, 'Inter-Italic.ttf'))
+    doc.registerFont('Helvetica-BoldOblique', path.join(fontsDir, 'Inter-Bold.ttf'))
     const chunks: Buffer[] = []
     doc.on('data', (c: Buffer) => chunks.push(c))
     doc.on('end', () => resolve(Buffer.concat(chunks)))
@@ -179,6 +184,11 @@ async function generateEppPDF(data: any): Promise<Buffer> {
         Author: ORGANISME.nom_court,
       },
     })
+    const fontsDir = path.join(process.cwd(), 'public', 'fonts')
+    doc.registerFont('Helvetica', path.join(fontsDir, 'Inter-Regular.ttf'))
+    doc.registerFont('Helvetica-Bold', path.join(fontsDir, 'Inter-Bold.ttf'))
+    doc.registerFont('Helvetica-Oblique', path.join(fontsDir, 'Inter-Italic.ttf'))
+    doc.registerFont('Helvetica-BoldOblique', path.join(fontsDir, 'Inter-Bold.ttf'))
     const chunks: Buffer[] = []
     doc.on('data', (c: Buffer) => chunks.push(c))
     doc.on('end', () => resolve(Buffer.concat(chunks)))

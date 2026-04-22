@@ -12,6 +12,14 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    outputFileTracingIncludes: {
+      '/api/attestations/generate': [
+        './public/fonts/**/*',
+        './public/signature.png',
+      ],
+    },
+  },
 }
 
 module.exports = nextConfig
