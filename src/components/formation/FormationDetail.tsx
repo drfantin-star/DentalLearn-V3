@@ -22,6 +22,7 @@ import {
   getCategoryConfig,
   type Sequence,
 } from '@/lib/supabase'
+import { GenerateAttestationButton } from '@/components/attestations/GenerateAttestationButton'
 
 // ============================================
 // TYPES
@@ -393,6 +394,15 @@ export default function FormationDetail({
       {/* CTA fixe en bas */}
       <div className="fixed bottom-20 left-0 right-0 p-4 shadow-lg z-20" style={{ background: '#1a1a1a', borderTop: '0.5px solid #2a2a2a' }}>
         <div className="max-w-lg mx-auto">
+          {completedInFormation >= sequences.length && sequences.length > 0 && (
+            <div className="mb-3">
+              <GenerateAttestationButton
+                type="formation_online"
+                sourceId={formation.id}
+                label="Obtenir mon attestation de formation"
+              />
+            </div>
+          )}
           {nextSequence ? (
             <button
               onClick={() => onStartSequence(nextSequence)}
