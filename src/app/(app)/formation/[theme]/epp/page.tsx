@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { GenerateAttestationButton } from '@/components/attestations/GenerateAttestationButton'
 
 // ============================================
 // TYPES
@@ -1713,6 +1714,15 @@ export default function EppPage() {
               <FileDown size={16} />
               Télécharger l&apos;attestation EPP (PDF)
             </button>
+            {audit?.id && (
+              <div className="mt-3">
+                <GenerateAttestationButton
+                  type="epp"
+                  sourceId={audit.id}
+                  label="Générer mon attestation EPP officielle"
+                />
+              </div>
+            )}
           </div>
         )}
 
