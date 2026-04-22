@@ -3,6 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Award, Loader2, AlertCircle } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
+import { generateFormationPDF, getFormationPDFFilename } from '@/lib/attestations/generateFormationPDF'
+import { generateEppPDF, getEppPDFFilename } from '@/lib/attestations/generateEppPDF'
+import { saveAttestation, generateVerificationCode, downloadBlob } from '@/lib/attestations/saveAttestation'
+import { TYPE_CNP_BY_AXE } from '@/lib/attestations/types'
 
 interface Props {
   type: 'formation_online' | 'epp'
@@ -30,28 +35,197 @@ export function GenerateAttestationButton({
     setRppsMissing(false)
 
     try {
-      const res = await fetch('/api/attestations/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, source_id: sourceId }),
+      const supabase = createClient()
+
+      // 1. Auth + profil
+      const { data: { user }, error: authErr } = await supabase.auth.getUser()
+      if (authErr || !user) throw new Error('Non authentifié')
+
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('first_name, last_name, rpps, profession')
+        .eq('id', user.id)
+        .single()
+
+      if (!profile) throw new Error('Profil introuvable')
+
+      if (!profile.rpps || profile.rpps.trim() === '') {
+        setRppsMissing(true)
+        return
+      }
+
+      const participant = {
+        nom_complet: `Dr ${(profile.last_name || '').toUpperCase()} ${profile.first_name || ''}`.trim(),
+        rpps: profile.rpps,
+        profession: profile.profession || 'Chirurgien-dentiste',
+      }
+
+      // 2. Vérifier qu'une attestation n'existe pas déjà
+      const { data: existing } = await supabase
+        .from('user_attestations')
+        .select('id, pdf_path')
+        .eq('user_id', user.id)
+        .eq('type', type)
+        .eq('source_id', sourceId)
+        .maybeSingle()
+
+      if (existing) {
+        onGenerated?.(existing.id)
+        router.push('/profil/attestations')
+        return
+      }
+
+      // 3. Générer le PDF selon le type
+      const verificationCode = generateVerificationCode()
+      let blob: Blob
+      let filename: string
+      let metadata: Parameters<typeof saveAttestation>[0]['metadata']
+
+      if (type === 'formation_online') {
+        // Vérifier complétion 100 % via RPC
+        const { data: isComplete } = await supabase.rpc('is_formation_fully_completed', {
+          p_user_id: user.id,
+          p_formation_id: sourceId,
+        })
+        if (!isComplete) {
+          throw new Error('La formation doit être complétée à 100 % pour générer l\'attestation')
+        }
+
+        // Récupérer les métriques
+        const { data: metrics, error: metricsErr } = await supabase
+          .rpc('get_formation_completion_metrics', {
+            p_user_id: user.id,
+            p_formation_id: sourceId,
+          })
+          .single()
+        if (metricsErr || !metrics) throw new Error('Erreur récupération métriques')
+        const m = metrics as any
+
+        // Récupérer la formation
+        const { data: formation } = await supabase
+          .from('formations')
+          .select('title, slug, axe_cp, instructor_name, cp_hours')
+          .eq('id', sourceId)
+          .single()
+        if (!formation) throw new Error('Formation introuvable')
+
+        const dureeHeures = formation.cp_hours || 6
+        const typeCnp = TYPE_CNP_BY_AXE[formation.axe_cp || 1] || 'D'
+
+        blob = await generateFormationPDF({
+          participant,
+          formation: {
+            id: sourceId,
+            title: formation.title,
+            axe_cp: formation.axe_cp,
+            type_cnp: typeCnp,
+            formateur: formation.instructor_name || 'Dr Julie Fantin',
+            slug: formation.slug,
+          },
+          parcours: {
+            started_at: m.started_at,
+            completed_at: m.completed_at,
+            duree_heures: dureeHeures,
+            nb_sequences: m.nb_sequences_done,
+            nb_sequences_total: m.nb_sequences_total,
+            taux_reussite_quiz: Number(m.taux_reussite_quiz || 0),
+            taux_completion: Number(m.taux_completion || 0),
+          },
+          verification_code: verificationCode,
+        })
+
+        filename = getFormationPDFFilename(formation.slug)
+        metadata = {
+          title: formation.title,
+          axe_cp: formation.axe_cp,
+          type_action_cnp: typeCnp,
+          formateur: formation.instructor_name || undefined,
+          started_at: m.started_at,
+          completed_at: m.completed_at,
+          duree_heures: dureeHeures,
+          nb_sequences: m.nb_sequences_done,
+          nb_sequences_total: m.nb_sequences_total,
+          taux_reussite_quiz: Number(m.taux_reussite_quiz || 0),
+          taux_completion: Number(m.taux_completion || 0),
+        }
+      } else {
+        // EPP
+        const { data: eppMetrics, error: eppErr } = await supabase
+          .rpc('get_epp_attestation_metrics', {
+            p_user_id: user.id,
+            p_audit_id: sourceId,
+          })
+          .single()
+        if (eppErr || !eppMetrics) throw new Error('Erreur récupération métriques EPP')
+        const e = eppMetrics as any
+
+        if (!e.is_ready) {
+          throw new Error('Les Tours 1 et 2 doivent être complétés pour générer l\'attestation EPP')
+        }
+
+        // Récupérer l'audit pour avoir le slug
+        const { data: audit } = await supabase
+          .from('epp_audits')
+          .select('slug, theme_slug')
+          .eq('id', sourceId)
+          .single()
+        if (!audit) throw new Error('Audit EPP introuvable')
+
+        blob = await generateEppPDF({
+          participant,
+          audit: {
+            id: sourceId,
+            title: e.audit_title,
+            theme_slug: audit.theme_slug,
+            slug: audit.slug,
+          },
+          tours: {
+            t1_completed_at: e.t1_completed_at,
+            t1_nb_dossiers: e.t1_nb_dossiers,
+            t1_score: Number(e.t1_score),
+            t2_completed_at: e.t2_completed_at,
+            t2_nb_dossiers: e.t2_nb_dossiers,
+            t2_score: Number(e.t2_score),
+            delta_score: Number(e.delta_score),
+          },
+          verification_code: verificationCode,
+        })
+
+        filename = getEppPDFFilename(audit.slug)
+        metadata = {
+          title: e.audit_title,
+          axe_cp: 2,
+          type_action_cnp: 'B',
+          completed_at: e.t2_completed_at,
+          duree_heures: Number(e.duree_forfaitaire || 6),
+          duree_breakdown: e.duree_breakdown || undefined,
+          score_t1: Number(e.t1_score),
+          score_t2: Number(e.t2_score),
+          delta_score: Number(e.delta_score),
+          nb_dossiers_t1: e.t1_nb_dossiers,
+          nb_dossiers_t2: e.t2_nb_dossiers,
+        }
+      }
+
+      // 4. Upload Storage + insert DB
+      const { attestationId } = await saveAttestation({
+        userId: user.id,
+        type,
+        sourceId,
+        blob,
+        verificationCode,
+        metadata,
       })
 
-      const data = await res.json()
+      // 5. Téléchargement immédiat
+      downloadBlob(blob, filename)
 
-      if (!res.ok) {
-        if (data.error === 'RPPS_MISSING') {
-          setRppsMissing(true)
-          return
-        }
-        throw new Error(data.message || data.error || 'Erreur inconnue')
-      }
-
-      if (data.success || data.already_exists) {
-        onGenerated?.(data.attestation_id)
-        router.push('/profil/attestations')
-      }
+      // 6. Redirection
+      onGenerated?.(attestationId)
+      setTimeout(() => router.push('/profil/attestations'), 800)
     } catch (err: any) {
-      setError(err.message)
+      console.error('Erreur génération attestation :', err)
+      setError(err.message || 'Erreur inconnue')
     } finally {
       setLoading(false)
     }
@@ -93,7 +267,7 @@ export function GenerateAttestationButton({
         {loading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span>Génération en cours…</span>
+            <span>Génération du PDF…</span>
           </>
         ) : (
           <>
