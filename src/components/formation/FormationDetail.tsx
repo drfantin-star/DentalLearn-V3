@@ -15,7 +15,6 @@ import {
   useFormation,
   useUserFormationProgress,
   usePremiumAccess,
-  usePreviewMode,
   useFormationPoints,
   useFormationCompletion,
   isSequenceAccessible,
@@ -214,8 +213,6 @@ export default function FormationDetail({
   const { formation, sequences, loading, error } = useFormation(formationId)
   const { currentSequence, completedSequenceIds } = useUserFormationProgress(formationId)
   const { isPremium } = usePremiumAccess()
-  const { isPreview } = usePreviewMode(formation?.access_type)
-  // like supprimé
   const { totalPoints, earnedPoints } = useFormationPoints(formationId)
   const { completionPercent } = useFormationCompletion(formationId, sequences, completedSequenceIds)
 
@@ -353,16 +350,6 @@ export default function FormationDetail({
       </div>
 
       {/* Description déplacée dans le header */}
-
-      {/* Mode Preview Banner */}
-      {isPreview && (
-        <div className="mx-4 mt-4 bg-blue-50 border border-blue-200 rounded-xl p-3">
-          <p className="text-xs text-blue-700">
-            🔓 <strong>Mode Preview</strong> — Toutes les séquences sont accessibles pour tester. 
-            La progression n&apos;est pas sauvegardée.
-          </p>
-        </div>
-      )}
 
       {/* Liste des séquences */}
       <div className="px-4 pt-5">

@@ -15,29 +15,6 @@ import type {
 const supabase = createClient()
 
 // ============================================
-// MODE PREVIEW — Basé sur authentification + access_type
-// ============================================
-
-export function usePreviewMode(accessType?: 'demo' | 'full' | null) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setIsAuthenticated(true)
-      }
-    })
-  }, [])
-
-  // Preview activé si non authentifié OU formation non-full (demo)
-  const isPreview = !isAuthenticated || (accessType !== undefined && accessType !== 'full')
-
-  return {
-    isPreview,
-  }
-}
-
-// ============================================
 // HOOK — Liste des formations
 // ============================================
 
