@@ -27,8 +27,12 @@ Chaque fichier SQL commence par un bloc commentaire de 5 lignes :
 ```
 
 Le champ `Rollback` pointe vers le fichier d'annulation correspondant.
-Pour un fichier de seed, le champ `Rollback` pointe vers un `DELETE` ciblé
-ou vers le rollback du schéma parent.
+Pour un fichier de seed, le champ `Rollback` pointe **toujours** vers le
+rollback du schéma parent (ex. `20260423_news_schema_down.sql` pour les
+seeds de la section News). Pas de `DELETE` partiel ciblé dans la
+convention. Si un besoin de suppression ciblée de seeds sans détruire le
+schéma apparaît, il est traité par un `DELETE` manuel ad hoc hors
+convention, au cas par cas.
 
 ## Application — mode ping-pong SQL Editor (Free tier)
 
