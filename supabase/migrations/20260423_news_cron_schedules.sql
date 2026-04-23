@@ -41,7 +41,7 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 -- Supabase, chaque Run est une session PostgreSQL indépendante,
 -- les GUC de session ne persistent donc pas entre 2 Run distincts).
 --
---   SET app.supabase_url      TO 'https://dxybsuhfkwuemapqrvgv.supabase.co';
+--   SET app.supabase_url      TO 'https://dxybsuhfkwuemapqrvgz.supabase.co';
 --   SET app.service_role_key  TO '<SUPABASE_SERVICE_ROLE_KEY>';
 --
 -- Les deux GUC sont locales à la session et ne persistent pas en BDD.

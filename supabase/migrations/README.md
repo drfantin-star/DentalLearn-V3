@@ -1,6 +1,6 @@
 # Migrations Supabase — DentalLearn V3
 
-Scripts SQL versionnés appliqués au projet Supabase `dxybsuhfkwuemapqrvgv`
+Scripts SQL versionnés appliqués au projet Supabase `dxybsuhfkwuemapqrvgz`
 (plan Free — pas de Supabase branches disponibles).
 
 ## Convention de nommage

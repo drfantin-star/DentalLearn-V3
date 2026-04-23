@@ -201,7 +201,8 @@ export function extractArticles(xml: string): ArticleMeta[] {
   if (!xml.trim()) return [];
   const doc = new DOMParser().parseFromString(xml, "text/html");
   if (!doc) return [];
-  const nodes = Array.from(doc.querySelectorAll("pubmedarticle"));
+  const nodes = Array.from(doc.querySelectorAll("pubmedarticle"))
+    .filter((n): n is Element => n.nodeType === 1);
   return nodes.map(parsePubmedArticle).filter((a): a is ArticleMeta => a !== null);
 }
 
@@ -212,7 +213,8 @@ export function extractArticles(xml: string): ArticleMeta[] {
  * `publicationtype` (lowercase), mais le textContent reste case-sensitive.
  */
 export function isRetractedArticle(articleNode: Element): boolean {
-  const types = Array.from(articleNode.querySelectorAll("publicationtype"));
+  const types = Array.from(articleNode.querySelectorAll("publicationtype"))
+    .filter((n): n is Element => n.nodeType === 1);
   return types.some((t) => t.textContent?.trim() === "Retracted Publication");
 }
 
@@ -237,7 +239,8 @@ function text(root: Element, selector: string): string | null {
 }
 
 function collectAbstract(node: Element): string | null {
-  const parts = Array.from(node.querySelectorAll("abstract > abstracttext"));
+  const parts = Array.from(node.querySelectorAll("abstract > abstracttext"))
+    .filter((n): n is Element => n.nodeType === 1);
   if (parts.length === 0) return null;
   return parts
     .map((p) => {
@@ -250,7 +253,8 @@ function collectAbstract(node: Element): string | null {
 }
 
 function collectAuthors(node: Element): string[] {
-  const authors = Array.from(node.querySelectorAll("authorlist > author"));
+  const authors = Array.from(node.querySelectorAll("authorlist > author"))
+    .filter((n): n is Element => n.nodeType === 1);
   return authors
     .map((a) => {
       const last = a.querySelector("lastname")?.textContent?.trim() ?? "";
@@ -263,7 +267,8 @@ function collectAuthors(node: Element): string[] {
 }
 
 function findArticleId(node: Element, type: string): string | null {
-  const ids = Array.from(node.querySelectorAll("articleidlist > articleid"));
+  const ids = Array.from(node.querySelectorAll("articleidlist > articleid"))
+    .filter((n): n is Element => n.nodeType === 1);
   for (const id of ids) {
     if (id.getAttribute("idtype") === type) {
       return id.textContent?.trim() || null;
