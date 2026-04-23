@@ -1,16 +1,16 @@
 -- Nom du fichier : 20260423_news_sources_seed.sql
 -- Date de création : 2026-04-23
 -- Ticket : feature/news-ticket-1
--- Description : ADD CONSTRAINT news_sources_name_uniq UNIQUE(name) + seed 12 PubMed + 4 RSS
+-- Description : Seed initial de news_sources — 12 sources PubMed + 4 flux RSS pilotes
 -- Rollback : supabase/migrations/20260423_news_schema_down.sql
 
 -- ============================================================================
 -- NOTE
 -- ============================================================================
--- Ce seed ajoute une contrainte UNIQUE(name) sur news_sources en tête de
--- fichier, puis insère 16 sources avec ON CONFLICT (name) DO NOTHING pour
--- idempotence. Le rollback (fichier ..._down.sql) contient le DROP CONSTRAINT
--- symétrique.
+-- Idempotent via ON CONFLICT (name) DO NOTHING, aligné sur la contrainte
+-- news_sources_name_uniq déclarée dans 20260423_news_schema.sql. Relancer ce
+-- seed est sans effet si toutes les sources existent déjà ; n'ajoute que les
+-- nouveautés sinon.
 --
 -- Format du champ `query` (JSONB) :
 --   PubMed : {"db":"pubmed","term":"...","reldate":7,"lang":[...],"pubtypes":[...]}
@@ -22,18 +22,6 @@
 -- manquer de volume en odontologie, assez restrictive pour réduire le bruit.
 -- Override possible par source (cas `actu-pro` ci-dessous).
 -- ============================================================================
-
--- ============================================================================
--- SECTION 0. CONTRAINTE D'UNICITÉ (pré-requis pour ON CONFLICT (name))
--- ============================================================================
--- Ajout additif au schéma : une source est identifiée de manière unique par
--- son nom (pas de collision possible, ex. deux "PubMed - Endodontie"). Cette
--- contrainte est un pré-requis technique pour ON CONFLICT (name) DO NOTHING
--- utilisé dans les INSERT ci-dessous.
--- ============================================================================
-
-ALTER TABLE public.news_sources
-  ADD CONSTRAINT news_sources_name_uniq UNIQUE (name);
 
 -- ============================================================================
 -- SECTION 1. SOURCES PUBMED (12, une par spécialité)

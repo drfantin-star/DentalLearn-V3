@@ -72,9 +72,10 @@ DROP INDEX IF EXISTS public.news_syntheses_embedding_idx;
 -- est arbitraire (elles ne se référencent pas entre elles) — on suit celui du
 -- plan de review pour lisibilité.
 --
--- Note : la contrainte news_sources_name_uniq est ajoutée a posteriori par
--- 20260423_news_sources_seed.sql (pas par le schéma principal). On la DROP
--- avant DROP TABLE news_sources pour symétrie avec le seed.
+-- La contrainte news_sources_name_uniq est déclarée au niveau de la table
+-- dans 20260423_news_schema.sql (pas via ALTER a posteriori). Elle est
+-- détruite automatiquement par DROP TABLE news_sources — pas de DROP
+-- CONSTRAINT explicite nécessaire.
 -- ============================================================================
 
 DROP TABLE IF EXISTS public.news_episode_items;
@@ -85,8 +86,6 @@ DROP TABLE IF EXISTS public.news_episodes;
 DROP TABLE IF EXISTS public.news_syntheses;
 DROP TABLE IF EXISTS public.news_scored;
 DROP TABLE IF EXISTS public.news_raw;
-ALTER TABLE IF EXISTS public.news_sources
-  DROP CONSTRAINT IF EXISTS news_sources_name_uniq;
 DROP TABLE IF EXISTS public.news_sources;
 DROP TABLE IF EXISTS public.news_taxonomy;
 

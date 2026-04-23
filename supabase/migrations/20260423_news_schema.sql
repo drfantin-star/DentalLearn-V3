@@ -42,7 +42,8 @@ CREATE TABLE public.news_sources (
   active           boolean NOT NULL DEFAULT true,
   notes            text,
   last_fetched_at  timestamptz,
-  created_at       timestamptz NOT NULL DEFAULT now()
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT news_sources_name_uniq UNIQUE (name)
 );
 
 COMMENT ON TABLE public.news_sources IS
