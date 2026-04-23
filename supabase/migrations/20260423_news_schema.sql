@@ -80,7 +80,11 @@ CREATE TABLE public.news_scored (
                      'candidate','selected','rejected','duplicate'
                    )),
   llm_model        text,
-  scored_at        timestamptz NOT NULL DEFAULT now()
+  scored_at        timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT news_scored_relevance_range CHECK (
+    relevance_score IS NULL
+    OR (relevance_score >= 0 AND relevance_score <= 1)
+  )
 );
 
 COMMENT ON TABLE public.news_scored IS
@@ -202,6 +206,8 @@ COMMENT ON TABLE public.news_corrections IS
 -- 3. INDEXES
 -- ============================================================================
 
+-- --- 3.1. Recherche Knowledge Base (news_syntheses) -------------------------
+
 -- news_syntheses — recherche sémantique (pgvector ivfflat, distance cosinus).
 -- Note : ivfflat optimal après REINDEX sur données réelles.
 -- lists=100 convient jusqu'à ~10k synthèses ; à revoir au-delà.
@@ -223,6 +229,42 @@ CREATE INDEX news_syntheses_themes_idx
 CREATE INDEX news_syntheses_fulltext_idx
   ON public.news_syntheses
   USING gin (to_tsvector('french', coalesce(summary_fr, '')));
+
+-- --- 3.2. Colonnes de foreign key (Postgres ne les indexe pas automatiquement) ---
+
+CREATE INDEX news_raw_source_id_idx              ON public.news_raw           (source_id);
+CREATE INDEX news_scored_raw_id_idx              ON public.news_scored        (raw_id);
+CREATE INDEX news_syntheses_scored_id_idx        ON public.news_syntheses     (scored_id);
+CREATE INDEX news_syntheses_raw_id_idx           ON public.news_syntheses     (raw_id);
+CREATE INDEX news_episode_items_episode_id_idx   ON public.news_episode_items (episode_id);
+CREATE INDEX news_episode_items_synthesis_id_idx ON public.news_episode_items (synthesis_id);
+CREATE INDEX news_references_episode_id_idx      ON public.news_references    (episode_id);
+CREATE INDEX news_cs_comments_episode_id_idx     ON public.news_cs_comments   (episode_id);
+CREATE INDEX news_corrections_episode_id_idx     ON public.news_corrections   (episode_id);
+
+-- --- 3.3. Filtres pipeline fréquents ----------------------------------------
+
+CREATE INDEX news_scored_status_idx        ON public.news_scored    (status);
+CREATE INDEX news_syntheses_status_idx     ON public.news_syntheses (status);
+CREATE INDEX news_episodes_status_idx      ON public.news_episodes  (status);
+CREATE INDEX news_episodes_week_iso_idx    ON public.news_episodes  (week_iso);
+CREATE INDEX news_syntheses_created_at_idx ON public.news_syntheses (created_at DESC);
+
+-- --- 3.4. Contraintes d'unicité partielle -----------------------------------
+
+-- Dédoublonnage du scoring : un même dedupe_hash ne peut apparaître qu'une
+-- seule fois parmi les lignes non-'duplicate'. Les lignes status='duplicate'
+-- sont exclues (elles peuvent partager un hash avec leur ligne de référence).
+CREATE UNIQUE INDEX news_scored_dedupe_hash_uniq
+  ON public.news_scored (dedupe_hash)
+  WHERE dedupe_hash IS NOT NULL AND status != 'duplicate';
+
+-- Unicité d'un digest/insight par semaine ISO : un seul épisode non archivé
+-- par couple (type, week_iso). La re-publication reste possible via
+-- archivage de la version précédente (status='archived').
+CREATE UNIQUE INDEX news_episodes_type_week_uniq
+  ON public.news_episodes (type, week_iso)
+  WHERE week_iso IS NOT NULL AND status != 'archived';
 
 -- ============================================================================
 -- 4. ROW LEVEL SECURITY
