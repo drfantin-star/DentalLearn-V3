@@ -82,6 +82,7 @@ côté API routes sur l'email admin.
 | 2026-03-26 | `20260326_ordre_inscription_date.sql` | n/a | Date inscription Ordre |
 | 2026-04-08 | `20260408_daily_quiz_add_recommended_time.sql` | n/a | Ajout `recommended_time` |
 | 2026-04-23 | `20260423_news_schema.sql` (+ rollback + 2 seeds) | `feature/news-ticket-1` | Section News Phase 1 — pgvector + 10 tables + indexes + RLS + seeds |
+| 2026-04-23 | `20260423_news_cron_schedules.sql` (+ rollback) | `feature/news-ticket-2` | Section News Ticket 2 — pg_cron + 2 jobs cron (check_retractions lundi 05h30, ingest_pubmed lundi 06h00 Europe/Paris) |
 
 ## Références
 
