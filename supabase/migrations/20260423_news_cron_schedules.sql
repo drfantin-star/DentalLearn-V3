@@ -1,8 +1,28 @@
 -- Nom du fichier : 20260423_news_cron_schedules.sql
 -- Date de création : 2026-04-23
 -- Ticket : feature/news-ticket-2
--- Description : pg_cron + schedule des 2 Edge Functions news (check_retractions lundi 05h30, ingest_pubmed lundi 06h00 — timezone Europe/Paris par job)
+-- Description : pg_cron + 2 jobs cron news (check_retractions lundi 03h30 UTC / ingest_pubmed lundi 04h00 UTC, équivalent Europe/Paris en heure d'été UTC+2)
 -- Rollback : supabase/migrations/20260423_news_cron_schedules_down.sql
+
+-- ============================================================================
+-- NOTE SUPABASE — Timezone cron
+-- ============================================================================
+-- Supabase managé n'expose pas la signature cron.schedule(..., timezone => ...)
+-- de pg_cron 1.6 (seules les variantes positionnelles 2-args et 3-args sont
+-- disponibles). Par ailleurs, cron.timezone est classé PGC_POSTMASTER et ne
+-- peut pas être modifié via ALTER DATABASE côté utilisateur (nécessite un
+-- redémarrage serveur, hors de notre contrôle).
+--
+-- Conséquence : cron.timezone reste figé à GMT (défaut Supabase). Les
+-- expressions cron ci-dessous sont encodées en UTC pour correspondre à
+-- l'heure d'été Europe/Paris (UTC+2, cas du pic d'usage DentalLearn
+-- juin-septembre) :
+--   '30 3 * * 1' = lundi 03h30 UTC = 05h30 Paris (été) / 04h30 Paris (hiver)
+--   '0 4 * * 1'  = lundi 04h00 UTC = 06h00 Paris (été) / 05h00 Paris (hiver)
+-- Décalage d'1h en période d'hiver accepté (jobs plus tôt, aucun impact).
+-- Ticket futur : si Supabase expose timezone => ou si vault/cron-timezone
+-- devient modifiable, rebasculer sur une gestion DST-aware.
+-- ============================================================================
 
 -- ============================================================================
 -- 1. EXTENSION pg_cron
@@ -16,7 +36,10 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 -- ============================================================================
 -- 2. Pré-requis d'exécution — paramètres de session
 -- ============================================================================
--- Avant d'exécuter cette migration (SQL Editor, MÊME session) :
+-- Avant d'exécuter cette migration, exécuter les 2 SET ci-dessous
+-- DANS LE MÊME Run que le reste du script (dans le SQL Editor de
+-- Supabase, chaque Run est une session PostgreSQL indépendante,
+-- les GUC de session ne persistent donc pas entre 2 Run distincts).
 --
 --   SET app.supabase_url      TO 'https://dxybsuhfkwuemapqrvgv.supabase.co';
 --   SET app.service_role_key  TO '<SUPABASE_SERVICE_ROLE_KEY>';
@@ -31,7 +54,7 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;
 -- Ces valeurs n'apparaissent jamais dans le repo git.
 
 -- ============================================================================
--- 3. Schedules (timezone par job, requiert pg_cron >= 1.6)
+-- 3. Schedules — arguments positionnels (seule signature exposée par Supabase)
 -- ============================================================================
 
 DO $mig$
@@ -52,14 +75,16 @@ BEGIN
     PERFORM cron.unschedule('news_ingest_pubmed');
   END IF;
 
-  -- 3.1 Surveillance rétractations — lundi 05h30 Europe/Paris.
+  -- 3.1 Surveillance rétractations — lundi 03h30 UTC (= 05h30 Paris en été).
   -- Tourne AVANT l'ingestion PubMed pour marquer les rétractations détectées
   -- sur la KB existante avant qu'un nouvel article rétracté (improbable mais
   -- possible) ne soit ingéré la même nuit.
+  -- Signature 3-args positionnelle (seule exposée par Supabase) :
+  --   cron.schedule(job_name text, schedule text, command text)
   PERFORM cron.schedule(
-    job_name => 'news_check_retractions',
-    schedule => '30 5 * * 1',
-    command  => format(
+    'news_check_retractions',
+    '30 3 * * 1',
+    format(
       $cmd$
       SELECT net.http_post(
         url     := %L,
@@ -72,15 +97,14 @@ BEGIN
       $cmd$,
       v_supabase_url || '/functions/v1/check_retractions',
       'Bearer ' || v_service_key
-    ),
-    timezone => 'Europe/Paris'
+    )
   );
 
-  -- 3.2 Ingestion PubMed — lundi 06h00 Europe/Paris.
+  -- 3.2 Ingestion PubMed — lundi 04h00 UTC (= 06h00 Paris en été).
   PERFORM cron.schedule(
-    job_name => 'news_ingest_pubmed',
-    schedule => '0 6 * * 1',
-    command  => format(
+    'news_ingest_pubmed',
+    '0 4 * * 1',
+    format(
       $cmd$
       SELECT net.http_post(
         url     := %L,
@@ -93,8 +117,7 @@ BEGIN
       $cmd$,
       v_supabase_url || '/functions/v1/ingest_pubmed',
       'Bearer ' || v_service_key
-    ),
-    timezone => 'Europe/Paris'
+    )
   );
 END
 $mig$;
