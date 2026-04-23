@@ -16,8 +16,16 @@
 // linkedom qui tirait `canvas` en transitif et cassait le bundler Edge
 // Functions Supabase (canvas.node introuvable). deno-dom-wasm ajoute
 // ≈30-50 ms au cold start, négligeable pour un cron hebdo.
-// La casse des tags/attributs XML est préservée avec le mimeType "text/xml"
-// (doc deno-dom : "XML documents preserve the case of tags and attributes").
+//
+// deno-dom v0.1.46 : seul mimeType "text/html" est implémenté
+// (text/xml remonte "DOMParser: 'text/xml' unimplemented" à l'exécution,
+// constaté en prod sur la première invocation ingest_pubmed). En mode
+// HTML, deno-dom lowercase les noms de balises et d'attributs au parse.
+// Tous les sélecteurs CSS et getAttribute ci-dessous sont donc en
+// lowercase pour matcher les tags PubMed normalisés
+// ("PubmedArticle" → "pubmedarticle", etc.). Le textContent des balises
+// reste case-sensitive (non impacté), donc la comparaison
+// textContent === "Retracted Publication" reste valide.
 
 import { DOMParser, Element } from "https://deno.land/x/deno_dom@v0.1.46/deno-dom-wasm.ts";
 
@@ -191,30 +199,31 @@ export class NcbiClient {
  */
 export function extractArticles(xml: string): ArticleMeta[] {
   if (!xml.trim()) return [];
-  const doc = new DOMParser().parseFromString(xml, "text/xml");
+  const doc = new DOMParser().parseFromString(xml, "text/html");
   if (!doc) return [];
-  const nodes = Array.from(doc.querySelectorAll("PubmedArticle"));
+  const nodes = Array.from(doc.querySelectorAll("pubmedarticle"));
   return nodes.map(parsePubmedArticle).filter((a): a is ArticleMeta => a !== null);
 }
 
 /**
  * Teste la présence du flag de rétraction.
  * Doit matcher exactement `<PublicationType>Retracted Publication</PublicationType>`
- * (case-sensitive selon NCBI DTD).
+ * dans le XML NCBI. En parsing HTML deno-dom, le nom de balise devient
+ * `publicationtype` (lowercase), mais le textContent reste case-sensitive.
  */
 export function isRetractedArticle(articleNode: Element): boolean {
-  const types = Array.from(articleNode.querySelectorAll("PublicationType"));
+  const types = Array.from(articleNode.querySelectorAll("publicationtype"));
   return types.some((t) => t.textContent?.trim() === "Retracted Publication");
 }
 
 function parsePubmedArticle(node: Element): ArticleMeta | null {
-  const pmid = text(node, "MedlineCitation > PMID") ?? text(node, "PMID");
+  const pmid = text(node, "medlinecitation > pmid") ?? text(node, "pmid");
   if (!pmid) return null;
 
-  const title = text(node, "ArticleTitle") ?? "";
+  const title = text(node, "articletitle") ?? "";
   const abstract = collectAbstract(node);
   const authors = collectAuthors(node);
-  const journal = text(node, "Journal > Title") ?? text(node, "Journal > ISOAbbreviation");
+  const journal = text(node, "journal > title") ?? text(node, "journal > isoabbreviation");
   const doi = findArticleId(node, "doi");
   const publishedAt = parsePublishedDate(node);
   const retracted = isRetractedArticle(node);
@@ -228,11 +237,11 @@ function text(root: Element, selector: string): string | null {
 }
 
 function collectAbstract(node: Element): string | null {
-  const parts = Array.from(node.querySelectorAll("Abstract > AbstractText"));
+  const parts = Array.from(node.querySelectorAll("abstract > abstracttext"));
   if (parts.length === 0) return null;
   return parts
     .map((p) => {
-      const label = p.getAttribute("Label");
+      const label = p.getAttribute("label");
       const body = p.textContent?.trim() ?? "";
       return label ? `${label}: ${body}` : body;
     })
@@ -241,12 +250,12 @@ function collectAbstract(node: Element): string | null {
 }
 
 function collectAuthors(node: Element): string[] {
-  const authors = Array.from(node.querySelectorAll("AuthorList > Author"));
+  const authors = Array.from(node.querySelectorAll("authorlist > author"));
   return authors
     .map((a) => {
-      const last = a.querySelector("LastName")?.textContent?.trim() ?? "";
-      const fore = a.querySelector("ForeName")?.textContent?.trim() ?? "";
-      const coll = a.querySelector("CollectiveName")?.textContent?.trim() ?? "";
+      const last = a.querySelector("lastname")?.textContent?.trim() ?? "";
+      const fore = a.querySelector("forename")?.textContent?.trim() ?? "";
+      const coll = a.querySelector("collectivename")?.textContent?.trim() ?? "";
       if (coll) return coll;
       return [fore, last].filter(Boolean).join(" ").trim();
     })
@@ -254,9 +263,9 @@ function collectAuthors(node: Element): string[] {
 }
 
 function findArticleId(node: Element, type: string): string | null {
-  const ids = Array.from(node.querySelectorAll("ArticleIdList > ArticleId"));
+  const ids = Array.from(node.querySelectorAll("articleidlist > articleid"));
   for (const id of ids) {
-    if (id.getAttribute("IdType") === type) {
+    if (id.getAttribute("idtype") === type) {
       return id.textContent?.trim() || null;
     }
   }
@@ -265,18 +274,18 @@ function findArticleId(node: Element, type: string): string | null {
 
 function parsePublishedDate(node: Element): string | null {
   // Priorité : ArticleDate (date complète), sinon PubDate (peut être partiel).
-  const articleDate = node.querySelector("ArticleDate");
+  const articleDate = node.querySelector("articledate");
   if (articleDate) {
-    const y = articleDate.querySelector("Year")?.textContent?.trim();
-    const m = articleDate.querySelector("Month")?.textContent?.trim();
-    const d = articleDate.querySelector("Day")?.textContent?.trim();
+    const y = articleDate.querySelector("year")?.textContent?.trim();
+    const m = articleDate.querySelector("month")?.textContent?.trim();
+    const d = articleDate.querySelector("day")?.textContent?.trim();
     if (y && m && d) return `${y}-${pad2(m)}-${pad2(d)}`;
   }
-  const pubDate = node.querySelector("Journal > JournalIssue > PubDate");
+  const pubDate = node.querySelector("journal > journalissue > pubdate");
   if (pubDate) {
-    const y = pubDate.querySelector("Year")?.textContent?.trim();
-    const m = pubDate.querySelector("Month")?.textContent?.trim();
-    const d = pubDate.querySelector("Day")?.textContent?.trim();
+    const y = pubDate.querySelector("year")?.textContent?.trim();
+    const m = pubDate.querySelector("month")?.textContent?.trim();
+    const d = pubDate.querySelector("day")?.textContent?.trim();
     if (y) {
       const mm = m ? monthToNum(m) : "01";
       const dd = d ? pad2(d) : "01";
