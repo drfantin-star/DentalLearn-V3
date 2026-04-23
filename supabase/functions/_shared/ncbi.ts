@@ -12,9 +12,14 @@
 //   - extractArticles(xml) : parse XML → ArticleMeta[] (titre, abstract, authors,
 //     journal, date, DOI, flag `retracted`).
 //
-// Parser XML : `deno-dom-wasm` (JSDOM-like, fonctionne en Deno Deploy / Edge).
+// Parser XML : `deno-dom-wasm` (WASM, sans dépendance native). Remplace
+// linkedom qui tirait `canvas` en transitif et cassait le bundler Edge
+// Functions Supabase (canvas.node introuvable). deno-dom-wasm ajoute
+// ≈30-50 ms au cold start, négligeable pour un cron hebdo.
+// La casse des tags/attributs XML est préservée avec le mimeType "text/xml"
+// (doc deno-dom : "XML documents preserve the case of tags and attributes").
 
-import { DOMParser, Element } from "https://esm.sh/linkedom@0.16.11";
+import { DOMParser, Element } from "https://deno.land/x/deno_dom@v0.1.46/deno-dom-wasm.ts";
 
 // ---------------------------------------------------------------------------
 // Types

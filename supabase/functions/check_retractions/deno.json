@@ -1,6 +1,6 @@
 {
   "imports": {
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.4",
-    "linkedom": "https://esm.sh/linkedom@0.16.11"
+    "deno_dom": "https://deno.land/x/deno_dom@v0.1.46/deno-dom-wasm.ts"
   }
 }
