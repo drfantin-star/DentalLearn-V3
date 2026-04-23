@@ -1,6 +1,6 @@
 # Migrations Supabase — DentalLearn V3
 
-Scripts SQL versionnés appliqués au projet Supabase `dxybsuhfkwuemapqrvgv`
+Scripts SQL versionnés appliqués au projet Supabase `dxybsuhfkwuemapqrvgz`
 (plan Free — pas de Supabase branches disponibles).
 
 ## Convention de nommage
@@ -27,8 +27,12 @@ Chaque fichier SQL commence par un bloc commentaire de 5 lignes :
 ```
 
 Le champ `Rollback` pointe vers le fichier d'annulation correspondant.
-Pour un fichier de seed, le champ `Rollback` pointe vers un `DELETE` ciblé
-ou vers le rollback du schéma parent.
+Pour un fichier de seed, le champ `Rollback` pointe **toujours** vers le
+rollback du schéma parent (ex. `20260423_news_schema_down.sql` pour les
+seeds de la section News). Pas de `DELETE` partiel ciblé dans la
+convention. Si un besoin de suppression ciblée de seeds sans détruire le
+schéma apparaît, il est traité par un `DELETE` manuel ad hoc hors
+convention, au cas par cas.
 
 ## Application — mode ping-pong SQL Editor (Free tier)
 
@@ -78,6 +82,7 @@ côté API routes sur l'email admin.
 | 2026-03-26 | `20260326_ordre_inscription_date.sql` | n/a | Date inscription Ordre |
 | 2026-04-08 | `20260408_daily_quiz_add_recommended_time.sql` | n/a | Ajout `recommended_time` |
 | 2026-04-23 | `20260423_news_schema.sql` (+ rollback + 2 seeds) | `feature/news-ticket-1` | Section News Phase 1 — pgvector + 10 tables + indexes + RLS + seeds |
+| 2026-04-23 | `20260423_news_cron_schedules.sql` (+ rollback) | `feature/news-ticket-2` | Section News Ticket 2 — pg_cron + 2 jobs cron (check_retractions lundi 03h30 UTC, ingest_pubmed lundi 04h00 UTC) ; cron.timezone figé GMT côté Supabase (PGC_POSTMASTER, non modifiable) et signature `cron.schedule(..., timezone =>)` non exposée → expressions UTC encodées pour équivalent Europe/Paris en heure d'été (UTC+2) |
 
 ## Références
 
