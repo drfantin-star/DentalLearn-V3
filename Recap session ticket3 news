@@ -1,0 +1,180 @@
+# RECAP Session — Ticket 3 News (Ingestion RSS)
+
+**Date** : 26 avril 2026
+**Branche** : `claude/ticket-3-section-news-kjlLY` → mergée sur `main`
+**Statut** : ✅ Validé et mergé
+
+---
+
+## 1. Périmètre livré
+
+Edge Function `ingest_rss` qui ingère hebdomadairement les flux RSS pilotes dans `news_raw`, complétant l'`ingest_pubmed` du Ticket 2.
+
+### Composants livrés
+
+| Fichier | Rôle |
+|---|---|
+| `supabase/functions/_shared/rss.ts` | Lib pure, parser multi-format (RSS 2.0, RSS 1.0/RDF, Atom) |
+| `supabase/functions/ingest_rss/index.ts` | Handler Deno.serve, dedup, monitoring silent_source, README "5 min" |
+| `supabase/functions/ingest_rss/deno.json` | Identique au pattern `ingest_pubmed` |
+| `supabase/migrations/20260426_news_ingest_rss_cron.sql` | `cron.schedule('news_ingest_rss','30 4 * * 1', …)` |
+| `supabase/migrations/20260426_news_ingest_rss_cron_down.sql` | Rollback symétrique |
+
+### Sources pilotes (4)
+
+| Source | Format | Items 1er run | Note particulière |
+|---|---|---|---|
+| Cochrane Oral Health | RSS 2.0 | 10 | WordPress, guid stable |
+| **British Dental Journal** (nature.com) | **RSS 1.0/RDF** | 8 | Format détecté pendant les tests, support ajouté |
+| HAS Recommandations | RSS 2.0 | 50 | Volume le plus important |
+| L'Information Dentaire (rss.app) | RSS 2.0 | 25 | Service tiers, monitoring 14j actif |
+| **TOTAL** | | **93 articles** | |
+
+### Cron actif
+
+| jobname | schedule | description |
+|---|---|---|
+| `news_check_retractions` | `30 3 * * 1` | Lundi 03h30 UTC (Ticket 2) |
+| `news_ingest_pubmed` | `0 4 * * 1` | Lundi 04h00 UTC (Ticket 2) |
+| **`news_ingest_rss`** | **`30 4 * * 1`** | **Lundi 04h30 UTC (Ticket 3)** |
+
+Cadence régulière toutes les 30 min, qui facilite l'ajout des prochains jobs (Tickets 4-7).
+
+---
+
+## 2. Décisions arbitrées en début de session
+
+Avant le démarrage du code, 3 questions produit :
+
+| Q | Décision | Raison |
+|---|---|---|
+| Q1 — `external_id` cascade | guid → link normalisé → sha256(title+pubDate) fallback | Robuste multi-format, traçabilité via `raw_payload.external_id_source` |
+| Q2 — Colonne `news_sources.notes` | Existe déjà depuis Ticket 1, pas de migration | Détecté par Claude Code lors de l'audit pré-code, mon prompt initial était basé sur un mauvais schéma |
+| Q3 — Monitoring "silent source > 14j" | `logger.warn` JSON structuré, pas d'email Phase 1 | Cohérent avec décision Ticket 2 (pas d'email Phase 1) |
+
+Décisions complémentaires :
+- Cron à `04h30 UTC` (et non `04h15` mentionné dans le RECAP Ticket 2) → cadence régulière 30 min entre jobs
+- `last_fetched_at` touché en succès uniquement, comme `ingest_pubmed`
+
+---
+
+## 3. Itérations / corrections (2 bugs en 1 patch)
+
+### BUG 1 — `news_raw.url = NULL` à 100%
+
+**Symptôme** : 1er run → 85 articles ingérés mais `url` NULL partout, alors que `title` et `published_at` étaient OK.
+
+**Cause racine** : `<link>` est une **void element** en HTML. `deno-dom-wasm` parse en `text/html` (leçon Ticket 2), donc ferme la balise immédiatement et son `textContent` revient vide. Le `<guid>` était lu correctement parce que ce n'est pas une balise HTML standard.
+
+**Fix** : preprocessing regex sur le XML brut avant DOM parse :
+```
+<link>X</link>          →  <rss-link>X</rss-link>     // matched (RSS 2.0/1.0)
+<link href="..."/>                                    // not matched (Atom OK)
+<atom:link rel="self" href="..."/>                    // not matched
+```
+
+Lecture côté parser : `textOf(item, "rss-link") ?? textOf(item, "link")` (fallback défensif).
+
+### BUG 2 — British Dental Journal `items_parsed = 0`
+
+**Symptôme** : aucun item parsé sur le BDJ, sans erreur retournée.
+
+**Cause racine** : `nature.com/bdj.rss` sert du **RSS 1.0 / RDF** (racine `<rdf:RDF>`), pas du RSS 2.0. Les items y sont **frères** de `<channel>`, pas enfants. Le code initial ne gérait que la convention RSS 2.0.
+
+**Fix** : 
+- Détection `/<rdf:RDF\b/i` sur XML brut **avant** DOM parse (la racine peut être réécrite par deno-dom HTML)
+- Nouveau `parseRss1(root)` qui scanne `root.querySelectorAll("item")` sans contrainte de parent
+- Cascade external_id étendue : `rdf:about` priorité 1 → `<link>` post-fix BUG 1 → hash
+- `published_at` via `<dc:date>`, authors via `<dc:creator>`
+- `feed_format = "rss1"` ajouté au type `RssFeedFormat`
+
+---
+
+## 4. Validation live (post-patch)
+
+### Insertion + idempotence
+
+```
+Run #1 :  93 inserted /  0 duplicate
+Run #2 :   0 inserted / 93 duplicate
+```
+
+### Qualité des données (4 sources × 93 items)
+
+| Source | rows | url_null | pub_null | feed_formats | id_sources |
+|---|---|---|---|---|---|
+| BDJ | 8 | **0** | **0** | `["rss1"]` | `["rdf:about"]` |
+| Cochrane | 10 | 0 | 0 | `["rss2"]` | `["guid"]` |
+| HAS | 50 | 0 | 0 | `["rss2"]` | `["guid"]` |
+| L'Info Dentaire | 25 | 0 | 0 | `["rss2"]` | `["guid"]` |
+
+→ **0 NULL** sur les colonnes critiques (url, published_at, external_id, title)
+→ **Aucun fallback hash ou link utilisé** : toutes les sources fournissent un identifiant stable de niveau 1
+→ **Cascade external_id validée** sur les 4 cas
+
+### Critères d'acceptation Ticket 3
+
+| Critère | État |
+|---|---|
+| Les 4 flux parsent correctement | ✅ |
+| Insertions `news_raw` avec `source_id` correct | ✅ |
+| Flux indisponible → log + continuer | ✅ |
+| 2 runs consécutifs ⇒ dedup parfaite | ✅ |
+| Doc "ajouter une source RSS en 5 min" | ✅ en tête `ingest_rss/index.ts` |
+| Note rss.app dans `news_sources.notes` | ✅ déjà seedée Ticket 1 |
+| Monitoring silent_source > 14j | ✅ `logger.warn` JSON structuré |
+| Cron `30 4 * * 1` actif | ✅ |
+| Build Vercel non impacté | ✅ couvert par PR #214 |
+| **Bonus** | ✅ Support 3 formats (RSS 2.0 + RSS 1.0/RDF + Atom) au lieu de 2 |
+
+---
+
+## 5. Leçons techniques pour les prochains tickets
+
+### Lz1 — `deno-dom-wasm` en `text/html` et les void elements
+
+Toute balise HTML void (`<link>`, `<meta>`, `<img>`, `<br>`, `<hr>`, `<input>`, `<area>`, `<base>`, `<col>`, `<embed>`, `<source>`, `<track>`, `<wbr>`) est immédiatement fermée par le parser HTML quand on parse en `text/html`, **même si le XML source contient un contenu textuel entre balises ouvrante et fermante**. Conséquence : leur `textContent` est toujours vide.
+
+**Pattern à appliquer** : pour toute balise dont on attend du contenu textuel et qui est aussi une void element HTML, **préprocesser la chaîne XML via regex** pour la renommer en balise non-void avant le DOM parse.
+
+### Lz2 — Détection de format avant DOM parse
+
+Pour les formats où la racine est significative (RSS 1.0 a `<rdf:RDF>`, RSS 2.0 a `<rss>`, Atom a `<feed>`), **détecter le format via regex sur la chaîne XML brute** avant de la passer au parseur HTML. Le parseur HTML peut réécrire ou aplatir la racine, et la détection post-parse peut donc échouer.
+
+### Lz3 — RSS 1.0 / RDF est encore vivant
+
+Beaucoup de flux scientifiques (Nature, Springer, certains éditeurs académiques) servent encore du RSS 1.0/RDF. Pour les futures sources Ticket 11+ (extension du catalogue), prévoir que **n'importe quel flux peut être l'un des 3 formats**. Le code livré au Ticket 3 supporte les 3.
+
+### Lz4 — Bug Project ID figé en mémoire
+
+Le project_id Supabase utilisé dans la mémoire et dans plusieurs prompts contenait une faute (`dxybsuhfkwuemapqrvg**v**` au lieu de `dxybsuhfkwuemapqrvg**z**`). Ça a coûté 2 erreurs deploy "404 Not Found" avant détection. Mémoire corrigée le 26/04/2026.
+
+---
+
+## 6. Risques et points ouverts
+
+### Suivi à mettre en place
+
+- **Au prochain `cron` réel (lundi prochain)** : vérifier que `total_inserted = 0` (même articles que cette semaine) ou `total_inserted > 0` (nouveaux articles publiés). Pas d'erreur attendue.
+- **Dans 2 semaines** : si une source n'a rien publié, `silent_source warn` dans les logs. À surveiller surtout pour `L'Information Dentaire` (rss.app, service tiers).
+- **Au déploiement Phase 2** : si nouvelles sources ajoutées, copier le pattern existant — la doc "5 min" en tête de `ingest_rss/index.ts` couvre ça.
+
+### Dette technique reportée
+
+- **Tests Deno natifs** : la sandbox Claude Code n'a pas Deno installé. Les tests ont été faits en jsdom comme proxy (validé par les runs live). À ajouter au backlog d'amélioration dev.
+
+---
+
+## 7. Prochaine étape : Ticket 4
+
+**Filtrage Claude Haiku** : ingestion → score relevance → flag `selected ≥ 0.70` pour synthèse.
+
+Voir `PROMPT_AMORCAGE_TICKET4.md` pour le prompt à coller dans la nouvelle session Claude Code, qui intègre :
+- Le contexte des Tickets 1, 2, 3 livrés
+- Les nouveautés `spec_news_podcast_pipeline_v1_3.md`
+- Les contraintes additionnelles 11-15 du handoff v1.3
+- Le rappel des 3 migrations BDD v1.3 à appliquer avant Ticket 5
+
+---
+
+*Fin du RECAP Ticket 3. À ajouter au Project Knowledge et à la racine du repo.*
