@@ -11,7 +11,8 @@
 //     balises namespacées (dc:date, content:encoded) : le caractère ":" n'est
 //     pas matchable directement par querySelector sans échappement, et
 //     deno-dom expose le nom complet "dc:date" sur Element.tagName.
-//   - Compatibilité formats : RSS 2.0, Atom 1.0, et rss.app (RSS 2.0 quirky).
+//   - Compatibilité formats : RSS 2.0, Atom 1.0, RSS 1.0 / RDF (Nature/BDJ),
+//     et rss.app (RSS 2.0 quirky).
 //   - Décodage entités HTML (numériques + nommées courantes) appliqué
 //     idempotemment sur title/description après textContent (deno-dom décode
 //     déjà les entités du textContent en mode HTML, mais la double-passe
@@ -22,10 +23,21 @@
 //   - Si title ET pubDate manquent simultanément → l'item est SKIPPÉ et compté
 //     dans skipped (le hash inventé serait instable d'un run à l'autre).
 //
+// Patch v2 (2026-04-26) — fix BUG 1 + BUG 2 :
+//   - BUG 1 : <link>https://...</link> retourne textContent vide en mode HTML
+//     car deno-dom traite <link> comme void element (HTML void). Pré-process
+//     regex : <link>X</link> → <rss-link>X</rss-link> AVANT parsing. Ne
+//     matche pas <link href="..."/> Atom (a des attributs → non capturé par
+//     /<link>...<\/link>/) ni <atom:link.../>.
+//   - BUG 2 : Nature/BDJ sert du RSS 1.0 / RDF (racine <rdf:RDF>, items frères
+//     de <channel>). Détection sur XML brut, parseRss1() dédié. Identifiant
+//     canonique = attribut rdf:about.
+//
 // API publique :
 //   - fetchFeed(url, opts)                   → string (XML brut)
 //   - parseFeed(xml)                         → Promise<RssParseResult>
 //   - normalizeLink(raw)                     → string | null  (utilitaire exporté pour tests)
+//   - preprocessLink(xml)                    → string  (utilitaire exporté pour tests)
 
 import { DOMParser, Element } from "https://deno.land/x/deno_dom@v0.1.46/deno-dom-wasm.ts";
 
@@ -33,8 +45,8 @@ import { DOMParser, Element } from "https://deno.land/x/deno_dom@v0.1.46/deno-do
 // Types
 // ---------------------------------------------------------------------------
 
-export type RssFeedFormat = "rss2" | "atom";
-export type ExternalIdSource = "guid" | "link" | "hash";
+export type RssFeedFormat = "rss2" | "atom" | "rss1";
+export type ExternalIdSource = "guid" | "link" | "hash" | "rdf:about";
 
 export interface RssItem {
   /** Identifiant calculé pour la dedup (col `external_id` de news_raw). */
@@ -131,22 +143,50 @@ function sleep(ms: number): Promise<void> {
 export async function parseFeed(xml: string): Promise<RssParseResult> {
   if (!xml || !xml.trim()) return { format: null, items: [], skipped: 0 };
 
-  const doc = new DOMParser().parseFromString(xml, "text/html");
+  // Détection RSS 1.0 / RDF SUR LE XML BRUT — la racine <rdf:RDF> peut être
+  // perdue ou réécrite après parsing HTML, on lit donc le format depuis le
+  // texte original avant tout DOM.
+  const isRss1 = /<rdf:RDF\b/i.test(xml);
+
+  // Pré-process BUG 1 : renomme <link>...</link> en <rss-link>...</rss-link>
+  // pour contourner la règle "void element" appliquée par deno-dom HTML à
+  // <link>. Atom (link self-closing avec attribut) reste intact.
+  const preprocessed = preprocessLink(xml);
+
+  const doc = new DOMParser().parseFromString(preprocessed, "text/html");
   if (!doc) return { format: null, items: [], skipped: 0 };
 
-  // Detection : <feed> = Atom, <rss>/<channel> = RSS 2.0.
+  if (isRss1) {
+    return await parseRss1(doc as unknown as Element);
+  }
+
   // En mode HTML, deno-dom encapsule le contenu dans <html><body>... — on
   // cherche donc les balises où qu'elles soient dans l'arbre.
   const atomRoot = doc.querySelector("feed");
   const rssChannel = doc.querySelector("rss > channel") ?? doc.querySelector("channel");
 
   if (atomRoot) {
-    return parseAtom(atomRoot);
+    return await parseAtom(atomRoot);
   }
   if (rssChannel) {
     return await parseRss2(rssChannel);
   }
   return { format: null, items: [], skipped: 0 };
+}
+
+// ---------------------------------------------------------------------------
+// Pré-process BUG 1 — <link>X</link> → <rss-link>X</rss-link>
+// ---------------------------------------------------------------------------
+
+/**
+ * Renomme les balises <link> SANS attribut suivies d'un </link> de fermeture.
+ * Ne touche pas :
+ *   - <link href="..."/> (Atom, self-closing avec attribut → pas de </link>)
+ *   - <atom:link .../> (préfixe, non matché)
+ * Cas couverts : RSS 2.0 <link>https://...</link>, RSS 1.0 idem.
+ */
+export function preprocessLink(xml: string): string {
+  return xml.replace(/<link>([\s\S]*?)<\/link>/g, "<rss-link>$1</rss-link>");
 }
 
 // ---------------------------------------------------------------------------
@@ -162,7 +202,10 @@ async function parseRss2(channel: Element): Promise<RssParseResult> {
 
   for (const item of itemNodes) {
     const rawGuid = textOf(item, "guid");
-    const rawLink = textOf(item, "link");
+    // <rss-link> = renommage défensif appliqué par preprocessLink (BUG 1).
+    // Fallback sur "link" pour les flux où le pré-process n'aurait pas matché
+    // (ex: <link xml:lang="fr">...</link> avec attribut, non vu en pratique).
+    const rawLink = textOf(item, "rss-link") ?? textOf(item, "link");
     const rawPubDate =
       textOf(item, "pubdate") ??
       // dc:date — namespace, : non matchable en CSS sans échappement.
@@ -215,6 +258,94 @@ async function parseRss2(channel: Element): Promise<RssParseResult> {
   }
 
   return { format: "rss2", items, skipped };
+}
+
+// ---------------------------------------------------------------------------
+// RSS 1.0 / RDF (Nature, BDJ, Cochrane Library global)
+// ---------------------------------------------------------------------------
+//
+// Différences avec RSS 2.0 :
+//   - Racine <rdf:RDF>, items frères de <channel> (pas enfants → on les
+//     cherche dans tout le document, pas dans un parent contraint).
+//   - Identifiant canonique = attribut rdf:about sur <item>.
+//   - Date typiquement <dc:date> (ISO 8601 court).
+//   - Pas de <pubDate> ni <guid>.
+//   - DOI souvent dans <prism:doi> ou <dc:identifier>doi:10.xxxx</dc:identifier>.
+
+async function parseRss1(root: Element): Promise<RssParseResult> {
+  // En mode HTML, le doc englobe tout — on cherche les <item> où qu'ils
+  // soient, sans contrainte de parent (ils sont frères de <channel> en RDF).
+  const itemNodes = Array.from(root.querySelectorAll("item"))
+    .filter((n): n is Element => n.nodeType === 1);
+
+  const items: RssItem[] = [];
+  let skipped = 0;
+
+  for (const item of itemNodes) {
+    const rdfAbout = item.getAttribute("rdf:about")?.trim() || null;
+    // Pas de <guid> en RDF, mais on remplit raw_guid avec rdf:about pour
+    // garder le forensic homogène avec RSS 2.0.
+    const rawGuid = rdfAbout;
+    const rawLink =
+      textOf(item, "rss-link") ??
+      textOf(item, "link") ??
+      // prism:url — métadonnée Nature/BDJ courante.
+      findChildByLocalName(item, "prism:url")?.textContent?.trim() ??
+      null;
+    const rawPubDate =
+      findChildByLocalName(item, "dc:date")?.textContent?.trim() ??
+      textOf(item, "pubdate") ??
+      null;
+
+    const titleRaw =
+      textOf(item, "title") ??
+      findChildByLocalName(item, "dc:title")?.textContent?.trim() ??
+      null;
+    const descriptionRaw =
+      textOf(item, "description") ??
+      findChildByLocalName(item, "content:encoded")?.textContent?.trim() ??
+      findChildByLocalName(item, "dc:description")?.textContent?.trim() ??
+      null;
+
+    const title = titleRaw ? decodeEntities(titleRaw) : null;
+    const description = descriptionRaw ? decodeEntities(descriptionRaw) : null;
+
+    const publishedAt = rawPubDate ? toIsoDate(rawPubDate) : null;
+
+    // Authors RSS 1.0 : <dc:creator> typiquement.
+    const authors: string[] = [];
+    const dcCreator = findChildByLocalName(item, "dc:creator");
+    if (dcCreator?.textContent?.trim()) authors.push(decodeEntities(dcCreator.textContent.trim()));
+
+    // Cascade external_id RSS 1.0 : rdf:about (canonique RDF) → link → hash.
+    const idResolution = await resolveExternalId({
+      rdfAbout,
+      guid: null,
+      link: rawLink,
+      title,
+      rawPubDate,
+    });
+    if (!idResolution) {
+      skipped++;
+      continue;
+    }
+
+    items.push({
+      external_id: idResolution.external_id,
+      external_id_source: idResolution.source,
+      title,
+      link: rawLink ? normalizeLink(rawLink) ?? rawLink : (rdfAbout ? normalizeLink(rdfAbout) ?? rdfAbout : null),
+      description,
+      published_at: publishedAt,
+      authors,
+      feed_format: "rss1",
+      raw_guid: rawGuid,
+      raw_link: rawLink,
+      raw_pub_date: rawPubDate,
+    });
+  }
+
+  return { format: "rss1", items, skipped };
 }
 
 // ---------------------------------------------------------------------------
@@ -296,6 +427,8 @@ function pickAtomLink(entry: Element): string | null {
 // ---------------------------------------------------------------------------
 
 interface ExternalIdInput {
+  /** RSS 1.0 / RDF — attribut rdf:about, canonique RDF. Priorité 1 si fourni. */
+  rdfAbout?: string | null;
   guid: string | null;
   link: string | null;
   title: string | null;
@@ -310,6 +443,10 @@ interface ExternalIdResolution {
 async function resolveExternalId(
   input: ExternalIdInput,
 ): Promise<ExternalIdResolution | null> {
+  const rdfAbout = input.rdfAbout?.trim();
+  if (rdfAbout && rdfAbout.length > 0) {
+    return { external_id: rdfAbout, source: "rdf:about" };
+  }
   const guid = input.guid?.trim();
   if (guid && guid.length > 0) {
     return { external_id: guid, source: "guid" };
