@@ -70,6 +70,15 @@ BEGIN
   -- Tourne ~10h après ingest_rss pour laisser le pipeline d'ingestion se
   -- terminer (sécurité large : ingest_pubmed + ingest_rss <30 min en
   -- pratique, marge de cron Supabase + temps de relance manuelle si bug).
+  --
+  -- Body POST : {"limit": 50}
+  --   Borne dure d'articles scorés par invocation pour rester sous IDLE_TIMEOUT
+  --   ~150s d'Edge Functions Supabase (cf. score_articles/index.ts header
+  --   §"Borne par invocation"). 50 est largement suffisant pour le régime
+  --   stationnaire estimé à 30-50 articles nouveaux par semaine (spec v1.3 §9).
+  --   Le caller peut surcharger via env NEWS_SCORE_BATCH_LIMIT côté Edge
+  --   Function ou en repassant un body custom pour un run manuel.
+  --
   -- Signature 3-args positionnelle (seule exposée par Supabase) :
   --   cron.schedule(job_name text, schedule text, command text)
   PERFORM cron.schedule(
@@ -83,7 +92,7 @@ BEGIN
           'Authorization', %L,
           'Content-Type',  'application/json'
         ),
-        body    := '{}'::jsonb
+        body    := '{"limit": 50}'::jsonb
       );
       $cmd$,
       v_supabase_url || '/functions/v1/score_articles',
