@@ -16,6 +16,30 @@
 //     après ingest_pubmed (04h00 UTC) et ingest_rss (04h30 UTC).
 //   - manuel via HTTP POST (re-run / backfill, réservé service_role).
 //
+// Borne par invocation (`limit`)
+// ------------------------------
+// Edge Functions Supabase ont un IDLE_TIMEOUT à ~150s. Comme un appel Haiku
+// par batch de 10 prend ~10-12s, une invocation peut traiter au maximum
+// ~10-12 batches = ~100-120 articles avant de risquer le timeout HTTP.
+//
+// La borne est paramétrique :
+//   - body POST `{"limit": N}` (entier > 0). Cappée silencieusement à
+//     MAX_BATCH_LIMIT (200) pour rester sous la limite Edge.
+//   - défaut : NEWS_SCORE_BATCH_LIMIT env var (parseInt) ou DEFAULT_BATCH_LIMIT
+//     (50) — calibré pour le régime stationnaire (~30-50 articles/sem).
+//   - body absent ou JSON malformé → défaut. body avec `limit <= 0` ou
+//     non-entier → 400 propre.
+//
+// Pour le backfill initial (volume ponctuel >100), le caller boucle :
+//   while (response.has_more) {
+//     curl -X POST ... -d '{"limit": 30}'
+//   }
+// Le has_more renvoyé dans la réponse JSON (ainsi que total_remaining_estimate)
+// permet à la CLI de piloter la boucle sans deviner.
+//
+// Pas d'auto-réinvocation interne. La gestion de la boucle reste côté caller
+// (CLI manuel pour backfill, cron pour la suite).
+//
 // Comportement :
 //   1. Charger l'ensemble des hash dedupe_hash déjà présents en news_scored
 //      (status != 'duplicate') — sert au cross-source dedup.
@@ -28,15 +52,20 @@
 //      ingested_at ASC. Pour un dedupe_hash donné, le 1er rencontré gagne
 //      (PubMed a la priorité sur RSS pour le même article : DOI fiable +
 //      abstract complet). Suivants → INSERT status='duplicate' sans appel LLM.
-//   5. Articles uniques regroupés en batches de 10 → appel Haiku par batch.
-//   6. Parsing JSON tolérant (3 retries via re-call si malformé). Si échec
+//   5. Slice à `limit` articles → fenêtre de travail de l'invocation. Le tri
+//      étant global (déterministe), les articles non traités ce tour seront
+//      simplement traités au tour suivant (cohérence cross-source préservée
+//      via existing_hashes BDD rechargé à chaque invocation).
+//   6. Articles uniques regroupés en batches de 10 → appel Haiku par batch.
+//   7. Parsing JSON tolérant (3 retries via re-call si malformé). Si échec
 //      final, INSERT en status='candidate' score=NULL pour ne pas bloquer
 //      le pipeline.
-//   7. INSERT news_scored une ligne par article traité.
+//   8. INSERT news_scored une ligne par article traité.
 //
-// Logs structurés : run_start, batch_scored, article_failed, parse_retry,
-// run_complete (compteurs candidate/selected/duplicate/failed/skipped_retracted
-// + tokens cumulés + estimation coût USD/EUR).
+// Logs structurés : run_start, inputs_loaded (avec limit_applied +
+// total_remaining_estimate), article_skipped_retracted, parse_retry,
+// anthropic_call_failed, batch_scored, article_failed, run_complete (avec
+// has_more + tokens cumulés + estimation coût USD/EUR).
 
 import { getServiceClient } from "../_shared/supabase.ts";
 import { Logger } from "../_shared/logger.ts";
@@ -58,6 +87,14 @@ const DEFAULT_THRESHOLD = 0.70;
 const BATCH_SIZE = 10;
 const MAX_PARSE_RETRIES = 3;
 const MAX_OUTPUT_TOKENS = 2048;
+
+// Borne par invocation (cf. header §"Borne par invocation").
+const DEFAULT_BATCH_LIMIT = 50;
+// Cap dur pour rester sous IDLE_TIMEOUT 150s même dans le pire cas
+// (200 articles / 10 par batch = 20 appels Haiku × 10s = 200s — dépasse
+// déjà le timeout, donc 200 est une limite haute volontairement permissive
+// pour les runs locaux ; le caller devrait viser 50-80 max).
+const MAX_BATCH_LIMIT = 200;
 
 // Prix indicatifs Haiku 4.5 (USD/MTok, à ajuster si Anthropic met à jour
 // ses tarifs). Sert uniquement à logger un coût estimé en fin de run pour
@@ -108,6 +145,16 @@ interface RunSummary {
   estimated_cost_eur: number;
   threshold: number;
   model: string;
+  /** Borne effectivement appliquée à cette invocation (après cap). */
+  limit_applied: number;
+  /**
+   * Nombre d'articles non scorés AU MOMENT du SELECT (avant slice à
+   * limit_applied). Inclut les futurs duplicates et les rejetés-rétractés.
+   * Sert au caller pour piloter le backfill manuel.
+   */
+  total_remaining_estimate: number;
+  /** true si total_remaining_estimate > limit_applied — le caller doit reboucler. */
+  has_more: boolean;
   errors: string[];
 }
 
@@ -495,7 +542,7 @@ async function insertScored(
 // Main
 // ---------------------------------------------------------------------------
 
-async function run(): Promise<RunSummary> {
+async function run(opts: { limit: number }): Promise<RunSummary> {
   const supabase = getServiceClient();
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY env var is missing");
@@ -525,18 +572,35 @@ async function run(): Promise<RunSummary> {
     estimated_cost_eur: 0,
     threshold,
     model,
+    limit_applied: opts.limit,
+    total_remaining_estimate: 0,
+    has_more: false,
     errors: [],
   };
 
-  logger.info("run_start", { model, threshold });
+  logger.info("run_start", { model, threshold, limit: opts.limit });
 
   const loaded = await loadInputs(supabase);
-  summary.candidates_loaded = loaded.candidates.length;
+  // total_remaining_estimate = nombre d'articles non scorés AU MOMENT du
+  // SELECT (avant slice). Reflète ce qu'il reste à traiter pour piloter la
+  // boucle côté caller.
+  summary.total_remaining_estimate = loaded.candidates.length;
+  summary.has_more = loaded.candidates.length > opts.limit;
+
+  // Slice à la fenêtre de l'invocation. Le tri étant global (cf. loadInputs),
+  // les articles non traités ce tour seront traités au tour suivant — la
+  // cohérence cross-source est préservée par existing_hashes BDD rechargé à
+  // chaque invocation (cf. header).
+  const window = loaded.candidates.slice(0, opts.limit);
+  summary.candidates_loaded = window.length;
   summary.retracted_skipped = loaded.retracted_skipped;
   summary.already_scored = loaded.already_scored;
 
   logger.info("inputs_loaded", {
-    candidates: loaded.candidates.length,
+    candidates: window.length,
+    total_remaining_estimate: summary.total_remaining_estimate,
+    limit_applied: summary.limit_applied,
+    has_more: summary.has_more,
     already_scored: loaded.already_scored,
     retracted_skipped: loaded.retracted_skipped,
     existing_hashes: loaded.existing_hashes.size,
@@ -548,7 +612,7 @@ async function run(): Promise<RunSummary> {
   const toScore: RawCandidate[] = [];
   const duplicates: { candidate: RawCandidate; winner_raw_id: string }[] = [];
 
-  for (const c of loaded.candidates) {
+  for (const c of window) {
     const winner = seenHashesInRun.get(c.dedupe_hash);
     if (winner) {
       duplicates.push({ candidate: c, winner_raw_id: winner });
@@ -699,6 +763,85 @@ function round4(n: number): number {
 // HTTP handler
 // ---------------------------------------------------------------------------
 
+/**
+ * Limite par défaut pour cette invocation, lue depuis l'env. Permet au cron
+ * (et au caller) de surcharger la valeur sans modifier le code.
+ *
+ * Si NEWS_SCORE_BATCH_LIMIT est invalide (non-numérique, négatif, hors cap),
+ * on log warn et retombe sur DEFAULT_BATCH_LIMIT pour ne pas casser le cron.
+ */
+function defaultLimitFromEnv(): number {
+  const raw = Deno.env.get("NEWS_SCORE_BATCH_LIMIT");
+  if (!raw) return DEFAULT_BATCH_LIMIT;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n <= 0) {
+    logger.warn("env_invalid_limit", {
+      var: "NEWS_SCORE_BATCH_LIMIT",
+      raw,
+      fallback: DEFAULT_BATCH_LIMIT,
+    });
+    return DEFAULT_BATCH_LIMIT;
+  }
+  return Math.min(n, MAX_BATCH_LIMIT);
+}
+
+type ParsedLimit =
+  | { ok: true; limit: number; requested: number | null; capped: boolean }
+  | { ok: false; error: string };
+
+/**
+ * Parse défensif du body POST :
+ *   - body absent / vide → default (env var ou DEFAULT_BATCH_LIMIT).
+ *   - JSON malformé → fallback default + log warn (ne bloque pas le cron qui
+ *     envoie déjà un body valide ; protège contre un curl approximatif).
+ *   - {"limit": N} avec N entier > 0 → utilisé, cappé à MAX_BATCH_LIMIT.
+ *   - {"limit": N} avec N <= 0, non-entier ou non-numérique → 400.
+ */
+async function parseLimitFromBody(req: Request): Promise<ParsedLimit> {
+  let bodyText = "";
+  try {
+    bodyText = await req.text();
+  } catch (e) {
+    return {
+      ok: false,
+      error: `failed to read body: ${e instanceof Error ? e.message : String(e)}`,
+    };
+  }
+  if (!bodyText.trim()) {
+    return { ok: true, limit: defaultLimitFromEnv(), requested: null, capped: false };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(bodyText);
+  } catch (e) {
+    logger.warn("body_parse_failed", {
+      error: e instanceof Error ? e.message : String(e),
+      preview: bodyText.slice(0, 200),
+    });
+    return { ok: true, limit: defaultLimitFromEnv(), requested: null, capped: false };
+  }
+  if (!parsed || typeof parsed !== "object") {
+    return { ok: true, limit: defaultLimitFromEnv(), requested: null, capped: false };
+  }
+  const raw = (parsed as Record<string, unknown>).limit;
+  if (raw === undefined) {
+    return { ok: true, limit: defaultLimitFromEnv(), requested: null, capped: false };
+  }
+  if (typeof raw !== "number" || !Number.isFinite(raw)) {
+    return { ok: false, error: `limit must be a positive integer (got ${typeof raw})` };
+  }
+  if (!Number.isInteger(raw) || raw <= 0) {
+    return { ok: false, error: `limit must be a positive integer (got ${raw})` };
+  }
+  const capped = raw > MAX_BATCH_LIMIT;
+  return {
+    ok: true,
+    limit: Math.min(raw, MAX_BATCH_LIMIT),
+    requested: raw,
+    capped,
+  };
+}
+
 Deno.serve(async (req) => {
   const auth = req.headers.get("Authorization") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -708,8 +851,24 @@ Deno.serve(async (req) => {
       headers: { "content-type": "application/json" },
     });
   }
+
+  const parsed = await parseLimitFromBody(req);
+  if (!parsed.ok) {
+    return new Response(JSON.stringify({ ok: false, error: parsed.error }), {
+      status: 400,
+      headers: { "content-type": "application/json" },
+    });
+  }
+  if (parsed.capped) {
+    logger.warn("limit_capped", {
+      requested_limit: parsed.requested,
+      max_batch_limit: MAX_BATCH_LIMIT,
+      applied: parsed.limit,
+    });
+  }
+
   try {
-    const result = await run();
+    const result = await run({ limit: parsed.limit });
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { "content-type": "application/json" },
