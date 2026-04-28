@@ -29,6 +29,7 @@ import {
   CATEGORY_EDITORIAL_VALUES,
   POINTS_BY_DIFFICULTY,
   QUESTION_COUNT_MAX,
+  QUESTION_COUNT_MIN,
   QUESTION_TYPES_ALLOWED,
   TIME_BY_TYPE,
 } from "./types.ts";
@@ -150,6 +151,18 @@ export function validateTags(
     }
   }
 
+  // ----- summary_fr : non vide, ≥100 chars (anti-vide / anti-raté Sonnet) -----
+  // Seuil 100 caractères volontairement bas (pas la cible "200-400 mots" du
+  // SYSTEM_PROMPT) — on ne veut pas rejeter une synthèse correcte mais courte.
+  // <100 chars = signal clair de raté (placeholder Sonnet, output tronqué…).
+  if (typeof output.summary_fr !== "string" || !output.summary_fr.trim()) {
+    errors.push("summary_fr missing or empty");
+  } else if (output.summary_fr.trim().length < 100) {
+    errors.push(
+      `summary_fr length ${output.summary_fr.trim().length} < 100 (too short)`,
+    );
+  }
+
   return errors.length === 0 ? { ok: true } : { ok: false, errors };
 }
 
@@ -161,9 +174,12 @@ export type QuestionValidationResult =
   | { ok: true; normalized: NormalizedQuestion }
   | { ok: false; reason: string };
 
-/** Variantes acceptables pour true_false (case + ponctuation finale). */
-const TRUE_FALSE_VRAI = new Set(["vrai", "vrai.", "true", "true."]);
-const TRUE_FALSE_FAUX = new Set(["faux", "faux.", "false", "false."]);
+/** Variantes acceptables pour true_false (FR uniquement, +/- point final).
+ *  L'anglais (true/false) est volontairement REJETÉ : le SYSTEM_PROMPT impose
+ *  le français côté Sonnet, donc une sortie EN est un signal de dérive qu'on
+ *  veut détecter au niveau Edge Function plutôt que de laisser passer. */
+const TRUE_FALSE_VRAI = new Set(["vrai", "vrai."]);
+const TRUE_FALSE_FAUX = new Set(["faux", "faux."]);
 
 /** Citation obligatoire dans le feedback : année 19xx/20xx OU DOI. */
 const CITATION_YEAR_RE = /\b(?:19|20)\d{2}\b/;
@@ -408,6 +424,19 @@ export function validateAndFilterQuestions(
         raw: q,
       });
     }
+  }
+
+  // Warning informatif (non bloquant) si on a au moins 1 question valide
+  // mais moins que QUESTION_COUNT_MIN (3). Le seuil bloquant reste
+  // QUESTION_VALID_THRESHOLD=1 (cf A3) — c'est le caller qui décide de fail
+  // sur valid.length < QUESTION_VALID_THRESHOLD. 1 ou 2 valides = on garde
+  // la synthèse + ce warning. 3-4 valides = pas de warning.
+  if (valid.length > 0 && valid.length < QUESTION_COUNT_MIN) {
+    warnings.push({
+      question_index: -1,
+      reason: `valid_count_below_min (${valid.length} < ${QUESTION_COUNT_MIN})`,
+      raw: { valid_count: valid.length, total_received: questions.length },
+    });
   }
 
   return { valid, warnings };
