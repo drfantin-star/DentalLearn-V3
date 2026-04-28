@@ -22,7 +22,8 @@ export const DEFAULT_SONNET_MODEL = "claude-sonnet-4-6";
  * Rappel leçon Lz1 du Ticket 4 : IDLE_TIMEOUT 150s côté Edge Functions.
  * Sonnet est ~3× plus lent que Haiku → bornes plus conservatrices.
  *   default_limit=8  → ~64s en régime stationnaire
- *   max_limit=15     → ~120s, marge sur le timeout
+ *   max_limit=15     → ~120s, marge serrée mais acceptable. Si timeout
+ *                      en backfill, baisser à 12.
  */
 export const DEFAULT_BATCH_LIMIT = 8;
 export const MAX_BATCH_LIMIT = 15;
@@ -291,7 +292,9 @@ export interface RunSummary {
   tokens_embedding: number;
   estimated_cost_usd: number;
   estimated_cost_eur: number;
-  /** Erreurs non-fatales accumulées (1 string par anomalie). */
+  /** Erreurs run-level (chargement taxonomy, env vars manquants, OpenAI
+   *  quota global, etc.). Les erreurs par-article sont persistées dans
+   *  news_syntheses.validation_errors (Phase 0bis). */
   errors: string[];
 }
 
