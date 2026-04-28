@@ -9,7 +9,7 @@
 -- ============================================================================
 
 ALTER TABLE public.news_episodes
-  DROP CONSTRAINT IF EXISTS news_episodes_narrator_check;
+  DROP CONSTRAINT IF EXISTS news_episodes_format_narrator_check;
 
 -- ============================================================================
 -- 2. Drop des 4 colonnes (ordre inverse de l'UP)

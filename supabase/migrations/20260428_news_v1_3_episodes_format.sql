@@ -1,8 +1,26 @@
 -- Nom du fichier : 20260428_news_v1_3_episodes_format.sql
 -- Date de création : 2026-04-28
 -- Ticket : feature/news-ticket-5 (claude/news-section-ticket-5-hPm1t)
--- Description : Migration v1.3 — colonnes paramétriques sur news_episodes (format, narrator, target_duration_min, editorial_tone) + contrainte cohérence narrator
+-- Description : Migration v1.3 — colonnes paramétriques sur news_episodes (format, narrator, target_duration_min, editorial_tone) + contrainte cohérence format/narrator
 -- Rollback : supabase/migrations/20260428_news_v1_3_episodes_format_down.sql
+
+-- ============================================================================
+-- ⚠️ Lz6 (28/04/2026) — collision de nom de contrainte CHECK
+-- ============================================================================
+-- Ne PAS utiliser le nom `news_episodes_narrator_check` pour la CHECK XOR
+-- ajoutée explicitement plus bas, car Postgres l'utilise déjà
+-- automatiquement pour la CHECK inline créée par
+--   ADD COLUMN narrator text CHECK (...)
+-- (pattern d'auto-naming `<table>_<column>_check`).
+--
+-- Symptôme observé en SQL Editor lors du 1er Run du 28/04/2026 :
+--   ERROR 42710 : constraint "news_episodes_narrator_check" already exists
+-- alors que la CHECK XOR n'avait jamais été ajoutée en BDD.
+--
+-- Fix appliqué : la contrainte XOR est nommée `news_episodes_format_narrator_check`
+-- (préfixe explicite des deux colonnes référencées). Ce nom différencié
+-- évite la collision avec l'auto-naming de la CHECK inline de `narrator`.
+-- ============================================================================
 
 -- ============================================================================
 -- Contexte (spec_news_podcast_pipeline_v1_3.md §5.2 — migration 0010)
@@ -14,7 +32,7 @@
 --   - target_duration_min : 3 / 5 / 8 / 12 minutes
 --   - editorial_tone : standard / flash_urgence / pedagogique / focus_specialite
 --
--- La contrainte news_episodes_narrator_check garantit l'invariant produit :
+-- La contrainte news_episodes_format_narrator_check garantit l'invariant produit :
 --   - format='dialogue'  ⇔ narrator IS NULL
 --   - format='monologue' ⇔ narrator IS NOT NULL
 --
@@ -50,7 +68,7 @@ ALTER TABLE public.news_episodes
 -- (narrator NULL, format='dialogue' implicite).
 
 ALTER TABLE public.news_episodes
-  ADD CONSTRAINT news_episodes_narrator_check CHECK (
+  ADD CONSTRAINT news_episodes_format_narrator_check CHECK (
     (format = 'dialogue'  AND narrator IS NULL) OR
     (format = 'monologue' AND narrator IS NOT NULL)
   );
@@ -69,6 +87,6 @@ ALTER TABLE public.news_episodes
 --
 -- SELECT conname
 --   FROM pg_constraint
---  WHERE conname = 'news_episodes_narrator_check';
+--  WHERE conname = 'news_episodes_format_narrator_check';
 --
 -- Résultat attendu : 1 ligne.
