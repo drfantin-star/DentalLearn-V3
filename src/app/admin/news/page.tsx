@@ -271,16 +271,16 @@ function NewsListPage() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Rechercher dans le titre ou la synthèse…"
-                className="w-full pl-10 pr-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
+                className="w-full pl-10 pr-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
               />
             </div>
             <select
               value={sort}
               onChange={(e) => updateParams({ sort: e.target.value, page: '1' })}
-              className="text-sm bg-white border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
             >
               {SORTS.map((s) => (
-                <option key={s.value} value={s.value}>
+                <option key={s.value} value={s.value} className="bg-white text-gray-900">
                   Tri : {s.label}
                 </option>
               ))}
@@ -308,7 +308,7 @@ function NewsListPage() {
                   className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
                     active
                       ? `${s.chip} border-transparent ring-2 ring-[#2D1B96]/30`
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                      : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
                   {s.label}
@@ -322,11 +322,11 @@ function NewsListPage() {
             <select
               value={specialite}
               onChange={(e) => updateParams({ specialite: e.target.value || null, page: '1' })}
-              className="text-sm bg-white border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
             >
-              <option value="">Spécialité — Toutes</option>
+              <option value="" className="bg-white text-gray-900">Spécialité — Toutes</option>
               {SPECIALITES.map((s) => (
-                <option key={s.value} value={s.value}>
+                <option key={s.value} value={s.value} className="bg-white text-gray-900">
                   {s.label}
                 </option>
               ))}
@@ -335,11 +335,11 @@ function NewsListPage() {
             <select
               value={niveauPreuve}
               onChange={(e) => updateParams({ niveau_preuve: e.target.value || null, page: '1' })}
-              className="text-sm bg-white border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
             >
-              <option value="">Niveau de preuve — Tous</option>
+              <option value="" className="bg-white text-gray-900">Niveau de preuve — Tous</option>
               {NIVEAUX_PREUVE.map((n) => (
-                <option key={n.value} value={n.value}>
+                <option key={n.value} value={n.value} className="bg-white text-gray-900">
                   {n.label}
                 </option>
               ))}
@@ -350,11 +350,11 @@ function NewsListPage() {
               onChange={(e) =>
                 updateParams({ category_editorial: e.target.value || null, page: '1' })
               }
-              className="text-sm bg-white border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
             >
-              <option value="">Catégorie éditoriale — Toutes</option>
+              <option value="" className="bg-white text-gray-900">Catégorie éditoriale — Toutes</option>
               {CATEGORIES_EDITORIALES.map((c) => (
-                <option key={c.value} value={c.value}>
+                <option key={c.value} value={c.value} className="bg-white text-gray-900">
                   {c.label}
                 </option>
               ))}
@@ -365,19 +365,19 @@ function NewsListPage() {
               onChange={(e) =>
                 updateParams({ formation_category_match: e.target.value || null, page: '1' })
               }
-              className="text-sm bg-white border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
             >
-              <option value="">Match formation — Toutes</option>
+              <option value="" className="bg-white text-gray-900">Match formation — Toutes</option>
               <option
                 value={FORMATION_MATCH_NONE_SENTINEL}
                 disabled
                 title="À venir — nécessite une extension de l'API"
-                className="text-gray-400"
+                className="bg-white text-gray-400"
               >
                 — Aucune correspondance — (à venir)
               </option>
               {ALLOWED_FORMATION_CATEGORIES.map((slug) => (
-                <option key={slug} value={slug}>
+                <option key={slug} value={slug} className="bg-white text-gray-900">
                   {slug}
                 </option>
               ))}
@@ -566,14 +566,14 @@ function Pagination({
         <button
           onClick={() => onChange(page - 1)}
           disabled={page <= 1}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="w-4 h-4" />
           Précédent
         </button>
         {pages.map((p, idx) =>
           p === '…' ? (
-            <span key={`gap-${idx}`} className="px-2 text-gray-400 text-sm">
+            <span key={`gap-${idx}`} className="px-2 text-gray-500 text-sm">
               …
             </span>
           ) : (
@@ -583,7 +583,7 @@ function Pagination({
               className={`min-w-[36px] px-2 py-1.5 rounded-lg text-sm border transition-colors ${
                 p === page
                   ? 'bg-[#2D1B96] text-white border-[#2D1B96]'
-                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                  : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50'
               }`}
             >
               {p}
@@ -593,7 +593,7 @@ function Pagination({
         <button
           onClick={() => onChange(page + 1)}
           disabled={page >= totalPages}
-          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm border border-gray-200 bg-white text-gray-900 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Suivant
           <ChevronRight className="w-4 h-4" />
