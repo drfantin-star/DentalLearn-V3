@@ -143,8 +143,8 @@ export function validateTags(
     errors.push("display_title missing or empty");
   } else {
     const t = output.display_title.trim();
-    if (t.length > 60) {
-      errors.push(`display_title length ${t.length} > 60`);
+    if (t.length > 70) {
+      errors.push(`display_title length ${t.length} > 70`);
     }
     if (t.endsWith(".")) {
       errors.push("display_title ends with '.' (rule: no trailing dot)");
