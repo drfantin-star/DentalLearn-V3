@@ -4,14 +4,15 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  Users, 
+import {
+  LayoutDashboard,
+  BookOpen,
+  Users,
   LogOut,
   Shield,
   Beaker,
-  ClipboardCheck
+  ClipboardCheck,
+  MessageSquareWarning
 } from 'lucide-react';
 
 export default function AdminLayout({
@@ -131,6 +132,15 @@ export default function AdminLayout({
               >
                 <Users className="w-5 h-5" />
                 Utilisateurs
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/reclamations"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <MessageSquareWarning className="w-5 h-5" />
+                Réclamations
               </Link>
             </li>
             <li>
