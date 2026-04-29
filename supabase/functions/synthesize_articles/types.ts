@@ -117,7 +117,12 @@ export type ValidationStage =
   | "no_valid_questions"  // toutes les questions invalides (<QUESTION_VALID_THRESHOLD)
   | "embedding"           // appel OpenAI embeddings raté après les retries client
   | "synthesis_insert"    // INSERT news_syntheses raté (DB error)
-  | "question_insert";    // INSERT questions raté (rollback applicatif déclenché)
+  | "question_insert"     // INSERT questions raté (rollback applicatif déclenché)
+  | "anthropic_call";     // appel Sonnet raté APRÈS retries internes 429/5xx
+                          //   (timeout abort, 4xx non retryable, réseau cassé).
+                          //   Distinct de json_parse : ici on n'a même pas de
+                          //   réponse à parser. Sert à filtrer admin
+                          //   "transient API down" vs "Sonnet drift".
 
 /** Schéma standardisé du JSONB validation_errors. */
 export interface ValidationErrorPayload {
@@ -266,6 +271,30 @@ export type ProcessOutcome =
   | { kind: "succeeded"; warnings_count: number }
   | { kind: "failed"; stage: ValidationStage; promoted_to_permanent: boolean }
   | { kind: "skipped"; reason: "already_synthesized" | "max_attempts_reached" };
+
+/**
+ * Wrapper retourné par processArticle. Sépare l'outcome (sémantique business)
+ * des tokens consommés (télémétrie cost) pour permettre au caller (le run
+ * orchestrator dans synthesize_articles/index.ts) de cumuler les tokens
+ * sans toucher au discriminated union ProcessOutcome.
+ *
+ * Pour les outcomes "skipped" : tokens = { 0, 0, 0 } (rien n'est appelé).
+ * Pour "failed" stage='anthropic_call' : sonnet_input/output peuvent être
+ *   à 0 ou refléter des essais partiels avant l'échec durable.
+ * Pour "succeeded" : tokens incluent l'embedding final.
+ */
+export interface ProcessReport {
+  outcome: ProcessOutcome;
+  tokens: {
+    /** Cumul input tokens Sonnet sur tous les essais (succès ou fail). */
+    sonnet_input: number;
+    /** Cumul output tokens Sonnet sur tous les essais. */
+    sonnet_output: number;
+    /** Tokens d'embedding (text-embedding-3-small, ~display+summary+key_figures).
+     *  0 si l'étape n'a pas été atteinte (skip / fail avant étape 3). */
+    embedding: number;
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Run summary — payload de retour HTTP + log run_complete

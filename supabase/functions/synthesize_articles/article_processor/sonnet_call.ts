@@ -79,12 +79,23 @@ export interface SonnetCallSuccess {
 
 export interface SonnetCallFailure {
   ok: false;
-  stage: "json_parse" | "tag_validation";
+  /**
+   * Stage qui a fait échouer le traitement :
+   *   - 'json_parse'      : pas d'output utilisable (parse fail / structure
+   *     incomplète / réponse vide après les essais).
+   *   - 'tag_validation'  : output parseable mais ≥1 tag hors taxonomy
+   *     après maxTagRetries essais.
+   *   - 'anthropic_call'  : appel API Sonnet raté APRÈS les retries internes
+   *     d'_shared/anthropic.ts (timeout abort, 4xx non retryable, réseau
+   *     cassé). Distinct de json_parse : ici on n'a même pas de réponse à
+   *     parser. Filtrage admin "transient API down" vs "Sonnet drift".
+   */
+  stage: "json_parse" | "tag_validation" | "anthropic_call";
   errors: string[];
   /** Réponse Sonnet brute du dernier essai (tronquée à 2000 chars). */
   sonnet_raw: string;
   /** Output parseable du dernier essai (utile pour upsertFailedSynthesis sur
-   *  stage='tag_validation'). null sur stage='json_parse'. */
+   *  stage='tag_validation'). null sur stage='json_parse' ou 'anthropic_call'. */
   partial_output: SonnetSynthesisOutput | null;
   tokens: SonnetTokens;
   /** Nombre d'essais effectués (≤ maxTagRetries). */
@@ -213,7 +224,7 @@ export async function callSonnetWithRetry(
 
   let lastSonnetRaw = "";
   let lastFailure: {
-    stage: "json_parse" | "tag_validation";
+    stage: "json_parse" | "tag_validation" | "anthropic_call";
     errors: string[];
     partial_output: SonnetSynthesisOutput | null;
   } | null = null;
@@ -236,7 +247,9 @@ export async function callSonnetWithRetry(
       // anthropic.ts a déjà retry 3× sur 429/5xx avec backoff exponentiel.
       // Si on arrive ici, c'est un échec durable (timeout abort, 4xx non
       // retryable, ou réseau cassé). Pas la peine de reboucler côté tag —
-      // on remonte stage='json_parse' (pas d'output utilisable).
+      // on remonte stage='anthropic_call' (sémantique distincte de
+      // 'json_parse' : ici on n'a même pas de réponse à parser, c'est un
+      // problème API et non un problème Sonnet drift).
       const msg = e instanceof Error ? e.message : String(e);
       logger.error("anthropic_call_failed", {
         scored_id: article.scored_id,
@@ -244,7 +257,7 @@ export async function callSonnetWithRetry(
         error: msg,
       });
       lastFailure = {
-        stage: "json_parse",
+        stage: "anthropic_call",
         errors: [`anthropic call failed: ${msg}`],
         partial_output: null,
       };
