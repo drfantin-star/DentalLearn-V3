@@ -166,7 +166,7 @@ export default function ReclamationPage() {
               type="text"
               value={nom}
               onChange={e => setNom(e.target.value)}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#0F7B6C] focus:ring-1 focus:ring-[#0F7B6C]"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0F7B6C] focus:ring-1 focus:ring-[#0F7B6C]"
               placeholder="Dr Jean Dupont"
               maxLength={255}
             />
@@ -183,7 +183,7 @@ export default function ReclamationPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#0F7B6C] focus:ring-1 focus:ring-[#0F7B6C]"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0F7B6C] focus:ring-1 focus:ring-[#0F7B6C]"
               placeholder="votre@email.fr"
               maxLength={255}
             />
@@ -200,7 +200,7 @@ export default function ReclamationPage() {
               value={categorie}
               onChange={e => setCategorie(e.target.value as CategorieValue)}
               required
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#0F7B6C] focus:ring-1 focus:ring-[#0F7B6C] bg-white"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0F7B6C] focus:ring-1 focus:ring-[#0F7B6C]"
             >
               {CATEGORIES.map(c => (
                 <option key={c.value} value={c.value}>{c.label}</option>
@@ -219,7 +219,7 @@ export default function ReclamationPage() {
               value={sujet}
               onChange={e => setSujet(e.target.value)}
               required
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#0F7B6C] focus:ring-1 focus:ring-[#0F7B6C]"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0F7B6C] focus:ring-1 focus:ring-[#0F7B6C]"
               placeholder="Résumé en une ligne"
               maxLength={255}
             />
@@ -236,7 +236,7 @@ export default function ReclamationPage() {
               onChange={e => setMessage(e.target.value)}
               required
               rows={6}
-              className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#0F7B6C] focus:ring-1 focus:ring-[#0F7B6C] resize-none"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#0F7B6C] focus:ring-1 focus:ring-[#0F7B6C] resize-none"
               placeholder="Décrivez votre réclamation en détail (minimum 20 caractères)..."
               maxLength={5000}
             />
