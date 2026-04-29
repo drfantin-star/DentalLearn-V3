@@ -339,3 +339,28 @@ export function truncateForLog(s: string, max = 2000): string {
   if (!s) return "";
   return s.length <= max ? s : `${s.slice(0, max)}…[truncated ${s.length - max}]`;
 }
+
+/**
+ * Tronque un display_title à `max` caractères côté code, ajoute "…" en fin
+ * si tronqué. Coupe sur la dernière espace avant max-1 pour éviter de scinder
+ * un mot (best effort, fallback sur slice brut si pas d'espace dans la fin
+ * de la zone).
+ *
+ * Pourquoi côté code : Sonnet à temperature=0 ne sait pas compter les
+ * caractères de manière fiable et générait régulièrement des display_title
+ * de 60-80 chars malgré une consigne ≤70. Forcer le retry tag sur cette
+ * contrainte coûtait ~14 centimes Sonnet par article (3 essais perdus).
+ * Truncate côté code = filet de sécurité, plus de fail sur cette règle.
+ *
+ * Le SYSTEM_PROMPT continue à demander "idéalement 60 chars" pour rester
+ * dans la cible éditoriale ; le truncate intervient seulement si Sonnet
+ * dépasse. La string retournée est trim() en dessous de `max`.
+ */
+export function truncateDisplayTitle(s: string, max = 70): string {
+  const trimmed = s.trim();
+  if (trimmed.length <= max) return trimmed;
+  const slice = trimmed.slice(0, max - 1); // -1 pour réserver place du "…"
+  const lastSpace = slice.lastIndexOf(" ");
+  const safe = lastSpace > max - 20 ? slice.slice(0, lastSpace) : slice;
+  return `${safe}…`;
+}

@@ -34,6 +34,7 @@ import type {
 import {
   DEFAULT_SONNET_MODEL,
   MAX_FAILED_ATTEMPTS,
+  truncateDisplayTitle,
   truncateForLog,
 } from "../types.ts";
 
@@ -106,7 +107,9 @@ export async function insertSynthesisAndQuestions(
     // Tagging éditorial v1.3
     category_editorial: output.category_editorial,
     formation_category_match: output.formation_category_match,
-    display_title: output.display_title,
+    // Truncate côté code (Sonnet ne sait pas compter les chars de manière
+    // fiable à temperature=0 — cf truncateDisplayTitle dans types.ts).
+    display_title: truncateDisplayTitle(output.display_title),
     // Recherche sémantique
     embedding: embedding,
     // État
@@ -332,7 +335,9 @@ export async function upsertFailedSynthesis(
     keywords_libres: partialOutput?.keywords_libres ?? null,
     category_editorial: partialOutput?.category_editorial ?? null,
     formation_category_match: partialOutput?.formation_category_match ?? null,
-    display_title: partialOutput?.display_title ?? null,
+    display_title: partialOutput?.display_title
+      ? truncateDisplayTitle(partialOutput.display_title)
+      : null,
   };
 
   const { data: inserted, error: insErr } = await supabase

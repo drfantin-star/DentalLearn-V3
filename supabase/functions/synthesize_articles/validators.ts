@@ -138,17 +138,21 @@ export function validateTags(
     }
   }
 
-  // ----- display_title : non vide, ≤60 chars, pas de point final -----
+  // ----- display_title : non vide + pas de point final -----
+  // Note : la règle de LONGUEUR (>70) n'est PAS un fail validateTags.
+  // Sonnet à temperature=0 ne sait pas compter les caractères de manière
+  // fiable et générait régulièrement 60-80 chars. Forcer le retry tag sur
+  // cette contrainte coûtait ~14 centimes Sonnet par article (3 essais
+  // perdus). On laisse Sonnet produire ce qu'il veut, et on tronque côté
+  // code via truncateDisplayTitle(...) AVANT l'INSERT (cf persist.ts).
   if (typeof output.display_title !== "string" || !output.display_title.trim()) {
     errors.push("display_title missing or empty");
   } else {
     const t = output.display_title.trim();
-    if (t.length > 70) {
-      errors.push(`display_title length ${t.length} > 70`);
-    }
     if (t.endsWith(".")) {
       errors.push("display_title ends with '.' (rule: no trailing dot)");
     }
+    // PAS de check t.length > 70 — truncate appliqué côté persist.ts.
   }
 
   // ----- summary_fr : non vide, ≥100 chars (anti-vide / anti-raté Sonnet) -----
