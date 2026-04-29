@@ -11,9 +11,9 @@
 #
 # Variables d'environnement supportées :
 #   SUPABASE_URL              (default https://dxybsuhfkwuemapqrvgz.supabase.co)
-#   BACKFILL_LIMIT            (default 15, max 15 — cap MAX_BATCH_LIMIT côté Edge)
+#   BACKFILL_LIMIT            (default 5, max 5 — cap MAX_BATCH_LIMIT côté Edge)
 #   BACKFILL_SLEEP_S          (default 2 — pause entre invocations)
-#   BACKFILL_MAX_INVOCATIONS  (default 30 — cap dur anti-boucle infinie)
+#   BACKFILL_MAX_INVOCATIONS  (default 50 — cap dur anti-boucle infinie)
 #   BACKFILL_FORCE            (default 0 ; 1 → body inclut "force": true)
 #
 # Sécurité (leçon Lz2 du Ticket 4) :
@@ -22,11 +22,12 @@
 #   - Si la variable est déjà exportée dans l'environnement, on la
 #     ré-utilise sans re-prompter (pratique pour CI / scripting).
 #
-# Cap MAX_INVOCATIONS=30 (leçon Lz nouvelle) : protection contre une boucle
-# infinie si la fonction renvoie toujours has_more=true (bug, race
-# condition, dérive Sonnet). 30 × 15 = 450 articles max/run du script,
-# largement suffisant pour le backfill initial des 196 articles selected
-# du Ticket 4 (≈14 invocations attendues, 2× la cible).
+# Cap MAX_INVOCATIONS=50 : protection contre une boucle infinie si la fonction
+# renvoie toujours has_more=true (bug, race condition, dérive Sonnet).
+# 50 × 5 = 250 articles max/run du script. Suffisant pour le backfill initial
+# (~189 articles restants au 29/04/2026 = ~38 invocations attendues, marge
+# 1.3×). Limites recalibrées le 29/04/2026 après mesure réelle ~30s/article
+# (cf types.ts JSDoc DEFAULT_BATCH_LIMIT) : default 3, max 5.
 #
 # Sortie : récap final stdout (compteurs cumulés + coût estimé) +
 # code retour 0 si tout OK, 1 si HTTP non-200 / cap atteint avec has_more.
@@ -35,9 +36,9 @@ set -euo pipefail
 
 # ----- Configuration -----
 SUPABASE_URL="${SUPABASE_URL:-https://dxybsuhfkwuemapqrvgz.supabase.co}"
-BACKFILL_LIMIT="${BACKFILL_LIMIT:-15}"
+BACKFILL_LIMIT="${BACKFILL_LIMIT:-5}"
 BACKFILL_SLEEP_S="${BACKFILL_SLEEP_S:-2}"
-BACKFILL_MAX_INVOCATIONS="${BACKFILL_MAX_INVOCATIONS:-30}"
+BACKFILL_MAX_INVOCATIONS="${BACKFILL_MAX_INVOCATIONS:-50}"
 BACKFILL_FORCE="${BACKFILL_FORCE:-0}"
 
 ENDPOINT="${SUPABASE_URL}/functions/v1/synthesize_articles"
@@ -54,12 +55,13 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 # ----- Validation cap limite côté script -----
-# Cap miroir du MAX_BATCH_LIMIT côté Edge Function (15). Le script ne peut pas
-# imposer un limit > 15 — l'Edge Function le re-cappera silencieusement et
-# loguera un warning "limit_capped". Mais autant éviter le détour.
-if [ "$BACKFILL_LIMIT" -gt 15 ]; then
-  echo "WARNING: BACKFILL_LIMIT=${BACKFILL_LIMIT} > 15, capping to 15 (Edge MAX_BATCH_LIMIT)." >&2
-  BACKFILL_LIMIT=15
+# Cap miroir du MAX_BATCH_LIMIT côté Edge Function (5, recalibré 29/04/2026).
+# Le script ne peut pas imposer un limit > 5 — l'Edge Function le re-cappera
+# silencieusement et loguera un warning "limit_capped". Mais autant éviter
+# le détour.
+if [ "$BACKFILL_LIMIT" -gt 5 ]; then
+  echo "WARNING: BACKFILL_LIMIT=${BACKFILL_LIMIT} > 5, capping to 5 (Edge MAX_BATCH_LIMIT)." >&2
+  BACKFILL_LIMIT=5
 fi
 if [ "$BACKFILL_LIMIT" -lt 1 ]; then
   echo "ERROR: BACKFILL_LIMIT must be >= 1 (got ${BACKFILL_LIMIT})." >&2

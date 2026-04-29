@@ -17,16 +17,28 @@
 /** Modèle Sonnet figé (arbitrage A1). */
 export const DEFAULT_SONNET_MODEL = "claude-sonnet-4-6";
 
-/** Borne par invocation (arbitrage A5).
+/** Borne par invocation (arbitrage A5 RECALIBRÉ après mesure live).
  *
- * Rappel leçon Lz1 du Ticket 4 : IDLE_TIMEOUT 150s côté Edge Functions.
- * Sonnet est ~3× plus lent que Haiku → bornes plus conservatrices.
- *   default_limit=8  → ~64s en régime stationnaire
- *   max_limit=15     → ~120s, marge serrée mais acceptable. Si timeout
- *                      en backfill, baisser à 12.
+ * Mesure réelle 29/04/2026 : ~30s/article (Sonnet + embedding + INSERT).
+ * Le design initial estimait ~8s mais Sonnet 4.6 single-call avec retry
+ * tag (jusqu'à 3 essais) + OpenAI embeddings + INSERT 2 tables prend
+ * en pratique 4× plus que prévu.
+ *
+ * IDLE_TIMEOUT Edge Functions Supabase = 150s (cf leçon Lz1 du Ticket 4).
+ *
+ * Calcul re-calibré :
+ *   default_limit=3 → ~90s   (60s de marge sur le timeout — confortable)
+ *   max_limit=5     → ~150s  pile sur la limite (à éviter en pratique,
+ *                              n'utiliser que pour des batches mesurés)
+ *
+ * Note : à 3 articles/run cron en régime stationnaire, on traite
+ * 3 articles/sem. Pour absorber les 15 nouveaux articles selected/sem
+ * en moyenne, le cron seul ne suffit pas — il faudra une stratégie
+ * d'auto-relance ou plusieurs cron par jour. Hors scope Ticket 5,
+ * ticket cleanup ultérieur (logger en dette technique).
  */
-export const DEFAULT_BATCH_LIMIT = 8;
-export const MAX_BATCH_LIMIT = 15;
+export const DEFAULT_BATCH_LIMIT = 3;
+export const MAX_BATCH_LIMIT = 5;
 
 /** Nombre maximum de tentatives Sonnet par article (1 essai + 2 retries).
  *
