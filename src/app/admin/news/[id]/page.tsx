@@ -20,6 +20,7 @@ import {
   FormationCategorySlug,
 } from '@/lib/constants/news'
 import { describeCardDate, formatDate } from '@/lib/news-display'
+import { QuestionApprovalButton } from '@/components/admin/news/QuestionApprovalButton'
 
 // ---------- Types ----------
 
@@ -210,6 +211,13 @@ export default function NewsDetailPage() {
               questions={questions}
               loading={questionsLoading}
               error={questionsError}
+              onApprovalChange={(qid, newValue) =>
+                setQuestions((prev) =>
+                  prev.map((qi) =>
+                    qi.id === qid ? { ...qi, is_daily_quiz_eligible: newValue } : qi
+                  )
+                )
+              }
             />
           </main>
           <aside className="space-y-6">
@@ -411,10 +419,12 @@ function QuestionsCard({
   questions,
   loading,
   error,
+  onApprovalChange,
 }: {
   questions: Question[]
   loading: boolean
   error: string | null
+  onApprovalChange: (questionId: string, newValue: boolean) => void
 }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
@@ -444,7 +454,11 @@ function QuestionsCard({
       ) : (
         <div className="space-y-4">
           {questions.map((q) => (
-            <QuestionItem key={q.id} question={q} />
+            <QuestionItem
+              key={q.id}
+              question={q}
+              onApprovalChange={(newValue) => onApprovalChange(q.id, newValue)}
+            />
           ))}
         </div>
       )}
@@ -452,7 +466,13 @@ function QuestionsCard({
   )
 }
 
-function QuestionItem({ question }: { question: Question }) {
+function QuestionItem({
+  question,
+  onApprovalChange,
+}: {
+  question: Question
+  onApprovalChange: (newValue: boolean) => void
+}) {
   const typeLabel = QUESTION_TYPE_LABEL[question.question_type] ?? question.question_type
   const difficultyLabel =
     question.difficulty != null
@@ -475,11 +495,12 @@ function QuestionItem({ question }: { question: Question }) {
             <Badge cls="bg-indigo-50 text-indigo-700">{question.points} pts</Badge>
           )}
         </div>
-        {question.is_daily_quiz_eligible ? (
-          <Badge cls="bg-emerald-100 text-emerald-700">✓ Approuvée pour quiz</Badge>
-        ) : (
-          <Badge cls="bg-gray-100 text-gray-600">En attente d'approbation</Badge>
-        )}
+        <QuestionApprovalButton
+          questionId={question.id}
+          initialApproved={question.is_daily_quiz_eligible}
+          onChange={onApprovalChange}
+          size="sm"
+        />
       </div>
 
       <p className="font-medium text-gray-900 mb-3">{question.question_text}</p>

@@ -150,6 +150,29 @@ function NewsListPage() {
   const [data, setData] = useState<ListResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [poolCounts, setPoolCounts] = useState<{ pending: number; approved: number } | null>(null)
+
+  // Compteurs globaux du pool quotidien (un seul fetch au mount).
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/admin/news/questions?limit=1')
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return
+        if (json?.counts) {
+          setPoolCounts({
+            pending: json.counts.pending ?? 0,
+            approved: json.counts.approved ?? 0,
+          })
+        }
+      })
+      .catch(() => {
+        /* compteurs optionnels — silencieux en cas d'erreur réseau */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Helper pour pousser des changements de params dans l'URL.
   // value === '' ou null => suppression du param.
@@ -260,6 +283,38 @@ function NewsListPage() {
           synthèse{data && data.total > 1 ? 's' : ''}
         </div>
       </header>
+
+      {/* Pool Quiz du jour */}
+      <div className="bg-gradient-to-r from-[#2D1B96] to-[#5D4FE0] rounded-2xl p-6 mb-6 text-white">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold mb-1">Pool Quiz du jour</h2>
+            <p className="text-sm text-white/80">
+              Validation des questions news pour le quiz quotidien
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Link
+              href="/admin/news/pending"
+              className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl px-4 py-3 transition-colors text-center min-w-[100px]"
+            >
+              <p className="text-2xl font-bold">
+                {poolCounts ? poolCounts.pending : '…'}
+              </p>
+              <p className="text-xs text-white/80">En attente</p>
+            </Link>
+            <Link
+              href="/admin/news/approved"
+              className="bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-xl px-4 py-3 transition-colors text-center min-w-[100px]"
+            >
+              <p className="text-2xl font-bold text-emerald-300">
+                {poolCounts ? poolCounts.approved : '…'}
+              </p>
+              <p className="text-xs text-white/80">Approuvées</p>
+            </Link>
+          </div>
+        </div>
+      </div>
 
       {/* Barre filtres (sticky) */}
       <div className="sticky top-0 z-10 bg-gray-100 -mx-8 px-8 py-3 border-b border-gray-200 mb-6">
