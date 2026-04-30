@@ -99,7 +99,7 @@ export async function GET(request: Request) {
     } else if (sort === 'published_at_desc') {
       query = query
         .order('published_at', {
-          foreignTable: 'news_raw',
+          referencedTable: 'news_raw',
           ascending: false,
           nullsFirst: false,
         })
@@ -107,7 +107,7 @@ export async function GET(request: Request) {
     } else if (sort === 'published_at_asc') {
       query = query
         .order('published_at', {
-          foreignTable: 'news_raw',
+          referencedTable: 'news_raw',
           ascending: true,
           nullsFirst: false,
         })
