@@ -75,7 +75,7 @@ export async function GET(request: Request) {
     let query = adminSupabase
       .from('news_syntheses')
       .select(
-        'id, display_title, summary_fr, specialite, themes, niveau_preuve, category_editorial, formation_category_match, status, failed_attempts, manual_added, created_at, news_raw(published_at)',
+        'id, display_title, summary_fr, specialite, themes, niveau_preuve, category_editorial, formation_category_match, status, failed_attempts, manual_added, created_at, published_at',
         { count: 'exact' }
       )
       .eq('status', status)
@@ -98,19 +98,11 @@ export async function GET(request: Request) {
         .order('created_at', { ascending: false })
     } else if (sort === 'published_at_desc') {
       query = query
-        .order('published_at', {
-          referencedTable: 'news_raw',
-          ascending: false,
-          nullsFirst: false,
-        })
+        .order('published_at', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false })
     } else if (sort === 'published_at_asc') {
       query = query
-        .order('published_at', {
-          referencedTable: 'news_raw',
-          ascending: true,
-          nullsFirst: false,
-        })
+        .order('published_at', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false })
     } else {
       query = query.order('created_at', { ascending: false })
@@ -127,26 +119,21 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const syntheses = (data ?? []).map((row: any) => {
-      // news_raw peut être renvoyé comme objet (FK to-one) ou array selon
-      // l'inférence de relation Supabase. On lit le 1er élément si array.
-      const rawJoin = Array.isArray(row.news_raw) ? row.news_raw[0] : row.news_raw
-      return {
-        id: row.id,
-        display_title: row.display_title,
-        summary_fr: truncate(row.summary_fr, SUMMARY_TRUNCATE_CHARS),
-        specialite: row.specialite,
-        themes: row.themes,
-        niveau_preuve: row.niveau_preuve,
-        category_editorial: row.category_editorial,
-        formation_category_match: row.formation_category_match,
-        status: row.status,
-        failed_attempts: row.failed_attempts,
-        manual_added: row.manual_added,
-        created_at: row.created_at,
-        published_at: rawJoin?.published_at ?? null,
-      }
-    })
+    const syntheses = (data ?? []).map((row: any) => ({
+      id: row.id,
+      display_title: row.display_title,
+      summary_fr: truncate(row.summary_fr, SUMMARY_TRUNCATE_CHARS),
+      specialite: row.specialite,
+      themes: row.themes,
+      niveau_preuve: row.niveau_preuve,
+      category_editorial: row.category_editorial,
+      formation_category_match: row.formation_category_match,
+      status: row.status,
+      failed_attempts: row.failed_attempts,
+      manual_added: row.manual_added,
+      created_at: row.created_at,
+      published_at: row.published_at,
+    }))
 
     const total = count ?? 0
     const total_pages = total === 0 ? 0 : Math.ceil(total / limit)
