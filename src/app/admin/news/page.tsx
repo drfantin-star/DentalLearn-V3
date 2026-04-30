@@ -3,8 +3,6 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { format } from 'date-fns'
-import { fr } from 'date-fns/locale'
 import {
   Search,
   Filter,
@@ -19,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { ALLOWED_FORMATION_CATEGORIES } from '@/lib/constants/news'
+import { describeCardDate } from '@/lib/news-display'
 
 // ---------- Constantes ----------
 
@@ -633,42 +632,3 @@ function buildPageWindow(current: number, total: number): (number | '…')[] {
   return result
 }
 
-// ---------- Utils ----------
-
-function formatDate(iso: string): string {
-  try {
-    return format(new Date(iso), 'dd MMM yyyy', { locale: fr })
-  } catch {
-    return new Date(iso).toLocaleDateString('fr-FR')
-  }
-}
-
-const RECENT_DAYS_THRESHOLD = 30
-
-// Décrit la date à afficher au footer d'une card synthèse :
-// - published_at non NULL  → "Publié en {mois yyyy}" si >30j, sinon "Publié le {DD MMM YYYY}"
-// - published_at NULL      → fallback created_at, label "Synthèse du {DD MMM YYYY}"
-function describeCardDate(
-  publishedAt: string | null,
-  createdAt: string
-): { label: string; fromPublication: boolean } {
-  if (publishedAt) {
-    const date = new Date(publishedAt)
-    if (Number.isNaN(date.getTime())) {
-      return { label: `Publié le ${formatDate(publishedAt)}`, fromPublication: true }
-    }
-    const ageDays = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
-    if (ageDays > RECENT_DAYS_THRESHOLD) {
-      try {
-        return {
-          label: `Publié en ${format(date, 'MMMM yyyy', { locale: fr })}`,
-          fromPublication: true,
-        }
-      } catch {
-        return { label: `Publié en ${formatDate(publishedAt)}`, fromPublication: true }
-      }
-    }
-    return { label: `Publié le ${formatDate(publishedAt)}`, fromPublication: true }
-  }
-  return { label: `Synthèse du ${formatDate(createdAt)}`, fromPublication: false }
-}
