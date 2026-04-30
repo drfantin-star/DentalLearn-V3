@@ -15,6 +15,8 @@ import {
   RotateCcw,
   AlertCircle,
   Loader2,
+  Calendar,
+  Sparkles,
 } from 'lucide-react'
 import { ALLOWED_FORMATION_CATEGORIES } from '@/lib/constants/news'
 
@@ -96,6 +98,7 @@ interface Synthesis {
   failed_attempts: number | null
   manual_added: boolean
   created_at: string
+  published_at: string | null
 }
 
 interface ListResponse {
@@ -427,7 +430,7 @@ function NewsListPage() {
 // ---------- Card ----------
 
 function SynthesisCard({ synthesis }: { synthesis: Synthesis }) {
-  const dateLabel = formatDate(synthesis.created_at)
+  const dateInfo = describeCardDate(synthesis.published_at, synthesis.created_at)
   const editorialBadge = synthesis.category_editorial
     ? CATEGORY_EDITORIAL_BADGE[synthesis.category_editorial] ?? 'bg-gray-100 text-gray-700'
     : null
@@ -470,7 +473,17 @@ function SynthesisCard({ synthesis }: { synthesis: Synthesis }) {
       )}
 
       <div className="text-xs text-gray-500 flex items-center justify-between gap-2 flex-wrap">
-        <span>{dateLabel}</span>
+        <span
+          className="inline-flex items-center gap-1"
+          title={dateInfo.fromPublication ? 'Date de publication scientifique' : 'Date de génération de la synthèse'}
+        >
+          {dateInfo.fromPublication ? (
+            <Calendar className="w-3 h-3" />
+          ) : (
+            <Sparkles className="w-3 h-3" />
+          )}
+          {dateInfo.label}
+        </span>
         <div className="flex items-center gap-1.5">
           {synthesis.manual_added && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
@@ -626,4 +639,34 @@ function formatDate(iso: string): string {
   } catch {
     return new Date(iso).toLocaleDateString('fr-FR')
   }
+}
+
+const RECENT_DAYS_THRESHOLD = 30
+
+// Décrit la date à afficher au footer d'une card synthèse :
+// - published_at non NULL  → "Publié en {mois yyyy}" si >30j, sinon "Publié le {DD MMM YYYY}"
+// - published_at NULL      → fallback created_at, label "Synthèse du {DD MMM YYYY}"
+function describeCardDate(
+  publishedAt: string | null,
+  createdAt: string
+): { label: string; fromPublication: boolean } {
+  if (publishedAt) {
+    const date = new Date(publishedAt)
+    if (Number.isNaN(date.getTime())) {
+      return { label: `Publié le ${formatDate(publishedAt)}`, fromPublication: true }
+    }
+    const ageDays = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
+    if (ageDays > RECENT_DAYS_THRESHOLD) {
+      try {
+        return {
+          label: `Publié en ${format(date, 'MMMM yyyy', { locale: fr })}`,
+          fromPublication: true,
+        }
+      } catch {
+        return { label: `Publié en ${formatDate(publishedAt)}`, fromPublication: true }
+      }
+    }
+    return { label: `Publié le ${formatDate(publishedAt)}`, fromPublication: true }
+  }
+  return { label: `Synthèse du ${formatDate(createdAt)}`, fromPublication: false }
 }
