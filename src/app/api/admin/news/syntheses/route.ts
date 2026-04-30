@@ -9,7 +9,13 @@ const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 50
 
 const ALLOWED_STATUSES = new Set(['active', 'retracted', 'deleted', 'failed', 'failed_permanent'])
-const ALLOWED_SORTS = new Set(['created_at_desc', 'created_at_asc', 'specialite_asc'])
+const ALLOWED_SORTS = new Set([
+  'created_at_desc',
+  'created_at_asc',
+  'specialite_asc',
+  'published_at_desc',
+  'published_at_asc',
+])
 
 function truncate(value: string | null, max: number): string | null {
   if (!value) return value
@@ -89,6 +95,22 @@ export async function GET(request: Request) {
     } else if (sort === 'specialite_asc') {
       query = query
         .order('specialite', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: false })
+    } else if (sort === 'published_at_desc') {
+      query = query
+        .order('published_at', {
+          foreignTable: 'news_raw',
+          ascending: false,
+          nullsFirst: false,
+        })
+        .order('created_at', { ascending: false })
+    } else if (sort === 'published_at_asc') {
+      query = query
+        .order('published_at', {
+          foreignTable: 'news_raw',
+          ascending: true,
+          nullsFirst: false,
+        })
         .order('created_at', { ascending: false })
     } else {
       query = query.order('created_at', { ascending: false })

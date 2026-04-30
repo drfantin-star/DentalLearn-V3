@@ -66,6 +66,8 @@ const STATUSES = [
 ] as const
 
 const SORTS = [
+  { value: 'published_at_desc', label: 'Publication la plus récente' },
+  { value: 'published_at_asc', label: 'Publication la plus ancienne' },
   { value: 'created_at_desc', label: 'Plus récentes' },
   { value: 'created_at_asc', label: 'Plus anciennes' },
   { value: 'specialite_asc', label: 'Spécialité (A-Z)' },
