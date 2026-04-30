@@ -12,6 +12,7 @@ import {
   ChevronRight,
   RotateCcw,
   AlertCircle,
+  AlertTriangle,
   Loader2,
   Calendar,
   Sparkles,
@@ -151,6 +152,9 @@ function NewsListPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [poolCounts, setPoolCounts] = useState<{ pending: number; approved: number } | null>(null)
+  const [failedCounts, setFailedCounts] = useState<
+    { failed: number; failedPermanent: number } | null
+  >(null)
 
   // Compteurs globaux du pool quotidien (un seul fetch au mount).
   useEffect(() => {
@@ -168,6 +172,30 @@ function NewsListPage() {
       })
       .catch(() => {
         /* compteurs optionnels — silencieux en cas d'erreur réseau */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Compteurs failed / failed_permanent (2 requêtes en parallèle).
+  useEffect(() => {
+    let cancelled = false
+    Promise.all([
+      fetch('/api/admin/news/syntheses?status=failed&limit=1').then((r) => r.json()),
+      fetch('/api/admin/news/syntheses?status=failed_permanent&limit=1').then((r) =>
+        r.json()
+      ),
+    ])
+      .then(([failedRes, permanentRes]) => {
+        if (cancelled) return
+        setFailedCounts({
+          failed: failedRes?.total ?? 0,
+          failedPermanent: permanentRes?.total ?? 0,
+        })
+      })
+      .catch(() => {
+        /* compteurs optionnels */
       })
     return () => {
       cancelled = true
@@ -315,6 +343,9 @@ function NewsListPage() {
           </div>
         </div>
       </div>
+
+      {/* Articles en échec */}
+      <FailedSummaryCard counts={failedCounts} />
 
       {/* Barre filtres (sticky) */}
       <div className="sticky top-0 z-10 bg-gray-100 -mx-8 px-8 py-3 border-b border-gray-200 mb-6">
@@ -547,6 +578,49 @@ function SynthesisCard({ synthesis }: { synthesis: Synthesis }) {
         </div>
       </div>
     </Link>
+  )
+}
+
+// ---------- Articles en échec ----------
+
+function FailedSummaryCard({
+  counts,
+}: {
+  counts: { failed: number; failedPermanent: number } | null
+}) {
+  const total = counts ? counts.failed + counts.failedPermanent : 0
+  const hasFailures = total > 0
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-6">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-amber-900">
+              Articles en échec : {counts ? counts.failed : '…'}
+              {counts && counts.failedPermanent > 0 && (
+                <span className="text-red-700">
+                  {' '}
+                  ({counts.failedPermanent} permanent
+                  {counts.failedPermanent > 1 ? 's' : ''})
+                </span>
+              )}
+            </p>
+            <p className="text-xs text-amber-700">
+              {!hasFailures ? 'Pipeline en bonne santé' : 'À examiner et retraiter'}
+            </p>
+          </div>
+        </div>
+        {hasFailures && (
+          <Link
+            href="/admin/news/failed"
+            className="text-sm text-amber-900 hover:underline font-medium"
+          >
+            Voir →
+          </Link>
+        )}
+      </div>
+    </div>
   )
 }
 

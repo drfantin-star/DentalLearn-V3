@@ -72,12 +72,20 @@ export async function GET(request: Request) {
 
     const adminSupabase = createAdminClient()
 
+    // Quand le statut filtré est failed/failed_permanent, on ajoute les
+    // colonnes de diagnostic. Sinon on garde le payload léger pour les
+    // listes 'active'/'retracted'/'deleted' qui n'en ont pas besoin.
+    const includeFailedDiagnostics =
+      status === 'failed' || status === 'failed_permanent'
+    const baseColumns =
+      'id, display_title, summary_fr, specialite, themes, niveau_preuve, category_editorial, formation_category_match, status, failed_attempts, manual_added, created_at, published_at'
+    const selectColumns = includeFailedDiagnostics
+      ? `${baseColumns}, validation_errors, validation_warnings`
+      : baseColumns
+
     let query = adminSupabase
       .from('news_syntheses')
-      .select(
-        'id, display_title, summary_fr, specialite, themes, niveau_preuve, category_editorial, formation_category_match, status, failed_attempts, manual_added, created_at, published_at',
-        { count: 'exact' }
-      )
+      .select(selectColumns, { count: 'exact' })
       .eq('status', status)
 
     if (specialite) query = query.eq('specialite', specialite)
@@ -123,21 +131,31 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const syntheses = (data ?? []).map((row: any) => ({
-      id: row.id,
-      display_title: row.display_title,
-      summary_fr: truncate(row.summary_fr, SUMMARY_TRUNCATE_CHARS),
-      specialite: row.specialite,
-      themes: row.themes,
-      niveau_preuve: row.niveau_preuve,
-      category_editorial: row.category_editorial,
-      formation_category_match: row.formation_category_match,
-      status: row.status,
-      failed_attempts: row.failed_attempts,
-      manual_added: row.manual_added,
-      created_at: row.created_at,
-      published_at: row.published_at,
-    }))
+    const syntheses = (data ?? []).map((row: any) => {
+      const base = {
+        id: row.id,
+        display_title: row.display_title,
+        summary_fr: truncate(row.summary_fr, SUMMARY_TRUNCATE_CHARS),
+        specialite: row.specialite,
+        themes: row.themes,
+        niveau_preuve: row.niveau_preuve,
+        category_editorial: row.category_editorial,
+        formation_category_match: row.formation_category_match,
+        status: row.status,
+        failed_attempts: row.failed_attempts,
+        manual_added: row.manual_added,
+        created_at: row.created_at,
+        published_at: row.published_at,
+      }
+      if (includeFailedDiagnostics) {
+        return {
+          ...base,
+          validation_errors: row.validation_errors ?? null,
+          validation_warnings: row.validation_warnings ?? null,
+        }
+      }
+      return base
+    })
 
     const total = count ?? 0
     const total_pages = total === 0 ? 0 : Math.ceil(total / limit)
