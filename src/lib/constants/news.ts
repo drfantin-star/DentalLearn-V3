@@ -47,3 +47,38 @@ export const FORMATION_CATEGORY_LABELS: Record<FormationCategorySlug, string> = 
   organisation: 'Organisation',
   'soft-skills': 'Soft skills',
 }
+
+// Regroupement des slugs par axe pour les <optgroup> du sélecteur d'édition.
+export const FORMATION_CATEGORY_GROUPS: Array<{
+  axisLabel: string
+  slugs: FormationCategorySlug[]
+}> = [
+  {
+    axisLabel: 'Axe 1 — Connaissances cliniques',
+    slugs: [
+      'esthetique', 'restauratrice', 'chirurgie', 'implant',
+      'prothese', 'parodontologie', 'endodontie', 'radiologie',
+      'numerique',
+    ],
+  },
+  {
+    axisLabel: 'Axe 3 — Relation patient',
+    slugs: [
+      'communication', 'consentement', 'conflits',
+      'decision-partagee', 'annonce-diagnostic',
+      'education-therapeutique', 'ethique-deontologie',
+      'numerique-relation', 'relation-patient',
+    ],
+  },
+  {
+    axisLabel: 'Axe 4 — Santé praticien',
+    slugs: [
+      'ergonomie', 'stress-burnout', 'risques-pro', 'violences',
+      'pratique-reflexive', 'sante-praticien',
+    ],
+  },
+  {
+    axisLabel: 'Hors CP (bonus)',
+    slugs: ['management', 'organisation', 'soft-skills'],
+  },
+]

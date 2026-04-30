@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import {
   FORMATION_CATEGORY_LABELS,
+  FORMATION_CATEGORY_GROUPS,
   FormationCategorySlug,
 } from '@/lib/constants/news'
 import { describeCardDate, formatDate } from '@/lib/news-display'
@@ -212,7 +213,15 @@ export default function NewsDetailPage() {
             />
           </main>
           <aside className="space-y-6">
-            <MatchFormationCard slug={synthesis.formation_category_match} />
+            <MatchFormationCard
+              synthesisId={synthesis.id}
+              slug={synthesis.formation_category_match}
+              onChange={(newSlug) =>
+                setSynthesis((prev) =>
+                  prev ? { ...prev, formation_category_match: newSlug } : prev
+                )
+              }
+            />
             <MetadataCard synthesis={synthesis} />
             <ValidationCard
               warnings={synthesis.validation_warnings}
@@ -530,20 +539,129 @@ function isValidOptions(options: unknown): options is QuestionOption[] {
   )
 }
 
-function MatchFormationCard({ slug }: { slug: string | null }) {
+function MatchFormationCard({
+  synthesisId,
+  slug,
+  onChange,
+}: {
+  synthesisId: string
+  slug: string | null
+  onChange: (newSlug: string | null) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+
   const label = slug
     ? (FORMATION_CATEGORY_LABELS as Record<string, string>)[slug] ?? slug
     : null
+
+  const startEditing = () => {
+    setDraft(slug ?? '')
+    setError(null)
+    setEditing(true)
+  }
+
+  const cancelEditing = () => {
+    setEditing(false)
+    setDraft('')
+    setError(null)
+  }
+
+  const saveMatch = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      const newValue = draft === '' ? null : draft
+      const res = await fetch(`/api/admin/news/syntheses/${synthesisId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formation_category_match: newValue }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || `Erreur ${res.status}`)
+      }
+      onChange(newValue)
+      setEditing(false)
+      setToast('Modifié')
+      setTimeout(() => setToast(null), 2000)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">Match formation</h3>
-      {label ? (
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-800 text-sm">
-          <Link2 className="w-3.5 h-3.5" />
-          {label}
-        </div>
+      <div className="flex items-center justify-between mb-3 gap-2">
+        <h3 className="text-sm font-semibold text-gray-900">Match formation</h3>
+        {!editing && !toast && (
+          <button
+            onClick={startEditing}
+            className="text-xs text-[#2D1B96] hover:underline font-medium"
+          >
+            Modifier
+          </button>
+        )}
+        {toast && (
+          <span className="text-xs text-emerald-600 font-medium">✓ {toast}</span>
+        )}
+      </div>
+
+      {!editing ? (
+        label ? (
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-yellow-50 text-yellow-800 text-sm">
+            <Link2 className="w-3.5 h-3.5" />
+            {label}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500 italic">Aucune correspondance</p>
+        )
       ) : (
-        <p className="text-sm text-gray-500 italic">Aucune correspondance</p>
+        <div className="space-y-3">
+          <select
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            disabled={saving}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50"
+          >
+            <option value="" className="bg-white text-gray-900">
+              — Aucune correspondance —
+            </option>
+            {FORMATION_CATEGORY_GROUPS.map((group) => (
+              <optgroup key={group.axisLabel} label={group.axisLabel}>
+                {group.slugs.map((s) => (
+                  <option key={s} value={s} className="bg-white text-gray-900">
+                    {FORMATION_CATEGORY_LABELS[s]}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+
+          {error && <p className="text-xs text-red-600">{error}</p>}
+
+          <div className="flex gap-2">
+            <button
+              onClick={saveMatch}
+              disabled={saving}
+              className="flex-1 px-3 py-2 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-medium rounded-lg disabled:opacity-50"
+            >
+              {saving ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+            <button
+              onClick={cancelEditing}
+              disabled={saving}
+              className="px-3 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg disabled:opacity-50"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )

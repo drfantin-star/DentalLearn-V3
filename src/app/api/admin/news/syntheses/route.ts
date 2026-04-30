@@ -83,7 +83,11 @@ export async function GET(request: Request) {
     if (specialite) query = query.eq('specialite', specialite)
     if (niveauPreuve) query = query.eq('niveau_preuve', niveauPreuve)
     if (categoryEditorial) query = query.eq('category_editorial', categoryEditorial)
-    if (formationCategoryMatch) query = query.eq('formation_category_match', formationCategoryMatch)
+    if (formationCategoryMatch === '__none__') {
+      query = query.is('formation_category_match', null)
+    } else if (formationCategoryMatch) {
+      query = query.eq('formation_category_match', formationCategoryMatch)
+    }
     if (dateFrom) query = query.gte('created_at', dateFrom)
     if (dateTo) query = query.lte('created_at', dateTo)
     if (q) {

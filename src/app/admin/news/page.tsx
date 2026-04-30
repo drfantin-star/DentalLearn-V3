@@ -195,9 +195,7 @@ function NewsListPage() {
         if (specialite) params.set('specialite', specialite)
         if (niveauPreuve) params.set('niveau_preuve', niveauPreuve)
         if (categoryEditorial) params.set('category_editorial', categoryEditorial)
-        if (formationCategoryMatch && formationCategoryMatch !== FORMATION_MATCH_NONE_SENTINEL) {
-          params.set('formation_category_match', formationCategoryMatch)
-        }
+        if (formationCategoryMatch) params.set('formation_category_match', formationCategoryMatch)
         if (qFromUrl) params.set('q', qFromUrl)
 
         const res = await fetch(`/api/admin/news/syntheses?${params.toString()}`)
@@ -372,13 +370,8 @@ function NewsListPage() {
               className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
             >
               <option value="" className="bg-white text-gray-900">Match formation — Toutes</option>
-              <option
-                value={FORMATION_MATCH_NONE_SENTINEL}
-                disabled
-                title="À venir — nécessite une extension de l'API"
-                className="bg-white text-gray-400"
-              >
-                — Aucune correspondance — (à venir)
+              <option value={FORMATION_MATCH_NONE_SENTINEL} className="bg-white text-gray-900">
+                — Aucune correspondance —
               </option>
               {ALLOWED_FORMATION_CATEGORIES.map((slug) => (
                 <option key={slug} value={slug} className="bg-white text-gray-900">
