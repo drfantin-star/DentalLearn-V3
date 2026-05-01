@@ -21,6 +21,7 @@ import {
 } from '@/lib/constants/news'
 import { describeCardDate, formatDate } from '@/lib/news-display'
 import { QuestionApprovalButton } from '@/components/admin/news/QuestionApprovalButton'
+import { AudioPodcastBlock } from '@/components/admin/news/AudioPodcastBlock'
 
 // ---------- Types ----------
 
@@ -219,6 +220,7 @@ export default function NewsDetailPage() {
                 )
               }
             />
+            <AudioPodcastBlock synthesisId={synthesis.id} />
           </main>
           <aside className="space-y-6">
             <MatchFormationCard
