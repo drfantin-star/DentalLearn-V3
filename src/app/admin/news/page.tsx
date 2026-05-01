@@ -17,6 +17,7 @@ import {
   Calendar,
   Sparkles,
   Plus,
+  Database,
 } from 'lucide-react'
 import { ALLOWED_FORMATION_CATEGORIES } from '@/lib/constants/news'
 import { describeCardDate } from '@/lib/news-display'
@@ -308,6 +309,13 @@ function NewsListPage() {
           </div>
         </div>
         <div className="flex items-center gap-4 flex-wrap">
+          <Link
+            href="/admin/news/sources"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+          >
+            <Database className="w-4 h-4" />
+            Sources
+          </Link>
           <Link
             href="/admin/news/manual"
             className="inline-flex items-center gap-2 px-4 py-2 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-medium rounded-lg transition-colors"
