@@ -16,6 +16,7 @@ import {
   Loader2,
   Calendar,
   Sparkles,
+  Plus,
 } from 'lucide-react'
 import { ALLOWED_FORMATION_CATEGORIES } from '@/lib/constants/news'
 import { describeCardDate } from '@/lib/news-display'
@@ -306,9 +307,18 @@ function NewsListPage() {
             </p>
           </div>
         </div>
-        <div className="text-sm text-gray-600">
-          {data ? <span className="font-semibold text-gray-900">{data.total}</span> : '…'}{' '}
-          synthèse{data && data.total > 1 ? 's' : ''}
+        <div className="flex items-center gap-4 flex-wrap">
+          <Link
+            href="/admin/news/manual"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-medium rounded-lg transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Ingérer un article
+          </Link>
+          <div className="text-sm text-gray-600">
+            {data ? <span className="font-semibold text-gray-900">{data.total}</span> : '…'}{' '}
+            synthèse{data && data.total > 1 ? 's' : ''}
+          </div>
         </div>
       </header>
 

@@ -1,3 +1,26 @@
+// Spécialités de la taxonomy news (12 valeurs alignées avec
+// news_taxonomy seed du Ticket 4 / spec §6.3).
+export const NEWS_SPECIALITES = [
+  { value: 'actu-pro', label: 'Actualité professionnelle' },
+  { value: 'chir-orale', label: 'Chirurgie orale' },
+  { value: 'dent-resto', label: 'Dentisterie restauratrice' },
+  { value: 'endo', label: 'Endodontie' },
+  { value: 'gero', label: 'Gérodontologie' },
+  { value: 'implanto', label: 'Implantologie' },
+  { value: 'occluso', label: 'Occlusodontie' },
+  { value: 'odf', label: 'Orthodontie' },
+  { value: 'paro', label: 'Parodontologie' },
+  { value: 'pedo', label: 'Pédodontie' },
+  { value: 'proth', label: 'Prothèse' },
+  { value: 'sante-pub', label: 'Santé publique' },
+] as const
+
+export type NewsSpecialiteSlug = typeof NEWS_SPECIALITES[number]['value']
+
+export const NEWS_SPECIALITES_SET: Set<string> = new Set(
+  NEWS_SPECIALITES.map((s) => s.value)
+)
+
 // Slugs autorisés pour formation_category_match sur news_syntheses.
 // Doit rester aligné avec le CHECK formations.category (27 valeurs).
 export const ALLOWED_FORMATION_CATEGORIES = [
