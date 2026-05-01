@@ -75,11 +75,20 @@ export function SourcesPageClient({ initialSources }: { initialSources: SourceRo
   const [actionError, setActionError] = useState<string | null>(null)
 
   const sortedSources = useMemo(() => {
-    // Tri secondaire (inactifs → erreur → sans données → actifs), puis name ASC.
+    // ORDER BY active DESC, last_fetched_at IS NULL DESC, error_count DESC, name ASC.
+    // Actifs d'abord ; au sein de chaque groupe, les sources jamais fetchées
+    // remontent (NULL = priorité d'attention), puis celles avec le plus
+    // d'erreurs consécutives, enfin l'ordre alphabétique.
     return [...initialSources].sort((a, b) => {
-      const sa = computeStatus(a)
-      const sb = computeStatus(b)
-      if (sa.rank !== sb.rank) return sa.rank - sb.rank
+      // active DESC : true (1) avant false (0)
+      if (a.active !== b.active) return a.active ? -1 : 1
+      // last_fetched_at IS NULL DESC : NULL (true) avant non-NULL (false)
+      const aNull = a.last_fetched_at == null
+      const bNull = b.last_fetched_at == null
+      if (aNull !== bNull) return aNull ? -1 : 1
+      // error_count DESC
+      if (a.error_count !== b.error_count) return b.error_count - a.error_count
+      // name ASC
       return a.name.localeCompare(b.name, 'fr')
     })
   }, [initialSources])
