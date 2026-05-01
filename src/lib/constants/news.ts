@@ -105,3 +105,18 @@ export const FORMATION_CATEGORY_GROUPS: Array<{
     slugs: ['management', 'organisation', 'soft-skills'],
   },
 ]
+
+export const NEWS_SPECIALITE_LABELS: Record<string, string> = {
+  'dent-resto': 'Dentisterie restauratrice',
+  'paro': 'Parodontologie',
+  'implanto': 'Implantologie',
+  'chir-orale': 'Chirurgie orale',
+  'odf': 'Orthodontie',
+  'endo': 'Endodontie',
+  'occluso': 'Occlusodontologie',
+  'proth': 'Prothèse',
+  'sante-pub': 'Santé publique',
+  'pedo': 'Pédodontie',
+  'gero': 'Gérodontologie',
+  'actu-pro': 'Actualité professionnelle',
+}
