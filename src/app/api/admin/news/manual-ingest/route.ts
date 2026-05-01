@@ -220,6 +220,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: insertError.message }, { status: 500 })
     }
 
+    // Chaînage fire-and-forget vers score_articles. Cas C (cf brief commit
+    // 6b) : les Edge Functions n'acceptent pas de param raw_id ciblé. On
+    // envoie limit=50 pour absorber un éventuel backlog + notre article.
+    // La 2e étape (synthesize_articles) sera déclenchée par la page de
+    // résultat quand elle détectera l'état "scored éligible mais pas de
+    // synthèse" — voir trigger-synth/route.ts.
+    triggerScoreArticles(inserted.id)
+
     return NextResponse.json(
       { success: true, raw_id: inserted.id },
       { status: 201 }
@@ -229,4 +237,24 @@ export async function POST(request: Request) {
     console.error('Erreur API admin/news/manual-ingest POST:', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
+}
+
+function triggerScoreArticles(rawId: string): void {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!supabaseUrl || !serviceKey) {
+    console.error('Trigger score_articles : variables Supabase manquantes')
+    return
+  }
+  // Pas de await — on n'attend pas. .catch() seulement pour logger.
+  fetch(`${supabaseUrl}/functions/v1/score_articles`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({ limit: 50 }),
+  }).catch((err) => {
+    console.error('Trigger score_articles a échoué:', err, 'raw_id:', rawId)
+  })
 }

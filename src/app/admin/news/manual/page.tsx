@@ -47,8 +47,6 @@ export default function ManualIngestPage() {
   const [duplicate, setDuplicate] = useState<
     { existing_raw_id: string; existing_synthesis_id: string | null } | null
   >(null)
-  const [successToast, setSuccessToast] = useState<string | null>(null)
-
   // Pré-remplissage Crossref
   const [doiPrefill, setDoiPrefill] = useState('')
   const [prefilling, setPrefilling] = useState(false)
@@ -171,9 +169,9 @@ export default function ManualIngestPage() {
           : ''
         throw new Error(detail || json.error || `Erreur ${res.status}`)
       }
-      const shortId = String(json.raw_id || '').slice(0, 8)
-      setSuccessToast(`Article ingéré (ID : ${shortId}…)`)
-      setTimeout(() => router.push('/admin/news'), 2000)
+      // Bascule immédiate vers la page résultat — le polling y prendra le
+      // relais visuel pour montrer la progression score → synthesize.
+      router.push(`/admin/news/manual/result/${json.raw_id}`)
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Erreur')
     } finally {
@@ -364,15 +362,6 @@ export default function ManualIngestPage() {
           </div>
         )}
 
-        {successToast && (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-start gap-2">
-            <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
-            <p className="text-sm text-emerald-700">
-              {successToast} — redirection en cours…
-            </p>
-          </div>
-        )}
-
         <p className="text-xs text-gray-500 italic flex items-start gap-1.5">
           <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
           Vérifiez les métadonnées avant validation. Une fois ingéré, l'article
@@ -382,7 +371,7 @@ export default function ManualIngestPage() {
 
         <button
           type="submit"
-          disabled={submitting || !!successToast}
+          disabled={submitting}
           className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
         >
           {submitting ? (
