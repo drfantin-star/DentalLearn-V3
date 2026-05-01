@@ -146,18 +146,6 @@ function FailedListInner() {
     router.replace('?status=' + status)
   }
 
-  // Mise à jour optimiste après retry : retire la synthèse de la liste car
-  // son status reste 'failed' mais on l'a déjà traitée. On garde en haut de
-  // liste si on est sur l'onglet failed (status = 'failed' déjà), pour donner
-  // un feedback visuel cohérent avec le badge "Reset effectué" qui prend la
-  // place du bouton. → On laisse la card en place mais on décrémente pas
-  // total tant que l'admin n'a pas refresh. Reco simple : ne rien retirer,
-  // juste indiquer le succès via le RetryButton.
-  const handleRetrySuccess = () => {
-    // no-op : le RetryButton affiche son propre feedback "Reset effectué"
-    // et la synthèse reste dans la liste jusqu'au prochain refresh.
-  }
-
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <Link
@@ -255,7 +243,7 @@ function FailedListInner() {
         <>
           <div className="space-y-4">
             {data.syntheses.map((s) => (
-              <FailedCard key={s.id} synthesis={s} onRetrySuccess={handleRetrySuccess} />
+              <FailedCard key={s.id} synthesis={s} />
             ))}
           </div>
           <Pagination
@@ -270,13 +258,7 @@ function FailedListInner() {
   )
 }
 
-function FailedCard({
-  synthesis,
-  onRetrySuccess,
-}: {
-  synthesis: FailedSynthesis
-  onRetrySuccess: () => void
-}) {
+function FailedCard({ synthesis }: { synthesis: FailedSynthesis }) {
   const statusBadge =
     synthesis.status === 'failed_permanent'
       ? 'bg-red-100 text-red-700'
@@ -337,7 +319,7 @@ function FailedCard({
           <ExternalLink className="w-3.5 h-3.5" />
           Voir le détail
         </Link>
-        <RetryButton synthesisId={synthesis.id} onSuccess={onRetrySuccess} />
+        <RetryButton synthesisId={synthesis.id} />
       </div>
     </div>
   )

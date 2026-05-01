@@ -110,7 +110,7 @@ export async function POST(request: Request) {
     }
 
     // spe_tags (optional array, doit appartenir à la taxonomy)
-    let spe_tags: string[] = []
+    const spe_tags: string[] = []
     if (Array.isArray(body.spe_tags)) {
       const invalid: string[] = []
       for (const tag of body.spe_tags) {
