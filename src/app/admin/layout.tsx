@@ -7,6 +7,7 @@ import Link from 'next/link';
 import {
   LayoutDashboard,
   BookOpen,
+  Newspaper,
   Users,
   LogOut,
   Shield,
@@ -114,6 +115,15 @@ export default function AdminLayout({
               >
                 <BookOpen className="w-5 h-5" />
                 Formations
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/news"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <Newspaper className="w-5 h-5" />
+                News
               </Link>
             </li>
             <li>

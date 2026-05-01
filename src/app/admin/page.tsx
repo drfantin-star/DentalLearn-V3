@@ -63,7 +63,8 @@ export default function AdminDashboard() {
 
       const { count: questionsCount } = await supabase
         .from('questions')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .not('sequence_id', 'is', null);
 
       const { count: usersCount } = await supabase
         .from('user_profiles')
