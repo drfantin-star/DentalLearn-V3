@@ -54,7 +54,7 @@ export async function GET(
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
-    const row = synthesisRow as Record<string, unknown>
+    const row = synthesisRow as unknown as Record<string, unknown>
     const rawId = row.raw_id as string | null
 
     const { raw_id: _rawId, ...synthesisFields } = row
