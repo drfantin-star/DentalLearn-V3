@@ -37,8 +37,10 @@ export default function AdminDashboard() {
         return;
       }
 
-      // Vérifier si admin
-      if (session.user.email !== 'drfantin@gmail.com') {
+      const { data: isSA } = await supabase.rpc('is_super_admin', {
+        p_user_id: session.user.id,
+      });
+      if (!isSA) {
         router.push('/');
         return;
       }

@@ -39,9 +39,10 @@ export default function AdminLayout({
         return;
       }
 
-      // Vérification admin par email
-      const adminEmails = ['drfantin@gmail.com'];
-      if (!adminEmails.includes(session.user.email || '')) {
+      const { data: isSA } = await supabase.rpc('is_super_admin', {
+        p_user_id: session.user.id,
+      });
+      if (!isSA) {
         setIsAdmin(false);
         return;
       }

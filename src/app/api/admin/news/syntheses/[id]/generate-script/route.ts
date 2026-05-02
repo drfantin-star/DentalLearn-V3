@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isSuperAdmin } from '@/lib/auth/rbac'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   buildScriptPrompt,
@@ -9,8 +10,6 @@ import {
   type ScriptFormat,
   type ScriptNarrator,
 } from '@/lib/news-audio'
-
-const ADMIN_EMAIL = 'drfantin@gmail.com'
 
 const ALLOWED_FORMATS: readonly ScriptFormat[] = ['dialogue', 'monologue']
 const ALLOWED_NARRATORS: readonly ScriptNarrator[] = ['sophie', 'martin']
@@ -44,7 +43,7 @@ export async function POST(
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
-    if (session.user.email !== ADMIN_EMAIL) {
+    if (!(await isSuperAdmin(session.user.id))) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
     }
 

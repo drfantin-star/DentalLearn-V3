@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isSuperAdmin } from '@/lib/auth/rbac'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { testRssFeed, testPubmedQuery } from '@/lib/news-source-validate'
-
-const ADMIN_EMAIL = 'drfantin@gmail.com'
 
 // POST : test synchrone d'une source existante. Timeout 10s par appel externe
 // (cf news-source-validate). Retour homogène { ok, articles_found, error? }.
@@ -19,7 +18,7 @@ export async function POST(
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
-    if (session.user.email !== ADMIN_EMAIL) {
+    if (!(await isSuperAdmin(session.user.id))) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
     }
 

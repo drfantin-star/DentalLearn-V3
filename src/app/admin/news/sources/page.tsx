@@ -1,9 +1,8 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isSuperAdmin } from '@/lib/auth/rbac'
 import { SourcesPageClient, type SourceRow } from './SourcesPageClient'
-
-const ADMIN_EMAIL = 'drfantin@gmail.com'
 
 // Page server : auth + agrégation des stats par source.
 // Les interactions (modal "Ajouter", boutons "Tester" / "Désactiver") sont
@@ -19,7 +18,7 @@ export default async function SourcesPage() {
   if (!session) {
     redirect('/login')
   }
-  if (session.user.email !== ADMIN_EMAIL) {
+  if (!(await isSuperAdmin(session.user.id))) {
     redirect('/')
   }
 

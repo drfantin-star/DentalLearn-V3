@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isSuperAdmin } from '@/lib/auth/rbac'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { testRssFeed, testPubmedQuery } from '@/lib/news-source-validate'
-
-const ADMIN_EMAIL = 'drfantin@gmail.com'
 
 const NAME_MIN = 3
 const NAME_MAX = 200
@@ -28,7 +27,7 @@ export async function POST(request: Request) {
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
-    if (session.user.email !== ADMIN_EMAIL) {
+    if (!(await isSuperAdmin(session.user.id))) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
     }
 
