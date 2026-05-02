@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NEWS_SPECIALITES_SET } from '@/lib/constants/news'
 import type { NewsCard } from '@/types/news'
 
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Paramètre `specialite` invalide' }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = createAdminClient()
 
     let query = supabase
       .from('news_syntheses')

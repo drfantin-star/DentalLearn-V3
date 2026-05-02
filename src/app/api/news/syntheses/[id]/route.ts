@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type {
   NewsDetail,
   NewsDetailResponse,
@@ -37,7 +37,7 @@ export async function GET(
       return NextResponse.json({ error: 'Paramètre `id` manquant' }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = createAdminClient()
 
     const { data: synthesisRow, error: synthesisError } = await supabase
       .from('news_syntheses')
