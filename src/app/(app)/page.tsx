@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Loader2, UserCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, LogOut, UserCircle } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, getCategoryConfig } from '@/lib/supabase/types'
@@ -91,6 +91,13 @@ export default function HomePage() {
     setShowDailyQuiz(false)
     setRefreshTrigger(prev => prev + 1)
     refetchUser()
+  }
+
+  const handleSignOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
   }
 
   // Catégories par axe
@@ -217,6 +224,17 @@ export default function HomePage() {
           <Link href="/profil" className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors">
             <UserCircle size={24} className="text-white" />
           </Link>
+          {user && (
+            <button
+              type="button"
+              onClick={handleSignOut}
+              aria-label="Se déconnecter"
+              title="Se déconnecter"
+              className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors"
+            >
+              <LogOut size={20} className="text-white" />
+            </button>
+          )}
         </div>
       </header>
 
