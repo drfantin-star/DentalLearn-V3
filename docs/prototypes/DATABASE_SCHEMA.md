@@ -273,8 +273,11 @@
 | cp_hours | numeric | YES | |
 | likes_count | integer | YES | 0 |
 | axe_cp | integer | YES | |
+| owner_org_id | uuid | YES | | FK → organizations.id ON DELETE RESTRICT. NULL = catalogue Dentalschool public, NOT NULL = formation owned par un tenant (cf. Sprint 1 T3) |
 
 > ⚠️ **`access_type = 'demo'`** par défaut → déclenche le mode Preview dans le frontend et désactive la sauvegarde de progression. Mettre à `'full'` pour activer.
+
+Index : `formations_owner_org_id_idx` sur `(owner_org_id)` (Sprint 1 T3).
 
 ---
 
@@ -741,6 +744,60 @@ Tous `STABLE SECURITY DEFINER`, `search_path = public, pg_temp`. EXECUTE `REVOKE
 ### Seed initial
 
 `INSERT INTO user_roles (user_id, role) VALUES ('af506ec2-a281-4485-a504-b0633c8d2362', 'super_admin')` — Dr Julie Fantin (drfantin@gmail.com). **Reste orgless en V1** (décision Q2 matrice §7.1).
+
+---
+
+## RLS Multi-tenant — Sprint 1 T3 (2 mai 2026)
+
+Migration `20260502_sprint1_formations_owner_org.sql` — isolation contenu tenant + refonte RLS sur 7 tables.
+
+### Helper SQL `user_can_see_formation`
+
+`STABLE SECURITY DEFINER`, `search_path = public, pg_temp`. `REVOKE FROM PUBLIC` + `GRANT TO authenticated, service_role`.
+
+| Fonction | Usage |
+|---|---|
+| `user_can_see_formation(p_user_id uuid, p_formation_id uuid) → boolean` | Centralise la règle de visibilité d'une formation : super_admin OR (catalogue Dentalschool publié, `owner_org_id IS NULL AND is_published = true`) OR (formation owned par l'org active du user, `owner_org_id = user_org(p_user_id)`) |
+
+### Policies RLS sur les 7 tables impactées
+
+**formations** : 1 policy SELECT — `formations_select_with_tenant_isolation`
+- `is_super_admin(auth.uid()) OR (owner_org_id IS NULL AND is_published = true) OR (owner_org_id IS NOT NULL AND owner_org_id = user_org(auth.uid()))`
+
+**sequences** : 4 policies (refonte complète, suppression UUID hardcodés)
+- `sequences_select_with_tenant_isolation` : isolation via la formation parente (`user_can_see_formation`)
+- `sequences_insert_super_admin`, `sequences_update_super_admin`, `sequences_delete_super_admin` : remplacent les anciennes policies hardcodées sur l'UUID Dr Fantin par `is_super_admin(auth.uid())`
+
+**questions** : 1 policy SELECT — `questions_select_with_tenant_isolation`
+- Questions news (`news_synthesis_id IS NOT NULL`) : toujours publiques (catalogue Dentalschool)
+- Questions formation (`sequence_id IS NOT NULL`) : isolation via la séquence + `user_can_see_formation`
+
+**user_formations** : 1 policy SELECT — `user_formations_select`
+- `auth.uid() = user_id OR is_super_admin(auth.uid())`
+- Doublons FR/EN supprimés. INSERT/UPDATE inchangés (toujours en doublon FR/EN).
+
+**user_sequences** : 1 policy SELECT — `user_sequences_select`
+- `auth.uid() = user_id OR is_super_admin(auth.uid())` — idem `user_formations`
+
+**course_watch_logs** : 1 policy SELECT — `course_watch_logs_select`
+- `auth.uid() = user_id OR is_super_admin(auth.uid())`
+- ⚠️ INSERT et UPDATE policies **strictement intactes** (`auth.uid() = user_id`) — obligation DPC d'immuabilité des logs (aucune policy DELETE par construction).
+
+**epp_audits** : 2 policies (refonte complète, `epp_audits` est un catalogue, pas un journal user)
+- `epp_audits_select` : `is_super_admin OR (is_published = true AND (formation_id IS NULL OR user_can_see_formation(auth.uid(), formation_id)))`
+- `epp_audits_all_super_admin` : remplace l'ancienne policy ALL hardcodée sur l'UUID Dr Fantin par `is_super_admin(auth.uid())`
+
+### Tests d'isolation validés (snapshot 2 mai 2026)
+
+| # | Test | Résultat attendu | Vérifié |
+|---|---|---|---|
+| 1 | `user_can_see_formation(dr_fantin, formation_owned)` | true | ✅ |
+| 2 | `user_can_see_formation(orgless_inconnu, formation_owned)` | false | ✅ |
+| 3 | `user_can_see_formation(orgless, formation_dentalschool)` | true | ✅ |
+| 4 | 6 formations Dentalschool intactes (`owner_org_id IS NULL`) | 6 | ✅ |
+| 5 | 786 questions news visibles via la nouvelle policy | 786 | ✅ |
+| 6 | Dr Fantin voit ses 6 formations Dentalschool | 6/6 | ✅ |
+| 7 | `course_watch_logs` policies INSERT/UPDATE inchangées (DPC) | OK | ✅ |
 
 ---
 
