@@ -10,6 +10,7 @@ import {
 import type { NewsCard } from '@/types/news'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
+import AudioQueuePlayer from '@/components/news/AudioQueuePlayer'
 
 const FETCH_LIMIT = 50
 
@@ -117,18 +118,19 @@ export default function NewsPage() {
           </p>
         ) : (
           <section>
-            <button
-              type="button"
-              onClick={() => {
-                setAudioQueue(filteredNews.map((n) => n.id))
-                setAudioQueueIndex(0)
-                // TODO T9-audio : brancher AudioQueuePlayer ici
-              }}
-              className="mx-4 mb-4 px-4 py-2 bg-violet-600 hover:bg-violet-500
-                         rounded-full text-white text-sm transition"
-            >
-              ▶ Écouter la playlist
-            </button>
+            {filteredNews.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setAudioQueue(filteredNews.map((n) => n.id))
+                  setAudioQueueIndex(0)
+                }}
+                className="mx-4 mb-4 px-4 py-2 bg-violet-600 hover:bg-violet-500
+                           rounded-full text-white text-sm transition"
+              >
+                ▶ Écouter la playlist ({filteredNews.length} articles)
+              </button>
+            )}
 
             <div className="relative mb-4">
               <button
@@ -209,6 +211,14 @@ export default function NewsPage() {
         newsId={modalNewsId}
         onClose={() => setModalNewsId(null)}
       />
+
+      {audioQueue.length > 0 && (
+        <AudioQueuePlayer
+          queue={audioQueue}
+          initialIndex={audioQueueIndex}
+          onClose={() => setAudioQueue([])}
+        />
+      )}
     </div>
   )
 }
