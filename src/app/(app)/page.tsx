@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Loader2, UserCircle } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
-import { useNews } from '@/lib/hooks/useNews'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, getCategoryConfig } from '@/lib/supabase/types'
 import type { Formation } from '@/lib/supabase/types'
@@ -12,7 +11,6 @@ import { getAnonymousName, getAnonymousEmoji } from '@/lib/utils/anonymousNames'
 import Link from 'next/link'
 import DailyQuizButton from '@/components/home/DailyQuizButton'
 import DailyQuizModal from '@/components/home/DailyQuizModal'
-import NewsSection from '@/components/home/NewsSection'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
@@ -23,7 +21,6 @@ export default function HomePage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const { user, profile, streak, loading: userLoading, refetch: refetchUser } = useUser()
-  const { news, loading: newsLoading } = useNews(4)
 
   const [newsItems, setNewsItems] = useState<NewsCard[]>([])
   const [modalNewsId, setModalNewsId] = useState<string | null>(null)
