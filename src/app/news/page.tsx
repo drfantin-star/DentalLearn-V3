@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   NEWS_SPECIALITES,
   NEWS_SPECIALITE_LABELS,
@@ -23,6 +23,14 @@ export default function NewsPage() {
 
   const [audioQueue, setAudioQueue] = useState<string[]>([])
   const [audioQueueIndex, setAudioQueueIndex] = useState(0)
+
+  const filterScrollRef = useRef<HTMLDivElement>(null)
+  const scrollFilters = (dir: 'left' | 'right') => {
+    filterScrollRef.current?.scrollBy({
+      left: dir === 'left' ? -200 : 200,
+      behavior: 'smooth',
+    })
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -122,32 +130,59 @@ export default function NewsPage() {
               ▶ Écouter la playlist
             </button>
 
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 mb-4 px-4">
+            <div className="relative mb-4">
               <button
                 type="button"
-                onClick={() => setActiveFilter('all')}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
-                  activeFilter === 'all'
-                    ? 'bg-violet-500 text-white'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                }`}
+                onClick={() => scrollFilters('left')}
+                aria-label="Faire défiler vers la gauche"
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10
+                           w-9 h-9 rounded-full bg-[#242424] shadow-md items-center
+                           justify-center text-gray-300 hover:bg-gray-50"
               >
-                Toutes
+                <ChevronLeft size={18} />
               </button>
-              {presentSpecialites.map((s) => (
+
+              <div
+                ref={filterScrollRef}
+                className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 px-4"
+              >
                 <button
-                  key={s.slug}
                   type="button"
-                  onClick={() => setActiveFilter(s.slug)}
+                  onClick={() => setActiveFilter('all')}
                   className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
-                    activeFilter === s.slug
+                    activeFilter === 'all'
                       ? 'bg-violet-500 text-white'
                       : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                   }`}
                 >
-                  {s.label}
+                  Toutes
                 </button>
-              ))}
+                {presentSpecialites.map((s) => (
+                  <button
+                    key={s.slug}
+                    type="button"
+                    onClick={() => setActiveFilter(s.slug)}
+                    className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                      activeFilter === s.slug
+                        ? 'bg-violet-500 text-white'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => scrollFilters('right')}
+                aria-label="Faire défiler vers la droite"
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10
+                           w-9 h-9 rounded-full bg-[#242424] shadow-md items-center
+                           justify-center text-gray-300 hover:bg-gray-50"
+              >
+                <ChevronRight size={18} />
+              </button>
             </div>
 
             {filteredNews.length === 0 ? (
