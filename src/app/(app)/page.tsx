@@ -14,6 +14,9 @@ import DailyQuizButton from '@/components/home/DailyQuizButton'
 import DailyQuizModal from '@/components/home/DailyQuizModal'
 import NewsSection from '@/components/home/NewsSection'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
+import NewsCardItem from '@/components/news/NewsCardItem'
+import NewsModal from '@/components/news/NewsModal'
+import type { NewsCard } from '@/types/news'
 
 export default function HomePage() {
   const [showDailyQuiz, setShowDailyQuiz] = useState(false)
@@ -21,6 +24,10 @@ export default function HomePage() {
 
   const { user, profile, streak, loading: userLoading, refetch: refetchUser } = useUser()
   const { news, loading: newsLoading } = useNews(4)
+
+  const [newsItems, setNewsItems] = useState<NewsCard[]>([])
+  const [modalNewsId, setModalNewsId] = useState<string | null>(null)
+  const router = useRouter()
 
   // Formations "Fraîchement arrivé" — 5 dernières tous axes
   const [recentFormations, setRecentFormations] = useState<Formation[]>([])
@@ -52,6 +59,13 @@ export default function HomePage() {
       setRecentLoading(false)
     }
     fetchRecent()
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/news/syntheses?limit=5')
+      .then(r => r.json())
+      .then(d => setNewsItems(d.data ?? []))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -297,7 +311,33 @@ export default function HomePage() {
         </section>
 
         {/* News */}
-        <NewsSection news={news} loading={newsLoading} />
+        <section>
+          <div className="flex items-center mb-4">
+            <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2">
+              📰 Actualités
+            </h2>
+          </div>
+          <div className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide -mx-4 px-4 pb-2">
+            {newsItems.map((item) => (
+              <NewsCardItem
+                key={item.id}
+                news={item}
+                variant="carousel"
+                onClick={(n) => setModalNewsId(n.id)}
+              />
+            ))}
+            <div
+              className="flex-shrink-0 w-[200px] rounded-xl bg-gradient-to-br
+                         from-violet-600 to-violet-900 flex flex-col items-center
+                         justify-center cursor-pointer hover:scale-[1.02] transition"
+              onClick={() => router.push('/news')}
+            >
+              <span className="text-white text-sm font-medium text-center px-4">
+                Voir toutes les actus →
+              </span>
+            </div>
+          </div>
+        </section>
 
       </main>
 
@@ -308,6 +348,8 @@ export default function HomePage() {
           onComplete={handleDailyQuizComplete}
         />
       )}
+
+      <NewsModal newsId={modalNewsId} onClose={() => setModalNewsId(null)} />
     </>
   )
 }
