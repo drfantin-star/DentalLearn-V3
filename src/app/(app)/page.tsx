@@ -234,6 +234,35 @@ export default function HomePage() {
           />
         </section>
 
+        {/* News */}
+        <section>
+          <div className="flex items-center mb-4">
+            <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2">
+              📰 Actualités
+            </h2>
+          </div>
+          <div className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide -mx-4 px-4 pb-2">
+            {newsItems.map((item) => (
+              <NewsCardItem
+                key={item.id}
+                news={item}
+                variant="carousel"
+                onClick={(n) => setModalNewsId(n.id)}
+              />
+            ))}
+            <div
+              className="flex-shrink-0 w-[200px] rounded-xl bg-gradient-to-br
+                         from-violet-600 to-violet-900 flex flex-col items-center
+                         justify-center cursor-pointer hover:scale-[1.02] transition"
+              onClick={() => router.push('/news')}
+            >
+              <span className="text-white text-sm font-medium text-center px-4">
+                Voir toutes les actus →
+              </span>
+            </div>
+          </div>
+        </section>
+
         {/* Fraîchement arrivé */}
         <section>
           <h2 className="text-base font-bold text-[#e5e5e5] mb-3">⚡ Fraîchement arrivé</h2>
@@ -308,35 +337,6 @@ export default function HomePage() {
             categories={axe4Categories}
             scrollRef={axe4ScrollRef}
           />
-        </section>
-
-        {/* News */}
-        <section>
-          <div className="flex items-center mb-4">
-            <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2">
-              📰 Actualités
-            </h2>
-          </div>
-          <div className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide -mx-4 px-4 pb-2">
-            {newsItems.map((item) => (
-              <NewsCardItem
-                key={item.id}
-                news={item}
-                variant="carousel"
-                onClick={(n) => setModalNewsId(n.id)}
-              />
-            ))}
-            <div
-              className="flex-shrink-0 w-[200px] rounded-xl bg-gradient-to-br
-                         from-violet-600 to-violet-900 flex flex-col items-center
-                         justify-center cursor-pointer hover:scale-[1.02] transition"
-              onClick={() => router.push('/news')}
-            >
-              <span className="text-white text-sm font-medium text-center px-4">
-                Voir toutes les actus →
-              </span>
-            </div>
-          </div>
         </section>
 
       </main>
