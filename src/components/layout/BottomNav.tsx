@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, UserCircle, ShieldCheck, type LucideIcon } from 'lucide-react'
+import { Home, Newspaper, UserCircle, ShieldCheck, type LucideIcon } from 'lucide-react'
 
 interface NavTab {
   href: string
@@ -12,6 +12,7 @@ interface NavTab {
 
 const tabs: NavTab[] = [
   { href: '/', icon: Home, label: 'Accueil' },
+  { href: '/news', icon: Newspaper, label: 'Actus' },
   { href: '/profil', icon: UserCircle, label: 'Profil' },
   { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
 ]
