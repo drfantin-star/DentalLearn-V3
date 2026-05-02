@@ -122,7 +122,7 @@ export default function NewsPage() {
               ▶ Écouter la playlist
             </button>
 
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide px-4 mb-4">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 mb-4 px-4">
               <button
                 type="button"
                 onClick={() => setActiveFilter('all')}
