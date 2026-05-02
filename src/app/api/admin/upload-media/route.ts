@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { isSuperAdmin } from '@/lib/auth/rbac'
 
 const BUCKET_NAME = 'formations'
 const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50MB (audio/video can be larger)
@@ -15,7 +16,6 @@ const ALLOWED_TYPES = [
   'video/webm',       // WebM
   'application/pdf',  // PDF
 ]
-const ADMIN_EMAILS = ['drfantin@gmail.com']
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    if (!ADMIN_EMAILS.includes(user.email || '')) {
+    if (!(await isSuperAdmin(user.id))) {
       return NextResponse.json({ error: 'Accès admin requis' }, { status: 403 })
     }
 
@@ -118,7 +118,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    if (!ADMIN_EMAILS.includes(user.email || '')) {
+    if (!(await isSuperAdmin(user.id))) {
       return NextResponse.json({ error: 'Accès admin requis' }, { status: 403 })
     }
 

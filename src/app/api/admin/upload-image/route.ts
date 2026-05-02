@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { isSuperAdmin } from '@/lib/auth/rbac'
 
 const BUCKET_NAME = 'question-images'
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-const ADMIN_EMAILS = ['drfantin@gmail.com']
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier l'admin par email
-    if (!ADMIN_EMAILS.includes(user.email || '')) {
+    if (!(await isSuperAdmin(user.id))) {
       return NextResponse.json({ error: 'Accès admin requis' }, { status: 403 })
     }
 
@@ -111,7 +111,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Vérifier l'admin par email
-    if (!ADMIN_EMAILS.includes(user.email || '')) {
+    if (!(await isSuperAdmin(user.id))) {
       return NextResponse.json({ error: 'Accès admin requis' }, { status: 403 })
     }
 
