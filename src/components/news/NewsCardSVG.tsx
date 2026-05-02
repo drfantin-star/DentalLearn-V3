@@ -26,7 +26,6 @@ interface Props {
 
 export default function NewsCardSVG({ specialite, display_title, className }: Props) {
   const bg = (specialite && SPECIALITE_COLORS[specialite]) || DEFAULT_COLOR
-  const specialiteLabel = specialite ?? ''
 
   return (
     <svg
@@ -56,31 +55,6 @@ export default function NewsCardSVG({ specialite, display_title, className }: Pr
       </g>
 
       <rect x="0" y="0" width="280" height="160" fill="url(#news-card-gradient)" />
-
-      {specialiteLabel ? (
-        <g>
-          <rect
-            x="10"
-            y="10"
-            rx="10"
-            ry="10"
-            width={Math.min(90, 16 + specialiteLabel.length * 6)}
-            height="20"
-            fill="white"
-            fillOpacity="0.2"
-          />
-          <text
-            x="18"
-            y="24"
-            fill="white"
-            fontSize="10"
-            fontFamily="system-ui, -apple-system, sans-serif"
-            fontWeight="500"
-          >
-            {specialiteLabel}
-          </text>
-        </g>
-      ) : null}
     </svg>
   )
 }
