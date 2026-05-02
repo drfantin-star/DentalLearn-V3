@@ -639,6 +639,111 @@
 
 ---
 
+## Multi-tenant — Sprint 1 (2 mai 2026)
+
+Migration `20260502_sprint1_rbac_multitenant.sql` — fondations RBAC + multi-tenant.
+Référence : `MATRICE_ROLES_DENTALLEARN_V1.md` V1.2.
+
+### Enums
+
+| Enum | Valeurs |
+|---|---|
+| `app_role` | `super_admin`, `formateur`, `cs_member`, `marketing`, `support`, `user` |
+| `org_type` | `cabinet`, `hr_entity`, `training_org` |
+| `intra_role` | `titulaire`, `collaborateur`, `assistante`, `admin_rh`, `manager`, `praticien_salarie`, `admin_of`, `formateur_of`, `apprenant_of` |
+| `org_plan` | `standard`, `premium` |
+| `membership_status` | `active`, `invited`, `revoked` |
+
+### user_roles
+**RLS** : activée. Rôles globaux additifs (un user peut cumuler plusieurs rôles).
+
+| Colonne | Type | Nullable | Défaut | Note |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | PK |
+| user_id | uuid | NO | | FK → auth.users.id ON DELETE CASCADE |
+| role | app_role | NO | | UNIQUE (user_id, role) |
+| created_at | timestamptz | NO | now() | |
+
+Index : `user_roles_user_id_idx` sur `(user_id)`.
+
+### organizations
+**RLS** : activée. Tenants clients (cabinets, RH, OF tiers).
+
+| Colonne | Type | Nullable | Défaut | Note |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | PK |
+| name | varchar(200) | NO | | |
+| type | org_type | NO | | cabinet / hr_entity / training_org |
+| plan | org_plan | NO | standard | standard / premium |
+| branding_logo_url | text | YES | | HR/OF uniquement (CHECK `branding_only_for_hr_or_of`) |
+| branding_primary_color | varchar(7) | YES | | hex #RRGGBB, HR/OF uniquement |
+| qualiopi_number | varchar(20) | YES | | Numéro Qualiopi OF tiers (cf. T7) |
+| odpc_number | varchar(10) | YES | | Numéro ODPC OF tiers (cf. T7) |
+| owner_user_id | uuid | NO | | FK → auth.users.id (no ON DELETE — bloque la suppression) |
+| created_at | timestamptz | NO | now() | |
+| updated_at | timestamptz | NO | now() | |
+
+### organization_members
+**RLS** : activée. Appartenance user → org. **1 user = 1 org max en V1** (UNIQUE user_id, décision Q1 matrice §7.1).
+
+| Colonne | Type | Nullable | Défaut | Note |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | PK |
+| user_id | uuid | NO | | FK → auth.users.id ON DELETE CASCADE, **UNIQUE** |
+| org_id | uuid | NO | | FK → organizations.id ON DELETE CASCADE |
+| intra_role | intra_role | NO | | Validé par trigger `validate_intra_role_matches_org_type` |
+| manager_id | uuid | YES | | FK → auth.users.id (hiérarchie HR, no ON DELETE) |
+| status | membership_status | NO | invited | active / invited / revoked |
+| joined_at | timestamptz | YES | | |
+| revoked_at | timestamptz | YES | | Timestamp soft-delete |
+| created_at | timestamptz | NO | now() | |
+
+Index : `organization_members_org_id_idx` sur `(org_id)`.
+
+### Trigger `validate_intra_role_matches_org_type`
+
+`BEFORE INSERT OR UPDATE ON organization_members` — valide la cohérence `intra_role` ↔ `organizations.type` (matrice V1.2) :
+- `cabinet` : `titulaire`, `collaborateur`, `assistante`
+- `hr_entity` : `admin_rh`, `manager`, `praticien_salarie`, `assistante`
+- `training_org` : `admin_of`, `formateur_of`, `apprenant_of`, `assistante`
+
+`assistante` est valide dans les 3 types d'org (V1.2 — décision Dr Fantin du 2 mai 2026).
+
+### Helpers SQL
+
+Tous `STABLE SECURITY DEFINER`, `search_path = public, pg_temp`. EXECUTE `REVOKE FROM PUBLIC` + `GRANT TO authenticated, service_role` (anon ne peut pas appeler ces RPC).
+
+| Fonction | Usage |
+|---|---|
+| `has_role(p_user_id uuid, p_role app_role) → boolean` | Vérifie un rôle global |
+| `is_super_admin(p_user_id uuid) → boolean` | Raccourci `has_role(uid, 'super_admin')` |
+| `user_org(p_user_id uuid) → uuid` | org_id du user (NULL si orgless / status≠active) |
+| `org_can_create_content(p_org_id uuid) → boolean` | Gating D.07 — premium HR/OF uniquement |
+
+### Policies RLS (11 policies)
+
+**user_roles** (4) :
+- `user_roles_select_own` : user voit ses propres rôles + super_admin voit tout
+- `user_roles_insert_super_admin` / `update_super_admin` / `delete_super_admin`
+
+**organizations** (4) :
+- `organizations_select` : super_admin + membres actifs de l'org
+- `organizations_insert_super_admin`
+- `organizations_update_admins` : super_admin + (titulaire / admin_rh / admin_of) actif
+- `organizations_delete_super_admin`
+
+**organization_members** (3) :
+- `org_members_select` : super_admin + membres de la même org + ses propres lignes
+- `org_members_insert` : super_admin + (titulaire / admin_rh / admin_of) de l'org
+- `org_members_update` : idem insert
+- **Aucune policy DELETE** — soft-delete via UPDATE `status = 'revoked'`
+
+### Seed initial
+
+`INSERT INTO user_roles (user_id, role) VALUES ('af506ec2-a281-4485-a504-b0633c8d2362', 'super_admin')` — Dr Julie Fantin (drfantin@gmail.com). **Reste orgless en V1** (décision Q2 matrice §7.1).
+
+---
+
 ## NOTES IMPORTANTES
 
 ### ⚠️ Bug mode Preview (formations)
