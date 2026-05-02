@@ -801,6 +801,26 @@ Migration `20260502_sprint1_formations_owner_org.sql` — isolation contenu tena
 
 ---
 
+## Trigger signup — Sprint 1 T4 (2 mai 2026)
+
+Migration `20260502_sprint1_handle_new_user.sql` — provisionnement automatique du profil user à l'inscription.
+
+### Fonction `public.handle_new_user()`
+
+`SECURITY DEFINER`, `search_path = public`. À chaque INSERT dans `auth.users`, insère :
+- `public.user_profiles (id, first_name, last_name)` depuis `raw_user_meta_data` — `ON CONFLICT (id) DO NOTHING`
+- `public.streaks (user_id, current_streak, longest_streak)` avec valeurs `(NEW.id, 0, 0)` — `ON CONFLICT (user_id) DO NOTHING`
+
+Idempotente : un rejeu (ex. ré-inscription après suppression manuelle) ne provoque pas d'erreur.
+
+### Trigger `on_auth_user_created`
+
+`AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION public.handle_new_user()`.
+
+Conséquence côté code : `src/app/register/page.tsx` ne fait plus d'INSERT manuel sur `user_profiles`/`streaks` — la BDD s'en charge.
+
+---
+
 ## NOTES IMPORTANTES
 
 ### ⚠️ Bug mode Preview (formations)

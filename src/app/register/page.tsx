@@ -13,6 +13,7 @@ export default function RegisterPage() {
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [isHealthProfessional, setIsHealthProfessional] = useState<boolean | null>(null)
+  const [rgpdConsent, setRgpdConsent] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -55,7 +56,7 @@ export default function RegisterPage() {
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -68,30 +69,9 @@ export default function RegisterPage() {
 
       if (error) throw error
 
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: data.user.id,
-            first_name: firstName,
-            last_name: lastName,
-          })
-
-        if (profileError) console.error('Erreur création profil:', profileError)
-
-        const { error: streakError } = await supabase
-          .from('streaks')
-          .insert({
-            user_id: data.user.id,
-            current_streak: 0,
-            longest_streak: 0,
-          })
-
-        if (streakError) console.error('Erreur création streak:', streakError)
-      }
-
-      router.push('/')
-      router.refresh()
+      // Le trigger public.handle_new_user (auth.users AFTER INSERT) crée le
+      // user_profile et la streak côté BDD — pas besoin d'INSERT client ici.
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`)
     } catch (error: any) {
       console.error('Erreur inscription:', error)
       if (error.message === 'User already registered') {
@@ -271,9 +251,31 @@ export default function RegisterPage() {
             )}
           </div>
 
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={rgpdConsent}
+              onChange={(e) => setRgpdConsent(e.target.checked)}
+              required
+              className="mt-1 w-4 h-4 text-[#2D1B96] focus:ring-[#2D1B96] rounded"
+            />
+            <span className="text-sm text-gray-700">
+              J&apos;accepte la{' '}
+              <a
+                href="/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[#2D1B96] font-medium hover:underline"
+              >
+                politique de confidentialité
+              </a>{' '}
+              et les conditions d&apos;utilisation
+            </span>
+          </label>
+
           <button
             type="submit"
-            disabled={loading || !passwordValidation.isValid || password !== confirmPassword || isHealthProfessional !== true}
+            disabled={loading || !passwordValidation.isValid || password !== confirmPassword || isHealthProfessional !== true || !rgpdConsent}
             className="w-full py-3 bg-[#2D1B96] text-white rounded-lg font-medium hover:bg-[#231470] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
           >
             {loading ? (
