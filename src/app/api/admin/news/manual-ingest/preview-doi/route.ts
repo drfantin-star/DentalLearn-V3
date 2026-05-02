@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-
-const ADMIN_EMAIL = 'drfantin@gmail.com'
+import { isSuperAdmin } from '@/lib/auth/rbac'
 
 const DOI_REGEX = /^10\.\d{4,9}\/[-._;()/:a-zA-Z0-9]+$/
 const CROSSREF_TIMEOUT_MS = 5000
@@ -18,7 +17,7 @@ export async function GET(request: Request) {
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
-    if (session.user.email !== ADMIN_EMAIL) {
+    if (!(await isSuperAdmin(session.user.id))) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
     }
 

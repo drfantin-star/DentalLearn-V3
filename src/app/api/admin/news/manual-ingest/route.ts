@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
 import { createClient } from '@/lib/supabase/server'
+import { isSuperAdmin } from '@/lib/auth/rbac'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NEWS_SPECIALITES_SET } from '@/lib/constants/news'
-
-const ADMIN_EMAIL = 'drfantin@gmail.com'
 
 const DOI_REGEX = /^10\.\d{4,9}\/[-._;()/:a-zA-Z0-9]+$/
 const TITLE_MIN = 5
@@ -25,7 +24,7 @@ export async function POST(request: Request) {
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
-    if (session.user.email !== ADMIN_EMAIL) {
+    if (!(await isSuperAdmin(session.user.id))) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
     }
 

@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isSuperAdmin } from '@/lib/auth/rbac'
 import { createAdminClient } from '@/lib/supabase/admin'
-
-const ADMIN_EMAIL = 'drfantin@gmail.com'
 
 // GET: Liste des questions liées à une synthèse, ordre de présentation croissant
 export async function GET(
@@ -19,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
     }
 
-    if (session.user.email !== ADMIN_EMAIL) {
+    if (!(await isSuperAdmin(session.user.id))) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
     }
 
