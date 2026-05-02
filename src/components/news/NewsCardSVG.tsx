@@ -28,25 +28,6 @@ export default function NewsCardSVG({ specialite, display_title, className }: Pr
   const bg = (specialite && SPECIALITE_COLORS[specialite]) || DEFAULT_COLOR
   const specialiteLabel = specialite ?? ''
 
-  const truncated =
-    display_title.length > 80 ? `${display_title.slice(0, 77)}…` : display_title
-  const words = truncated.split(' ')
-  const lines: string[] = []
-  let current = ''
-  const maxCharsPerLine = 28
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word
-    if (candidate.length > maxCharsPerLine && current) {
-      lines.push(current)
-      current = word
-      if (lines.length === 1) break
-    } else {
-      current = candidate
-    }
-  }
-  if (current && lines.length < 2) lines.push(current)
-  const titleLines = lines.slice(0, 2)
-
   return (
     <svg
       viewBox="0 0 280 160"
@@ -75,20 +56,6 @@ export default function NewsCardSVG({ specialite, display_title, className }: Pr
       </g>
 
       <rect x="0" y="0" width="280" height="160" fill="url(#news-card-gradient)" />
-
-      {titleLines.map((line, i) => (
-        <text
-          key={i}
-          x="14"
-          y={130 + i * 14}
-          fill="white"
-          fontSize="13"
-          fontFamily="system-ui, -apple-system, sans-serif"
-          fontWeight="600"
-        >
-          {line}
-        </text>
-      ))}
 
       {specialiteLabel ? (
         <g>
