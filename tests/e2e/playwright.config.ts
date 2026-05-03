@@ -3,6 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * Configuration Playwright DentalLearn — Sprint 1 T8.
  *
+ * Emplacement : tests/e2e/playwright.config.ts (hors compilation TS Next.js,
+ * cf tsconfig.json "exclude": ["tests"]).
+ *
  * Statut : SQUELETTE FOURNI, RUNTIME NON INSTALLÉ.
  * Voir tests/e2e/README.md pour la procédure d'installation.
  *
@@ -10,9 +13,12 @@ import { defineConfig, devices } from '@playwright/test';
  * Supabase de staging dédié. La production (https://dental-learn-v3.vercel.app)
  * n'est PAS une cible Playwright — réservée au smoke test manuel
  * (scripts/smoke_test_prod.sh).
+ *
+ * Lancement (depuis la racine du repo) :
+ *   npx playwright test --config=tests/e2e/playwright.config.ts
  */
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: '.', // tests/e2e/sprint1/*.spec.ts (résolu relativement à ce fichier)
   fullyParallel: false, // Tests RBAC = ordre + état BDD partagé
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

@@ -32,9 +32,9 @@ charpente technique à compléter une fois l'environnement disponible.
 npm install --save-dev @playwright/test
 npx playwright install chromium
 
-# 2. Ajouter scripts dans package.json :
-#    "test:e2e": "playwright test",
-#    "test:e2e:ui": "playwright test --ui",
+# 2. Ajouter scripts dans package.json (config dans tests/e2e/) :
+#    "test:e2e": "playwright test --config=tests/e2e/playwright.config.ts",
+#    "test:e2e:ui": "playwright test --config=tests/e2e/playwright.config.ts --ui",
 #    "test:e2e:report": "playwright show-report"
 
 # 3. Configurer .env.local pour pointer vers le projet Supabase staging :
@@ -49,8 +49,9 @@ npx playwright install chromium
 #    /playwright/.cache
 
 # 5. Lancer le serveur de test puis les specs
+#    (le config Playwright est dans tests/e2e/, hors compilation Next.js)
 npm run dev &                                       # terminal 1
-npm run test:e2e -- --project=chromium              # terminal 2
+npx playwright test --config=tests/e2e/playwright.config.ts  # terminal 2
 ```
 
 ---

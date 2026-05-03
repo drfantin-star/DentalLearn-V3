@@ -149,7 +149,7 @@ Toutes appliquées en prod sur `dxybsuhfkwuemapqrvgz`. Migrations `_down.sql` sy
 ## 5. Tests E2E (T8 — pseudo-code only)
 
 ### 5.1 Livrables
-- `playwright.config.ts` à la racine — configuration workers=1, séquentielle, baseURL=`E2E_BASE_URL` (default localhost:3000)
+- `tests/e2e/playwright.config.ts` — configuration workers=1, séquentielle, baseURL=`E2E_BASE_URL` (default localhost:3000). **Placé dans `tests/e2e/` (et pas à la racine) pour rester hors compilation TypeScript Next.js** — tsconfig.json exclut le dossier `tests` (sinon import de `@playwright/test` non installé casse `next build`)
 - `tests/e2e/README.md` — procédure d'installation + helpers à créer
 - `tests/e2e/SCENARIOS_PSEUDOCODE.md` — pseudo-code détaillé des 5 scénarios (matrice de couverture T1-T7)
 - 5 squelettes `.spec.ts` annotés TODO dans `tests/e2e/sprint1/`
