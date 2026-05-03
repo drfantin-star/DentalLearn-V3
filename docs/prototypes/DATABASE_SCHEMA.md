@@ -821,6 +821,63 @@ Conséquence côté code : `src/app/register/page.tsx` ne fait plus d'INSERT man
 
 ---
 
+## Attestations — Organisme dynamique — Sprint 1 T7 (3 mai 2026)
+
+Migration : `supabase/migrations/20260503b_sprint1_attestations_organisme_dynamic.sql`
++ `_down.sql` symétrique.
+
+### Helpers SQL (ajoutés)
+
+Tous `STABLE SECURITY DEFINER` avec `search_path = public, pg_temp`.
+
+#### `attestation_organisme_for(p_user_id uuid, p_formation_id uuid) RETURNS varchar`
+
+Calcule dynamiquement l'organisme délivrant une attestation :
+
+| Contexte user × formation | Retour |
+|---------------------------|--------|
+| `p_formation_id` IS NULL (cas EPP V1) | `'EROJU SAS — Dentalschool'` |
+| user `super_admin` | `'EROJU SAS — Dentalschool'` |
+| user orgless | `'EROJU SAS — Dentalschool'` |
+| user dans org `cabinet` ou `hr_entity` | `'EROJU SAS — Dentalschool'` |
+| user dans `training_org` + formation Dentalschool (`owner_org_id IS NULL`) | `'EROJU SAS — Dentalschool'` |
+| user dans `training_org` + formation owned par cette org | `organizations.name` (tel quel) |
+| user dans `training_org` + formation d'un autre OF (cas bord) | `'EROJU SAS — Dentalschool'` (fallback) |
+
+#### `attestation_qualiopi_for(p_user_id uuid, p_formation_id uuid) RETURNS varchar`
+
+- Si organisme = `'EROJU SAS — Dentalschool'` → `'QUA006589'`
+- Sinon → `organizations.qualiopi_number` de l'org du user (peut être `NULL`)
+
+#### `attestation_odpc_for(p_user_id uuid, p_formation_id uuid) RETURNS varchar`
+
+- Si organisme = `'EROJU SAS — Dentalschool'` → `'9AGA'`
+- Sinon → `organizations.odpc_number` de l'org du user (peut être `NULL`)
+
+### Trigger `trg_create_verification` enrichi
+
+`create_verification_on_attestation()` (AFTER INSERT sur `user_attestations`) appelle désormais les 3 helpers ci-dessus et insère explicitement `organisme`, `qualiopi`, `odpc` dans `user_attestation_verifications`. Pour les attestations de type `'epp'`, on passe `p_formation_id = NULL` → fallback Dentalschool en V1.
+
+Rétrocompatibilité : les attestations émises avant T7 ne sont pas re-traitées (pas d'UPDATE sur les lignes existantes).
+
+### Côté code
+
+- `src/lib/attestations/types.ts` : `AttestationOrganisme { nom, qualiopi, odpc }` + constante `DENTALSCHOOL_ORGANISME` ; champ optionnel `organisme` dans `FormationAttestationData` et `EppAttestationData`.
+- `src/components/attestations/GenerateAttestationButton.tsx` : appelle `supabase.rpc('attestation_organisme_for' | '_qualiopi_for' | '_odpc_for')` avant la génération du PDF et propage la valeur.
+- `src/lib/attestations/generateFormationPDF.ts` & `generateEppPDF.ts` : si organisme = Dentalschool → comportement strictement identique (titre, intro, tampon image, pied de page Qualiopi/ODPC). Sinon (OF tiers V1) : titre = nom OF, intro adaptée, ligne tableau adaptée, tampon image remplacé par cadre vide « Cachet et signature de l'organisme », pied de page sans adresse/SIRET/APE EROJU et avec Qualiopi uniquement si renseigné.
+
+### Page `/tenant/admin/branding` (T6 étendue)
+
+- API `PATCH /api/tenant/branding` accepte désormais `qualiopi_number` et `odpc_number` (réservés aux orgs `training_org`, validés par regex).
+- UI affiche un bloc « Identifiants de certification » (Qualiopi + ODPC) uniquement pour `training_org`.
+
+### Dette T7
+
+- Le bandeau couleur du PDF reste teal `#0F7B6C` (Dentalschool) même pour les OF tiers ; un branding par OF (couleur primaire `organizations.branding_primary_color`) est repoussé en V1.5.
+- Pas de pipeline d'upload de tampon/signature image pour les OF tiers en V1 ; cadre vide à compléter manuellement.
+
+---
+
 ## NOTES IMPORTANTES
 
 ### ⚠️ Bug mode Preview (formations)

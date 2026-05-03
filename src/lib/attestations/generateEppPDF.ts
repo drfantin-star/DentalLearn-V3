@@ -1,5 +1,17 @@
-import { ORGANISME, AXE_LABELS, type EppAttestationData } from './types'
+import {
+  ORGANISME,
+  AXE_LABELS,
+  DENTALSCHOOL_ORGANISME,
+  type EppAttestationData,
+  type AttestationOrganisme,
+} from './types'
 import { SIGNATURE_BASE64, SIGNATURE_RATIO } from './signatureBase64'
+
+const FALLBACK_ORGANISME: AttestationOrganisme = {
+  nom: DENTALSCHOOL_ORGANISME,
+  qualiopi: ORGANISME.qualiopi,
+  odpc: ORGANISME.ndpc,
+}
 
 /**
  * Génère un blob PDF pour une attestation EPP (après T2).
@@ -20,6 +32,9 @@ export async function generateEppPDF(
   const fmtDate = (d: string | Date) =>
     new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
 
+  const organisme = data.organisme ?? FALLBACK_ORGANISME
+  const isDentalschool = organisme.nom === DENTALSCHOOL_ORGANISME
+
   // ── EN-TÊTE TEAL ─────────────────────────────────────────────
   doc.setFillColor(...teal)
   doc.rect(0, 0, 210, 35, 'F')
@@ -27,7 +42,8 @@ export async function generateEppPDF(
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  doc.text('DENTALSCHOOL — EROJU SAS', 105, 12, { align: 'center' })
+  const headerTitle = isDentalschool ? 'DENTALSCHOOL — EROJU SAS' : organisme.nom.toUpperCase()
+  doc.text(headerTitle, 105, 12, { align: 'center' })
 
   doc.setFontSize(11)
   doc.setFont('helvetica', 'normal')
@@ -72,7 +88,14 @@ export async function generateEppPDF(
       ['N° RPPS', data.participant.rpps],
       ['Profession', data.participant.profession],
       ['Thématique / Audit', data.audit.title],
-      ['Organisme formateur', `${ORGANISME.nom_court} — Qualiopi N° ${ORGANISME.qualiopi}`],
+      [
+        'Organisme formateur',
+        isDentalschool
+          ? `${ORGANISME.nom_court} — Qualiopi N° ${organisme.qualiopi}`
+          : organisme.qualiopi
+            ? `${organisme.nom} — Qualiopi N° ${organisme.qualiopi}`
+            : organisme.nom,
+      ],
       ['Type action CNP', 'Type B — EPP / gestion des risques (labellisation CNP en cours)'],
       ['Date Tour 1 (T1)', fmtDate(data.tours.t1_completed_at)],
       ['Dossiers T1', `${data.tours.t1_nb_dossiers} dossiers évalués`],
@@ -115,15 +138,30 @@ export async function generateEppPDF(
 
   const sigWidth = 70
   const sigHeight = sigWidth / SIGNATURE_RATIO
-  try {
-    doc.addImage(SIGNATURE_BASE64, 'JPEG', 14, sigY + 4, sigWidth, sigHeight)
-  } catch (err) {
-    console.error('Erreur insertion signature :', err)
-    doc.setFont('helvetica', 'bolditalic')
-    doc.text('Dr Julie Fantin', 14, sigY + 15)
-    doc.setFont('helvetica', 'normal')
+  if (isDentalschool) {
+    try {
+      doc.addImage(SIGNATURE_BASE64, 'JPEG', 14, sigY + 4, sigWidth, sigHeight)
+    } catch (err) {
+      console.error('Erreur insertion signature :', err)
+      doc.setFont('helvetica', 'bolditalic')
+      doc.text('Dr Julie Fantin', 14, sigY + 15)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.text('Responsable pédagogique', 14, sigY + 22)
+    }
+  } else {
+    doc.setDrawColor(180, 180, 180)
+    doc.setLineWidth(0.3)
+    doc.rect(14, sigY + 4, sigWidth, sigHeight, 'S')
     doc.setFontSize(8)
-    doc.text('Responsable pédagogique', 14, sigY + 22)
+    doc.setTextColor(120, 120, 120)
+    doc.setFont('helvetica', 'italic')
+    doc.text(
+      "Cachet et signature de l'organisme",
+      14 + sigWidth / 2,
+      sigY + 4 + sigHeight / 2,
+      { align: 'center' }
+    )
   }
 
   doc.setFontSize(8)
@@ -140,14 +178,25 @@ export async function generateEppPDF(
     doc.setFontSize(7)
     doc.setTextColor(150, 150, 150)
     doc.setFont('helvetica', 'normal')
-    doc.text(
-      `${ORGANISME.nom_court} — ${ORGANISME.adresse} — SIRET ${ORGANISME.siret} — APE ${ORGANISME.ape}`,
-      105, 284, { align: 'center' }
-    )
-    doc.text(
-      `Qualiopi ${ORGANISME.qualiopi} — ODPC ${ORGANISME.ndpc} — Document conservé 6 ans | Page ${i}/${pageCount}`,
-      105, 289, { align: 'center' }
-    )
+    if (isDentalschool) {
+      doc.text(
+        `${ORGANISME.nom_court} — ${ORGANISME.adresse} — SIRET ${ORGANISME.siret} — APE ${ORGANISME.ape}`,
+        105, 284, { align: 'center' }
+      )
+      doc.text(
+        `Qualiopi ${organisme.qualiopi} — ODPC ${organisme.odpc} — Document conservé 6 ans | Page ${i}/${pageCount}`,
+        105, 289, { align: 'center' }
+      )
+    } else {
+      doc.text(organisme.nom, 105, 284, { align: 'center' })
+      const qualiopiPart = organisme.qualiopi
+        ? `Qualiopi ${organisme.qualiopi} — `
+        : ''
+      doc.text(
+        `${qualiopiPart}Document conservé 6 ans | Page ${i}/${pageCount}`,
+        105, 289, { align: 'center' }
+      )
+    }
   }
 
   return doc.output('blob')

@@ -2,6 +2,21 @@
 
 export type AttestationType = 'formation_online' | 'epp'
 
+/**
+ * Organisme délivrant l'attestation, calculé dynamiquement par le helper SQL
+ * `attestation_organisme_for()` (T7). Si `nom === DENTALSCHOOL_ORGANISME`,
+ * le PDF affiche les mentions Qualiopi/ODPC EROJU + tampon image. Sinon
+ * (OF tiers V1), il affiche un cadre signature vide et masque les mentions
+ * EROJU spécifiques (adresse, SIRET, APE).
+ */
+export interface AttestationOrganisme {
+  nom: string                  // ex. "EROJU SAS — Dentalschool" ou "OF Test"
+  qualiopi: string | null      // ex. "QUA006589" pour Dentalschool, ou organizations.qualiopi_number
+  odpc: string | null          // ex. "9AGA" pour Dentalschool, ou organizations.odpc_number
+}
+
+export const DENTALSCHOOL_ORGANISME = 'EROJU SAS — Dentalschool'
+
 export interface FormationAttestationData {
   participant: {
     nom_complet: string      // "Dr LENFANT Benoit"
@@ -26,6 +41,7 @@ export interface FormationAttestationData {
     taux_completion: number
   }
   verification_code: string   // "DL-XXXXXX-XXXX"
+  organisme?: AttestationOrganisme  // T7 — si absent, fallback Dentalschool
 }
 
 export interface EppAttestationData {
@@ -50,6 +66,7 @@ export interface EppAttestationData {
     delta_score: number
   }
   verification_code: string
+  organisme?: AttestationOrganisme  // T7 — EPP figé Dentalschool en V1
 }
 
 export const ORGANISME = {
