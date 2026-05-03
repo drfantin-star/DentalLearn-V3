@@ -61,8 +61,17 @@ const TONE_INSTRUCTIONS: Record<EditorialTone, string> = {
  * Construit le prompt système Anthropic pour la génération du script.
  * Format de sortie strict : chaque ligne non vide commence par "Sophie:" ou
  * "Martin:" suivi du texte (avec audio_tags optionnels entre crochets).
+ *
+ * `abstract` (optionnel) : abstract source de news_raw, injecté comme
+ * contexte scientifique complémentaire si non vide (>50 chars).
+ * `editorialNotes` (optionnel) : notes éditorial libre saisies par l'admin,
+ * injectées comme directives prioritaires si non vides.
  */
-export function buildScriptPrompt(params: BuildScriptPromptParams): string {
+export function buildScriptPrompt(
+  params: BuildScriptPromptParams,
+  abstract?: string,
+  editorialNotes?: string,
+): string {
   const {
     display_title,
     summary_fr,
@@ -93,6 +102,22 @@ export function buildScriptPrompt(params: BuildScriptPromptParams): string {
     summary_fr,
   ].join('\n')
 
+  const contextBlocks: string[] = []
+  if (abstract && abstract.trim().length > 50) {
+    contextBlocks.push(
+      '',
+      '## Abstract source (contexte scientifique complémentaire)',
+      abstract.trim(),
+    )
+  }
+  if (editorialNotes && editorialNotes.trim().length > 0) {
+    contextBlocks.push(
+      '',
+      '## Notes éditorial (points à développer impérativement)',
+      editorialNotes.trim(),
+    )
+  }
+
   if (format === 'dialogue') {
     return [
       `Tu es co-auteur d'un podcast dentaire animé par Dr Sophie (praticienne curieuse 5-10 ans XP, pose les questions du praticien) et Dr Martin (expert 20+ ans, donne chiffres et analyse). Ton confraternel, professionnel, tutoiement entre Sophie et Martin.`,
@@ -111,6 +136,7 @@ export function buildScriptPrompt(params: BuildScriptPromptParams): string {
       ``,
       `--- MATÉRIAU ---`,
       sourceBlock,
+      ...contextBlocks,
     ].join('\n')
   }
 
@@ -135,6 +161,7 @@ export function buildScriptPrompt(params: BuildScriptPromptParams): string {
     ``,
     `--- MATÉRIAU ---`,
     sourceBlock,
+    ...contextBlocks,
   ].join('\n')
 }
 

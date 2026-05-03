@@ -102,6 +102,9 @@ export async function POST(
       )
     }
 
+    const editorial_notes =
+      typeof body.editorial_notes === 'string' ? body.editorial_notes : undefined
+
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
         { error: 'Clé API Anthropic manquante côté serveur' },
@@ -134,7 +137,7 @@ export async function POST(
 
     const { data: raw, error: rawError } = await adminSupabase
       .from('news_raw')
-      .select('title, authors, journal, published_at')
+      .select('title, authors, journal, published_at, abstract')
       .eq('id', synthesis.raw_id)
       .maybeSingle()
 
@@ -193,19 +196,25 @@ export async function POST(
     }
 
     // ----- 5. Appel Anthropic (fetch direct, pattern _shared/anthropic.ts) -----
-    const systemPrompt = buildScriptPrompt({
-      display_title: synthesis.display_title ?? 'Sans titre',
-      summary_fr: synthesis.summary_fr ?? '',
-      specialites_tags: Array.isArray(synthesis.themes) ? synthesis.themes : [],
-      niveau_preuve: synthesis.niveau_preuve ?? 'non précisé',
-      source_title: sourceTitle ?? 'titre inconnu',
-      source_authors: sourceAuthors,
-      source_year: sourceYear,
-      format,
-      narrator,
-      target_duration_min,
-      editorial_tone,
-    })
+    const abstract =
+      typeof raw.abstract === 'string' ? raw.abstract : undefined
+    const systemPrompt = buildScriptPrompt(
+      {
+        display_title: synthesis.display_title ?? 'Sans titre',
+        summary_fr: synthesis.summary_fr ?? '',
+        specialites_tags: Array.isArray(synthesis.themes) ? synthesis.themes : [],
+        niveau_preuve: synthesis.niveau_preuve ?? 'non précisé',
+        source_title: sourceTitle ?? 'titre inconnu',
+        source_authors: sourceAuthors,
+        source_year: sourceYear,
+        format,
+        narrator,
+        target_duration_min,
+        editorial_tone,
+      },
+      abstract,
+      editorial_notes,
+    )
 
     let scriptMd: string
     try {
