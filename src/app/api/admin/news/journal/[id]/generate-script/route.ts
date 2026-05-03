@@ -122,7 +122,7 @@ export async function POST(
     }
 
     const journalSyntheses: JournalSynthesis[] = links
-      .map((l) => {
+      .map((l): JournalSynthesis | null => {
         const s = synById.get(l.synthesis_id as string)
         if (!s) return null
         return {
