@@ -2,7 +2,15 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Newspaper, UserCircle, ShieldCheck, type LucideIcon } from 'lucide-react'
+import {
+  Home,
+  Newspaper,
+  UserCircle,
+  ShieldCheck,
+  Briefcase,
+  type LucideIcon,
+} from 'lucide-react'
+import type { IntraRole } from '@/lib/auth/rbac'
 
 interface NavTab {
   href: string
@@ -10,14 +18,24 @@ interface NavTab {
   label: string
 }
 
-const tabs: NavTab[] = [
+const BASE_TABS: NavTab[] = [
   { href: '/', icon: Home, label: 'Accueil' },
   { href: '/news', icon: Newspaper, label: 'Actus' },
   { href: '/profil', icon: UserCircle, label: 'Profil' },
   { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
 ]
 
-export default function BottomNav() {
+const TENANT_ADMIN_ROLES: ReadonlySet<IntraRole> = new Set<IntraRole>([
+  'titulaire',
+  'admin_rh',
+  'admin_of',
+])
+
+interface BottomNavProps {
+  intraRole?: IntraRole | null
+}
+
+export default function BottomNav({ intraRole = null }: BottomNavProps) {
   const pathname = usePathname()
 
   const isActive = (href: string) => {
@@ -26,9 +44,24 @@ export default function BottomNav() {
   }
 
   // Ne pas afficher la nav sur les pages auth
-  if (pathname.startsWith('/login') || pathname.startsWith('/register') || 
-      pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password')) {
+  if (
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/register') ||
+    pathname.startsWith('/forgot-password') ||
+    pathname.startsWith('/reset-password')
+  ) {
     return null
+  }
+
+  const tabs: NavTab[] = [...BASE_TABS]
+  if (intraRole && TENANT_ADMIN_ROLES.has(intraRole)) {
+    // Insère "Mon cabinet" en avant-dernier (avant Conformité) pour rester
+    // proche de Profil — espace personnel + admin tenant côte à côte.
+    tabs.splice(3, 0, {
+      href: '/tenant/admin',
+      icon: Briefcase,
+      label: 'Mon cabinet',
+    })
   }
 
   return (
@@ -45,7 +78,7 @@ export default function BottomNav() {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex flex-col items-center justify-center px-3 py-1.5 rounded-xl transition-all ${
+              className={`flex flex-col items-center justify-center px-2 py-1.5 rounded-xl transition-all ${
                 active
                   ? 'bg-gradient-to-b from-[#2D1B96]/10 to-[#00D1C1]/10'
                   : 'hover:bg-gray-50'
