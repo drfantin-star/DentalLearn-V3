@@ -74,7 +74,11 @@ export default function AdminJournalNewPage() {
 
         if (cancelled) return
 
-        const rows = Array.isArray(sJson?.data) ? (sJson.data as SynthesisRow[]) : []
+        // L'endpoint /api/admin/news/syntheses retourne { syntheses, total,
+        // page, limit, total_pages } — voir src/app/api/admin/news/syntheses/route.ts.
+        // (Confusion possible avec /api/admin/news/journal qui lui retourne
+        // { data: journals } — clés différentes.)
+        const rows = Array.isArray(sJson?.syntheses) ? (sJson.syntheses as SynthesisRow[]) : []
         setSyntheses(rows)
 
         const journals: Array<{ id: string; week_iso: string | null; status: string }> =

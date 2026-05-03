@@ -252,7 +252,7 @@ export default function HomePage() {
 
         {/* T11 : Quiz du jour + Journal hebdo en cartes carrées côte à côte */}
         <section>
-          <div className="flex gap-3">
+          <div className="flex gap-3 max-w-md">
             <DailyQuizButton
               userId={user?.id}
               onStart={() => setShowDailyQuiz(true)}
