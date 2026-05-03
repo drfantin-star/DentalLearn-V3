@@ -7,13 +7,32 @@ import { NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
 
 // Détail d'un journal hebdo (T11) :
 //   - affiche les synthèses sélectionnées dans l'ordre
-//   - Notes éditoriales libres (non persistées en BDD, dette D8)
+//   - Formulaire de génération aligné sur T7-bis (CaseAParametrage de
+//     src/components/admin/news/AudioPodcastBlock.tsx) : format, narrator
+//     (si monologue), target_duration_min (3/5/8/12), editorial_tone,
+//     editorial_notes
 //   - Bouton "Générer le script" → POST generate-script
 //   - Textarea script éditable (modifs envoyées au prochain generate-audio
 //     via UPDATE indirect — pour l'instant la régénération seule est exposée,
 //     l'édition manuelle est réservée à un futur ticket)
 //   - Bouton "Générer l'audio" → POST generate-audio (publie automatiquement)
 //   - Bouton "Publier" / "Archiver" → PATCH status
+
+type ScriptFormat = 'dialogue' | 'monologue'
+type ScriptNarrator = 'sophie' | 'martin'
+type TargetDuration = 3 | 5 | 8 | 12
+type EditorialTone =
+  | 'standard'
+  | 'flash_urgence'
+  | 'pedagogique'
+  | 'focus_specialite'
+
+const TONE_LABELS: Record<EditorialTone, string> = {
+  standard: 'Standard',
+  flash_urgence: 'Flash urgence',
+  pedagogique: 'Pédagogique',
+  focus_specialite: 'Focus spécialité',
+}
 
 interface JournalSynthesis {
   id: string
@@ -80,6 +99,21 @@ export default function AdminJournalDetailPage() {
   // Notes éditoriales (non persistées en BDD).
   const [editorialNotes, setEditorialNotes] = useState('')
 
+  // Paramètres de génération T7-bis (alignés sur AudioPodcastBlock).
+  // Default : dialogue Sophie/Martin, 12 min, ton standard — cohérent avec
+  // l'INSERT du draft côté /api/admin/news/journal POST.
+  const [scriptParams, setScriptParams] = useState<{
+    format: ScriptFormat
+    narrator: ScriptNarrator | null
+    target_duration_min: TargetDuration
+    editorial_tone: EditorialTone
+  }>({
+    format: 'dialogue',
+    narrator: null,
+    target_duration_min: 12,
+    editorial_tone: 'standard',
+  })
+
   // Script affiché — initialisé depuis episode.script_md, éditable visuel seulement.
   const [scriptDraft, setScriptDraft] = useState('')
 
@@ -114,6 +148,13 @@ export default function AdminJournalDetailPage() {
 
   const handleGenerateScript = async () => {
     if (!data) return
+    if (
+      scriptParams.format === 'monologue' &&
+      scriptParams.narrator == null
+    ) {
+      setOpError('Sélectionne un narrateur pour le format monologue.')
+      return
+    }
     if (!confirm('Générer le script via Claude Sonnet ? L\'opération peut prendre 30-60 s.')) return
     setBusy('script')
     setOpError(null)
@@ -121,7 +162,14 @@ export default function AdminJournalDetailPage() {
       const res = await fetch(`/api/admin/news/journal/${id}/generate-script`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ editorial_notes: editorialNotes }),
+        body: JSON.stringify({
+          format: scriptParams.format,
+          narrator:
+            scriptParams.format === 'monologue' ? scriptParams.narrator : null,
+          target_duration_min: scriptParams.target_duration_min,
+          editorial_tone: scriptParams.editorial_tone,
+          editorial_notes: editorialNotes,
+        }),
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`)
@@ -273,26 +321,150 @@ export default function AdminJournalDetailPage() {
         </ol>
       </section>
 
-      {/* Notes éditoriales + génération script */}
+      {/* Génération du script — formulaire aligné sur T7-bis (CaseAParametrage
+          de src/components/admin/news/AudioPodcastBlock.tsx). JSX dupliqué ici
+          en additif pour ne pas toucher le composant T7-bis stable. */}
       {isDraft && (
         <section className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="font-semibold text-gray-900 mb-3">1. Génération du script</h2>
-          <label className="block text-sm text-gray-700 mb-1" htmlFor="editorial_notes">
-            Notes éditoriales (optionnel — non persistées en BDD)
-          </label>
-          <textarea
-            id="editorial_notes"
-            value={editorialNotes}
-            onChange={(e) => setEditorialNotes(e.target.value)}
-            placeholder="Thèmes à mettre en avant, ton, angles particuliers…"
-            rows={4}
-            className="w-full rounded-xl border border-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
-          />
+          <h2 className="font-semibold text-gray-900 mb-4">🎙️ Générer un podcast</h2>
+
+          {/* Format */}
+          <fieldset className="mb-4">
+            <legend className="block text-sm font-medium text-gray-700 mb-1">Format</legend>
+            <div className="flex flex-col gap-2">
+              <label className="inline-flex items-center gap-2 text-sm text-gray-800">
+                <input
+                  type="radio"
+                  name="audio-format"
+                  value="dialogue"
+                  checked={scriptParams.format === 'dialogue'}
+                  onChange={() =>
+                    setScriptParams({ ...scriptParams, format: 'dialogue', narrator: null })
+                  }
+                  disabled={busy !== null}
+                  className="text-[#2D1B96] focus:ring-[#2D1B96]"
+                />
+                Dialogue Sophie &amp; Martin
+              </label>
+              <label className="inline-flex items-center gap-2 text-sm text-gray-800">
+                <input
+                  type="radio"
+                  name="audio-format"
+                  value="monologue"
+                  checked={scriptParams.format === 'monologue'}
+                  onChange={() =>
+                    setScriptParams({ ...scriptParams, format: 'monologue' })
+                  }
+                  disabled={busy !== null}
+                  className="text-[#2D1B96] focus:ring-[#2D1B96]"
+                />
+                Monologue
+              </label>
+            </div>
+          </fieldset>
+
+          {/* Narrateur (conditionnel monologue) */}
+          {scriptParams.format === 'monologue' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="audio-narrator">
+                Narrateur
+              </label>
+              <select
+                id="audio-narrator"
+                value={scriptParams.narrator ?? ''}
+                onChange={(e) =>
+                  setScriptParams({
+                    ...scriptParams,
+                    narrator: (e.target.value || null) as ScriptNarrator | null,
+                  })
+                }
+                disabled={busy !== null}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50"
+              >
+                <option value="">— Choisir —</option>
+                <option value="sophie">Dr Sophie</option>
+                <option value="martin">Dr Martin</option>
+              </select>
+            </div>
+          )}
+
+          {/* Durée */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="audio-duration">
+              Durée cible
+            </label>
+            <select
+              id="audio-duration"
+              value={scriptParams.target_duration_min}
+              onChange={(e) =>
+                setScriptParams({
+                  ...scriptParams,
+                  target_duration_min: Number(e.target.value) as TargetDuration,
+                })
+              }
+              disabled={busy !== null}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50"
+            >
+              <option value={3}>3 min</option>
+              <option value={5}>5 min</option>
+              <option value={8}>8 min</option>
+              <option value={12}>12 min</option>
+            </select>
+          </div>
+
+          {/* Ton éditorial */}
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="audio-tone">
+              Ton éditorial
+            </label>
+            <select
+              id="audio-tone"
+              value={scriptParams.editorial_tone}
+              onChange={(e) =>
+                setScriptParams({
+                  ...scriptParams,
+                  editorial_tone: e.target.value as EditorialTone,
+                })
+              }
+              disabled={busy !== null}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50"
+            >
+              {(Object.keys(TONE_LABELS) as EditorialTone[]).map((tone) => (
+                <option key={tone} value={tone}>
+                  {TONE_LABELS[tone]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Notes éditorial (optionnel, non persistées en BDD) */}
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="editorial_notes">
+              Notes éditorial
+            </label>
+            <p className="text-xs text-gray-500 mb-1.5">
+              Facultatif — points à développer, angle éditorial spécifique,
+              données à mettre en avant
+            </p>
+            <textarea
+              id="editorial_notes"
+              value={editorialNotes}
+              onChange={(e) => setEditorialNotes(e.target.value)}
+              disabled={busy !== null}
+              rows={4}
+              placeholder="Points à développer, angle éditorial, données à mettre en avant…"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50 placeholder:text-gray-400"
+            />
+          </div>
+
           <button
             type="button"
             onClick={handleGenerateScript}
-            disabled={busy !== null}
-            className="mt-3 bg-[#2D1B96] hover:bg-[#231575] disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            disabled={
+              busy !== null ||
+              (scriptParams.format === 'monologue' && scriptParams.narrator == null)
+            }
+            className="bg-[#2D1B96] hover:bg-[#231575] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
           >
             {busy === 'script'
               ? 'Génération en cours…'

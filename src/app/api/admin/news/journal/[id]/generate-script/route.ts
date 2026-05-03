@@ -2,7 +2,13 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { isSuperAdmin } from '@/lib/auth/rbac'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { buildJournalPrompt, type JournalSynthesis } from '@/lib/news-audio'
+import {
+  buildJournalPrompt,
+  type EditorialTone,
+  type JournalSynthesis,
+  type ScriptFormat,
+  type ScriptNarrator,
+} from '@/lib/news-audio'
 
 export const dynamic = 'force-dynamic'
 
@@ -10,6 +16,18 @@ const ANTHROPIC_MODEL = 'claude-sonnet-4-6'
 const ANTHROPIC_MAX_TOKENS = 4096
 const ANTHROPIC_TIMEOUT_MS = 90_000
 const ANTHROPIC_MAX_RETRIES = 2
+
+// Mêmes contraintes UI/BDD que /api/admin/news/syntheses/[id]/generate-script
+// (cf. T7-bis). Permet à l'admin de choisir format/durée/ton pour le journal.
+const ALLOWED_FORMATS: readonly ScriptFormat[] = ['dialogue', 'monologue']
+const ALLOWED_NARRATORS: readonly ScriptNarrator[] = ['sophie', 'martin']
+const ALLOWED_DURATIONS = new Set([3, 5, 8, 12])
+const ALLOWED_TONES: readonly EditorialTone[] = [
+  'standard',
+  'flash_urgence',
+  'pedagogique',
+  'focus_specialite',
+]
 
 // Buffer Vercel : la génération Sonnet d'un script journal (1200-1800 mots)
 // peut prendre jusqu'à 60s. On laisse 5min comme pour generate-audio.
@@ -50,6 +68,38 @@ export async function POST(
       typeof body?.editorial_notes === 'string' && body.editorial_notes.trim().length > 0
         ? body.editorial_notes.trim()
         : undefined
+
+    // ----- Validation paramètres T7-bis (alignés sur le formulaire admin) -----
+    const format: ScriptFormat = ALLOWED_FORMATS.includes(body?.format)
+      ? body.format
+      : 'dialogue'
+
+    let narrator: ScriptNarrator | null = null
+    if (format === 'monologue') {
+      if (!ALLOWED_NARRATORS.includes(body?.narrator)) {
+        return NextResponse.json(
+          { error: 'narrator requis pour format=monologue (sophie ou martin)' },
+          { status: 400 },
+        )
+      }
+      narrator = body.narrator as ScriptNarrator
+    } else if (body?.narrator != null) {
+      // Le CHECK XOR de news_episodes interdit narrator non-NULL en dialogue.
+      return NextResponse.json(
+        { error: 'narrator doit être absent pour format=dialogue' },
+        { status: 400 },
+      )
+    }
+
+    const targetDurationMin =
+      typeof body?.target_duration_min === 'number' &&
+      ALLOWED_DURATIONS.has(body.target_duration_min)
+        ? (body.target_duration_min as number)
+        : 12
+
+    const editorialTone: EditorialTone = ALLOWED_TONES.includes(body?.editorial_tone)
+      ? body.editorial_tone
+      : 'standard'
 
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
@@ -145,11 +195,21 @@ export async function POST(
     }
 
     // ----- 3. Appel Anthropic -----
-    const systemPrompt = buildJournalPrompt(journalSyntheses, editorialNotes)
+    const systemPrompt = buildJournalPrompt(journalSyntheses, editorialNotes, {
+      format,
+      narrator,
+      target_duration_min: targetDurationMin,
+      editorial_tone: editorialTone,
+    })
 
     let scriptMd: string
     try {
-      scriptMd = await callAnthropic(systemPrompt, journalSyntheses.length)
+      scriptMd = await callAnthropic(
+        systemPrompt,
+        journalSyntheses.length,
+        format,
+        narrator,
+      )
     } catch (err) {
       console.error('Échec appel Anthropic (journal):', err)
       return NextResponse.json(
@@ -161,10 +221,19 @@ export async function POST(
       )
     }
 
-    // ----- 4. UPDATE script_md -----
+    // ----- 4. UPDATE script_md + paramètres choisis -----
+    // Le CHECK XOR news_episodes_format_narrator_check exige
+    // (format='dialogue' AND narrator IS NULL) OR (format='monologue' AND narrator IS NOT NULL).
+    // L'objet construit ci-dessous respecte la contrainte.
     const { error: updErr } = await adminSupabase
       .from('news_episodes')
-      .update({ script_md: scriptMd })
+      .update({
+        script_md: scriptMd,
+        format,
+        narrator,
+        target_duration_min: targetDurationMin,
+        editorial_tone: editorialTone,
+      })
       .eq('id', id)
 
     if (updErr) {
@@ -175,6 +244,10 @@ export async function POST(
     return NextResponse.json({
       script_md: scriptMd,
       word_count: countWords(scriptMd),
+      format,
+      narrator,
+      target_duration_min: targetDurationMin,
+      editorial_tone: editorialTone,
     })
   } catch (err) {
     console.error('POST generate-script journal error:', err)
@@ -198,14 +271,21 @@ interface AnthropicResponse {
 async function callAnthropic(
   systemPrompt: string,
   nArticles: number,
+  format: ScriptFormat,
+  narrator: ScriptNarrator | null,
 ): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY!
 
-  const userMessage =
-    `Génère le script complet du Journal de la semaine dentaire (${nArticles} articles, ` +
-    `8 à 12 minutes, ~1200 à 1800 mots) au format dialogue strict Sophie:/Martin: ` +
-    `ligne par ligne. Aucune introduction hors format. Commence directement par "Sophie: ..." ` +
-    `(intro qui annonce les ${nArticles} thèmes du jour).`
+  const userMessage = format === 'dialogue'
+    ? `Génère le script complet du Journal de la semaine dentaire (${nArticles} articles) ` +
+      `au format dialogue strict Sophie:/Martin: ligne par ligne. Aucune introduction ` +
+      `hors format. Commence directement par "Sophie: ..." (intro qui annonce les ` +
+      `${nArticles} thèmes du jour).`
+    : `Génère le script complet du Journal de la semaine dentaire (${nArticles} articles) ` +
+      `en monologue strict ${narrator === 'sophie' ? 'Sophie' : 'Martin'}: ligne par ligne. ` +
+      `Aucune introduction hors format. Commence directement par ` +
+      `"${narrator === 'sophie' ? 'Sophie' : 'Martin'}: ..." (intro qui annonce les ` +
+      `${nArticles} thèmes du jour).`
 
   const body = JSON.stringify({
     model: ANTHROPIC_MODEL,
