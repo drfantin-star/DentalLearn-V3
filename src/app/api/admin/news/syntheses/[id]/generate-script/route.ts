@@ -251,6 +251,34 @@ export async function POST(
     const wordCount = countWords(scriptMd)
     const estimatedDurationMin = wordCount > 0 ? wordCount / 150 : 0
 
+    // Archivage défensif sur (type, week_iso) juste avant l'INSERT.
+    // L'archivage du step 4 ne couvre que les épisodes liés à la synthèse
+    // courante via news_episode_items. La contrainte unique
+    // news_episodes_type_week_uniq porte sur (type, week_iso) WHERE
+    // status <> 'archived' — un épisode orphelin (step 8 ayant échoué
+    // antérieurement) ou tout autre épisode actif partageant la clé
+    // bloquerait l'INSERT. On archive ici tout épisode actif partageant
+    // la clé du nouvel INSERT pour garantir que la contrainte unique est
+    // libérée avant le step suivant.
+    const currentWeek = getCurrentIsoWeek()
+    const { error: weekArchiveError } = await adminSupabase
+      .from('news_episodes')
+      .update({ status: 'archived' })
+      .eq('type', 'insight')
+      .eq('week_iso', currentWeek)
+      .neq('status', 'archived')
+
+    if (weekArchiveError) {
+      console.error(
+        'Erreur archivage défensif (type, week_iso):',
+        weekArchiveError,
+      )
+      return NextResponse.json(
+        { error: weekArchiveError.message },
+        { status: 500 },
+      )
+    }
+
     const { data: episode, error: insertError } = await adminSupabase
       .from('news_episodes')
       .insert({
@@ -262,7 +290,7 @@ export async function POST(
         target_duration_min,
         editorial_tone,
         status: 'draft',
-        week_iso: getCurrentIsoWeek(),
+        week_iso: currentWeek,
       })
       .select('id')
       .single()
