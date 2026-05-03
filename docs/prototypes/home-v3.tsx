@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 // ============================================
-// DENTALLEARN V3 - PAGE D'ACCUEIL (VERSION FINALE)
+// DENTALLEARN V3 -     PAGE D'ACCUEIL (VERSION FINALE)
 // Simplifiée : pas de CP visible, cartes épurées, veille métier
 // Couleurs Dentalschool : #00D1C1 (turquoise) #2D1B96 (bleu profond)
 // ============================================
