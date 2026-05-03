@@ -1,11 +1,11 @@
 # MATRICE DES RÔLES — DentalLearn V1
 ## Référentiel d'autorisation pour l'architecture multi-tenant
 
-**Date** : 2 mai 2026
-**Version** : V1.2 — assistante ajoutée dans training_org
+**Date** : 2 mai 2026 — révisée le 3 mai 2026 (clôture Sprint 1)
+**Version** : V1.2 — `assistante` ajoutée dans `training_org` + statut Sprint 1 livré
 **Auteur** : Dr Julie Fantin (avec assistance Claude)
-**Statut** : Validée pour spec technique Sprint 1 (sauf RGPD à confirmer avocat)
-**Documents liés** : `DATABASE_SCHEMA.md`, `RECAP_DENTALLEARN_V3_29AVRIL2026.md`
+**Statut** : Implémentée en BDD via Sprint 1 (T1 → T7 mergés). Modèle RGPD A en attente validation avocat.
+**Documents liés** : `docs/prototypes/DATABASE_SCHEMA.md`, `RECAP_SPRINT1_AUTH_RBAC_03MAI2026.md`, `handoff_claude_code_sprint1_auth_rbac_v1_0.md`
 
 ---
 
@@ -34,12 +34,12 @@ Ce document définit la matrice complète des rôles applicatifs et de leurs aut
 
 | Rôle | Périmètre | Description | Statut V1 |
 |---|---|---|---|
-| `super_admin` | Tout | Toi (Dr Julie Fantin). Accès total backend. Peut impersonner. Modifie le contenu Dentalschool. Gère tous les tenants. | ✅ V1 |
-| `formateur` | Ses formations Dentalschool | Formateur intervenant pour Dentalschool. Scopé aux formations qui lui sont assignées par toi. Périmètre V1 = planning + masterclass + stats (pas de création/édition contenu). | ✅ V1 |
-| `cs_member` | Validation contenu Dentalschool | Membre Conseil Scientifique. Géré séparément (workflow non automatisé). | 📋 V2 |
-| `marketing` | Back-office marketing | Accès aux campagnes emails + publications réseaux sociaux. Pas de contenu pédagogique. | 📋 V2 |
-| `support` | Réclamations / tickets | Réponse aux réclamations Qualiopi (table `complaints`). | 📋 V2 |
-| `user` | Soi-même | Rôle par défaut. Tout utilisateur final. | ✅ V1 |
+| `super_admin` | Tout | Toi (Dr Julie Fantin). Accès total backend. Peut impersonner. Modifie le contenu Dentalschool. Gère tous les tenants. | ✅ V1 — **implémenté Sprint 1** (T1 enum + T2 helper `is_super_admin`) |
+| `formateur` | Ses formations Dentalschool | Formateur intervenant pour Dentalschool. Scopé aux formations qui lui sont assignées par toi. Périmètre V1 = planning + masterclass + stats (pas de création/édition contenu). | ✅ V1 — **enum créé Sprint 1 (T1)**, UI espace formateur reportée Sprint 2 |
+| `cs_member` | Validation contenu Dentalschool | Membre Conseil Scientifique. Géré séparément (workflow non automatisé). | 📋 V2 — enum créé Sprint 1 (T1), code applicatif V2 |
+| `marketing` | Back-office marketing | Accès aux campagnes emails + publications réseaux sociaux. Pas de contenu pédagogique. | 📋 V2 — enum créé Sprint 1 (T1), code applicatif V2 |
+| `support` | Réclamations / tickets | Réponse aux réclamations Qualiopi (table `complaints`). | 📋 V2 — enum créé Sprint 1 (T1), code applicatif V2 |
+| `user` | Soi-même | Rôle par défaut. Tout utilisateur final. | ✅ V1 — **implémenté Sprint 1** (trigger `handle_new_user` T4) |
 
 **Règle d'attribution** : tout utilisateur a au minimum le rôle `user`. Les autres rôles sont **additifs** et stockés dans `user_roles (user_id, role)`. Un super_admin reste un user (peut suivre des formations).
 
@@ -47,11 +47,11 @@ Ce document définit la matrice complète des rôles applicatifs et de leurs aut
 
 Un même `user` peut être membre d'**une seule organisation à la fois** en V1 (contrainte simplificatrice). L'`intra_role` est polymorphe : sa valeur n'a de sens que combinée à `org.type`.
 
-| Type d'organisation | Sous-rôles intra |
-|---|---|
-| `cabinet` | `titulaire` / `collaborateur` / `assistante` |
-| `hr_entity` | `admin_rh` / `manager` / `praticien_salarie` / `assistante` |
-| `training_org` | `admin_of` / `formateur_of` / `apprenant_of` / `assistante` |
+| Type d'organisation | Sous-rôles intra | Statut Sprint 1 |
+|---|---|---|
+| `cabinet` | `titulaire` / `collaborateur` / `assistante` | ✅ enum + trigger validate_intra_role_matches_org_type créés (T1) ; UI tenant admin livrée (T6) |
+| `hr_entity` | `admin_rh` / `manager` / `praticien_salarie` / `assistante` | ✅ enum + trigger ; UI tenant admin + branding + curation livrés (T6) |
+| `training_org` | `admin_of` / `formateur_of` / `apprenant_of` / `assistante` | ✅ enum + trigger ; UI tenant admin + branding + qualiopi/odpc + attestation organisme dynamique livrés (T6, T7) ; **création contenu propre (D.07) reportée à un sprint dédié quand un client premium sera signé** |
 
 **Règle de cohérence** : une CHECK constraint en BDD garantit que `intra_role` est compatible avec `org.type`. Le sous-rôle `assistante` est partagé entre `cabinet`, `hr_entity` et `training_org` (mêmes droits métier dans les trois cas) — pas de duplication de valeur enum.
 
@@ -546,21 +546,41 @@ Tous les fichiers contenant `drfantin@gmail.com` en dur (~11 occurrences identif
 
 ## 9. Prochaines étapes
 
-1. **Production de la spec technique Sprint 1** au format `spec_*.md` : migrations versionnées + plan de tests + ordre d'application.
-2. **Rédaction des CGU différenciées** par type de tenant — à confier à un avocat RGPD spécialisé santé. Inclure la clause d'exonération totale Dentalschool pour le contenu publié par les tenants (Q7).
-3. **Mise à jour DATABASE_SCHEMA.md** après application des migrations Sprint 1.
-4. **Désignation DPO** Dentalschool — décision toi-même formé ou DPO externe mutualisé.
+1. ~~**Production de la spec technique Sprint 1**~~ → ✅ livrée via `handoff_claude_code_sprint1_auth_rbac_v1_0.md` (T1 → T8 mergés).
+2. **Rédaction des CGU différenciées** par type de tenant — à confier à un avocat RGPD spécialisé santé. Inclure la clause d'exonération totale Dentalschool pour le contenu publié par les tenants (Q7). **Statut : non démarré.**
+3. ~~**Mise à jour DATABASE_SCHEMA.md**~~ → ✅ effectué Sprint 1 (T1, T3, T4, T6, T7) + clôture T8.
+4. **Désignation DPO** Dentalschool — décision toi-même formé ou DPO externe mutualisé. **Statut : non démarré.**
+5. **Création contenu propre tenant (D.07)** — reportée. Sera ouverte sur signature du premier client premium HR ou OF tiers.
+6. **Espace formateur Dentalschool** (rôle `formateur` global, actions F.01 → F.06) — Sprint 2 ou 3.
 
 ---
 
-## 10. Historique des révisions
+## 10. État d'implémentation Sprint 1 (3 mai 2026)
+
+Tableau synthétique : quelles actions de §3 sont livrées en BDD/code après le merge des tickets T1 → T7.
+
+| Section | Actions | État livré Sprint 1 |
+|---|---|---|
+| §3.1 Compte personnel (A.01-A.06) | 6 actions | ✅ A.01-A.05 (préexistantes + trigger T4 propre) ; A.06 inchangé |
+| §3.2 Pédagogie (B.01-B.07) | 7 actions | ✅ B.01-B.07 conservées + isolation T3 sur B.01-B.03 |
+| §3.3 Conformité CP (C.01-C.04) | 4 actions | ✅ C.01-C.04 conservées + organisme dynamique T7 sur C.03 |
+| §3.4 Administration org (D.01-D.12) | 12 actions | ✅ D.01-D.04 (T5 + T6) ; ✅ D.05 + D.06 HR/OF (T6) ; ⏸ D.07 reportée ; ⏸ D.08, D.10-D.12 placeholder/V1.5 ; ✅ D.09 analytics agrégées (T6, helper SQL strict) |
+| §3.5 Ops Dentalschool (E.01-E.07) | 7 actions | ✅ E.01-E.04 (T2 RBAC) ; ✅ E.05 (T5 /admin/organizations) ; ⏸ E.06 impersonation V2 ; ⏸ E.07 logs DPC (déjà en BDD via course_watch_logs immuables) |
+| §3.6 Espace formateur (F.01-F.06) | 6 actions | ⏸ Reportées Sprint 2/3 (rôle `formateur` enum créé seulement) |
+
+**Légende** : ✅ livré / ⏸ reporté / ❌ non prévu V1.
+
+---
+
+## 11. Historique des révisions
 
 | Version | Date | Auteur | Changements |
 |---|---|---|---|
 | V1.0 | 2 mai 2026 | Claude | Draft initial — 9 questions ouvertes |
 | V1.1 | 2 mai 2026 | Dr Fantin + Claude | Arbitrages intégrés : D.05/D.06 retirés cabinet, ajout `assistante` en HR, modèle tarifaire standard/premium (§6bis), Q1-Q9 résolues, modèle RGPD A documenté |
 | V1.2 | 2 mai 2026 | Dr Fantin + Claude | `assistante` étendue à `training_org` (aligne sur droits hr_entity/assistante). Trigger BDD mis à jour en conséquence. |
+| V1.2 (rév 03/05) | 3 mai 2026 | Claude (T8) | Mention « implémenté Sprint 1 » sur les rôles V1 livrés (super_admin, formateur, user, intra-roles tous types). Ajout §10 « État d'implémentation Sprint 1 » avec couverture par section d'action. Mise à jour des liens documents (handoff Sprint 1, RECAP T8). Pas de modification de la matrice elle-même — V1.3 réservée à l'arbitrage tarif user actif + contenu D.07. |
 
 ---
 
-*Document mis à jour le 2 mai 2026 — DentalLearn V1.2 — Architecture multi-tenant*
+*Document mis à jour le 3 mai 2026 — DentalLearn V1.2 — Architecture multi-tenant — Sprint 1 implémenté*
