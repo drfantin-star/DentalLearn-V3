@@ -143,6 +143,12 @@ export const NEWS_CATEGORIES_EDITORIALES_SET: Set<string> = new Set(
   NEWS_CATEGORIES_EDITORIALES.map((c) => c.value)
 )
 
+// Bornes du Journal hebdo (T11) — un journal contient 3 à 6 synthèses ordonnées.
+// Le CHECK BDD news_episode_syntheses.position BETWEEN 1 AND 6 est la source de
+// vérité — ces constantes restent alignées.
+export const JOURNAL_MIN_SYNTHESES = 3
+export const JOURNAL_MAX_SYNTHESES = 6
+
 export const NEWS_SPECIALITE_LABELS: Record<string, string> = {
   'dent-resto': 'Dentisterie restauratrice',
   'paro': 'Parodontologie',

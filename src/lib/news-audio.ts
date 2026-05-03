@@ -166,6 +166,89 @@ export function buildScriptPrompt(
 }
 
 // ---------------------------------------------------------------------------
+// 2-bis. Journal hebdo (T11) — prompt builder
+// ---------------------------------------------------------------------------
+
+export interface JournalSynthesis {
+  position: number          // 1..6
+  display_title: string
+  summary_fr: string
+  clinical_impact?: string | null
+  key_figures?: string[] | string | null
+  evidence_level?: string | null
+  specialite?: string | null
+}
+
+/**
+ * Construit le prompt système Anthropic pour la génération du script du
+ * Journal hebdo News (T11). Format dialogue Sophie/Martin, 8-12 minutes,
+ * un bloc par article dans l'ordre fourni avec transitions naturelles.
+ *
+ * `editorialNotes` (optionnel) : texte libre saisi par l'admin, intégré
+ * comme directives prioritaires en fin de prompt (non persisté en BDD,
+ * cf. dette D8).
+ */
+export function buildJournalPrompt(
+  syntheses: JournalSynthesis[],
+  editorialNotes?: string,
+): string {
+  const n = syntheses.length
+  const weekLabel = `Journal de la semaine dentaire — ${n} articles`
+
+  const articleBlocks = syntheses
+    .slice()
+    .sort((a, b) => a.position - b.position)
+    .map((s) => {
+      const lines: string[] = [
+        `=== Article ${s.position} : ${s.display_title} ===`,
+        `Résumé : ${s.summary_fr}`,
+      ]
+      if (s.clinical_impact) lines.push(`Impact clinique : ${s.clinical_impact}`)
+      if (s.key_figures) {
+        const fig = Array.isArray(s.key_figures)
+          ? s.key_figures.join(' · ')
+          : s.key_figures
+        if (fig.trim().length > 0) lines.push(`Chiffres clés : ${fig}`)
+      }
+      if (s.evidence_level) lines.push(`Niveau de preuve : ${s.evidence_level}`)
+      if (s.specialite) lines.push(`Spécialité : ${s.specialite}`)
+      return lines.join('\n')
+    })
+    .join('\n\n')
+
+  const notesBlock = editorialNotes && editorialNotes.trim().length > 0
+    ? `\nNotes éditoriales : ${editorialNotes.trim()}\n`
+    : ''
+
+  return [
+    `Tu es le rédacteur du podcast hebdomadaire DentalLearn "Journal de la semaine dentaire".`,
+    `Sophie et Martin sont deux chirurgiens-dentistes qui commentent l'actualité scientifique dentaire`,
+    `de manière professionnelle et engagée, avec des transitions naturelles entre les sujets.`,
+    ``,
+    `Format de sortie strict :`,
+    `Sophie: [audio_tag] Texte`,
+    `Martin: [audio_tag] Texte`,
+    ``,
+    `Audio tags disponibles : [curious], [excited], [concerned], [impressed], [reassuring], [explaining], [serious], [enthusiastic], [laughs], [sighs], [pause], [pause-short]. Max 1 tag toutes 2-3 répliques.`,
+    ``,
+    `Cible : 8 à 12 minutes (environ 1200 à 1800 mots).`,
+    `Intro : Sophie et Martin accueillent les auditeurs et annoncent les ${n} thèmes du jour.`,
+    `Corps : un bloc par article dans l'ordre fourni, avec transition naturelle entre chaque ;`,
+    `alterner qui prend le lead pour chaque article (Sophie pour les positions impaires, Martin pour les paires).`,
+    `Conclusion : récap des 3 points clés à retenir + teaser "la semaine prochaine".`,
+    `Ton : professionnel, pédagogique, direct — pas de superlatifs vides.`,
+    `Pas de références à des marques commerciales ou produits spécifiques.`,
+    `Interdiction absolue d'inventer une donnée.`,
+    notesBlock,
+    `Voici les ${n} articles à traiter :`,
+    ``,
+    articleBlocks,
+    ``,
+    `Génère maintenant le script complet du "${weekLabel}" en respectant strictement le format ci-dessus.`,
+  ].join('\n')
+}
+
+// ---------------------------------------------------------------------------
 // 3. Validation de format
 // ---------------------------------------------------------------------------
 
