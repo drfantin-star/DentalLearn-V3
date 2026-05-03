@@ -1,0 +1,250 @@
+Handoff Claude Code — Ticket T7-ter (version finale)
+Ingestion manuelle enrichie News + RPC atomique + embedding OpenAI
+Date : 03/05/2026
+Repo : github.com/drfantin-star/DentalLearn-V3.git
+Supabase : dxybsuhfkwuemapqrvgz
+Prérequis mergés : T7 ✅ T8-P1 ✅ T8-P2 ✅ T9 ✅ T10 ✅ Sprint1 T1-T3 ✅
+
+1. Partie A — Migration SQL : RPC insert_manual_enriched_article
+Fichier à créer :
+supabase/migrations/20260503_rpc_insert_manual_enriched_article.sql
+
+son symétrique _down.sql
+
+La RPC encapsule les 4 INSERTs dans une transaction atomique. Si un INSERT échoue, tout est rollbacké automatiquement (comportement natif Postgres).
+sql-- supabase/migrations/20260503_rpc_insert_manual_enriched_article.sql
+
+CREATE OR REPLACE FUNCTION insert_manual_enriched_article(
+  -- Métadonnées article
+  p_title          text,
+  p_doi            text DEFAULT NULL,
+  p_journal        text DEFAULT NULL,
+  p_abstract       text DEFAULT NULL,
+  p_url            text DEFAULT NULL,
+  p_source_id      uuid,               -- ID de la source manual_admin, passé par le client
+  p_spe_tags       text[] DEFAULT '{}',
+
+  -- Champs synthèse
+  p_display_title        text,
+  p_summary_fr           text,
+  p_clinical_impact      text DEFAULT NULL,
+  p_evidence_level       text DEFAULT NULL,
+  p_key_figures          text[] DEFAULT '{}',
+  p_caveats              text DEFAULT NULL,
+  p_category_editorial   text DEFAULT NULL,
+  p_formation_category_match text DEFAULT NULL,
+  p_specialite           text DEFAULT NULL,
+  p_embedding            vector(1536) DEFAULT NULL,  -- généré côté Next.js avant appel RPC
+  p_added_by             uuid DEFAULT NULL,
+
+  -- Questions (JSONB array)
+  p_questions      jsonb   -- [{question_type, text, options, feedback, difficulty, points, recommended_time_seconds}]
+)
+RETURNS uuid   -- retourne news_syntheses.id
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_raw_id        uuid;
+  v_scored_id     uuid;
+  v_synthesis_id  uuid;
+  v_question      jsonb;
+BEGIN
+  -- 1. INSERT news_raw
+  INSERT INTO news_raw (
+    source_id, external_id, title, doi, journal, abstract, url, ingested_at
+  )
+  VALUES (
+    p_source_id,
+    'manual-enriched-' || gen_random_uuid()::text,
+    p_title, p_doi, p_journal, p_abstract, p_url,
+    now()
+  )
+  RETURNING id INTO v_raw_id;
+
+  -- 2. INSERT news_scored (score forcé à 1.0, status=selected, llm_model='manual')
+  INSERT INTO news_scored (
+    raw_id, relevance_score, spe_tags, status, llm_model, scored_at
+  )
+  VALUES (
+    v_raw_id, 1.0, p_spe_tags, 'selected', 'manual', now()
+  )
+  RETURNING id INTO v_scored_id;
+
+  -- 3. INSERT news_syntheses
+  INSERT INTO news_syntheses (
+    raw_id, scored_id,
+    summary_fr, display_title, clinical_impact, evidence_level,
+    key_figures, caveats, category_editorial, formation_category_match,
+    specialite, embedding,
+    manual_added, added_by, status
+  )
+  VALUES (
+    v_raw_id, v_scored_id,
+    p_summary_fr, p_display_title, p_clinical_impact, p_evidence_level,
+    p_key_figures, p_caveats, p_category_editorial, p_formation_category_match,
+    p_specialite, p_embedding,
+    true, p_added_by, 'active'
+  )
+  RETURNING id INTO v_synthesis_id;
+
+  -- 4. INSERT questions (boucle sur le JSONB array)
+  FOR v_question IN SELECT * FROM jsonb_array_elements(p_questions)
+  LOOP
+    INSERT INTO questions (
+      news_synthesis_id,
+      sequence_id,           -- NULL obligatoire (contrainte XOR)
+      question_type,
+      text,
+      options,
+      feedback_correct,
+      feedback_incorrect,
+      difficulty,
+      points,
+      recommended_time_seconds,
+      is_daily_quiz_eligible,
+      question_order
+    )
+    VALUES (
+      v_synthesis_id,
+      NULL,
+      (v_question->>'question_type')::text,
+      (v_question->>'text')::text,
+      (v_question->'options')::jsonb,
+      (v_question->>'feedback')::text,
+      (v_question->>'feedback')::text,  -- feedback_correct = feedback_incorrect
+      COALESCE((v_question->>'difficulty')::int, 2),
+      COALESCE((v_question->>'points')::int, 10),
+      COALESCE((v_question->>'recommended_time_seconds')::int, 30),
+      false,   -- ⚠️ TOUJOURS false pour les questions news
+      (row_number() OVER ())::int
+    );
+  END LOOP;
+
+  RETURN v_synthesis_id;
+END;
+$$;
+
+-- Permissions : accessible uniquement via service_role (appelé par Next.js avec createAdminClient)
+REVOKE ALL ON FUNCTION insert_manual_enriched_article FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION insert_manual_enriched_article TO service_role;
+Down migration :
+sql-- supabase/migrations/20260503_rpc_insert_manual_enriched_article_down.sql
+DROP FUNCTION IF EXISTS insert_manual_enriched_article;
+Après migration : valider via execute_sql MCP que la fonction existe dans information_schema.routines.
+
+2. Partie B — Code Next.js
+2.1 Nouvelle route API : POST /api/admin/news/manual-enriched/route.ts
+Responsabilités :
+
+Auth isSuperAdmin()
+Validation body (display_title + summary_fr + 3 questions minimum)
+Appel OpenAI text-embedding-3-small sur le texte display_title + " " + summary_fr
+Appel RPC Supabase insert_manual_enriched_article via createAdminClient()
+Retourner { synthesis_id }
+
+Clé env : OPENAI_API_KEY — déjà configurée en Supabase secrets ET en Vercel env vars (provisionnée lors du Ticket 5, le 29/04/2026). À utiliser via process.env.OPENAI_API_KEY côté Next.js.
+Appel embedding (reproduire le même pattern que supabase/functions/_shared/openai.ts) :
+typescriptconst embeddingRes = await fetch('https://api.openai.com/v1/embeddings', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    model: 'text-embedding-3-small',
+    input: `${display_title} ${summary_fr}`,
+    dimensions: 1536,
+  }),
+})
+const embJson = await embeddingRes.json()
+const embedding: number[] = embJson.data[0].embedding
+Appel RPC :
+typescriptconst { data, error } = await adminClient.rpc('insert_manual_enriched_article', {
+  p_title, p_doi, p_journal, p_abstract, p_url,
+  p_source_id,   // UUID récupéré au démarrage de la route via SELECT sur news_sources
+  p_spe_tags,
+  p_display_title, p_summary_fr, p_clinical_impact,
+  p_evidence_level, p_key_figures, p_caveats,
+  p_category_editorial, p_formation_category_match, p_specialite,
+  p_embedding: embedding,  // number[] — pgvector accepte ce format
+  p_added_by: session.user.id,
+  p_questions: JSON.stringify(questions),  // JSONB
+})
+2.2 Modification page : src/app/admin/news/manual/page.tsx
+Principe : ajouter en haut de la page un toggle Mode pipeline auto / Mode enrichi manuel. En mode auto, comportement T8-P1 inchangé. En mode enrichi, remplacer le bouton "Synthétiser" par un stepper 3 étapes.
+État React du stepper (tout en state, pas de localStorage) :
+typescriptconst [mode, setMode] = useState<'auto' | 'enriched'>('auto')
+const [step, setStep] = useState<1 | 2 | 3>(1)
+const [meta, setMeta] = useState<MetaFields>({...})       // étape 1
+const [synthesis, setSynthesis] = useState<SynthesisFields>({...})  // étape 2
+const [questions, setQuestions] = useState<QuestionDraft[]>([])      // étape 3
+Étape 1 — champs existants identiques. Navigation : bouton "Suivant →" (validé si title non vide).
+Étape 2 — champs synthèse :
+
+display_title : input text, compteur {n}/70 chars, border rouge si >70
+summary_fr : textarea obligatoire, min 100 chars indiqué
+clinical_impact, caveats : textarea optionnels
+evidence_level : select chargé depuis news_taxonomy WHERE type='niveau_preuve'
+key_figures : tags input (array de strings, bouton + pour ajouter)
+category_editorial : select parmi scientifique / pratique / reglementaire / humour
+formation_category_match : input text (slug libre)
+specialite : select chargé depuis news_taxonomy WHERE type='specialite'
+
+Navigation : "← Précédent" / "Suivant →" (validé si display_title + summary_fr remplis).
+Étape 3 — interface questions :
+
+Bouton "Ajouter une question" (disabled si 4 questions déjà)
+Pour chaque question : sélecteur type mcq / true_false, champ texte, options dynamiques (4 si mcq avec radio "correcte", Vrai/Faux si true_false), champ feedback, bouton supprimer
+Compteur "X / 3 minimum"
+Bouton "Enregistrer" disabled si <3 questions, avec spinner pendant la requête
+
+Après succès :
+typescriptrouter.push(`/admin/news/${data.synthesis_id}`)
+
+3. Contraintes critiques (non-négociables)
+
+is_daily_quiz_eligible = false forcé dans la RPC — ne pas laisser le défaut BDD (true)
+sequence_id = NULL dans la RPC — contrainte XOR BDD active
+feedback_correct === feedback_incorrect — même valeur, cohérent avec tout le pipeline
+Format options JSONB : [{id: "A", text: "...", correct: false}, ...] — array plat, PAS is_correct
+news_syntheses.scored_id (pas news_scored_id) — typo historique documentée
+Pas de localStorage — state React uniquement
+Auth via isSuperAdmin() depuis src/lib/auth/rbac.ts — 0 email hardcodé
+
+
+4. Critères d'acceptation
+
+ Migration appliquée, fonction visible dans information_schema.routines
+ Toggle Mode auto / Mode enrichi visible sur /admin/news/manual
+ Mode auto : comportement T8-P1 strictement inchangé
+ Stepper 3 étapes avec navigation Précédent / Suivant
+ display_title : compteur 70 chars, validation bloquante si dépassé
+ summary_fr : validation bloquante si vide
+ Minimum 3 questions pour activer "Enregistrer", maximum 4
+ POST /api/admin/news/manual-enriched retourne { synthesis_id } en 200
+ BDD post-INSERT : 1 ligne news_raw + 1 ligne news_scored (score=1.0, status=selected) + 1 ligne news_syntheses (status=active, embedding non null) + N lignes questions (is_daily_quiz_eligible=false, sequence_id=null)
+ Redirection automatique vers /admin/news/{synthesis_id}
+ AudioPodcastBlock actif sur la page de détail (la synthèse est active immédiatement)
+ grep -rn "drfantin@gmail" src/app/api/admin/news/manual-enriched → 0 résultat
+
+
+5. Fichiers concernés
+supabase/migrations/20260503_rpc_insert_manual_enriched_article.sql   ← CRÉER
+supabase/migrations/20260503_rpc_insert_manual_enriched_article_down.sql ← CRÉER
+src/app/api/admin/news/manual-enriched/route.ts                        ← CRÉER
+src/app/admin/news/manual/page.tsx                                     ← MODIFIER (stepper)
+
+-- Ne pas toucher :
+src/app/api/admin/news/manual/route.ts          (T8-P1, mode auto inchangé)
+src/components/admin/news/AudioPodcastBlock.tsx
+src/lib/news-audio.ts
+src/lib/elevenlabs.ts
+
+6. Dette à logger en fin de ticket
+
+Synthèses T7-ter ont un embedding généré mais sans les thèmes/niveau_preuve dans le texte vectorisé (seuls display_title + summary_fr sont embeddings). Acceptable pour le volume manuel anticipé.
+Responsive mobile non prioritaire (décision constante depuis T8-P1).
+
+
+Handoff T7-ter final — 03/05/2026 — DentalLearn V3
