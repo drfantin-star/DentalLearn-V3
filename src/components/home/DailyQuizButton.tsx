@@ -109,30 +109,30 @@ export default function DailyQuizButton({
       <button
         type="button"
         onClick={onStart}
-        className="flex-1 aspect-square rounded-2xl flex flex-col justify-between p-3 text-left active:scale-95 transition-transform shadow-md"
+        className="flex-1 aspect-square rounded-2xl flex flex-col justify-between items-center p-3 active:scale-95 transition-transform shadow-md"
         style={{ background: 'linear-gradient(135deg, #2D1B96, #8B5CF6)' }}
       >
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <span className="text-xs font-bold text-white/80 uppercase tracking-wide">
-              🎯 Quiz du jour
-            </span>
-            <p className="text-white font-bold text-sm mt-1 leading-tight">
-              Tester tes connaissances
-            </p>
-          </div>
-          {/* Image quizz.jpg restaurée du mode wide, réduite à 36×36 pour le
-              format carré (max recommandé 40px par UX) — l'icône fait partie
-              de l'identité visuelle de la carte. */}
-          <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0">
+        {/* Bloc central : icône au-dessus du titre + sous-titre, le tout
+            centré horizontalement. Le justify-between du parent pousse ce
+            bloc vers le haut et la ligne "10 questions" vers le bas. */}
+        <div className="flex flex-col items-center text-center gap-2 mt-1">
+          <div className="w-10 h-10 rounded-xl overflow-hidden">
             <img
               src="https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/quizz.jpg"
               alt="Quiz"
               className="w-full h-full object-cover"
             />
           </div>
+          <div>
+            <span className="text-xs font-bold text-white/80 uppercase tracking-wide">
+              🎯 Quiz du jour
+            </span>
+            <p className="text-white font-bold text-sm mt-0.5 leading-tight">
+              Tester tes connaissances
+            </p>
+          </div>
         </div>
-        <p className="text-white/80 text-[11px]">
+        <p className="text-white/80 text-[11px] text-center">
           10 questions · ~5 min
         </p>
       </button>
