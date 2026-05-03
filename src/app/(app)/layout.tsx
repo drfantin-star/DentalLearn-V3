@@ -1,7 +1,9 @@
 import BottomNav from '@/components/layout/BottomNav'
 import PWAInstallBanner from '@/components/PWAInstallBanner'
 import MiniPlayer from '@/components/MiniPlayer'
+import AudioQueuePlayer from '@/components/news/AudioQueuePlayer'
 import { AudioProvider } from '@/context/AudioContext'
+import { AudioPlayerProvider } from '@/context/AudioPlayerContext'
 import { createClient } from '@/lib/supabase/server'
 import { getUserIntraRole } from '@/lib/auth/rbac'
 
@@ -24,12 +26,15 @@ export default async function AppLayout({
 
   return (
     <AudioProvider>
-      <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
-        {children}
-        <PWAInstallBanner />
-        <MiniPlayer />
-        <BottomNav intraRole={intraRole} />
-      </div>
+      <AudioPlayerProvider>
+        <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
+          {children}
+          <PWAInstallBanner />
+          <MiniPlayer />
+          <AudioQueuePlayer />
+          <BottomNav intraRole={intraRole} />
+        </div>
+      </AudioPlayerProvider>
     </AudioProvider>
   )
 }

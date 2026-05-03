@@ -12,9 +12,10 @@ import Link from 'next/link'
 import DailyQuizButton from '@/components/home/DailyQuizButton'
 import DailyQuizModal from '@/components/home/DailyQuizModal'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
+import { JournalWeekCard } from '@/components/home/JournalWeekCard'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
-import type { NewsCard } from '@/types/news'
+import type { JournalEpisode, NewsCard } from '@/types/news'
 
 export default function HomePage() {
   const [showDailyQuiz, setShowDailyQuiz] = useState(false)
@@ -24,6 +25,7 @@ export default function HomePage() {
 
   const [newsItems, setNewsItems] = useState<NewsCard[]>([])
   const [modalNewsId, setModalNewsId] = useState<string | null>(null)
+  const [journal, setJournal] = useState<JournalEpisode | null>(null)
   const router = useRouter()
 
   // Formations "Fraîchement arrivé" — 5 dernières tous axes
@@ -63,6 +65,14 @@ export default function HomePage() {
       .then(r => r.json())
       .then(d => setNewsItems(d.data ?? []))
       .catch(() => {})
+  }, [])
+
+  // T11 : journal hebdo publié (404 silencieux si aucun journal disponible)
+  useEffect(() => {
+    fetch('/api/news/journal/current')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: JournalEpisode | null) => setJournal(data))
+      .catch(() => setJournal(null))
   }, [])
 
   useEffect(() => {
@@ -240,13 +250,17 @@ export default function HomePage() {
 
       <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen" style={{ background: '#0F0F0F' }}>
 
-        {/* Quiz du jour */}
+        {/* T11 : Quiz du jour + Journal hebdo en cartes carrées côte à côte */}
         <section>
-          <DailyQuizButton
-            userId={user?.id}
-            onStart={() => setShowDailyQuiz(true)}
-            refreshTrigger={refreshTrigger}
-          />
+          <div className="flex gap-3 max-w-md">
+            <DailyQuizButton
+              userId={user?.id}
+              onStart={() => setShowDailyQuiz(true)}
+              refreshTrigger={refreshTrigger}
+              variant="square"
+            />
+            <JournalWeekCard journal={journal} />
+          </div>
         </section>
 
         {/* News */}

@@ -130,6 +130,15 @@ export default function AdminLayout({
             </li>
             <li>
               <Link
+                href="/admin/news/journal"
+                className="flex items-center gap-3 px-4 py-2 ml-6 rounded-xl hover:bg-white/10 transition-colors text-sm"
+              >
+                <Newspaper className="w-4 h-4 opacity-70" />
+                Journal hebdo
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/admin/epp"
                 className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
               >

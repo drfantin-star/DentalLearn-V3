@@ -10,7 +10,7 @@ import {
 import type { NewsCard } from '@/types/news'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
-import AudioQueuePlayer from '@/components/news/AudioQueuePlayer'
+import { useAudioPlayer, type AudioTrack } from '@/context/AudioPlayerContext'
 
 const FETCH_LIMIT = 50
 
@@ -21,9 +21,9 @@ export default function NewsPage() {
 
   const [modalNewsId, setModalNewsId] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<string>('all')
+  const [playlistLoading, setPlaylistLoading] = useState(false)
 
-  const [audioQueue, setAudioQueue] = useState<string[]>([])
-  const [audioQueueIndex, setAudioQueueIndex] = useState(0)
+  const { addToQueue } = useAudioPlayer()
 
   const filterScrollRef = useRef<HTMLDivElement>(null)
   const scrollFilters = (dir: 'left' | 'right') => {
@@ -77,7 +77,7 @@ export default function NewsPage() {
   }, [items, activeFilter])
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] pb-24">
+    <div className="min-h-screen bg-[#0F0F0F]">
       <header className="sticky top-0 z-20 bg-[#0F0F0F]/95 backdrop-blur border-b border-gray-800">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link
@@ -121,14 +121,46 @@ export default function NewsPage() {
             {filteredNews.length > 0 && (
               <button
                 type="button"
-                onClick={() => {
-                  setAudioQueue(filteredNews.map((n) => n.id))
-                  setAudioQueueIndex(0)
+                disabled={playlistLoading}
+                onClick={async () => {
+                  // Préchargement des audio_url côté client : on résout chaque
+                  // synthesis_id en track {url, title, ...} avant d'alimenter
+                  // l'AudioPlayerContext (URL-based, voir context/AudioPlayerContext.tsx).
+                  // Les synthèses sans episode publié sont ignorées (filter Boolean).
+                  setPlaylistLoading(true)
+                  try {
+                    const results = await Promise.all(
+                      filteredNews.map(async (n): Promise<AudioTrack | null> => {
+                        try {
+                          const res = await fetch(`/api/news/syntheses/${n.id}`)
+                          if (!res.ok) return null
+                          const data = await res.json()
+                          const audioUrl = data?.episode?.audio_url as string | undefined
+                          const durationS = data?.episode?.duration_s as number | undefined
+                          if (!audioUrl) return null
+                          return {
+                            url: audioUrl,
+                            title: data?.synthesis?.display_title ?? n.display_title ?? '',
+                            duration_s: typeof durationS === 'number' ? durationS : undefined,
+                            type: 'news',
+                          }
+                        } catch {
+                          return null
+                        }
+                      }),
+                    )
+                    const tracks = results.filter((t): t is AudioTrack => t !== null)
+                    if (tracks.length > 0) addToQueue(tracks)
+                  } finally {
+                    setPlaylistLoading(false)
+                  }
                 }}
                 className="mx-4 mb-4 px-4 py-2 bg-violet-600 hover:bg-violet-500
-                           rounded-full text-white text-sm transition"
+                           disabled:opacity-50 rounded-full text-white text-sm transition"
               >
-                ▶ Écouter la playlist ({filteredNews.length} articles)
+                {playlistLoading
+                  ? '⏳ Préparation…'
+                  : `▶ Écouter la playlist (${filteredNews.length} articles)`}
               </button>
             )}
 
@@ -212,13 +244,8 @@ export default function NewsPage() {
         onClose={() => setModalNewsId(null)}
       />
 
-      {audioQueue.length > 0 && (
-        <AudioQueuePlayer
-          queue={audioQueue}
-          initialIndex={audioQueueIndex}
-          onClose={() => setAudioQueue([])}
-        />
-      )}
+      {/* AudioQueuePlayer monté globalement dans (app)/layout.tsx — il consomme
+          l'AudioPlayerContext et apparaît automatiquement quand la queue est non vide. */}
     </div>
   )
 }

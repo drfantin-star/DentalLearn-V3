@@ -166,6 +166,144 @@ export function buildScriptPrompt(
 }
 
 // ---------------------------------------------------------------------------
+// 2-bis. Journal hebdo (T11) — prompt builder
+// ---------------------------------------------------------------------------
+
+export interface JournalSynthesis {
+  position: number          // 1..6
+  display_title: string
+  summary_fr: string
+  clinical_impact?: string | null
+  key_figures?: string[] | string | null
+  evidence_level?: string | null
+  specialite?: string | null
+}
+
+// Options reprises de l'UX T7-bis (cf. CaseAParametrage de
+// AudioPodcastBlock.tsx) : format dialogue/monologue, narrator (si
+// monologue), durée cible (3/5/8/12 min) et ton éditorial.
+export interface JournalScriptOptions {
+  format?: ScriptFormat            // défaut 'dialogue'
+  narrator?: ScriptNarrator | null // requis si format='monologue'
+  target_duration_min?: number     // défaut 12 (∈ {3,5,8,12})
+  editorial_tone?: EditorialTone   // défaut 'standard'
+}
+
+/**
+ * Construit le prompt système Anthropic pour la génération du script du
+ * Journal hebdo News (T11). Accepte les mêmes options que les épisodes
+ * T7-bis : format dialogue/monologue, durée cible 3-12 min, ton éditorial.
+ *
+ * `editorialNotes` (optionnel) : texte libre saisi par l'admin, intégré
+ * comme directives prioritaires en fin de prompt (non persisté en BDD,
+ * cf. dette D8).
+ *
+ * `options` (optionnel) : si absent, comportement par défaut = dialogue
+ * Sophie/Martin, 12 min, ton standard.
+ */
+export function buildJournalPrompt(
+  syntheses: JournalSynthesis[],
+  editorialNotes?: string,
+  options?: JournalScriptOptions,
+): string {
+  const format = options?.format ?? 'dialogue'
+  const narrator = format === 'monologue' ? (options?.narrator ?? null) : null
+  const targetMin = options?.target_duration_min ?? 12
+  const editorialTone = options?.editorial_tone ?? 'standard'
+  const targetWords = calcTargetWords(targetMin)
+  const toneLine = TONE_INSTRUCTIONS[editorialTone]
+
+  const n = syntheses.length
+  const weekLabel = `Journal de la semaine dentaire — ${n} articles`
+
+  const articleBlocks = syntheses
+    .slice()
+    .sort((a, b) => a.position - b.position)
+    .map((s) => {
+      const lines: string[] = [
+        `=== Article ${s.position} : ${s.display_title} ===`,
+        `Résumé : ${s.summary_fr}`,
+      ]
+      if (s.clinical_impact) lines.push(`Impact clinique : ${s.clinical_impact}`)
+      if (s.key_figures) {
+        const fig = Array.isArray(s.key_figures)
+          ? s.key_figures.join(' · ')
+          : s.key_figures
+        if (fig.trim().length > 0) lines.push(`Chiffres clés : ${fig}`)
+      }
+      if (s.evidence_level) lines.push(`Niveau de preuve : ${s.evidence_level}`)
+      if (s.specialite) lines.push(`Spécialité : ${s.specialite}`)
+      return lines.join('\n')
+    })
+    .join('\n\n')
+
+  const notesBlock = editorialNotes && editorialNotes.trim().length > 0
+    ? `\nNotes éditoriales : ${editorialNotes.trim()}\n`
+    : ''
+
+  // ----- Section "Format de sortie" + intro/corps -----
+  if (format === 'dialogue') {
+    return [
+      `Tu es le rédacteur du podcast hebdomadaire DentalLearn "Journal de la semaine dentaire".`,
+      `Sophie et Martin sont deux chirurgiens-dentistes qui commentent l'actualité scientifique dentaire`,
+      `de manière professionnelle et engagée, avec des transitions naturelles entre les sujets.`,
+      ``,
+      `Format de sortie strict :`,
+      `Sophie: [audio_tag] Texte`,
+      `Martin: [audio_tag] Texte`,
+      ``,
+      `Audio tags disponibles : [curious], [excited], [concerned], [impressed], [reassuring], [explaining], [serious], [enthusiastic], [laughs], [sighs], [pause], [pause-short]. Max 1 tag toutes 2-3 répliques.`,
+      ``,
+      `Cible : ${targetMin} minutes (environ ${targetWords} mots ± 10%).`,
+      `Intro : Sophie et Martin accueillent les auditeurs et annoncent les ${n} thèmes du jour.`,
+      `Corps : un bloc par article dans l'ordre fourni, avec transition naturelle entre chaque ;`,
+      `alterner qui prend le lead pour chaque article (Sophie pour les positions impaires, Martin pour les paires).`,
+      `Conclusion : récap des 3 points clés à retenir + teaser "la semaine prochaine".`,
+      `Pas de références à des marques commerciales ou produits spécifiques.`,
+      `Interdiction absolue d'inventer une donnée.`,
+      ``,
+      `Adaptation du ton (${editorialTone}) : ${toneLine}`,
+      notesBlock,
+      `Voici les ${n} articles à traiter :`,
+      ``,
+      articleBlocks,
+      ``,
+      `Génère maintenant le script complet du "${weekLabel}" en respectant strictement le format ci-dessus.`,
+    ].join('\n')
+  }
+
+  // ----- Format monologue (Sophie OU Martin) -----
+  const speakerLabel = narrator === 'sophie' ? 'Sophie' : 'Martin'
+  const speakerStyle = narrator === 'sophie'
+    ? 'Style Sophie : curieux, accessible, pose les questions du praticien et y répond.'
+    : 'Style Martin : expert, didactique, donne directement les chiffres et l\'analyse.'
+
+  return [
+    `Tu es ${speakerLabel}, animateur unique du podcast hebdomadaire DentalLearn`,
+    `"Journal de la semaine dentaire" (format monologue). ${speakerStyle}`,
+    ``,
+    `Format de sortie strict : chaque ligne non vide commence par "${speakerLabel}: " suivi du texte (avec audio_tags optionnels entre crochets). Une seule voix sur tout le script — n'introduis jamais l'autre personnage.`,
+    ``,
+    `Audio tags disponibles : [curious], [excited], [concerned], [impressed], [reassuring], [explaining], [serious], [enthusiastic], [laughs], [sighs], [pause], [pause-short]. Max 1 tag toutes 2-3 répliques.`,
+    ``,
+    `Cible : ${targetMin} minutes (environ ${targetWords} mots ± 10%).`,
+    `Intro : ${speakerLabel} accueille les auditeurs et annonce les ${n} thèmes du jour.`,
+    `Corps : un bloc par article dans l'ordre fourni, avec transition naturelle entre chaque.`,
+    `Conclusion : récap des 3 points clés à retenir + teaser "la semaine prochaine".`,
+    `Pas de références à des marques commerciales ou produits spécifiques.`,
+    `Interdiction absolue d'inventer une donnée.`,
+    ``,
+    `Adaptation du ton (${editorialTone}) : ${toneLine}`,
+    notesBlock,
+    `Voici les ${n} articles à traiter :`,
+    ``,
+    articleBlocks,
+    ``,
+    `Génère maintenant le script complet du "${weekLabel}" en respectant strictement le format ci-dessus.`,
+  ].join('\n')
+}
+
+// ---------------------------------------------------------------------------
 // 3. Validation de format
 // ---------------------------------------------------------------------------
 
