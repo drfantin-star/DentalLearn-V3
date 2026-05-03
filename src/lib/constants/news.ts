@@ -106,6 +106,43 @@ export const FORMATION_CATEGORY_GROUPS: Array<{
   },
 ]
 
+// Niveaux de preuve (alignés avec news_taxonomy WHERE type='niveau_preuve' AND active=true,
+// seed migration news v1.3). Tenir les deux sources synchronisées.
+export const NEWS_NIVEAU_PREUVE = [
+  { value: 'meta-analyse', label: 'Méta-analyse' },
+  { value: 'revue-systematique', label: 'Revue systématique' },
+  { value: 'rct', label: 'Essai contrôlé randomisé' },
+  { value: 'cohorte', label: 'Étude de cohorte' },
+  { value: 'cas-temoin', label: 'Étude cas-témoins' },
+  { value: 'transversal', label: 'Étude transversale' },
+  { value: 'cas-clinique', label: 'Cas clinique ou série de cas' },
+  { value: 'reco-officielle', label: 'Recommandation officielle' },
+  { value: 'consensus', label: 'Consensus professionnel' },
+  { value: 'opinion-expert', label: "Opinion d'expert" },
+] as const
+
+export type NewsNiveauPreuveSlug = typeof NEWS_NIVEAU_PREUVE[number]['value']
+
+export const NEWS_NIVEAU_PREUVE_SET: Set<string> = new Set(
+  NEWS_NIVEAU_PREUVE.map((n) => n.value)
+)
+
+// Catégories éditoriales news (utilisées par /admin/news/manual mode "enriched"
+// pour le champ news_syntheses.category_editorial).
+export const NEWS_CATEGORIES_EDITORIALES = [
+  { value: 'scientifique', label: 'Scientifique' },
+  { value: 'pratique', label: 'Pratique' },
+  { value: 'reglementaire', label: 'Réglementaire' },
+  { value: 'humour', label: 'Humour' },
+] as const
+
+export type NewsCategorieEditorialeSlug =
+  typeof NEWS_CATEGORIES_EDITORIALES[number]['value']
+
+export const NEWS_CATEGORIES_EDITORIALES_SET: Set<string> = new Set(
+  NEWS_CATEGORIES_EDITORIALES.map((c) => c.value)
+)
+
 export const NEWS_SPECIALITE_LABELS: Record<string, string> = {
   'dent-resto': 'Dentisterie restauratrice',
   'paro': 'Parodontologie',
