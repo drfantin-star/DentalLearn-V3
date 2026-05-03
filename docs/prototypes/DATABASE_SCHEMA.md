@@ -1,10 +1,17 @@
 # DENTALLEARN V3 — DATABASE SCHEMA
-## Récupéré depuis Supabase le 5 avril 2026
+## Récupéré depuis Supabase le 5 avril 2026, mis à jour le 3 mai 2026 (post-Sprint 1)
 ## Project ID : dxybsuhfkwuemapqrvgz
 
 ---
 
-## TABLES (38 tables)
+## TABLES (54 tables)
+
+> Ce document détaille les 38 tables historiques + les 4 tables ajoutées par
+> Sprint 1 (T1 : `user_roles`, `organizations`, `organization_members` ; T6 :
+> `org_curated_formations`). Les 12 tables `news_*` / `complaints` / `user_attestations` /
+> `user_attestation_verifications` ajoutées par les batchs précédents (Tickets 1→8 News
+> et Attestations) sont listées sans détail colonne — leur schéma est consultable
+> via le MCP Supabase (`list_tables verbose=true`).
 
 ---
 
@@ -801,6 +808,40 @@ Migration `20260502_sprint1_formations_owner_org.sql` — isolation contenu tena
 
 ---
 
+## Curation tenant — Sprint 1 T6 (3 mai 2026)
+
+Migration `20260503_sprint1_org_curated_formations.sql` — table de liaison pour
+épingler des formations Dentalschool dans le catalogue d'une organisation `hr_entity`
+ou `training_org`.
+
+### org_curated_formations
+**RLS** : activée. **Aucune policy pour `authenticated`** → toutes les opérations
+passent par l'API serveur `/api/tenant/curation` avec `createAdminClient()` (service_role
+bypass RLS).
+
+| Colonne | Type | Nullable | Défaut | Note |
+|---|---|---|---|---|
+| id | uuid | NO | gen_random_uuid() | PK |
+| org_id | uuid | NO | | FK → organizations.id ON DELETE CASCADE |
+| formation_id | uuid | NO | | FK → formations.id ON DELETE CASCADE |
+| display_order | integer | NO | 0 | Ordre d'affichage côté tenant |
+| created_at | timestamptz | NO | now() | |
+
+Contrainte : `UNIQUE (org_id, formation_id)`.
+Index : `org_curated_formations_org_id_idx`, `org_curated_formations_org_order_idx`.
+
+**Note V1** : la table autorise techniquement n'importe quelle `formation_id` (y compris
+une formation owned d'un autre tenant). L'API `/api/tenant/curation` filtre côté
+serveur pour ne permettre que des formations Dentalschool publiées (`owner_org_id IS NULL
+AND is_published = true`). Ce gating peut être renforcé en DB par un trigger en V1.5.
+
+### Action D.06 livrée
+Couvre l'action D.06 « Curer le catalogue Dentalschool » de la matrice V1.2 pour les
+sous-rôles `admin_rh` (HR) et `admin_of` (training_org). Cabinet exclu (cf. matrice §4 —
+D.06 désactivé en V1).
+
+---
+
 ## Trigger signup — Sprint 1 T4 (2 mai 2026)
 
 Migration `20260502_sprint1_handle_new_user.sql` — provisionnement automatique du profil user à l'inscription.
@@ -902,11 +943,37 @@ UPDATE formations SET access_type = 'full' WHERE id = 'f9faa376-9bb0-4b19-ae0a-a
 - `prems_cycles` → à créer (module PROMs/PREMs Axe 3)
 
 ### Profil admin Julie
-- `profiles` table : `role = 'user'` par défaut, admin détecté autrement (UUID hardcodé)
+- `profiles` table : `role = 'user'` par défaut, admin détecté autrement (UUID hardcodé jusqu'à T2 Sprint 1, désormais via `is_super_admin()` SQL et `isSuperAdmin()` TS)
 - `user_profiles` : pas de champ `is_admin` — l'admin est identifié par UUID dans le code
 
 ---
 
+## Tables ajoutées par les batchs précédents (non détaillées colonne par colonne)
+
+Les 12 tables suivantes existent en BDD post-Sprint 1 mais ne sont pas détaillées
+dans ce document : leur schéma vit dans les migrations dédiées de leur batch
+d'origine et est interrogeable via le MCP Supabase (`list_tables verbose=true`).
+
+### Pipeline News (10 tables — Tickets News 1→8 Phase 1, avr-mai 2026)
+- `news_taxonomy` — vocabulaires contrôlés (spécialités, thèmes, niveaux de preuve)
+- `news_sources` — catalogue sources d'ingestion (PubMed, RSS, manual)
+- `news_raw` — articles bruts ingérés (dédoublonnés)
+- `news_scored` — scoring LLM Haiku
+- `news_syntheses` — synthèses Sonnet + tagging + embedding
+- `news_episodes` — épisodes podcast publiables
+- `news_episode_items` — liaison N:N épisodes ↔ synthèses
+- `news_references` — références bibliographiques par épisode (Qualiopi)
+- `news_cs_comments` — fil Conseil Scientifique (placeholder V1.3)
+- `news_corrections` — politique de rectification (3 ans, Qualiopi §7ter)
+
+### Attestations + réclamations (3 tables — Tickets antérieurs)
+- `user_attestations` — source unique des attestations (formation_online + EPP)
+- `user_attestation_verifications` — table publique de vérification par code
+- `complaints` — réclamations Qualiopi (indicateur 31)
+
+---
+
 *Généré automatiquement depuis Supabase le 5 avril 2026*
+*Mis à jour le 3 mai 2026 — clôture Sprint 1 (T1 → T7) + ticket T8 (doc finale)*
 *À commiter dans le repo : `drfantin-star/DentalLearn-V3`*
-*Chemin suggéré : `docs/DATABASE_SCHEMA.md`*
+*Chemin actuel : `docs/prototypes/DATABASE_SCHEMA.md`*
