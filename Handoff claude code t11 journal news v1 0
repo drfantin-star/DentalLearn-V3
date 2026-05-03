@@ -1,0 +1,988 @@
+# Handoff Claude Code — Ticket 11 — Journal hebdo News
+## Pipeline news : génération + diffusion du journal de la semaine dentaire
+
+**Version** : 1.0
+**Date** : 3 mai 2026
+**Destinataire** : Claude Code
+**Dépendances amont** : T1→T10 News mergés ✅ · Sprint 1 T1→T9 mergés ✅ · T7-ter + T7-bis PRs prêtes
+
+**Périmètre en une phrase** : Permettre au super_admin de composer et publier un "Journal de la semaine" (3–6 synthèses → script unifié Sonnet → MP3 ElevenLabs), et exposer ce journal sur la home utilisateur sous forme d'une carte carrée avec lecture directe et modal de détail — au même niveau visuel que le Quiz du Jour.
+
+---
+
+## 0. Comment utiliser ce document
+
+1. Ouvrir un nouveau chat Claude Code.
+2. Coller le **prompt de démarrage** (§1) puis ce document en entier.
+3. Claude Code commence par un **audit BDD + code** (§2) avant d'écrire la moindre ligne.
+4. Chaque groupe de tâches (§3.A → §3.E) fait l'objet d'un commit atomique distinct.
+5. Les contraintes §4 sont non-négociables. La dette §5 ne doit pas être touchée.
+
+---
+
+## 1. Prompt de démarrage (à coller dans Claude Code)
+
+```
+Tu travailles sur le projet DentalLearn, application de révision post-formation
+pour chirurgiens-dentistes éditée par EROJU SAS (marque Dentalschool Formations).
+Stack : Next.js 14 / TypeScript / Tailwind CSS / Supabase / Vercel.
+Repo : github.com/drfantin-star/DentalLearn-V3.git
+Production : https://dental-learn-v3.vercel.app
+Supabase : projet dxybsuhfkwuemapqrvgz
+
+Ta mission : implémenter le Ticket 11 — Journal hebdo News.
+Document de référence : handoff_claude_code_t11_journal_news_v1_0.md à la racine du repo.
+
+AVANT D'ÉCRIRE LA MOINDRE LIGNE :
+
+1. Lis ce handoff dans son intégralité.
+
+2. Audit BDD via MCP Supabase :
+   - list_migrations → vérifie la présence des migrations T1→Sprint1
+   - execute_sql : SELECT type, status FROM news_episodes LIMIT 5
+     → vérifie les valeurs actuelles du CHECK sur la colonne type
+   - execute_sql : \d news_episodes → liste exacte des colonnes et contraintes
+
+3. Audit code :
+   - grep -rn "drfantin@gmail" src/ → liste exhaustive des occurrences (dette D4)
+   - grep -rn "AudioQueuePlayer\|AudioContext\|audioQueue\|playTrack\|addToQueue" src/
+     → comprendre l'architecture actuelle du player audio
+   - cat src/app/(app)/page.tsx → lire la home complète
+   - cat src/lib/news-audio.ts → lire les fonctions audio existantes
+   - cat src/components/AudioQueuePlayer.tsx → lire le player actuel
+   - grep -rn "QuizDuJour\|DailyQuiz" src/app/\(app\)/page.tsx
+     → identifier le composant Quiz du Jour actuel
+
+4. Produis un rapport en 3 parties avant de coder :
+   a) État BDD actuel (contraintes news_episodes.type, présence table news_episode_syntheses)
+   b) État code actuel (architecture player, composants home, fichiers D4)
+   c) Questions bloquantes si instruction ambiguë
+
+5. ATTENDS la validation de Dr Fantin avant de commencer.
+
+Contraintes non-négociables :
+- Modifications additives uniquement (jamais full rewrite d'un fichier existant)
+- Migrations versionnées avec _down.sql symétrique
+- Pas de localStorage / sessionStorage
+- Ne JAMAIS supprimer course_watch_logs (obligation DPC)
+- Pas de contrôle de vitesse audio (0.8x / 1x / 1.5x) nulle part
+- Auth admin : remplacer drfantin@gmail.com par is_super_admin() RPC — jamais de hardcoding
+- export const dynamic = 'force-dynamic' sur toutes les routes API créées
+```
+
+---
+
+## 2. Secrets et variables d'environnement
+
+Aucun nouveau secret requis. Variables déjà présentes dans Vercel et Supabase Secrets :
+
+| Variable | Supabase Secrets | Vercel Prod | Vercel Preview | Usage T11 |
+|---|---|---|---|---|
+| `ANTHROPIC_API_KEY` | ✅ | ✅ | ✅ | buildJournalPrompt → Sonnet |
+| `ELEVENLABS_API_KEY` | — | ✅ | ✅ | generateFullAudio |
+| `OPENAI_API_KEY` | ✅ | ✅ | ✅ | Non utilisé dans T11 |
+| `SUPABASE_SERVICE_ROLE_KEY` | — | ✅ | ✅ | createAdminClient() |
+
+---
+
+## 3. Tâches — 5 groupes dans cet ordre
+
+### 3.A — Migration BDD
+
+**Fichiers à créer** :
+- `supabase/migrations/20260503_news_journal.sql`
+- `supabase/migrations/20260503_news_journal_down.sql`
+
+**Contenu de la migration :**
+
+```sql
+-- ============================================================
+-- T11 — Journal hebdo News
+-- ============================================================
+
+-- 1. Étendre CHECK news_episodes.type si 'journal' absent
+-- AUDIT PRÉALABLE : vérifier la contrainte exacte avec \d news_episodes
+-- Pattern selon T7-ter (qui a ajouté 'manual_admin') :
+-- ALTER TABLE news_episodes DROP CONSTRAINT IF EXISTS <nom_exact_constraint>;
+-- ALTER TABLE news_episodes ADD CONSTRAINT news_episodes_type_check
+--   CHECK (type IN ('insight', 'deep_dive', 'manual_admin', 'journal'));
+-- Si 'journal' est déjà présent → skip cette étape.
+
+-- 2. Table news_episode_syntheses (liaison N:N episode ↔ synthesis avec position)
+CREATE TABLE IF NOT EXISTS news_episode_syntheses (
+  id            uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  episode_id    uuid NOT NULL REFERENCES news_episodes(id) ON DELETE CASCADE,
+  synthesis_id  uuid NOT NULL REFERENCES news_syntheses(id) ON DELETE RESTRICT,
+  position      smallint NOT NULL CHECK (position BETWEEN 1 AND 6),
+  created_at    timestamptz DEFAULT now(),
+  UNIQUE (episode_id, synthesis_id),
+  UNIQUE (episode_id, position)
+);
+
+-- RLS : service_role uniquement (même pattern T5/T8/T7-ter)
+ALTER TABLE news_episode_syntheses ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON news_episode_syntheses FROM PUBLIC, anon, authenticated;
+
+-- Index perf
+CREATE INDEX idx_nes_episode   ON news_episode_syntheses(episode_id);
+CREATE INDEX idx_nes_synthesis  ON news_episode_syntheses(synthesis_id);
+
+-- Note : la contrainte unicité journal actif par semaine (1 seul journal non-archived
+-- par week_iso) est déjà couverte par l'index partiel existant sur news_episodes :
+--   news_episodes_type_week_uniq WHERE status <> 'archived'
+-- Vérifier que cet index existe bien via \d news_episodes avant de ne pas le recréer.
+```
+
+**Migration down symétrique** :
+```sql
+-- down
+DROP TABLE IF EXISTS news_episode_syntheses;
+-- Restaurer le CHECK sans 'journal' si modifié (voir migration up pour le nom exact)
+```
+
+**Critères d'acceptation 3.A** :
+- [ ] `list_tables` retourne `news_episode_syntheses`
+- [ ] INSERT test (episode_id fictif) → erreur FK attendue
+- [ ] INSERT avec position=7 → erreur CHECK attendue
+- [ ] INSERT duplicate (episode_id, synthesis_id) → erreur UNIQUE attendue
+- [ ] `SELECT * FROM news_episodes WHERE type='journal'` ne retourne aucune erreur (CHECK accepte 'journal')
+- [ ] `DATABASE_SCHEMA.md` mis à jour avec la nouvelle table
+
+---
+
+### 3.B — Refacto AudioQueuePlayer → Context global
+
+**Objectif** : le player audio actuel (T10) est un state local dans `/news/page.tsx`. Il doit être promu en Context global pour que la carte Journal sur la home puisse déclencher la lecture sans props drilling.
+
+**AUDIT PRÉALABLE OBLIGATOIRE** :
+```bash
+grep -rn "AudioQueuePlayer\|audioQueue\|playTrack\|addToQueue\|setCurrentTrack" src/
+cat src/components/AudioQueuePlayer.tsx
+cat src/app/news/page.tsx
+# Identifier : comment le player est actuellement instancié et déclenché
+```
+
+**Fichier à créer** : `src/context/AudioPlayerContext.tsx`
+
+```typescript
+// Interface du Context
+interface AudioTrack {
+  url: string;
+  title: string;
+  duration_s?: number;
+  type: 'news' | 'journal' | 'formation';
+  episodeId?: string;
+}
+
+interface AudioPlayerContextType {
+  queue: AudioTrack[];
+  currentIndex: number;
+  isPlaying: boolean;
+  playTrack: (track: AudioTrack) => void;        // remplace la queue par ce track seul + play
+  addToQueue: (tracks: AudioTrack[]) => void;    // ajoute à la suite
+  clearQueue: () => void;
+  next: () => void;
+  prev: () => void;
+  setIsPlaying: (v: boolean) => void;
+}
+
+export const AudioPlayerContext = createContext<AudioPlayerContextType | null>(null);
+export const useAudioPlayer = () => {
+  const ctx = useContext(AudioPlayerContext);
+  if (!ctx) throw new Error('useAudioPlayer must be used within AudioPlayerProvider');
+  return ctx;
+};
+```
+
+**Fichier à modifier** : `src/components/AudioQueuePlayer.tsx`
+- Consomme `useAudioPlayer()` au lieu du state local
+- Modifications additives uniquement — ne pas réécrire la logique existante
+
+**Fichier à modifier** : layout principal de l'app (probablement `src/app/(app)/layout.tsx`)
+- Envelopper avec `<AudioPlayerProvider>` si ce n'est pas déjà le cas
+- `<AudioQueuePlayer />` monté une seule fois ici (retirer de `/news/page.tsx` si dupliqué)
+
+**Fichier à modifier** : `src/app/news/page.tsx`
+- Remplacer le state local `audioQueue` par `addToQueue` du Context
+- Modifications additives — comportement identique pour l'utilisateur
+
+**Critères d'acceptation 3.B** :
+- [ ] Page `/news` : clic "Écouter la playlist" → player apparaît en bas ✅ (comportement inchangé)
+- [ ] `useAudioPlayer()` utilisable depuis n'importe quel composant enfant du layout
+- [ ] Aucune régression sur le player formations existant (`AudioContext.tsx` — vérifier qu'il est distinct)
+- [ ] Build Vercel preview : EXIT=0
+
+---
+
+### 3.C — Backend admin journal
+
+**Fix D4 intégré** : toutes les routes admin créées dans ce groupe utilisent `is_super_admin()` RPC. Les routes existantes (`/api/admin/news/*`) sont également mises à jour pour remplacer `drfantin@gmail.com` par ce pattern.
+
+**Pattern auth à utiliser dans toutes les routes admin T11 :**
+```typescript
+import { createAdminClient } from '@/lib/supabase/admin';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
+import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: Request) {
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { get: (name) => cookieStore.get(name)?.value } }
+  );
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const adminClient = createAdminClient();
+  const { data: isSuperAdmin } = await adminClient.rpc('is_super_admin', { p_user_id: user.id });
+  if (!isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  // ... logique métier
+}
+```
+
+**Routes API à créer** (toutes `export const dynamic = 'force-dynamic'`) :
+
+#### `GET + POST /api/admin/news/journal/route.ts`
+
+```
+GET  → liste des 20 derniers journaux (tous statuts), ORDER BY created_at DESC
+       JOIN news_episode_syntheses + count synthèses
+       Retourne : id, week_iso, status, duration_s, audio_url, created_at, syntheses_count
+
+POST → crée un journal draft
+       Body : { synthesis_ids: string[], week_iso?: string }
+       Validation : 3 ≤ synthesis_ids.length ≤ 6
+       Si week_iso absent → calculer la semaine ISO courante
+       Vérifier qu'aucun journal non-archived n'existe pour cette week_iso
+       INSERT news_episodes (type='journal', status='draft', week_iso)
+       INSERT news_episode_syntheses (episode_id, synthesis_id, position) pour chaque id
+       Retourne : { episode_id: string }
+```
+
+#### `GET + PATCH + DELETE /api/admin/news/journal/[id]/route.ts`
+
+```
+GET   → détail complet : episode + synthèses liées (JOIN news_episode_syntheses → news_syntheses)
+        Champs synthèse : position, display_title, specialite, summary_fr,
+                          clinical_impact, key_figures, evidence_level,
+                          source_url (JOIN news_raw), journal_name (JOIN news_raw)
+
+PATCH → body : { status?: 'published' | 'archived' }
+        Contrainte : published → archived autorisé, pas de retour en arrière
+        UPDATE news_episodes SET status, updated_at
+
+DELETE → soft delete uniquement : PATCH status='archived' (ne pas supprimer la ligne)
+         Refuser si status='published' (sécurité)
+```
+
+#### `POST /api/admin/news/journal/[id]/generate-script/route.ts`
+
+```
+Body : { editorial_notes?: string }
+Appel : buildJournalPrompt(syntheses[], editorial_notes?) → string prompt
+Appel : claude claude-haiku-4-5-20251001... NON → Sonnet pour le journal
+Appel : model 'claude-sonnet-4-20250514', max_tokens 4096
+Response Sonnet → script unifié
+UPDATE news_episodes SET script_text = script, updated_at = now()
+Retourne : { script_text: string }
+
+Timeout : opération longue → ajouter timeout côté client (60s Vercel serverless)
+Si script dépasse 4096 tokens → tronquer proprement à la dernière réplique complète
+```
+
+#### `POST /api/admin/news/journal/[id]/generate-audio/route.ts`
+
+```
+Vérifie que script_text est non null (400 sinon)
+Appel : generateFullAudio(script_text) → existe déjà dans src/lib/news-audio.ts
+        (chunking ElevenLabs, voix Sophie/Martin, retry, pause inter-chunks)
+Upload MP3 → Supabase Storage bucket 'news-audio' (même bucket que les épisodes T7)
+UPDATE news_episodes SET audio_url, duration_s, status='published', updated_at
+Retourne : { audio_url: string, duration_s: number }
+
+Note : vérifier le nom exact du bucket avec : supabase storage list buckets
+```
+
+**Routes existantes à modifier** (fix D4) :
+```bash
+# Identifier avec :
+grep -rn "drfantin@gmail" src/api/
+# Pour chaque fichier trouvé :
+# Remplacer la condition email par le pattern is_super_admin() RPC ci-dessus
+# Modifications additives — ne pas changer la logique métier, seulement le check auth
+```
+
+**Fichier à modifier** : `src/lib/news-audio.ts`
+
+Ajouter la fonction `buildJournalPrompt` :
+
+```typescript
+export interface JournalSynthesis {
+  position: number;          // 1–6
+  display_title: string;
+  summary_fr: string;
+  clinical_impact?: string | null;
+  key_figures?: string | null;
+  evidence_level?: string | null;
+  specialite?: string | null;
+}
+
+export function buildJournalPrompt(
+  syntheses: JournalSynthesis[],
+  editorialNotes?: string
+): string {
+  const n = syntheses.length;
+  const weekLabel = `Journal de la semaine dentaire — ${n} articles`;
+
+  const articleBlocks = syntheses.map((s) => {
+    const lines = [
+      `=== Article ${s.position} : ${s.display_title} ===`,
+      `Résumé : ${s.summary_fr}`,
+    ];
+    if (s.clinical_impact) lines.push(`Impact clinique : ${s.clinical_impact}`);
+    if (s.key_figures)     lines.push(`Chiffres clés : ${s.key_figures}`);
+    if (s.evidence_level)  lines.push(`Niveau de preuve : ${s.evidence_level}`);
+    if (s.specialite)      lines.push(`Spécialité : ${s.specialite}`);
+    return lines.join('\n');
+  }).join('\n\n');
+
+  const notesBlock = editorialNotes?.trim()
+    ? `\nNotes éditoriales : ${editorialNotes.trim()}\n`
+    : '';
+
+  return `Tu es le rédacteur du podcast hebdomadaire DentalLearn "Journal de la semaine dentaire".
+Sophie et Martin sont deux chirurgiens-dentistes qui commentent l'actualité scientifique dentaire
+de manière professionnelle et engagée, avec des transitions naturelles entre les sujets.
+
+Format strict :
+- Chaque réplique commence par [Sophie]: ou [Martin]:
+- Durée cible : 8 à 12 minutes (environ 1200 à 1800 mots de script)
+- Intro : Sophie et Martin accueillent les auditeurs et annoncent les ${n} thèmes du jour
+- Corps : un bloc par article dans l'ordre fourni, avec transition naturelle entre chaque
+  (alterner qui prend le lead pour chaque article : Sophie pour les impairs, Martin pour les pairs)
+- Conclusion : récap des 3 points clés à retenir + teaser "la semaine prochaine"
+- Ton : professionnel, pédagogique, direct — pas de superlatifs vides
+- Pas de références à des marques commerciales ou produits spécifiques
+${notesBlock}
+Voici les ${n} articles à traiter :
+
+${articleBlocks}
+
+Génère maintenant le script complet du "${weekLabel}" en respectant strictement le format ci-dessus.`;
+}
+```
+
+**Fichier à modifier** : `src/lib/constants/news.ts` (additif)
+```typescript
+export const JOURNAL_MIN_SYNTHESES = 3;
+export const JOURNAL_MAX_SYNTHESES = 6;
+```
+
+**Pages admin à créer** :
+
+#### `src/app/admin/news/journal/page.tsx`
+```
+- Liste les 20 derniers journaux (GET /api/admin/news/journal)
+- Tableau : semaine ISO | nb articles | durée | statut | actions
+- Badges statut : draft (gris) / published (vert) / archived (rouge)
+- Bouton "Créer le journal de la semaine" → /admin/news/journal/new
+- Auth gate : vérifier is_super_admin côté layout admin (déjà en place depuis Sprint 1)
+```
+
+#### `src/app/admin/news/journal/new/page.tsx`
+Stepper 2 étapes :
+
+**Étape 1 — Sélection & ordre**
+```
+- Fetch : GET /api/admin/news/syntheses?limit=50&status=active (endpoint existant T8-P1)
+- Liste avec checkbox de sélection
+- Compteur : "N/6 articles sélectionnés" — bouton Suivant désactivé si N < 3
+- Drag-to-reorder :
+  AUDIT PRÉALABLE : grep -rn "dnd\|sortable\|drag" package.json
+  Si @dnd-kit ou react-sortable ou équivalent déjà installé → utiliser
+  Sinon → fallback boutons ↑↓ (ne pas installer de nouvelle dépendance sans valider avec Dr Fantin)
+- Badge week_iso courant affiché en haut ("Semaine 19 — 2026")
+- Warning si journal déjà existant pour cette semaine (GET /api/admin/news/journal → vérifier)
+- Bouton "Créer le journal" → POST /api/admin/news/journal → redirect /admin/news/journal/[id]
+```
+
+**Étape 2 (page `/admin/news/journal/[id]/page.tsx`)** :
+```
+- Affiche les synthèses sélectionnées (ordre, titres, spécialités)
+- Textarea "Notes éditoriales" optionnelles (4 lignes, placeholder "Thèmes à mettre en avant, ton...")
+- Bouton "Générer le script" → POST generate-script → affiche script_text dans textarea éditable
+- Bouton "Régénérer" (réinitialise + rappelle generate-script)
+- Bouton "Générer l'audio" (actif uniquement si script_text non vide)
+  → POST generate-audio → player HTML5 <audio controls> sans contrôle vitesse
+- Bouton "Publier" → PATCH status='published' (confirmation requise)
+- Bouton "Archiver" → PATCH status='archived' (confirmation requise)
+- Statut courant affiché en permanence
+```
+
+**Modification sidebar admin** :
+```
+Fichier : identifier par grep -rn "admin/news" src/components/layout/
+Ajouter lien "Journal hebdo" après "Sources"
+Visible uniquement si is_super_admin (déjà géré par le layout admin Sprint 1)
+```
+
+**Critères d'acceptation 3.C** :
+- [ ] `grep -rn "drfantin@gmail" src/` retourne 0 résultats
+- [ ] Dr Fantin accède à `/admin/news/journal` → liste vide + bouton Créer ✅
+- [ ] Autre user → 403 ✅
+- [ ] POST avec 2 synthèses → 400 "Minimum 3 articles requis" ✅
+- [ ] POST avec 7 synthèses → 400 "Maximum 6 articles" ✅
+- [ ] POST valide → journal draft créé, redirect page détail ✅
+- [ ] generate-script → script_text contient `[Sophie]:` et `[Martin]:` ✅
+- [ ] Deux journals pour la même semaine → erreur contrainte UNIQUE ✅
+- [ ] Build Vercel preview : EXIT=0, toutes routes `/api/admin/news/journal/*` en ƒ ✅
+
+---
+
+### 3.D — API publique journal (côté utilisateur)
+
+**Fichier à créer** : `src/app/api/news/journal/current/route.ts`
+
+```typescript
+export const dynamic = 'force-dynamic';
+
+// GET — retourne le journal publié le plus récent
+// Auth : authenticated (createAdminClient pour bypass RLS — même pattern /api/news/syntheses)
+// Si aucun journal publié → 404
+
+export async function GET() {
+  const adminClient = createAdminClient();
+
+  const { data, error } = await adminClient
+    .from('news_episodes')
+    .select(`
+      id,
+      week_iso,
+      audio_url,
+      duration_s,
+      status,
+      created_at,
+      news_episode_syntheses (
+        position,
+        news_syntheses (
+          display_title,
+          specialite,
+          summary_fr,
+          clinical_impact,
+          key_figures,
+          evidence_level,
+          news_raw (
+            source_url,
+            journal_name
+          )
+        )
+      )
+    `)
+    .eq('type', 'journal')
+    .eq('status', 'published')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !data) {
+    return NextResponse.json(null, { status: 404 });
+  }
+
+  // Aplatir news_episode_syntheses pour un retour propre
+  const syntheses = (data.news_episode_syntheses ?? [])
+    .sort((a, b) => a.position - b.position)
+    .map(nes => ({
+      position: nes.position,
+      ...nes.news_syntheses,
+      source_url: nes.news_syntheses?.news_raw?.source_url ?? null,
+      journal_name: nes.news_syntheses?.news_raw?.journal_name ?? null,
+    }));
+
+  return NextResponse.json({ ...data, syntheses });
+}
+```
+
+**Type à ajouter** dans `src/types/news.ts` (additif) :
+```typescript
+export interface JournalEpisode {
+  id: string;
+  week_iso: string;          // ex: "2026-W19"
+  audio_url: string;
+  duration_s: number;
+  status: 'draft' | 'published' | 'archived';
+  created_at: string;
+  syntheses: {
+    position: number;
+    display_title: string;
+    specialite?: string | null;
+    summary_fr?: string | null;
+    clinical_impact?: string | null;
+    key_figures?: string | null;
+    evidence_level?: string | null;
+    source_url?: string | null;
+    journal_name?: string | null;
+  }[];
+}
+```
+
+**Critères d'acceptation 3.D** :
+- [ ] `GET /api/news/journal/current` sans journal publié → 404 ✅
+- [ ] Après publication d'un journal admin → retourne les données correctes ✅
+- [ ] `syntheses` triées par position croissante ✅
+
+---
+
+### 3.E — Frontend home : cartes carrées Quiz + Journal
+
+**AUDIT PRÉALABLE OBLIGATOIRE** :
+```bash
+cat src/app/(app)/page.tsx
+# Identifier :
+# 1. Où est rendu le Quiz du Jour (composant ou JSX inline ?)
+# 2. Quelle class CSS le rend actuellement pleine largeur ?
+# 3. Comment audioQueue est actuellement utilisé dans ce fichier
+grep -rn "DailyQuizModal\|QuizDuJour\|quiz" src/app/\(app\)/page.tsx
+```
+
+#### Refacto Quiz du Jour — passage en carré
+
+Le composant Quiz du Jour existe sous une forme à identifier (probablement un bouton/card inline dans `page.tsx`). Le passer en format carré via les classes Tailwind suivantes :
+
+Wrapper des 2 cartes :
+```tsx
+{/* Section Quiz + Journal — côte à côte */}
+<div className="flex gap-3 px-4 mb-6">
+  {/* Quiz du Jour — carré */}
+  <button
+    onClick={() => setShowDailyQuiz(true)}
+    className="flex-1 aspect-square rounded-2xl
+               bg-gradient-to-br from-[#7C3AED] to-[#5B21B6]
+               flex flex-col justify-between p-3 text-left
+               active:scale-95 transition-transform"
+  >
+    <div>
+      <span className="text-xs font-bold text-purple-200 uppercase tracking-wide">
+        🎯 Quiz du jour
+      </span>
+      <p className="text-white font-bold text-sm mt-1">
+        Tester tes connaissances
+      </p>
+    </div>
+    <p className="text-purple-200 text-[11px]">
+      10 questions · ~5 min
+    </p>
+  </button>
+
+  {/* Journal hebdo — carré */}
+  <JournalWeekCard journal={journal} />
+</div>
+```
+
+**Note** : adapter le JSX exact à ce que Claude Code trouve dans `page.tsx`. L'objectif est `flex-1 aspect-square` sur chaque carte. Ne pas réécrire la logique autour (useEffect, states, modals).
+
+#### Nouveau composant : `src/components/home/JournalWeekCard.tsx`
+
+```tsx
+'use client';
+import { Play, Info } from 'lucide-react';
+import { useState } from 'react';
+import { useAudioPlayer } from '@/context/AudioPlayerContext';
+import { JournalDetailModal } from './JournalDetailModal';
+import type { JournalEpisode } from '@/types/news';
+
+interface Props {
+  journal: JournalEpisode | null;
+}
+
+function getWeekNumber(week_iso: string): string {
+  // "2026-W19" → "19"
+  return week_iso.split('-W')[1] ?? '';
+}
+
+function formatDuration(seconds: number): string {
+  const m = Math.round(seconds / 60);
+  return `${m} min`;
+}
+
+export function JournalWeekCard({ journal }: Props) {
+  const [showModal, setShowModal] = useState(false);
+  const { playTrack } = useAudioPlayer();
+
+  // État vide
+  if (!journal) {
+    return (
+      <div className="flex-1 aspect-square rounded-2xl
+                      bg-gray-800/60 border border-gray-700/50
+                      flex flex-col items-center justify-center gap-1 p-3">
+        <span className="text-2xl">🎙️</span>
+        <p className="text-xs text-gray-400 font-semibold text-center">
+          Journal
+        </p>
+        <p className="text-[10px] text-gray-500 text-center leading-tight">
+          Bientôt disponible
+        </p>
+      </div>
+    );
+  }
+
+  const weekNum = getWeekNumber(journal.week_iso);
+
+  return (
+    <>
+      <div className="flex-1 aspect-square rounded-2xl
+                      bg-gradient-to-br from-[#0D9488] to-[#0F766E]
+                      flex flex-col justify-between p-3">
+        <div>
+          <span className="text-xs font-bold text-teal-100 uppercase tracking-wide">
+            🎙️ Journal
+          </span>
+          <p className="text-white font-bold text-sm mt-1 leading-tight">
+            Semaine {weekNum}
+          </p>
+          <p className="text-teal-200 text-[11px] mt-0.5">
+            {journal.syntheses.length} articles
+            {journal.duration_s ? ` · ${formatDuration(journal.duration_s)}` : ''}
+          </p>
+        </div>
+
+        <div className="flex gap-1.5">
+          <button
+            onClick={() => playTrack({
+              url: journal.audio_url,
+              title: `Journal S${weekNum}`,
+              duration_s: journal.duration_s,
+              type: 'journal',
+              episodeId: journal.id,
+            })}
+            className="flex-1 bg-white/20 hover:bg-white/30 active:bg-white/40
+                       rounded-xl py-1.5 flex items-center justify-center gap-1
+                       text-white text-xs font-bold transition-colors"
+          >
+            <Play size={11} fill="white" className="shrink-0" />
+            Écouter
+          </button>
+
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-white/20 hover:bg-white/30 active:bg-white/40
+                       rounded-xl px-2.5 flex items-center justify-center
+                       transition-colors"
+            aria-label="Détails du journal"
+          >
+            <Info size={13} className="text-white" />
+          </button>
+        </div>
+      </div>
+
+      {showModal && (
+        <JournalDetailModal
+          journal={journal}
+          onClose={() => setShowModal(false)}
+        />
+      )}
+    </>
+  );
+}
+```
+
+#### Nouveau composant : `src/components/home/JournalDetailModal.tsx`
+
+Pattern identique à `NewsModal.tsx` existant (overlay z-50, bg-gray-900, scroll 85vh) :
+
+```tsx
+'use client';
+import { X, Play, ExternalLink } from 'lucide-react';
+import { useAudioPlayer } from '@/context/AudioPlayerContext';
+import type { JournalEpisode } from '@/types/news';
+
+// Badge spécialité — réutiliser NEWS_SPECIALITE_LABELS depuis src/lib/constants/news.ts
+import { NEWS_SPECIALITE_LABELS } from '@/lib/constants/news';
+
+interface Props {
+  journal: JournalEpisode;
+  onClose: () => void;
+}
+
+function getWeekNumber(week_iso: string): string {
+  return week_iso.split('-W')[1] ?? '';
+}
+
+function formatDuration(seconds: number): string {
+  const m = Math.round(seconds / 60);
+  return `${m} min`;
+}
+
+export function JournalDetailModal({ journal, onClose }: Props) {
+  const { playTrack } = useAudioPlayer();
+  const weekNum = getWeekNumber(journal.week_iso);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center
+                 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="bg-gray-900 rounded-t-3xl sm:rounded-3xl w-full max-w-2xl
+                   max-h-[85vh] overflow-y-auto p-6 pb-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* En-tête */}
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-teal-400 text-sm font-bold">🎙️ Journal de la semaine</span>
+            </div>
+            <h2 className="text-white font-bold text-xl leading-tight">
+              Semaine {weekNum}
+            </h2>
+            <p className="text-gray-400 text-sm mt-1">
+              {journal.syntheses.length} articles
+              {journal.duration_s ? ` · ${formatDuration(journal.duration_s)}` : ''}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors ml-4 shrink-0"
+          >
+            <X size={22} />
+          </button>
+        </div>
+
+        {/* Sommaire */}
+        <div className="mb-5">
+          <h3 className="text-gray-300 text-xs font-bold uppercase tracking-wider mb-3">
+            Au sommaire
+          </h3>
+          <div className="space-y-2">
+            {journal.syntheses.map((s) => (
+              <div key={s.position} className="flex items-start gap-3">
+                <span className="text-teal-400 font-bold text-sm shrink-0 w-4">
+                  {s.position}.
+                </span>
+                <div className="flex-1 min-w-0">
+                  {s.specialite && (
+                    <span className="text-[10px] font-bold text-teal-300 bg-teal-900/40
+                                     rounded-full px-2 py-0.5 mr-2">
+                      {NEWS_SPECIALITE_LABELS[s.specialite] ?? s.specialite}
+                    </span>
+                  )}
+                  <p className="text-gray-200 text-sm mt-0.5 leading-snug">
+                    {s.display_title}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Résumé du premier article comme accroche */}
+        {journal.syntheses[0]?.summary_fr && (
+          <div className="mb-5">
+            <h3 className="text-gray-300 text-xs font-bold uppercase tracking-wider mb-2">
+              À la une
+            </h3>
+            <p className="text-gray-300 text-sm leading-relaxed line-clamp-4">
+              {journal.syntheses[0].summary_fr}
+            </p>
+          </div>
+        )}
+
+        {/* Sources */}
+        {journal.syntheses.some(s => s.source_url || s.journal_name) && (
+          <div className="mb-6">
+            <h3 className="text-gray-300 text-xs font-bold uppercase tracking-wider mb-2">
+              Sources
+            </h3>
+            <div className="space-y-1">
+              {journal.syntheses.map((s) =>
+                (s.source_url || s.journal_name) ? (
+                  <div key={s.position} className="flex items-center gap-2">
+                    <span className="text-gray-500 text-xs w-4 shrink-0">{s.position}.</span>
+                    {s.source_url ? (
+                      <a
+                        href={s.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-teal-400 text-xs hover:text-teal-300 flex items-center gap-1"
+                      >
+                        {s.journal_name ?? s.source_url}
+                        <ExternalLink size={10} />
+                      </a>
+                    ) : (
+                      <span className="text-gray-400 text-xs">{s.journal_name}</span>
+                    )}
+                  </div>
+                ) : null
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Player audio — identique au pattern NewsModal */}
+        <div className="mb-6">
+          <audio
+            controls
+            src={journal.audio_url}
+            className="w-full"
+            style={{ height: '40px' }}
+          />
+          {/* PAS de contrôle vitesse — contrainte non-négociable */}
+        </div>
+
+        {/* Boutons */}
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              playTrack({
+                url: journal.audio_url,
+                title: `Journal S${weekNum}`,
+                duration_s: journal.duration_s,
+                type: 'journal',
+                episodeId: journal.id,
+              });
+              onClose();
+            }}
+            className="flex-1 bg-teal-600 hover:bg-teal-500 text-white font-bold
+                       py-3 rounded-2xl flex items-center justify-center gap-2
+                       transition-colors"
+          >
+            <Play size={16} fill="white" />
+            Écouter le journal
+          </button>
+          <button
+            onClick={onClose}
+            className="px-5 py-3 rounded-2xl border border-gray-600 text-gray-300
+                       hover:border-gray-400 transition-colors text-sm font-medium"
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+#### Modification `src/app/(app)/page.tsx`
+
+Ajouts additifs (ne pas réécrire la page) :
+1. Import `JournalWeekCard` et type `JournalEpisode`
+2. State : `const [journal, setJournal] = useState<JournalEpisode | null>(null);`
+3. useEffect : fetch `GET /api/news/journal/current` au mount (404 → state null, pas d'erreur UX)
+4. Remplacer le JSX Quiz du Jour par le wrapper `flex gap-3` avec `JournalWeekCard`
+
+```tsx
+// Ajout du fetch journal (dans le useEffect existant ou un useEffect dédié)
+useEffect(() => {
+  fetch('/api/news/journal/current')
+    .then(r => r.ok ? r.json() : null)
+    .then(data => setJournal(data))
+    .catch(() => setJournal(null));
+}, []);
+```
+
+**Critères d'acceptation 3.E** :
+- [ ] Home : 2 cartes carrées côte à côte, même hauteur ✅
+- [ ] Sans journal publié : carte teal grisée "Bientôt disponible" ✅
+- [ ] Avec journal publié : carte teal avec titre, nb articles, durée ✅
+- [ ] Clic ▶ Écouter → AudioQueuePlayer apparaît en bas de page avec le journal ✅
+- [ ] Clic ℹ → JournalDetailModal avec sommaire + sources + player HTML5 ✅
+- [ ] Clic "Écouter le journal" dans modal → lance player + ferme modal ✅
+- [ ] Quiz du Jour toujours fonctionnel (ouvre DailyQuizModal) ✅
+- [ ] Mobile : les 2 cartes ne débordent pas, texte lisible sur iPhone SE ✅
+- [ ] Build Vercel preview : EXIT=0 ✅
+
+---
+
+## 4. Contraintes non-négociables
+
+1. **Modifications additives uniquement** — jamais de full rewrite d'un fichier existant. Si un fichier doit changer, lire son contenu exact avec `cat`/`sed` d'abord, puis modifier en ciblant le minimum.
+2. **Migrations versionnées** — chaque migration a son `_down.sql` symétrique testé.
+3. **Pas de localStorage / sessionStorage** — React state ou Context uniquement.
+4. **Ne jamais supprimer `course_watch_logs`** — obligation réglementaire DPC.
+5. **Pas de contrôle de vitesse audio** — aucun sélecteur 0.8x / 1x / 1.5x nulle part. Toujours.
+6. **Auth admin = is_super_admin() RPC** — supprimer toute occurrence de `drfantin@gmail.com` dans le code. Variable d'env `ADMIN_NOTIFICATION_EMAIL` (notifications only) : ne pas toucher.
+7. **export const dynamic = 'force-dynamic'** sur toutes les routes API créées dans ce ticket.
+8. **Pas de nouvelle dépendance npm** sans validation Dr Fantin — en particulier pour le drag-to-reorder (utiliser ce qui est déjà installé ou fallback boutons ↑↓).
+9. **Lire avant d'écrire** — `cat`/`sed`/`grep` sur les fichiers existants avant toute modification. Ne jamais supposer le contenu d'un fichier.
+10. **Un groupe de tâches = un commit** — 5 commits atomiques (3.A BDD, 3.B Context audio, 3.C backend admin, 3.D API publique, 3.E frontend).
+
+---
+
+## 5. Dette technique connue — NE PAS toucher
+
+| # | Dette | Origine | Pourquoi on ne touche pas |
+|---|---|---|---|
+| D1 | `src/types/database.ts` legacy divergent du runtime | T5 news | Refacto risquée hors scope |
+| D2 | FK `news_syntheses → questions` ON DELETE SET NULL viole XOR | T5 news | Ticket dédié requis |
+| D3-UI | Bouton "Supprimer le brouillon" absent du Cas B AudioPodcastBlock | T7-bis | Hors scope T11 |
+| D5 | Badge `type='manual'` non codé dans UI sources | T8-P2 | Convention seulement |
+| D6 | Responsive mobile pages admin News | T8-P1 | Décision constante |
+| D8 | Notes éditorial non persistées en BDD (news_episodes) | T7-bis | Décision produit actée |
+| D-S1-04 | Page `/privacy` manquante | Sprint 1 | Ticket dédié |
+| D-S1-05 | Emails Supabase en spam Hotmail | Sprint 1 | Infrastructure |
+| D-S1-07 | Point d'entrée `/tenant/admin` absent nav principale | Sprint 1 | Avant onboarding B2B |
+
+**Dette nouvelle anticipée par T11** :
+
+| # | Dette | Note |
+|---|---|---|
+| D-T11-01 | Drag-to-reorder si dépendance absente → fallback ↑↓ | Upgrade V2 |
+| D-T11-02 | Pas de publication planifiée (cron journal) | Manuel uniquement en V1 |
+| D-T11-03 | Pas de page `/news/journal/[id]` dédiée utilisateur | AudioQueuePlayer suffit en V1 |
+
+---
+
+## 6. Tests d'acceptation complets (à passer dans l'ordre)
+
+| # | Test | Attendu |
+|---|---|---|
+| A1 | Migration appliquée | `list_tables` retourne `news_episode_syntheses` |
+| A2 | Accès `/admin/news/journal` sans super_admin | 403 |
+| A3 | Création journal avec 2 synthèses | 400 "Minimum 3 articles requis" |
+| A4 | Création journal avec 7 synthèses | 400 "Maximum 6 articles" |
+| A5 | Création journal valide (4 synthèses) | draft créé, redirect `/admin/news/journal/[id]` |
+| A6 | generate-script sur journal draft | script_text contient [Sophie]: et [Martin]: |
+| A7 | generate-audio | audio_url renseigné, status=published |
+| A8 | Deuxième journal même semaine | erreur contrainte unicité |
+| A9 | `GET /api/news/journal/current` sans journal publié | 404 |
+| A10 | `GET /api/news/journal/current` après publication | JSON avec syntheses triées |
+| A11 | Home sans journal | carte teal grisée "Bientôt disponible" |
+| A12 | Home avec journal | carte teal titre + articles + durée |
+| A13 | Clic ▶ sur carte journal | AudioQueuePlayer bas de page lance le journal |
+| A14 | Clic ℹ sur carte journal | JournalDetailModal s'ouvre avec sommaire |
+| A15 | Quiz du Jour | toujours fonctionnel, format carré, même hauteur que journal |
+| A16 | Page `/news` | player playlist inchangé (régression 0) |
+| A17 | `grep -rn "drfantin@gmail" src/` | 0 résultats |
+| A18 | Build Vercel preview | EXIT=0, routes journal en ƒ, 0 warning TypeScript bloquant |
+
+---
+
+## 7. Référence rapide
+
+```
+Repo    : github.com/drfantin-star/DentalLearn-V3.git
+Prod    : https://dental-learn-v3.vercel.app
+Supabase: dxybsuhfkwuemapqrvgz
+Admin   : af506ec2-a281-4485-a504-b0633c8d2362 (Dr Fantin)
+
+Fichiers clés existants à lire avant de coder :
+  src/lib/news-audio.ts           — generateFullAudio, buildScriptPrompt
+  src/components/AudioQueuePlayer.tsx  — player actuel (T10)
+  src/app/(app)/page.tsx          — home actuelle
+  src/app/admin/news/*            — layout et pages admin news existantes
+  src/types/news.ts               — types NewsCard, NewsDetail, etc.
+  src/lib/constants/news.ts       — constantes news existantes
+  supabase/migrations/            — historique des migrations pour nommage cohérent
+```
+
+---
+
+*Handoff produit le 3 mai 2026 — DentalLearn V3 — Ticket 11 Journal hebdo News — v1.0*
+*Précédents tickets mergés : T1→T10 News + Sprint 1 T1→T9 + T7-ter + T7-bis (PR prêtes)*
