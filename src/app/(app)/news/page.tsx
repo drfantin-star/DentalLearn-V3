@@ -12,14 +12,6 @@ import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
 import { useAudioPlayer, type AudioTrack } from '@/context/AudioPlayerContext'
 
-// Désactive le prerender statique : la page consomme useAudioPlayer() depuis
-// AudioPlayerContext (T11/3.B), monté dans src/app/(app)/layout.tsx. Comme
-// /news n'est pas sous ce route group, le Provider n'est pas dans le tree
-// au moment du prerender Vercel — sans force-dynamic, la build échoue avec
-// "useAudioPlayer must be used within AudioPlayerProvider". La page reste
-// rendue à la demande côté serveur, le hook s'exécute uniquement au client.
-export const dynamic = 'force-dynamic'
-
 const FETCH_LIMIT = 50
 
 export default function NewsPage() {
@@ -85,7 +77,7 @@ export default function NewsPage() {
   }, [items, activeFilter])
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] pb-24">
+    <div className="min-h-screen bg-[#0F0F0F]">
       <header className="sticky top-0 z-20 bg-[#0F0F0F]/95 backdrop-blur border-b border-gray-800">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link
