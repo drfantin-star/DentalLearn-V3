@@ -9,9 +9,13 @@ interface BrandingData {
   type: 'cabinet' | 'hr_entity' | 'training_org'
   branding_logo_url: string | null
   branding_primary_color: string | null
+  qualiopi_number: string | null
+  odpc_number: string | null
 }
 
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/
+const QUALIOPI_RE = /^[A-Za-z0-9-]{1,20}$/
+const ODPC_RE = /^[A-Za-z0-9]{1,10}$/
 const DEFAULT_COLOR = '#2D1B96'
 
 export default function TenantBrandingPage() {
@@ -19,6 +23,8 @@ export default function TenantBrandingPage() {
   const [logoUrl, setLogoUrl] = useState('')
   const [color, setColor] = useState(DEFAULT_COLOR)
   const [colorInput, setColorInput] = useState(DEFAULT_COLOR)
+  const [qualiopi, setQualiopi] = useState('')
+  const [odpc, setOdpc] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -43,6 +49,8 @@ export default function TenantBrandingPage() {
         const initial = brand.branding_primary_color ?? DEFAULT_COLOR
         setColor(initial)
         setColorInput(initial)
+        setQualiopi(brand.qualiopi_number ?? '')
+        setOdpc(brand.odpc_number ?? '')
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Erreur de chargement')
       } finally {
@@ -70,15 +78,34 @@ export default function TenantBrandingPage() {
       return
     }
 
+    const isTrainingOrg = data?.type === 'training_org'
+    if (isTrainingOrg) {
+      const q = qualiopi.trim()
+      if (q && !QUALIOPI_RE.test(q)) {
+        setError('Numéro Qualiopi invalide (1-20 caractères alphanumériques ou tiret)')
+        return
+      }
+      const o = odpc.trim()
+      if (o && !ODPC_RE.test(o)) {
+        setError('Numéro ODPC invalide (1-10 caractères alphanumériques)')
+        return
+      }
+    }
+
     setSaving(true)
     try {
+      const payload: Record<string, unknown> = {
+        branding_logo_url: logoUrl.trim() || null,
+        branding_primary_color: colorInput,
+      }
+      if (isTrainingOrg) {
+        payload.qualiopi_number = qualiopi.trim() || null
+        payload.odpc_number = odpc.trim() || null
+      }
       const res = await fetch('/api/tenant/branding', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          branding_logo_url: logoUrl.trim() || null,
-          branding_primary_color: colorInput,
-        }),
+        body: JSON.stringify(payload),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Erreur de sauvegarde')
@@ -190,6 +217,50 @@ export default function TenantBrandingPage() {
             </button>
           </div>
         </div>
+
+        {data?.type === 'training_org' && (
+          <div className="space-y-4 pt-4 border-t border-gray-200">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Identifiants de certification</h2>
+              <p className="text-sm text-gray-600">
+                Ces numéros apparaîtront sur les attestations délivrées par votre organisme.
+                Laissez vide si non applicable.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Numéro Qualiopi
+              </label>
+              <input
+                type="text"
+                value={qualiopi}
+                onChange={(e) => setQualiopi(e.target.value)}
+                maxLength={20}
+                placeholder="QUA000000"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--tenant-primary)]"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Jusqu'à 20 caractères (lettres, chiffres, tirets).
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Numéro ODPC
+              </label>
+              <input
+                type="text"
+                value={odpc}
+                onChange={(e) => setOdpc(e.target.value)}
+                maxLength={10}
+                placeholder="0000"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[var(--tenant-primary)]"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Jusqu'à 10 caractères alphanumériques.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
           {savedFlash && (
