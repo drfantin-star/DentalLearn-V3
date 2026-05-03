@@ -128,7 +128,9 @@ export default function DailyQuizButton({
               🎯 Quiz du jour
             </span>
             <p className="text-white font-bold text-sm mt-0.5 leading-tight">
-              Tester tes connaissances
+              Viens tester
+              <br />
+              tes connaissances
             </p>
           </div>
         </div>
