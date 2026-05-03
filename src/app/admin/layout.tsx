@@ -13,7 +13,8 @@ import {
   Shield,
   Beaker,
   ClipboardCheck,
-  MessageSquareWarning
+  MessageSquareWarning,
+  Building2
 } from 'lucide-react';
 
 export default function AdminLayout({
@@ -134,6 +135,15 @@ export default function AdminLayout({
               >
                 <ClipboardCheck className="w-5 h-5" />
                 Audits EPP
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/organizations"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <Building2 className="w-5 h-5" />
+                Organisations
               </Link>
             </li>
             <li>
