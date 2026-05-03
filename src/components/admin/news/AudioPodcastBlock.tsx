@@ -324,6 +324,15 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
     setErrors([])
   }
 
+  const handleCancelReview = () => {
+    // Annule la relecture : retour Cas A sans aucun appel API.
+    // L'épisode draft reste en BDD ; il sera archivé à la prochaine
+    // génération via l'endpoint /generate-script (archivage idempotent).
+    setEpisode(null)
+    setScriptDraft('')
+    setErrors([])
+  }
+
   const handleGenerateAudio = async () => {
     if (!episode) return
     setIsGeneratingAudio(true)
@@ -391,6 +400,7 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
         onSave={handleSaveScript}
         onValidate={handleValidateScript}
         onRegenerate={handleRegenerateScript}
+        onCancel={handleCancelReview}
         saving={isSavingScript}
         validating={isValidating}
       />
@@ -646,6 +656,7 @@ function CaseBReview({
   onSave,
   onValidate,
   onRegenerate,
+  onCancel,
   saving,
   validating,
 }: {
@@ -655,6 +666,7 @@ function CaseBReview({
   onSave: () => void
   onValidate: () => void
   onRegenerate: () => void
+  onCancel: () => void
   saving: boolean
   validating: boolean
 }) {
@@ -735,6 +747,14 @@ function CaseBReview({
           className={BTN_LINK}
         >
           🔄 Régénérer le script
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className={BTN_LINK}
+        >
+          Annuler
         </button>
       </div>
     </>
