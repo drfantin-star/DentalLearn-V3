@@ -102,6 +102,9 @@ export async function POST(
       )
     }
 
+    const editorial_notes =
+      typeof body.editorial_notes === 'string' ? body.editorial_notes : undefined
+
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
         { error: 'Clé API Anthropic manquante côté serveur' },
@@ -134,7 +137,7 @@ export async function POST(
 
     const { data: raw, error: rawError } = await adminSupabase
       .from('news_raw')
-      .select('title, authors, journal, published_at')
+      .select('title, authors, journal, published_at, abstract')
       .eq('id', synthesis.raw_id)
       .maybeSingle()
 
@@ -193,19 +196,25 @@ export async function POST(
     }
 
     // ----- 5. Appel Anthropic (fetch direct, pattern _shared/anthropic.ts) -----
-    const systemPrompt = buildScriptPrompt({
-      display_title: synthesis.display_title ?? 'Sans titre',
-      summary_fr: synthesis.summary_fr ?? '',
-      specialites_tags: Array.isArray(synthesis.themes) ? synthesis.themes : [],
-      niveau_preuve: synthesis.niveau_preuve ?? 'non précisé',
-      source_title: sourceTitle ?? 'titre inconnu',
-      source_authors: sourceAuthors,
-      source_year: sourceYear,
-      format,
-      narrator,
-      target_duration_min,
-      editorial_tone,
-    })
+    const abstract =
+      typeof raw.abstract === 'string' ? raw.abstract : undefined
+    const systemPrompt = buildScriptPrompt(
+      {
+        display_title: synthesis.display_title ?? 'Sans titre',
+        summary_fr: synthesis.summary_fr ?? '',
+        specialites_tags: Array.isArray(synthesis.themes) ? synthesis.themes : [],
+        niveau_preuve: synthesis.niveau_preuve ?? 'non précisé',
+        source_title: sourceTitle ?? 'titre inconnu',
+        source_authors: sourceAuthors,
+        source_year: sourceYear,
+        format,
+        narrator,
+        target_duration_min,
+        editorial_tone,
+      },
+      abstract,
+      editorial_notes,
+    )
 
     let scriptMd: string
     try {
@@ -242,6 +251,34 @@ export async function POST(
     const wordCount = countWords(scriptMd)
     const estimatedDurationMin = wordCount > 0 ? wordCount / 150 : 0
 
+    // Archivage défensif sur (type, week_iso) juste avant l'INSERT.
+    // L'archivage du step 4 ne couvre que les épisodes liés à la synthèse
+    // courante via news_episode_items. La contrainte unique
+    // news_episodes_type_week_uniq porte sur (type, week_iso) WHERE
+    // status <> 'archived' — un épisode orphelin (step 8 ayant échoué
+    // antérieurement) ou tout autre épisode actif partageant la clé
+    // bloquerait l'INSERT. On archive ici tout épisode actif partageant
+    // la clé du nouvel INSERT pour garantir que la contrainte unique est
+    // libérée avant le step suivant.
+    const currentWeek = getCurrentIsoWeek()
+    const { error: weekArchiveError } = await adminSupabase
+      .from('news_episodes')
+      .update({ status: 'archived' })
+      .eq('type', 'insight')
+      .eq('week_iso', currentWeek)
+      .neq('status', 'archived')
+
+    if (weekArchiveError) {
+      console.error(
+        'Erreur archivage défensif (type, week_iso):',
+        weekArchiveError,
+      )
+      return NextResponse.json(
+        { error: weekArchiveError.message },
+        { status: 500 },
+      )
+    }
+
     const { data: episode, error: insertError } = await adminSupabase
       .from('news_episodes')
       .insert({
@@ -253,7 +290,7 @@ export async function POST(
         target_duration_min,
         editorial_tone,
         status: 'draft',
-        week_iso: getCurrentIsoWeek(),
+        week_iso: currentWeek,
       })
       .select('id')
       .single()

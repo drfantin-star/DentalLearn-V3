@@ -99,6 +99,7 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
     target_duration_min: 5,
     editorial_tone: 'standard',
   })
+  const [editorialNotes, setEditorialNotes] = useState('')
   const [isGeneratingScript, setIsGeneratingScript] = useState(false)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
   const [isSavingScript, setIsSavingScript] = useState(false)
@@ -195,6 +196,7 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
                 : undefined,
             target_duration_min: scriptParams.target_duration_min,
             editorial_tone: scriptParams.editorial_tone,
+            editorial_notes: editorialNotes,
           }),
         },
       )
@@ -210,6 +212,7 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
       // L'endpoint renvoie episode_id + script_md mais pas l'objet complet.
       // On re-fetch pour avoir l'épisode au format BDD complet.
       await refreshEpisode()
+      setEditorialNotes('')
     } catch (e) {
       setErrors([
         e instanceof Error
@@ -321,6 +324,15 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
     setErrors([])
   }
 
+  const handleCancelReview = () => {
+    // Annule la relecture : retour Cas A sans aucun appel API.
+    // L'épisode draft reste en BDD ; il sera archivé à la prochaine
+    // génération via l'endpoint /generate-script (archivage idempotent).
+    setEpisode(null)
+    setScriptDraft('')
+    setErrors([])
+  }
+
   const handleGenerateAudio = async () => {
     if (!episode) return
     setIsGeneratingAudio(true)
@@ -373,6 +385,8 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
       <CaseAParametrage
         params={scriptParams}
         setParams={setScriptParams}
+        editorialNotes={editorialNotes}
+        setEditorialNotes={setEditorialNotes}
         onGenerate={handleGenerateScript}
         loading={isGeneratingScript}
       />
@@ -386,6 +400,7 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
         onSave={handleSaveScript}
         onValidate={handleValidateScript}
         onRegenerate={handleRegenerateScript}
+        onCancel={handleCancelReview}
         saving={isSavingScript}
         validating={isValidating}
       />
@@ -451,6 +466,8 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
 function CaseAParametrage({
   params,
   setParams,
+  editorialNotes,
+  setEditorialNotes,
   onGenerate,
   loading,
 }: {
@@ -468,6 +485,8 @@ function CaseAParametrage({
       editorial_tone: EditorialTone
     },
   ) => void
+  editorialNotes: string
+  setEditorialNotes: (notes: string) => void
   onGenerate: () => void
   loading: boolean
 }) {
@@ -587,6 +606,26 @@ function CaseAParametrage({
         </select>
       </div>
 
+      {/* Notes éditorial (optionnel) */}
+      <div className="mb-5">
+        <label className={LABEL} htmlFor="audio-editorial-notes">
+          Notes éditorial
+        </label>
+        <p className="text-xs text-gray-500 mb-1.5">
+          Facultatif — points à développer, angle éditorial spécifique,
+          données à mettre en avant
+        </p>
+        <textarea
+          id="audio-editorial-notes"
+          value={editorialNotes}
+          onChange={(e) => setEditorialNotes(e.target.value)}
+          disabled={loading}
+          rows={4}
+          placeholder="Points à développer, angle éditorial, données à mettre en avant…"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50 placeholder:text-gray-400"
+        />
+      </div>
+
       <button
         type="button"
         onClick={onGenerate}
@@ -617,6 +656,7 @@ function CaseBReview({
   onSave,
   onValidate,
   onRegenerate,
+  onCancel,
   saving,
   validating,
 }: {
@@ -626,6 +666,7 @@ function CaseBReview({
   onSave: () => void
   onValidate: () => void
   onRegenerate: () => void
+  onCancel: () => void
   saving: boolean
   validating: boolean
 }) {
@@ -706,6 +747,14 @@ function CaseBReview({
           className={BTN_LINK}
         >
           🔄 Régénérer le script
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={busy}
+          className={BTN_LINK}
+        >
+          Annuler
         </button>
       </div>
     </>
