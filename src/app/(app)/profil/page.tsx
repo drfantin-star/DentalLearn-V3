@@ -5,14 +5,22 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, BookOpen,
-  Loader2, Settings, Award
+  Loader2, Settings, Award, Briefcase, Building2,
 } from 'lucide-react'
 import StatsCards from '@/components/home/StatsCards'
 import DemarcheCard from '@/components/home/DemarcheCard'
 import RadarCP from '@/components/profile/RadarCP'
+import CreateCabinetModal from '@/components/auth/CreateCabinetModal'
 import { useDemarches } from '@/lib/hooks/useDemarches'
 import { useUser } from '@/lib/hooks/useUser'
 import Link from 'next/link'
+import type { IntraRole } from '@/lib/auth/rbac'
+
+const TENANT_ADMIN_ROLES: ReadonlySet<IntraRole> = new Set<IntraRole>([
+  'titulaire',
+  'admin_rh',
+  'admin_of',
+])
 
 export default function ProfilPage() {
   const router = useRouter()
@@ -23,6 +31,9 @@ export default function ProfilPage() {
   const [loading, setLoading] = useState(true)
   const [actionsParAxe, setActionsParAxe] = useState({ axe1: 0, axe2: 0, axe3: 0, axe4: 0 })
   const [ordreDate, setOrdreDate] = useState<string | null>(null)
+  const [intraRole, setIntraRole] = useState<IntraRole | null>(null)
+  const [orgless, setOrgless] = useState(false)
+  const [showCabinetModal, setShowCabinetModal] = useState(false)
 
   const demarchesScrollRef = useRef<HTMLDivElement>(null)
   const scrollLeft = () => demarchesScrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
@@ -48,10 +59,43 @@ export default function ProfilPage() {
         axe3: cp.axe3 || 0, axe4: cp.axe4 || 0
       })
 
+      // Lecture intra_role + statut orgless via API serveur (cache mémoire RBAC).
+      try {
+        const res = await fetch('/api/user/intra-role')
+        if (res.ok) {
+          const json = await res.json()
+          setIntraRole((json.intra_role as IntraRole | null) ?? null)
+          setOrgless(Boolean(json.orgless))
+        }
+      } catch {
+        // Fail silencieux : carte upgrade simplement masquée si on ne sait pas.
+      }
+
       setLoading(false)
     }
     load()
   }, [])
+
+  const showTenantLink = intraRole && TENANT_ADMIN_ROLES.has(intraRole)
+  const showUpgradeCard = !loading && orgless && !intraRole
+
+  const handleCabinetCreated = async () => {
+    setShowCabinetModal(false)
+    // Refresh session pour propager intra_role + cache RBAC côté serveur
+    await supabase.auth.refreshSession()
+    router.refresh()
+    // Re-fetch local pour mise à jour immédiate sans attendre un rerender SSR
+    try {
+      const res = await fetch('/api/user/intra-role')
+      if (res.ok) {
+        const json = await res.json()
+        setIntraRole((json.intra_role as IntraRole | null) ?? null)
+        setOrgless(Boolean(json.orgless))
+      }
+    } catch {
+      // Idem : fail silencieux
+    }
+  }
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-24">
@@ -64,15 +108,26 @@ export default function ProfilPage() {
 
       {/* Header */}
       <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold text-white/80">Mon espace personnel</p>
-          <Link
-            href="/profil/edit"
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-colors"
-          >
-            <Settings className="w-4 h-4 text-white" />
-            <span className="text-xs font-semibold text-white">Éditer mon profil</span>
-          </Link>
+          <div className="flex items-center gap-2">
+            {showTenantLink && (
+              <Link
+                href="/tenant/admin"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-colors"
+              >
+                <Briefcase className="w-4 h-4 text-white" />
+                <span className="text-xs font-semibold text-white">Mon cabinet</span>
+              </Link>
+            )}
+            <Link
+              href="/profil/edit"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-colors"
+            >
+              <Settings className="w-4 h-4 text-white" />
+              <span className="text-xs font-semibold text-white">Éditer mon profil</span>
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -84,6 +139,31 @@ export default function ProfilPage() {
           currentStreak={streak?.current_streak || 0}
           refreshTrigger={refreshTrigger}
         />
+
+        {/* Carte upgrade solo → cabinet (uniquement si orgless) */}
+        {showUpgradeCard && (
+          <button
+            type="button"
+            onClick={() => setShowCabinetModal(true)}
+            className="w-full p-4 text-left hover:border-[#2D1B96] transition-colors"
+            style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#2D1B96]/15 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-[#8B5CF6]" />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-[#e5e5e5] text-sm">
+                  Créer mon cabinet
+                </div>
+                <div className="text-xs text-[#6b7280]">
+                  Devenez titulaire et invitez vos collaborateurs.
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-[#6b7280]" />
+            </div>
+          </button>
+        )}
 
         {/* Mes démarches en cours */}
         <section>
@@ -146,6 +226,13 @@ export default function ProfilPage() {
         </Link>
 
       </div>
+
+      {showCabinetModal && (
+        <CreateCabinetModal
+          onClose={() => setShowCabinetModal(false)}
+          onCreated={handleCabinetCreated}
+        />
+      )}
     </div>
   )
 }
