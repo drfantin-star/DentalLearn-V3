@@ -442,6 +442,7 @@ interface MetaFields {
   url: string
   doi: string
   journal: string
+  authors: string
   abstract: string
   spe_tags: string[]
 }
@@ -473,6 +474,7 @@ const META_INITIAL: MetaFields = {
   url: '',
   doi: '',
   journal: '',
+  authors: '',
   abstract: '',
   spe_tags: [],
 }
@@ -595,6 +597,7 @@ function EnrichedStepper() {
         url: meta.url.trim() || null,
         doi: meta.doi.trim() || null,
         journal: meta.journal.trim() || null,
+        authors: meta.authors.trim() || null,
         abstract: meta.abstract.trim() || null,
         spe_tags: meta.spe_tags,
         display_title: synthesis.display_title.trim(),
@@ -787,6 +790,12 @@ function Step1Meta({
         value={meta.journal}
         onChange={(v) => setField('journal', v)}
         placeholder="J Dent Res"
+      />
+      <FieldText
+        label="Auteurs (optionnel)"
+        value={meta.authors}
+        onChange={(v) => setField('authors', v)}
+        placeholder="Smith J, Dupont A, Martin B..."
       />
       <FieldTextarea
         label="Abstract (optionnel)"

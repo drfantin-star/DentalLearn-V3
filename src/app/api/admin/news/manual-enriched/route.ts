@@ -87,6 +87,10 @@ export async function POST(request: Request) {
       typeof body.journal === 'string' && body.journal.trim()
         ? body.journal.trim()
         : null
+    const authors =
+      typeof body.authors === 'string' && body.authors.trim()
+        ? body.authors.trim()
+        : null
     const abstract =
       typeof body.abstract === 'string' && body.abstract.trim()
         ? body.abstract.trim()
@@ -411,6 +415,7 @@ export async function POST(request: Request) {
         p_questions: validQuestions,
         p_doi: doi,
         p_journal: journal,
+        p_authors: authors,
         p_abstract: abstract,
         p_url: url,
         p_spe_tags: spe_tags,
