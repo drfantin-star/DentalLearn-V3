@@ -145,3 +145,66 @@ export async function PATCH(
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }
+
+// DELETE: suppression d'un épisode brouillon (workflow Cas B "Supprimer le brouillon").
+//
+// Règles :
+//   - status courant ∈ {archived, published} → 409 (suppression interdite,
+//     même cohérence que PATCH)
+//   - statuts {draft, ready} → DELETE autorisé
+//   - retourne { ok: true } en cas de succès
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id: episodeId } = await params
+
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+    if (!(await isSuperAdmin(session.user.id))) {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
+    }
+
+    const adminSupabase = createAdminClient()
+
+    const { data: episode, error: fetchError } = await adminSupabase
+      .from('news_episodes')
+      .select('id, status')
+      .eq('id', episodeId)
+      .maybeSingle()
+
+    if (fetchError) {
+      console.error('Erreur lecture épisode:', fetchError)
+      return NextResponse.json({ error: fetchError.message }, { status: 500 })
+    }
+    if (!episode) {
+      return NextResponse.json({ error: 'Épisode introuvable' }, { status: 404 })
+    }
+
+    if (TERMINAL_STATUSES.has(episode.status)) {
+      return NextResponse.json(
+        { error: `Suppression interdite : épisode en statut '${episode.status}'` },
+        { status: 409 },
+      )
+    }
+
+    const { error: deleteError } = await adminSupabase
+      .from('news_episodes')
+      .delete()
+      .eq('id', episodeId)
+
+    if (deleteError) {
+      console.error('Erreur DELETE news_episodes:', deleteError)
+      return NextResponse.json({ error: deleteError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('Erreur API admin/news/episodes/[id] DELETE:', error)
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+  }
+}

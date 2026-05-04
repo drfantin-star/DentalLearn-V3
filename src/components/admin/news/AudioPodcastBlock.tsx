@@ -104,6 +104,7 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
   const [isSavingScript, setIsSavingScript] = useState(false)
   const [isValidating, setIsValidating] = useState(false)
+  const [isDeletingDraft, setIsDeletingDraft] = useState(false)
   const [scriptDraft, setScriptDraft] = useState('')
   const [errors, setErrors] = useState<string[]>([])
 
@@ -333,6 +334,31 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
     setErrors([])
   }
 
+  const handleDeleteDraft = async () => {
+    if (!episode) return
+    if (!window.confirm('Supprimer définitivement ce brouillon ?')) return
+    setIsDeletingDraft(true)
+    setErrors([])
+    try {
+      const res = await fetch(`/api/admin/news/episodes/${episode.id}`, {
+        method: 'DELETE',
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setErrors([json.error || `Erreur ${res.status}`])
+        return
+      }
+      setEpisode(null)
+      setScriptDraft('')
+    } catch (e) {
+      setErrors([
+        e instanceof Error ? e.message : 'Erreur de suppression',
+      ])
+    } finally {
+      setIsDeletingDraft(false)
+    }
+  }
+
   const handleGenerateAudio = async () => {
     if (!episode) return
     setIsGeneratingAudio(true)
@@ -401,8 +427,10 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
         onValidate={handleValidateScript}
         onRegenerate={handleRegenerateScript}
         onCancel={handleCancelReview}
+        onDeleteDraft={handleDeleteDraft}
         saving={isSavingScript}
         validating={isValidating}
+        deleting={isDeletingDraft}
       />
     )
   } else if (status === 'ready') {
@@ -657,8 +685,10 @@ function CaseBReview({
   onValidate,
   onRegenerate,
   onCancel,
+  onDeleteDraft,
   saving,
   validating,
+  deleting,
 }: {
   episode: NewsEpisode
   scriptDraft: string
@@ -667,14 +697,16 @@ function CaseBReview({
   onValidate: () => void
   onRegenerate: () => void
   onCancel: () => void
+  onDeleteDraft: () => void
   saving: boolean
   validating: boolean
+  deleting: boolean
 }) {
   const wordCount = countWords(scriptDraft)
   const estimatedMin = Math.round(wordCount / 150)
   const formatLabel = FORMAT_LABELS[episode.format] ?? episode.format
   const targetMin = episode.target_duration_min ?? null
-  const busy = saving || validating
+  const busy = saving || validating || deleting
 
   return (
     <>
@@ -755,6 +787,21 @@ function CaseBReview({
           className={BTN_LINK}
         >
           Annuler
+        </button>
+        <button
+          type="button"
+          onClick={onDeleteDraft}
+          disabled={busy}
+          className="inline-flex items-center gap-1 text-sm text-red-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline"
+        >
+          {deleting ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Suppression…
+            </>
+          ) : (
+            <>🗑️ Supprimer le brouillon</>
+          )}
         </button>
       </div>
     </>
