@@ -437,6 +437,13 @@ Index : `formations_owner_org_id_idx` sur `(owner_org_id)` (Sprint 1 T3).
 | course_duration_seconds | integer | YES | |
 | subtitles_url | text | YES | |
 | infographic_url | text | YES | |
+| timeline_url | text | YES | |
+| timeline_published | boolean | NO | false |
+
+> POC visualisation audio (T1, mai 2026) : `timeline_url` pointe vers le JSON
+> `timeline.json` du bucket `audio-timelines` (transcript karaoké + scènes
+> whiteboard). `timeline_published=TRUE` AND `timeline_url IS NOT NULL` → rendu
+> enrichi affiché côté user.
 
 ---
 
@@ -960,6 +967,7 @@ d'origine et est interrogeable via le MCP Supabase (`list_tables verbose=true`).
 - `news_raw` — articles bruts ingérés (dédoublonnés)
 - `news_scored` — scoring LLM Haiku
 - `news_syntheses` — synthèses Sonnet + tagging + embedding
+  - POC visualisation audio (T1, mai 2026) : 2 colonnes additives `timeline_url text NULL` + `timeline_published boolean NOT NULL DEFAULT false` (sémantique identique à `sequences.timeline_url` / `sequences.timeline_published`)
 - `news_episodes` — épisodes podcast publiables
 - `news_episode_items` — liaison N:N épisodes ↔ synthèses
 - `news_references` — références bibliographiques par épisode (Qualiopi)
@@ -973,7 +981,25 @@ d'origine et est interrogeable via le MCP Supabase (`list_tables verbose=true`).
 
 ---
 
+## Storage buckets
+
+Buckets Supabase Storage utilisés par l'application. RLS appliqué sur
+`storage.objects` via 4 policies par bucket (SELECT public, INSERT/UPDATE/DELETE
+service_role) — voir migrations dédiées pour le détail.
+
+| Bucket | Public read | Write | MIME autorisés | Taille max | Migration | Usage |
+|---|---|---|---|---|---|---|
+| `news-audio` | ✅ | service_role | `audio/mpeg` | 50 MB | `20260501_news_audio_bucket.sql` | MP3 podcasts news (ElevenLabs text-to-dialogue) |
+| `audio-timelines` | ✅ | service_role | `application/json` | 5 MB | `20260504a_poc_timelines.sql` | Timelines enrichies (transcript karaoké + scènes whiteboard) — POC visualisation audio T1 |
+
+> Les autres buckets historiques (`formations`, `attestations`, etc.) ne sont
+> pas encore documentés ici — leur RLS est interrogeable via le dashboard
+> Supabase ou `pg_policies WHERE tablename='objects'`.
+
+---
+
 *Généré automatiquement depuis Supabase le 5 avril 2026*
 *Mis à jour le 3 mai 2026 — clôture Sprint 1 (T1 → T7) + ticket T8 (doc finale)*
+*Mis à jour le 4 mai 2026 — POC visualisation audio T1 (colonnes `timeline_url`/`timeline_published` sur `sequences` et `news_syntheses` + bucket `audio-timelines`)*
 *À commiter dans le repo : `drfantin-star/DentalLearn-V3`*
 *Chemin actuel : `docs/prototypes/DATABASE_SCHEMA.md`*
