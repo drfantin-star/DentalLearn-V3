@@ -1,0 +1,1285 @@
+# DentalLearn — POC Visualisation Audio
+## Spécification technique : enrichissement visuel synchronisé des podcasts (v1.0)
+
+**Version** : 1.0
+**Date** : 2 mai 2026
+**Porteur** : Dr Julie Fantin — Dentalschool / EROJU SAS
+**Destinataire technique** : Claude Code
+**Sprint cible** : POC — 3 semaines après audit code Sprint 1+2 (à séquencer après livraison Sprints 1-2)
+
+**Documents associés**
+- `MATRICE_ROLES_DENTALLEARN_V1.md` (V1.1) — référentiel d'autorisation multi-tenant
+- `DATABASE_SCHEMA.md` — schéma Supabase (45 tables)
+- `handoff_claude_code_sprint1_auth_rbac_v1_0.md` — fondations RBAC
+- `handoff_claude_code_sprint2_espace_formateur_v1_0.md` — espace formateur
+- `generate_audiocopie.py` — copie de référence du script Python actuel (lue 02/05/2026)
+
+**Journal des versions**
+- v1.0 (02/05/2026) — Première version. POC ciblé "1 séquence formation pilote + 1 synthèse news pilote". Découpage 9 tickets (T1→T9). Décisions Dr Fantin intégrées : niveau 1 + 2A uniquement (Excalidraw reporté), news déterministe, timestamps ElevenLabs natifs.
+
+---
+
+## 0. Objectif et périmètre POC
+
+### 0.1 Objectif
+
+Valider sur deux contenus pilotes que DentalLearn peut **enrichir visuellement** ses podcasts (formations + news) sans dépendre du format MP4, via une combinaison de transcription synchronisée mot-à-mot et de scènes structurées générées automatiquement depuis le script ou les champs `news_syntheses` existants.
+
+À la fin des 3 semaines, le POC doit produire :
+
+- Une page démo `/demo/enriched-player/[type]/[id]` (non publique) montrant le rendu réel sur **1 séquence formation** (recommandation : Communication et Écoute Active S2, déjà en prod) et **1 synthèse news** (au choix dans `news_syntheses` `status='active'`).
+- Un compte-rendu chiffré (% scènes LLM utilisables, qualité timestamps mesurée à l'oreille, satisfaction utilisateur sur 3-5 testeurs) qui décide go/no-go pour le déploiement complet (Sprint 4 ultérieur).
+- Une bibliothèque de 6 templates whiteboard structurés réutilisables.
+
+### 0.2 Hors périmètre POC
+
+- Whiteboard "main levée" type Excalidraw (niveau 2B) — reporté Sprint 5+ si besoin
+- Animations Lottie/Rive (niveau 4) — reporté
+- Schémas SVG statiques anatomiques (niveau 3) — reporté
+- Édition collaborative des timelines par les formateurs — reporté (espace formateur Sprint 2 livre l'auth, l'édition viendra ensuite)
+- Export vidéo MP4 / SCORM — explicitement écarté (cf. analyse stratégique)
+- Mobile responsive complet — V1 desktop d'abord, mobile en best-effort
+
+### 0.3 Décisions arbitrées par Dr Fantin (consolidées)
+
+| # | Sujet | Décision |
+|---|---|---|
+| D1 | Niveaux activés POC | Niveau 1 (karaoké + concepts) + Niveau 2A (whiteboard structuré HTML/CSS) uniquement |
+| D2 | News | Approche déterministe pure (pas de timestamps), défilement temporisé sur les champs `news_syntheses` existants |
+| D3 | Formations | Word-timestamps ElevenLabs natifs (endpoint `convert_with_timestamps`) |
+| D4 | Style whiteboard | Cards + flèches HTML/CSS, pas de "main qui dessine" visible |
+| D5 | Bibliothèque | 6 templates pré-définis (flowchart, grid, comparison, causal, figures, timeline) |
+| D6 | Production scènes | Auto via agent LLM (Claude Sonnet) + validation humaine légère post-génération |
+| D7 | Stack | Réutilisation framer-motion (déjà installé) — pas de nouvelle dépendance npm |
+
+---
+
+## 1. Architecture technique
+
+### 1.1 Vue d'ensemble
+
+Le POC introduit **deux composants frontend nouveaux** et **une route API serveur** pour l'extraction LLM. Aucune modification du `AudioContext` global existant — on consomme `state.currentTime` en lecture.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Pipeline de génération                    │
+│                                                              │
+│  Script Sophie/Martin (existant)                             │
+│         ↓                                                    │
+│  generate_audio.py (modifié)                                 │
+│    → MP3 (existant)                                          │
+│    → timeline.json (NOUVEAU : transcript karaoké)            │
+│         ↓                                                    │
+│  Agent LLM extraction structurelle (NOUVEAU)                 │
+│    → enrichissement timeline.json avec scenes[]              │
+│         ↓                                                    │
+│  Page admin /admin/timelines/[id] (NOUVEAU — validation)     │
+│    → timeline.json finale                                    │
+│         ↓                                                    │
+│  Stockage Supabase Storage bucket audio-timelines/           │
+│    + référence dans sequences.timeline_url                   │
+│      ou news_syntheses.timeline_url                          │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                    Rendu côté user                           │
+│                                                              │
+│  AudioContext (existant, INCHANGÉ)                           │
+│    expose state.currentTime, state.audioUrl                  │
+│         ↓                                                    │
+│  <EnrichedAudioPlayer> (NOUVEAU — wrapper)                   │
+│    │                                                         │
+│    ├─ <AudioPlayer> (existant)                               │
+│    │                                                         │
+│    └─ <EnrichedView> (NOUVEAU)                               │
+│         charge timeline.json                                 │
+│         lit currentTime                                      │
+│         ↓                                                    │
+│         ├─ <KaraokeTranscript> (niveau 1)                    │
+│         ├─ <ConceptBadges> (niveau 1)                        │
+│         └─ <StructuredWhiteboard> (niveau 2A)                │
+│                                                              │
+│  POUR LES NEWS (architecture distincte) :                    │
+│  <NewsVisualSequence> (NOUVEAU, autonome)                    │
+│    lit news_syntheses (champs structurés)                    │
+│    défilement temporisé indépendant de l'audio               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 1.2 Pourquoi cette architecture
+
+- **Aucune modification du `AudioContext`** : le DPC tracking existant (course_watch_logs, anti-skip, playback_events) reste intact. C'est crucial pour la conformité réglementaire et pour ne pas casser la prod.
+- **`<EnrichedAudioPlayer>` wrap `<AudioPlayer>`** : on conserve l'API actuelle `playAudio()`, `pauseAudio()`, etc. Le composant utilisateur change juste d'enveloppe sans perturber les pages existantes.
+- **News = composant autonome** : `AudioQueuePlayer` est déjà indépendant du context, on ne touche pas. `<NewsVisualSequence>` défile en autonome avec son propre timer.
+- **Stockage Supabase Storage** : pattern déjà éprouvé pour les audios news (bucket `news-audio`). On ajoute un bucket `audio-timelines/` symétrique.
+
+### 1.3 Stack confirmée
+
+- **Frontend** : Next.js 14 + React 18 + TypeScript 5.3 (existant)
+- **Animation** : framer-motion 10.18 (déjà installé, pas de nouvelle dep)
+- **Styling** : Tailwind 3.4 (existant)
+- **LLM** : Claude Sonnet 4.6 via Anthropic API (déjà configuré pour news)
+- **TTS + timestamps** : ElevenLabs Eleven v3 endpoint `text_to_dialogue.convert_with_timestamps`
+- **Stockage** : Supabase Storage bucket `audio-timelines/` (à créer)
+- **BDD** : ajout colonnes `timeline_url` + métadonnées (migration additive)
+
+---
+
+## 2. Format JSON timeline universel
+
+### 2.1 Schéma TypeScript
+
+Format unique pour formations ET news (champs optionnels selon le type).
+
+```typescript
+interface Timeline {
+  // Métadonnées générales
+  schema_version: '1.0';
+  source_type: 'formation_sequence' | 'news_synthesis';
+  source_id: string;                    // sequence.id ou news_syntheses.id
+  audio_url: string;
+  duration_sec: number;
+  generated_at: string;                 // ISO 8601
+  generator: 'auto_python_pipeline' | 'auto_llm_extraction' | 'manual_admin_edit';
+
+  // Niveau 1 — transcript (FORMATIONS uniquement, NULL pour news)
+  transcript?: {
+    segments: Array<{
+      start_sec: number;
+      end_sec: number;
+      speaker: 'sophie' | 'martin';
+      text: string;
+      words: Array<{
+        start_sec: number;
+        end_sec: number;
+        text: string;
+      }>;
+    }>;
+  };
+
+  // Niveau 1 — concepts surimprimés (formations + news)
+  concepts?: Array<{
+    at_sec?: number;                    // formations : timestamp précis
+    at_word_index?: number;             // formations : index mot dans transcript.segments[].words
+    term: string;                       // ex : "syndrome de la dent fêlée"
+    definition: string;                 // ex : "Fracture incomplète d'une dent vivante..."
+    source?: string;                    // optionnel : "Wikipédia" / "Larousse Médical" / "généré"
+  }>;
+
+  // Niveau 2A — scènes whiteboard structurées
+  scenes: Array<Scene>;
+
+  // Chapitrage (optionnel, généré automatiquement depuis les titres de scenes)
+  chapters?: Array<{
+    at_sec: number;
+    title: string;
+  }>;
+}
+
+// Scène = un template + son contenu + son timing
+type Scene = {
+  id: string;                           // uuid stable, permet édition
+  title: string;                        // 3-6 mots, sentence case
+  template: SceneTemplate;
+  trigger_at_sec: number;               // formations : timestamp précis ; news : ignoré (défilement auto)
+  display_duration_sec: number;         // formations : durée d'affichage avant masquage ; news : durée fixe avant scène suivante
+  pedagogical_intent?: string;          // pour debug/édition humaine, pas affiché user
+};
+
+type SceneTemplate =
+  | { kind: 'flowchart';  steps: Array<CardContent>;       orientation: 'horizontal' | 'vertical' }
+  | { kind: 'grid';       cards: Array<CardContent>;       cols: 2 | 3 | 4 }
+  | { kind: 'comparison'; left: CardContent;               right: CardContent }
+  | { kind: 'causal';     nodes: Array<CardContent>;       edges: Array<{ from: string; to: string; label?: string }> }
+  | { kind: 'figures';    items: Array<{ value: string; label: string; emphasis?: boolean }> }
+  | { kind: 'timeline';   events: Array<{ at_label: string; text: string }> };
+
+interface CardContent {
+  id: string;                           // unique dans la scène, sert pour edges
+  text: string;                         // ≤60 caractères (enforcé)
+  subtitle?: string;                    // ≤40 caractères
+  variant?: 'default' | 'highlight' | 'warning' | 'success';
+}
+```
+
+### 2.2 Validation Zod
+
+Le schéma sera implémenté comme `TimelineSchema` exporté depuis `src/lib/timeline/schema.ts`. Toute ingestion (depuis pipeline Python ou agent LLM ou édition admin) passe par `TimelineSchema.parse()` avant écriture en Storage.
+
+### 2.3 Exemple complet de timeline (formation)
+
+```json
+{
+  "schema_version": "1.0",
+  "source_type": "formation_sequence",
+  "source_id": "abc-123-uuid-sequence-id",
+  "audio_url": "https://.../felures-s2.mp3",
+  "duration_sec": 612,
+  "generated_at": "2026-05-15T10:23:00Z",
+  "generator": "auto_llm_extraction",
+  "transcript": {
+    "segments": [
+      {
+        "start_sec": 0.0,
+        "end_sec": 6.8,
+        "speaker": "sophie",
+        "text": "Bonjour Martin, on parle aujourd'hui du syndrome de la dent fêlée.",
+        "words": [
+          { "start_sec": 0.0, "end_sec": 0.4, "text": "Bonjour" },
+          { "start_sec": 0.5, "end_sec": 0.9, "text": "Martin," }
+        ]
+      }
+    ]
+  },
+  "concepts": [
+    {
+      "at_sec": 5.5,
+      "term": "syndrome de la dent fêlée",
+      "definition": "Fracture incomplète d'une dent vivante, douleur à la mastication. Diagnostic clinique difficile.",
+      "source": "généré"
+    }
+  ],
+  "scenes": [
+    {
+      "id": "scene-1",
+      "title": "Arbre diagnostic dent fêlée",
+      "template": {
+        "kind": "flowchart",
+        "orientation": "horizontal",
+        "steps": [
+          { "id": "s1", "text": "Douleur à la mastication", "subtitle": "Signe d'appel" },
+          { "id": "s2", "text": "Test de morsure positif", "subtitle": "Examen" },
+          { "id": "s3", "text": "Imagerie CBCT si doute", "subtitle": "Confirmation" },
+          { "id": "s4", "text": "Syndrome dent fêlée", "subtitle": "Diagnostic", "variant": "highlight" }
+        ]
+      },
+      "trigger_at_sec": 134.5,
+      "display_duration_sec": 30,
+      "pedagogical_intent": "Visualiser l'enchaînement diagnostic à un moment clé du discours"
+    }
+  ]
+}
+```
+
+### 2.4 Exemple timeline news (déterministe, pas de transcript)
+
+```json
+{
+  "schema_version": "1.0",
+  "source_type": "news_synthesis",
+  "source_id": "xyz-789-news-syntheses-id",
+  "audio_url": "https://.../news-2026-w19-felures-update.mp3",
+  "duration_sec": 320,
+  "generated_at": "2026-05-15T11:00:00Z",
+  "generator": "auto_python_pipeline",
+  "scenes": [
+    {
+      "id": "scene-1",
+      "title": "Spécialités concernées",
+      "template": {
+        "kind": "grid",
+        "cols": 3,
+        "cards": [
+          { "id": "c1", "text": "Endodontie" },
+          { "id": "c2", "text": "Restauratrice" },
+          { "id": "c3", "text": "Prothèse" }
+        ]
+      },
+      "trigger_at_sec": 0,
+      "display_duration_sec": 8
+    },
+    {
+      "id": "scene-2",
+      "title": "Chiffres clés",
+      "template": {
+        "kind": "figures",
+        "items": [
+          { "value": "67%", "label": "réduction du risque", "emphasis": true },
+          { "value": "n=412", "label": "patients étudiés" },
+          { "value": "5 ans", "label": "suivi moyen" }
+        ]
+      },
+      "trigger_at_sec": 0,
+      "display_duration_sec": 12
+    }
+  ]
+}
+```
+
+---
+
+## 3. Modifications du pipeline Python `generate_audio.py`
+
+### 3.1 Constantes à modifier
+
+```python
+# Limite de caractères par requête API
+# AVANT : MAX_CHARS = 4500
+# APRÈS :
+MAX_CHARS_NO_TIMESTAMPS = 4500          # mode legacy conservé
+MAX_CHARS_WITH_TIMESTAMPS = 1900        # marge sous limite 2000 du with-timestamps endpoint
+
+# Mode de génération (CLI flag ou variable d'environnement)
+WITH_TIMESTAMPS = True                  # bascule POC
+```
+
+### 3.2 Nouvelle fonction `generate_chunk_with_timestamps`
+
+```python
+def generate_chunk_with_timestamps(client, chunk, chunk_index, total_chunks):
+    """
+    Variante de generate_chunk qui retourne (audio_bytes, alignment_data).
+    alignment_data : dict avec characters[], character_start_times_seconds[],
+                     character_end_times_seconds[]
+    """
+    chars = sum(len(item["text"]) for item in chunk)
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            if total_chunks > 1:
+                print(f"   → Partie {chunk_index + 1}/{total_chunks} ({chars} car.)...", end="")
+                if attempt > 1:
+                    print(f" (tentative {attempt}/{MAX_RETRIES})", end="")
+                print()
+
+            # NOUVEAU : endpoint with-timestamps
+            response = client.text_to_dialogue.convert_with_timestamps(
+                inputs=chunk,
+                settings={"speed": SPEED},
+            )
+
+            # Format de réponse : objet contenant audio_base64 + alignment
+            audio_bytes = base64.b64decode(response.audio_base64)
+            alignment = {
+                "characters": response.alignment.characters,
+                "character_start_times_seconds": response.alignment.character_start_times_seconds,
+                "character_end_times_seconds": response.alignment.character_end_times_seconds,
+            }
+
+            if total_chunks > 1:
+                print(f"   ✅ Partie {chunk_index + 1} OK")
+            return audio_bytes, alignment
+
+        except Exception as e:
+            error_msg = str(e)
+            if attempt < MAX_RETRIES:
+                print(f"\n   ⚠️  Erreur réseau partie {chunk_index + 1}: {error_msg[:80]}...")
+                print(f"   ⏳ Nouvelle tentative dans {RETRY_DELAY}s...")
+                time.sleep(RETRY_DELAY)
+            else:
+                print(f"\n   ❌ Échec partie {chunk_index + 1} après {MAX_RETRIES} tentatives")
+                raise
+```
+
+⚠️ **À confirmer en testant l'API réelle** : la structure exacte de l'objet `response` (camelCase vs snake_case, présence du champ `normalized_alignment` qui peut être plus propre que `alignment`). Premier test à faire dans T2.
+
+### 3.3 Helper concat alignment
+
+```python
+def merge_alignments_with_offset(chunk_alignments, chunk_durations_sec):
+    """
+    Concatène les alignments de tous les chunks en offsetant les timestamps.
+
+    chunk_alignments : list de dicts (1 par chunk)
+    chunk_durations_sec : list de durées en secondes (1 par chunk)
+
+    Retourne un dict aligné sur l'audio total concaténé.
+    """
+    merged = {
+        "characters": [],
+        "character_start_times_seconds": [],
+        "character_end_times_seconds": [],
+    }
+
+    cumulative_offset = 0.0
+    for alignment, duration in zip(chunk_alignments, chunk_durations_sec):
+        merged["characters"].extend(alignment["characters"])
+        merged["character_start_times_seconds"].extend(
+            t + cumulative_offset for t in alignment["character_start_times_seconds"]
+        )
+        merged["character_end_times_seconds"].extend(
+            t + cumulative_offset for t in alignment["character_end_times_seconds"]
+        )
+        cumulative_offset += duration
+
+    return merged
+
+
+def chunk_duration_from_alignment(alignment):
+    """Dérive la durée d'un chunk depuis son alignment (dernier timestamp end)."""
+    if not alignment["character_end_times_seconds"]:
+        return 0.0
+    return alignment["character_end_times_seconds"][-1]
+```
+
+### 3.4 Helper words depuis characters
+
+```python
+def characters_to_words(merged_alignment, original_script_text):
+    """
+    Regroupe les caractères en mots par split sur espace + ponctuation.
+    Retourne une liste de words avec start/end timestamps.
+    """
+    words = []
+    current_word_chars = []
+    current_word_start = None
+
+    for i, char in enumerate(merged_alignment["characters"]):
+        char_start = merged_alignment["character_start_times_seconds"][i]
+        char_end = merged_alignment["character_end_times_seconds"][i]
+
+        if char in (" ", "\n", "\t"):
+            # Fin de mot
+            if current_word_chars:
+                words.append({
+                    "text": "".join(current_word_chars),
+                    "start_sec": current_word_start,
+                    "end_sec": prev_char_end,
+                })
+                current_word_chars = []
+                current_word_start = None
+        else:
+            if not current_word_chars:
+                current_word_start = char_start
+            current_word_chars.append(char)
+            prev_char_end = char_end
+
+    # Dernier mot
+    if current_word_chars:
+        words.append({
+            "text": "".join(current_word_chars),
+            "start_sec": current_word_start,
+            "end_sec": prev_char_end,
+        })
+
+    return words
+```
+
+### 3.5 Sortie finale
+
+Le script génère désormais **2 fichiers** côte à côte :
+- `sequence_XX_titre.mp3` (existant, inchangé)
+- `sequence_XX_titre.timeline.json` (nouveau, contient transcript words + segments + concepts vide pour LLM)
+
+Le fichier timeline est ensuite uploadé manuellement (V1) ou via webhook (V2) vers Supabase Storage.
+
+### 3.6 Diff résumé du script
+
+| Modification | Nature | Lignes impactées (approx) |
+|---|---|---|
+| Import `base64` + variables `MAX_CHARS_WITH_TIMESTAMPS`, `WITH_TIMESTAMPS` | Additive | +5 |
+| Nouvelle fonction `generate_chunk_with_timestamps` | Additive | +35 |
+| Nouveaux helpers `merge_alignments_with_offset`, `chunk_duration_from_alignment`, `characters_to_words` | Additive | +50 |
+| Branche conditionnelle dans `__main__` selon `WITH_TIMESTAMPS` | Modificative | +20 |
+| Sauvegarde additionnelle `.timeline.json` | Additive | +15 |
+| **Total approximatif** | | **+125 lignes** |
+
+Aucune ligne supprimée, aucune signature de fonction existante modifiée. Compatibilité descendante assurée (`WITH_TIMESTAMPS=False` → comportement actuel inchangé).
+
+---
+
+## 4. Niveau 1 — Karaoké lyrics + concepts surimprimés (formations)
+
+### 4.1 Composant `<KaraokeTranscript>`
+
+**Fichier** : `src/components/audio-enriched/KaraokeTranscript.tsx`
+
+**Responsabilités** :
+- Afficher le transcript complet, segment par segment (Sophie / Martin alternés)
+- Surligner le mot en cours de lecture selon `currentTime`
+- Auto-scroll vers le segment actif si hors viewport
+- Cliquer sur un mot → `seekTo(word.start_sec)` (respecte l'anti-skip DPC : ne saute jamais en avant)
+
+**Props** :
+```typescript
+interface KaraokeTranscriptProps {
+  transcript: Timeline['transcript'];
+  currentTime: number;                  // depuis useAudio() ou prop directe
+  onSeek?: (sec: number) => void;       // optionnel, pour navigation arrière
+  highlightConcepts?: Concept[];        // pour surligner les termes-concepts
+  className?: string;
+}
+```
+
+**Comportement de surlignage** :
+- Mot actuel : background accent color + text bold
+- Mots passés : opacity 1, color text-primary
+- Mots futurs : opacity 0.5, color text-secondary
+- Concepts : underline pointillé + cursor help, déclenche tooltip avec définition
+
+**Performance** :
+- Recalcul du mot actif via `findCurrentWord(currentTime, transcript)` exécuté dans un `useMemo` indexé sur `Math.floor(currentTime * 4)` (rafraîchissement 4x/sec, suffisant)
+- Pas de re-render des segments inactifs (memoisation par segment)
+
+### 4.2 Composant `<ConceptBadges>`
+
+**Fichier** : `src/components/audio-enriched/ConceptBadges.tsx`
+
+**Responsabilités** :
+- Afficher en surimpression du KaraokeTranscript ou en sidebar les définitions des concepts détectés
+- Apparition synchronisée à `concept.at_sec`
+- Disparition après 8 secondes ou au mot suivant si non-concept
+
+**Source des concepts** :
+- Champ `timeline.concepts[]`
+- Généré soit par l'agent LLM (T5), soit manuellement par admin (T6)
+- Pour V1 POC : tous les concepts générés sont approuvés par défaut, l'admin peut désactiver via T6
+
+### 4.3 Génération automatique des concepts
+
+L'agent LLM (cf. §6) extrait les concepts médicaux du script avec ce sous-prompt :
+
+```
+Identifie 5-12 termes médicaux ou techniques importants dans ce script
+qui mériteraient une définition pour aider la compréhension du praticien.
+
+Pour chaque terme :
+- term : exactement comme prononcé dans le script
+- definition : 1-2 phrases maximum, ton clinique professionnel
+- at_word_index : index du mot dans le transcript où le terme commence
+
+CONTRAINTES :
+- Ne pas inclure de termes triviaux (ex : "patient", "dent")
+- Privilégier termes anatomiques précis, syndromes, protocoles, instruments,
+  acronymes médicaux, classifications
+- Définition source si possible : Wikipédia, Larousse Médical, sinon "généré"
+```
+
+Le résultat enrichit `timeline.concepts[]`. L'admin peut éditer/supprimer dans T6.
+
+---
+
+## 5. Niveau 2A — Whiteboard structuré HTML/CSS
+
+### 5.1 Composant `<StructuredWhiteboard>`
+
+**Fichier** : `src/components/audio-enriched/StructuredWhiteboard.tsx`
+
+**Responsabilités** :
+- Lire le tableau `timeline.scenes[]`
+- Déterminer la scène active selon `currentTime` (la scène avec `trigger_at_sec ≤ currentTime` la plus récente, et `currentTime ≤ trigger_at_sec + display_duration_sec`)
+- Render le sous-composant correspondant au `template.kind`
+- Animer l'entrée/sortie via framer-motion
+
+**Props** :
+```typescript
+interface StructuredWhiteboardProps {
+  scenes: Scene[];
+  currentTime: number;
+  className?: string;
+}
+```
+
+**Animations** :
+- Entrée scène : `opacity 0 → 1` + `translateY 8px → 0`, durée 400ms, easing `cubic-bezier(0.4, 0, 0.2, 1)`
+- Sortie scène : `opacity 1 → 0`, durée 300ms
+- Animations internes (cards apparaissent en cascade, flèches se tracent) : staggered 200ms entre éléments
+
+### 5.2 Les 6 templates
+
+Chaque template = un fichier composant React dans `src/components/audio-enriched/templates/`.
+
+#### `Flowchart.tsx`
+```typescript
+interface FlowchartProps {
+  steps: CardContent[];
+  orientation: 'horizontal' | 'vertical';
+}
+```
+Render : 2-5 cards alignées, séparées par flèches SVG. Cascade d'apparition : card 1 → flèche 1 → card 2 → ... Variant `highlight` = bordure + fond accent purple.
+
+#### `Grid.tsx`
+```typescript
+interface GridProps {
+  cards: CardContent[];
+  cols: 2 | 3 | 4;
+}
+```
+Render : grille CSS `grid-template-columns: repeat(N, 1fr)`. Apparition simultanée ou cascade rapide (100ms stagger).
+
+#### `Comparison.tsx`
+```typescript
+interface ComparisonProps {
+  left: CardContent;
+  right: CardContent;
+}
+```
+Render : 2 cards côte à côte avec divider central optionnel "vs" ou "→". Apparition simultanée des 2 colonnes.
+
+#### `Causal.tsx`
+```typescript
+interface CausalProps {
+  nodes: CardContent[];
+  edges: Array<{ from: string; to: string; label?: string }>;
+}
+```
+Render : nodes positionnés via algorithme simple (force-directed light, ou positions manuelles déclarées). Edges en SVG avec markers de flèche. Cascade : nodes en premier, edges après.
+
+#### `Figures.tsx`
+```typescript
+interface FiguresProps {
+  items: Array<{ value: string; label: string; emphasis?: boolean }>;
+}
+```
+Render : cards avec gros chiffre (32-48px) en haut + label dessous. Variant emphasis = couleur accent + animation pulse subtile.
+
+#### `Timeline.tsx`
+```typescript
+interface TimelineProps {
+  events: Array<{ at_label: string; text: string }>;
+}
+```
+Render : axe horizontal avec markers, événements alternés au-dessus/en-dessous. Apparition de gauche à droite.
+
+### 5.3 Charte visuelle commune
+
+Tous les templates partagent :
+- **Fond scène** : `bg-gray-50` (light) / `bg-gray-900` (dark)
+- **Card** : `bg-white border border-gray-200 rounded-lg p-3 shadow-sm` (light) / inverse dark
+- **Texte card** : 14px, `font-medium` (titre 11px uppercase tracking-wide)
+- **Variant highlight** : `bg-purple-50 border-purple-300 text-purple-900`
+- **Variant warning** : `bg-amber-50 border-amber-300 text-amber-900`
+- **Variant success** : `bg-emerald-50 border-emerald-300 text-emerald-900`
+- **Flèches SVG** : stroke `#888780`, strokeWidth 1.5, marker-end arrow-head
+
+Toutes ces classes sont alignées sur le design system Tailwind existant DentalLearn. Pas de nouvelles couleurs introduites.
+
+### 5.4 Layout dans `<EnrichedAudioPlayer>`
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  AudioPlayer existant (image cover + controls)          │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  [Tabs : Karaoké | Whiteboard | Karaoké+Whiteboard]     │
+│                                                          │
+│  ┌──────────────────────┬──────────────────────────┐   │
+│  │                      │                          │   │
+│  │  Transcript          │  Whiteboard              │   │
+│  │  (KaraokeTranscript) │  (StructuredWhiteboard)  │   │
+│  │                      │                          │   │
+│  │  + ConceptBadges     │  Scène active selon      │   │
+│  │    en surimpression  │  currentTime             │   │
+│  │                      │                          │   │
+│  └──────────────────────┴──────────────────────────┘   │
+│                                                          │
+│  Mode "audio seul" disponible (toggle off enrichment)   │
+└─────────────────────────────────────────────────────────┘
+```
+
+User peut toggle l'enrichissement via un bouton discret. Préférence persistée en React state (pas localStorage).
+
+---
+
+## 6. Agent extraction structurelle (LLM)
+
+### 6.1 Route API
+
+**Fichier** : `src/app/api/admin/timeline/extract-scenes/route.ts`
+**Méthode** : `POST`
+**Auth** : super_admin uniquement (via helpers RBAC livrés Sprint 1 T2)
+
+**Body** :
+```typescript
+{
+  source_type: 'formation_sequence' | 'news_synthesis';
+  source_id: string;
+  script_text?: string;                  // pour formations : script Sophie/Martin complet
+  transcript?: Timeline['transcript'];   // pour formations : output du pipeline Python
+  news_synthesis_data?: {                // pour news : passage déterministe direct
+    summary_fr: string;
+    key_figures: string[];
+    clinical_impact: string;
+    caveats: string;
+    method?: string;
+    evidence_level?: string;
+    themes: string[];
+    specialite: string;
+  };
+}
+```
+
+**Response** :
+```typescript
+{
+  success: boolean;
+  timeline: Timeline;                    // timeline complète prête à valider
+  llm_meta: {
+    model: 'claude-sonnet-4-6';
+    input_tokens: number;
+    output_tokens: number;
+    duration_ms: number;
+    scenes_count: number;
+  };
+  warnings?: string[];
+}
+```
+
+### 6.2 Prompt complet (formations)
+
+```
+Tu es un agent qui transforme des scripts de podcast médical dentaire en
+scènes pédagogiques visuelles structurées. Le script alterne deux voix
+Sophie (praticienne curieuse) et Martin (expert pédagogue).
+
+OBJECTIF
+Identifie 3 à 5 PASSAGES STRUCTURELS du script où une visualisation
+pédagogique enrichirait significativement la compréhension du praticien.
+
+CONTRAINTES STRICTES
+- Maximum 5 scènes par script
+- Minimum 3 scènes
+- Chaque scène doit durer 20-45 secondes audio
+- Espacement minimum 30 secondes entre 2 scènes
+- PAS de scène sur les passages introductifs / conclusifs / transitions
+
+POUR CHAQUE SCÈNE, RETOURNE UN JSON STRICT CONFORME AU SCHÉMA :
+
+{
+  "id": "scene-N",
+  "title": "string (3-6 mots, sentence case)",
+  "template": {
+    "kind": "flowchart" | "grid" | "comparison" | "causal" | "figures" | "timeline",
+    // selon kind, fournis le contenu adapté (cf. schémas TypeScript fournis)
+  },
+  "trigger_at_word_index": <int>,        // index du mot dans le transcript où la scène doit apparaître
+  "display_duration_sec": <int>,         // 20-45
+  "pedagogical_intent": "string (1 phrase)"
+}
+
+CHOIX DU TEMPLATE — Heuristique
+- flowchart : succession d'étapes (max 5), processus clinique, arbre diagnostic
+- grid : classification, typologie, énumération de catégories (2-4)
+- comparison : opposition entre 2 options, avant/après, technique A vs B
+- causal : relation de cause à effet, mécanisme physiopathologique (2-4 nœuds)
+- figures : mise en avant de chiffres clés (taux, durées, prévalence) — max 3
+- timeline : chronologie d'événements, étapes temporelles d'un protocole
+
+CONTRAINTES SUR LES CARDS
+- text : maximum 60 caractères, sentence case, sans point final
+- subtitle : maximum 40 caractères, optionnel
+- variant "highlight" : à utiliser pour le résultat / la conclusion / le diagnostic principal
+- variant "warning" : pour mises en garde, contre-indications
+
+VOCABULAIRE
+- Reste strictement dans le vocabulaire médical/dentaire utilisé par le formateur
+- Ne PAS reformuler les termes techniques en langage simplifié
+- Préserve l'orthographe exacte des noms de syndromes, instruments, classifications
+
+ENTRÉE
+- Script complet ci-dessous, format dialogue Sophie:/Martin:
+- Transcript avec word-timestamps disponibles : tu utilises trigger_at_word_index pour pointer le mot exact
+
+RETOURNE UN OBJET JSON UNIQUE :
+{
+  "scenes": [...],                       // 3 à 5 scènes
+  "concepts": [...]                      // 5 à 12 concepts médicaux importants
+}
+
+EXEMPLES DE BONNE QUALITÉ
+[Few-shot 1 : passage diagnostic dent fêlée → flowchart]
+[Few-shot 2 : passage classification fractures → grid]
+[Few-shot 3 : passage chiffres clés étude → figures]
+
+SCRIPT À TRAITER :
+---
+{script_text}
+---
+
+TRANSCRIPT AVEC INDEX MOTS :
+---
+{words_with_index}
+---
+```
+
+### 6.3 Validation côté serveur
+
+Après réception du JSON LLM :
+1. Validation Zod stricte sur le format
+2. Si `scenes.length > 5` → tronquer aux 5 premières + warning
+3. Si `card.text > 60 chars` → truncate à 57 + "..." + warning
+4. Conversion `trigger_at_word_index` → `trigger_at_sec` via lookup dans `transcript.segments[].words[]`
+5. Si la conversion échoue (index hors bornes) → fallback `trigger_at_sec = scene_index * (duration_sec / scenes.length)`
+6. Calcul automatique du champ `chapters` depuis les titres de scènes
+
+### 6.4 Coût estimé par appel
+
+- Input : ~3000-4000 tokens (script 1500 mots + transcript words + few-shot)
+- Output : ~1500-2500 tokens (3-5 scènes + concepts)
+- Coût Claude Sonnet 4.6 : ~0,03-0,05 € par appel
+- Latence : 15-30 secondes (acceptable pour usage admin asynchrone, pas en temps réel user)
+
+---
+
+## 7. News déterministes — Composant `<NewsVisualSequence>`
+
+### 7.1 Approche
+
+Pas d'agent LLM pour les news. Mapping direct des champs `news_syntheses` → templates.
+
+**Fichier** : `src/components/news/NewsVisualSequence.tsx`
+**Composant autonome** : pas de dépendance au `AudioContext` (cohérent avec `AudioQueuePlayer`).
+
+### 7.2 Mapping déterministe
+
+Fonction pure `buildNewsTimeline(synthesis: NewsSynthesis): Timeline` qui génère :
+
+| Source champ | Scène générée | Template | Durée |
+|---|---|---|---|
+| `themes[]` + `specialite` | "Spécialités concernées" | `grid` (cols selon nb) | 8 sec |
+| `key_figures[]` (si présents) | "Chiffres clés" | `figures` (1-3 items) | 12 sec |
+| `evidence_level` (si présent) | "Niveau de preuve" | `figures` (1 item highlight) | 5 sec |
+| `method` (si présent) | "Méthode" | Card unique pleine largeur | 8 sec |
+| `clinical_impact` | "Impact clinique" | Card highlight | 12 sec |
+| `caveats` | "Précautions" | Card variant warning | 10 sec |
+
+Total : 5-6 scènes pour ~55 secondes d'enrichissement visuel. Si l'audio dure plus longtemps, les dernières scènes restent affichées (ou on boucle sur "Récap final").
+
+### 7.3 Comportement de défilement
+
+```typescript
+interface NewsVisualSequenceProps {
+  timeline: Timeline;
+  isPlaying: boolean;                    // depuis AudioQueuePlayer state
+  className?: string;
+}
+```
+
+- Démarre quand `isPlaying === true`
+- Défilement automatique via `setInterval(checkNextScene, 500)`
+- Index scène incrémenté quand `elapsedSinceStart >= sum(scenes[0..i].display_duration_sec)`
+- Pause si `isPlaying === false`
+- Reset à 0 si l'épisode change
+
+### 7.4 Récap final
+
+Une scène finale "Carte récapitulative" reste affichée à la fin du podcast :
+- Layout 2 colonnes : à gauche les chiffres clés, à droite l'impact clinique
+- Utilisable pour screenshot par le user (intérêt produit)
+
+### 7.5 Génération de la timeline news
+
+Pas d'appel LLM. Fonction pure côté serveur :
+
+```typescript
+// src/lib/timeline/build-news-timeline.ts
+export function buildNewsTimeline(
+  synthesis: NewsSynthesis,
+  audioUrl: string,
+  audioDurationSec: number
+): Timeline {
+  const scenes: Scene[] = [];
+
+  // Scène 1 : spécialités (toujours présente)
+  scenes.push({
+    id: 'scene-specialites',
+    title: 'Spécialités concernées',
+    template: {
+      kind: 'grid',
+      cols: clampCols(1 + (synthesis.themes?.length ?? 0)),
+      cards: [
+        { id: 'spe', text: capitalize(synthesis.specialite), variant: 'highlight' },
+        ...(synthesis.themes ?? []).map((t, i) => ({ id: `t${i}`, text: capitalize(t) })),
+      ],
+    },
+    trigger_at_sec: 0,
+    display_duration_sec: 8,
+  });
+
+  // Scène 2 : chiffres clés (si présent)
+  if (synthesis.key_figures?.length) {
+    scenes.push({
+      id: 'scene-figures',
+      title: 'Chiffres clés',
+      template: {
+        kind: 'figures',
+        items: synthesis.key_figures.slice(0, 3).map((f, i) => parseFigure(f, i === 0)),
+      },
+      trigger_at_sec: 0,
+      display_duration_sec: 12,
+    });
+  }
+
+  // ... (autres scènes selon champs disponibles)
+
+  return {
+    schema_version: '1.0',
+    source_type: 'news_synthesis',
+    source_id: synthesis.id,
+    audio_url: audioUrl,
+    duration_sec: audioDurationSec,
+    generated_at: new Date().toISOString(),
+    generator: 'auto_python_pipeline',
+    scenes,
+  };
+}
+```
+
+Cette fonction est appelée automatiquement après la génération audio news (extension du endpoint `/api/admin/news/episodes/[id]/generate-audio` actuel — point d'intégration T8).
+
+---
+
+## 8. Page admin de validation/édition
+
+### 8.1 Routes
+
+- `/admin/timelines/[type]/[id]` — éditeur unique (type = `formation` ou `news`)
+- Auth : super_admin uniquement (V1) — extension formateur en V2
+
+### 8.2 Pages
+
+**Vue principale** :
+- Player audio en haut (réutilise `<AudioPlayer>` existant pour formations, `<audio>` simple pour news)
+- Liste des scènes en sidebar gauche, chaque ligne : title + thumbnail mini + trigger_at + edit + delete
+- Preview live de la scène sélectionnée à droite
+- Bouton "Régénérer via LLM" (formations uniquement)
+- Bouton "Enregistrer" → upload timeline.json en Storage + update `timeline_url` en BDD
+- Bouton "Publier" → flag `is_published=true` (disponible côté users)
+
+**Édition d'une scène** :
+- Champs édition : title, template kind (dropdown), display_duration_sec
+- Pour chaque CardContent : text, subtitle, variant (boutons radio)
+- Drag & drop pour réordonner les éléments
+- Bouton "Aperçu temps réel" qui simule le rendu côté user
+
+**Édition des concepts** :
+- Liste avec checkbox "afficher" + édition term/definition
+- Possibilité d'ajouter manuellement un concept hors LLM
+
+### 8.3 Stockage
+
+- `timeline.json` est uploadé dans Supabase Storage bucket `audio-timelines/`
+- Path : `audio-timelines/{type}/{source_id}/{version}.json`
+- Versioning : à chaque save, nouveau fichier avec timestamp ISO. Permet rollback.
+- Référence en BDD : `sequences.timeline_url` ou `news_syntheses.timeline_url` pointe vers la version courante
+
+---
+
+## 9. Critères de succès POC
+
+À la fin des 3 semaines, mesure obligatoire de :
+
+| Métrique | Cible minimum | Méthode de mesure |
+|---|---|---|
+| Précision word-timestamps ElevenLabs | <100ms d'erreur sur 95% des mots | Vérification auditive 30 mots sur la séquence pilote |
+| Taux de scènes LLM utilisables tel quel | ≥ 50% | Validation manuelle des scènes générées |
+| Taux de scènes nécessitant édition mineure | ≤ 30% | Validation manuelle |
+| Taux de scènes à rejeter | ≤ 20% | Validation manuelle |
+| Coût LLM par épisode 10 min | ≤ 0,10 € | Mesure via dashboard Anthropic |
+| Latence génération scène | ≤ 30 sec | Logs route API |
+| Satisfaction utilisateurs testeurs (note /10) | ≥ 7/10 | Questionnaire 3-5 testeurs après usage |
+| "Préférez-vous cette version vs audio seul ?" | ≥ 4/5 testeurs | Questionnaire |
+
+**Décision go/no-go** : si 6/8 critères atteints → go déploiement Sprint 4. Sinon analyse des échecs, itération possible avant nouvelle évaluation.
+
+---
+
+## 10. Découpage en 9 tickets (Sprint 4 ultérieur)
+
+### Ticket 1 — Migration BDD + Storage timeline
+
+**Objectif** : créer l'infrastructure de stockage des timelines (colonnes BDD additives + bucket Supabase Storage).
+
+**Tâches** :
+- Migration `0019_sprint4_timelines.sql` :
+  - `ALTER TABLE sequences ADD COLUMN timeline_url text NULL;`
+  - `ALTER TABLE news_syntheses ADD COLUMN timeline_url text NULL;`
+  - `ALTER TABLE sequences ADD COLUMN timeline_published boolean NOT NULL DEFAULT false;`
+  - `ALTER TABLE news_syntheses ADD COLUMN timeline_published boolean NOT NULL DEFAULT false;`
+- Création bucket `audio-timelines` (public read, admin write) via SQL ou dashboard
+- RLS sur le bucket : SELECT public, INSERT/UPDATE/DELETE super_admin
+- Migration `_down.sql` symétrique
+
+**Critères d'acceptation**
+- [ ] Migration applicable et reversible
+- [ ] Bucket créé avec policies correctes
+- [ ] `DATABASE_SCHEMA.md` mis à jour
+
+---
+
+### Ticket 2 — Modification script Python `generate_audio.py`
+
+**Objectif** : faire évoluer le script pour produire un fichier `.timeline.json` à côté du `.mp3` final, via l'endpoint ElevenLabs `convert_with_timestamps`.
+
+**Tâches** :
+- Test API préliminaire : appel manuel `convert_with_timestamps` sur un chunk court (50 mots) pour vérifier le format exact de la réponse (camelCase vs snake_case, structure `alignment` vs `normalized_alignment`)
+- Modifications conformément à §3 :
+  - Constantes `MAX_CHARS_WITH_TIMESTAMPS=1900`, `WITH_TIMESTAMPS=True`
+  - Fonction `generate_chunk_with_timestamps`
+  - Helpers `merge_alignments_with_offset`, `chunk_duration_from_alignment`, `characters_to_words`
+  - Branche conditionnelle dans `__main__`
+  - Sauvegarde `.timeline.json` au format Timeline schema v1.0 (avec `transcript` peuplé, `concepts` et `scenes` vides)
+- Test sur la séquence pilote (Communication et Écoute Active S2)
+- Vérification manuelle de la précision des timestamps (10 mots tirés au hasard)
+
+**Critères d'acceptation**
+- [ ] Script génère `.mp3` ET `.timeline.json` côte à côte
+- [ ] Timeline schema v1.0 valide (Zod parse côté Node ou validation manuelle)
+- [ ] Précision timestamps : 10/10 mots tirés à <100ms d'erreur
+- [ ] Compatibilité descendante : `WITH_TIMESTAMPS=False` reproduit exactement le comportement actuel
+- [ ] Documentation README à jour dans `~/Desktop/DentalLearn-Audio/`
+
+---
+
+### Ticket 3 — Composant `<KaraokeTranscript>` + `<ConceptBadges>`
+
+**Objectif** : livrer le rendu niveau 1 (transcript synchronisé + concepts surimprimés).
+
+**Tâches** :
+- Schéma TypeScript `Timeline` complet dans `src/lib/timeline/schema.ts` avec validation Zod
+- Composant `<KaraokeTranscript>` conforme à §4.1
+- Composant `<ConceptBadges>` conforme à §4.2
+- Hook `useEnrichedTimeline(timelineUrl: string)` pour charger le JSON et exposer `timeline + isLoading + error`
+- Performance : `useMemo` indexé sur `Math.floor(currentTime * 4)` pour `findCurrentWord`
+- Tests unitaires sur `findCurrentWord(currentTime, transcript)` (cas limites : t=0, t=fin, mots manquants)
+
+**Critères d'acceptation**
+- [ ] Karaoké fonctionnel sur la séquence pilote (lue manuellement avec un audio existant + timeline.json mocké)
+- [ ] Surlignage du mot actif fluide (pas de saccade)
+- [ ] Click sur mot → seekTo respecté (pas de saut en avant si DPC actif)
+- [ ] Concepts surimprimés apparaissent au bon timing
+- [ ] Aucune régression du rendu transcript existant (grep usage)
+
+**Dépendance** : T1, T2 (au moins le format JSON validé).
+
+---
+
+### Ticket 4 — 6 templates `<StructuredWhiteboard>` + framer-motion
+
+**Objectif** : livrer la bibliothèque de templates whiteboard structurés.
+
+**Tâches** :
+- Composant `<StructuredWhiteboard>` conforme à §5.1
+- 6 sous-composants templates dans `src/components/audio-enriched/templates/` :
+  - `Flowchart.tsx`, `Grid.tsx`, `Comparison.tsx`, `Causal.tsx`, `Figures.tsx`, `Timeline.tsx`
+- Animations framer-motion conformément à §5.1
+- Charte visuelle conforme à §5.3 (réutilisation tokens design system existant)
+- Storybook ou page démo `/dev/templates` pour test isolé de chaque template
+- Tests unitaires sur la sélection de scène active (`getActiveScene(currentTime, scenes)`)
+
+**Critères d'acceptation**
+- [ ] Les 6 templates rendus correctement avec données mockées
+- [ ] Animations fluides sur les 6 templates (60fps mesuré sur Chrome DevTools)
+- [ ] Variants `highlight`, `warning`, `success` correctement appliqués
+- [ ] Responsive : layout desktop OK (mobile best-effort en POC)
+- [ ] Page démo `/dev/templates` fonctionnelle en local
+
+**Dépendance** : T3 (schéma Timeline).
+
+---
+
+### Ticket 5 — Agent extraction structurelle (LLM)
+
+**Objectif** : livrer la route API qui appelle Claude Sonnet pour extraire scenes + concepts depuis un script ou des données news.
+
+**Tâches** :
+- Route API `src/app/api/admin/timeline/extract-scenes/route.ts` conformément à §6.1
+- Implémentation du prompt §6.2 dans `src/lib/timeline/llm-extraction.ts`
+- 3 few-shot examples annotés inclus dans le prompt (exemples tirés de la séquence pilote)
+- Validation Zod stricte de la réponse LLM
+- Conversion `trigger_at_word_index` → `trigger_at_sec` via lookup transcript
+- Fallback en cas d'échec parsing JSON (3 retries avec prompt simplifié)
+- Cache mémoire de l'extraction par `source_id` (éviter doubles appels coûteux pendant le dev)
+- Logs structurés (input tokens, output tokens, durée, scenes_count)
+
+**Critères d'acceptation**
+- [ ] Extraction fonctionnelle sur la séquence pilote
+- [ ] Output JSON valide à 100% (validation Zod passing)
+- [ ] 3-5 scènes générées (pas plus, pas moins) : tester sur 3 scripts différents
+- [ ] Coût mesuré ≤ 0,10 € par appel
+- [ ] Latence ≤ 30 sec
+- [ ] Mesure manuelle du taux de scènes utilisables sur la séquence pilote
+
+**Dépendance** : T1, T3, T4.
+
+---
+
+### Ticket 6 — Page admin validation/édition timelines
+
+**Objectif** : livrer l'éditeur admin pour valider et ajuster les timelines générées par LLM.
+
+**Tâches** :
+- Pages conformément à §8 :
+  - `/admin/timelines/formation/[sequence_id]`
+  - `/admin/timelines/news/[synthesis_id]`
+- Routes API :
+  - `GET /api/admin/timelines/[type]/[id]` (lecture)
+  - `PUT /api/admin/timelines/[type]/[id]` (sauvegarde nouvelle version)
+  - `POST /api/admin/timelines/[type]/[id]/publish` (toggle is_published)
+- Composant éditeur scène (édition title, template, contenu CardContent)
+- Drag & drop pour réordonner les éléments d'une scène (utilisation de @dnd-kit/core si pas de surcoût significatif)
+- Preview live de la scène sélectionnée
+- Bouton "Régénérer via LLM" (re-appelle l'extraction T5)
+- Versioning : chaque save crée nouveau fichier dans Storage avec timestamp
+
+**Critères d'acceptation**
+- [ ] Page accessible super_admin uniquement
+- [ ] Édition complète d'une timeline en moins de 10 min
+- [ ] Versioning fonctionne (rollback à version précédente possible via URL directe)
+- [ ] Validation Zod côté serveur avant sauvegarde
+- [ ] Preview live fidèle au rendu user
+
+**Dépendance** : T1, T3, T4, T5.
+
+---
+
+### Ticket 7 — Composant `<EnrichedAudioPlayer>` + intégration formation
+
+**Objectif** : intégrer l'enrichissement visuel au flow utilisateur formation existant.
+
+**Tâches** :
+- Composant `<EnrichedAudioPlayer>` qui wrap `<AudioPlayer>` existant
+- Layout conforme à §5.4 (tabs Karaoké / Whiteboard / Karaoké+Whiteboard / Audio seul)
+- Lecture du `currentTime` via `useAudio()`
+- Chargement de `timeline.json` via `useEnrichedTimeline(timeline_url)` (T3)
+- Activation conditionnelle : si `sequence.timeline_url IS NOT NULL` AND `sequence.timeline_published = true` → afficher `<EnrichedAudioPlayer>`, sinon fallback `<AudioPlayer>` standard
+- Intégration dans la page séquence existante (probablement `SequencePlayer.tsx` à étendre)
+- Préférence utilisateur "afficher l'enrichissement" : React state (pas localStorage) — par défaut activé
+- Tests d'intégration : un user visualise une séquence avec timeline_published, voit le rendu enrichi
+
+**Critères d'acceptation**
+- [ ] Aucune régression sur les séquences sans timeline (fallback fonctionnel)
+- [ ] Anti-skip DPC respecté (test : tentative de seek en avant via clic mot future → bloqué)
+- [ ] Logs `course_watch_logs` toujours écrits correctement
+- [ ] Toggle audio seul fonctionne
+- [ ] Preview testé sur la séquence pilote en environnement staging
+
+**Dépendance** : T3, T4, T6.
+
+---
+
+### Ticket 8 — Composant `<NewsVisualSequence>` + génération auto news
+
+**Objectif** : livrer le rendu déterministe pour les news + génération automatique post-audio.
+
+**Tâches** :
+- Fonction pure `buildNewsTimeline(synthesis, audioUrl, audioDurationSec)` conforme à §7.5
+- Composant `<NewsVisualSequence>` conforme à §7.3 (autonome, pas de useAudio)
+- Extension du endpoint `/api/admin/news/episodes/[id]/generate-audio` :
+  - Après génération audio MP3 : appel `buildNewsTimeline()` + upload Storage + update `news_syntheses.timeline_url`
+  - Flag `timeline_published = true` automatique (pas de validation requise pour news déterministes)
+- Intégration dans la page news user : afficher `<NewsVisualSequence>` à côté ou en dessous de `<AudioQueuePlayer>` quand `timeline_url` présent
+- Récap final scène 7 (cf. §7.4) toujours générée automatiquement
+
+**Critères d'acceptation**
+- [ ] Mapping déterministe testé sur 5 synthèses news avec configurations variées (avec/sans key_figures, avec/sans method, etc.)
+- [ ] Génération automatique post-audio sans intervention humaine
+- [ ] Affichage côté user fluide, défilement temporisé fonctionnel
+- [ ] Récap final affichable (utilisable pour screenshot)
+- [ ] Aucune régression sur les news sans timeline
+
+**Dépendance** : T1, T3, T4.
+
+---
+
+### Ticket 9 — Tests utilisateurs + documentation + smoke prod
+
+**Objectif** : validation bout-en-bout du POC et compte-rendu chiffré pour décision go/no-go.
+
+**Tâches** :
+- Page démo `/demo/enriched-player/[type]/[id]` (non publique, accessible uniquement super_admin)
+- Tests utilisateurs : 3-5 testeurs (Dr Fantin + 2-4 testeurs du panel actuel)
+  - Questionnaire fourni : satisfaction /10, préférence vs audio seul, utilité perçue, suggestions d'amélioration
+  - Mesure du taux de complétion : avec enrichissement vs sans (sur la séquence pilote uniquement)
+- Documentation :
+  - `RECAP_POC_VISUALISATION_AUDIO_<date>.md` dans le dossier projet — compte-rendu chiffré complet
+  - Mise à jour `DATABASE_SCHEMA.md` avec colonnes ajoutées
+  - Mise à jour `memory.md` du projet cache
+- Smoke test prod après déploiement
+- Présentation des résultats à Dr Fantin avec recommandation go/no-go
+
+**Critères d'acceptation**
+- [ ] 5 testeurs ont utilisé la version enrichie sur la séquence pilote + la news pilote
+- [ ] Questionnaire collecté et synthétisé
+- [ ] 8 critères de §9 mesurés et documentés
+- [ ] Décision go/no-go documentée avec justification
+
+**Dépendance** : T1 à T8 mergés.
+
+---
+
+## 11. Contraintes non-négociables
+
+Identiques aux Sprints 1 et 2 — rappelées pour autonomie du document.
+
+1. Modifications additives uniquement
+2. Migrations BDD versionnées avec `_down.sql`
+3. Pas de localStorage / sessionStorage
+4. `course_watch_logs` immuables — JAMAIS modifier la logique DPC dans `AudioContext.tsx`
+5. Anti-skip DPC respecté (le clic sur un mot karaoké NE PEUT PAS faire avancer)
+6. `access_type !== 'full'` = preview, pas le rôle admin
+7. Format `questions.options` runtime inchangé
+8. Lecture exacte des fichiers (sed/grep)
+9. Ambiguïté = question à Dr Fantin
+10. Commits atomiques (un ticket = une PR)
+11. Tests fournis dans chaque ticket
+12. RGPD modèle A — aucune donnée nominative dans les analytics
+
+**Spécifiques POC visualisation** :
+
+13. Aucune modification du `AudioContext.tsx` — utiliser uniquement `state.currentTime` et `state.audioUrl` en lecture
+14. Aucune nouvelle dépendance npm sauf si justifiée explicitement (framer-motion suffit)
+15. Le pipeline Python `generate_audio.py` doit conserver la compatibilité descendante (`WITH_TIMESTAMPS=False` reproduit l'existant)
+16. Les news utilisent une architecture autonome (pas de `useAudio`) pour cohérence avec `AudioQueuePlayer`
+
+---
+
+## 12. Dette technique connue à NE PAS toucher
+
+Identique Sprints 1 et 2. Plus :
+
+| # | Dette nouvelle POC | À traiter quand |
+|---|---|---|
+| D20 | Édition collaborative timelines par formateurs | V2 quand espace formateur Sprint 2 mergé |
+| D21 | Whiteboard "main levée" Excalidraw (niveau 2B) | V2 si demande pour anatomies complexes |
+| D22 | Animations Lottie/Rive (niveau 4) | V3 sur formations phares uniquement |
+| D23 | Mobile responsive complet | Post-POC selon retours testeurs |
+| D24 | Auto-génération illustrations (LLM image) | V3+ trop risqué hallucinations anatomie |
+| D25 | Versioning des timelines avec diff visuel | V2 si édition collaborative |
+
+---
+
+## 13. Annexes
+
+### 13.1 Estimation effort par ticket
+
+| Ticket | Effort (jours Claude Code) | Risque |
+|---|---|---|
+| T1 — Migration BDD + Storage | 0,5-1 | Faible |
+| T2 — Modification script Python | 1-2 | Moyen (test API ElevenLabs réel à confirmer) |
+| T3 — Karaoké + Concepts | 2-3 | Moyen (perf surlignage temps réel) |
+| T4 — 6 templates Whiteboard | 3-4 | Moyen (animations fluides framer-motion) |
+| T5 — Agent extraction LLM | 2-3 | Élevé (qualité output LLM à itérer sur prompt) |
+| T6 — Page admin validation | 2-3 | Moyen (UX éditeur) |
+| T7 — Intégration formation | 1-2 | Moyen (anti-skip DPC à respecter strictement) |
+| T8 — News déterministe + auto-gen | 1-2 | Faible (pure functions) |
+| T9 — Tests + doc + smoke | 1-2 | Faible |
+| **Total** | **13-22 jours** | |
+
+Réaliste : 3 semaines calendaires en travail régulier. Cohérent avec le scope POC.
+
+### 13.2 Décisions à confirmer en début de Sprint POC
+
+| # | Sujet | Recommandation |
+|---|---|---|
+| P1 | Séquence formation pilote | Communication et Écoute Active S2 (déjà en prod, ~9 min, contenu pédagogique riche) |
+| P2 | Synthèse news pilote | À choisir parmi `news_syntheses` `status='active'` avec `key_figures` non vide |
+| P3 | Testeurs panel | Dr Fantin + 2-4 dentistes testeurs habituels |
+| P4 | Critère go/no-go | 6/8 critères atteints (cf. §9) — confirmer ce seuil |
+| P5 | Backup Whisper | Si timestamps ElevenLabs s'avèrent insuffisants, basculer Whisper word-level (~0,06 €/min) — décision en T2 |
+
+### 13.3 Risques et mitigation
+
+| Risque | Probabilité | Impact | Mitigation |
+|---|---|---|---|
+| ElevenLabs `convert_with_timestamps` ne supporte pas Text-to-Dialogue v3 | Faible (doc le mentionne explicitement) | Élevé | Test API immédiat en T2, fallback Whisper documenté |
+| Imprécision timestamps > 100ms | Moyenne | Moyen | Mesure obligatoire en T2, ajustement éventuel ou Whisper |
+| LLM produit < 50% de scènes utilisables | Moyenne | Élevé | Itération prompt en T5 (3-5 essais permis), few-shot enrichis |
+| Anti-skip DPC casse l'UX karaoké | Moyenne | Moyen | Décision UX : clic mot = info-only ou seek arrière uniquement |
+| Coût LLM dépasse 0,10 € / épisode | Faible | Faible | Optimisation prompt (réduction few-shot), batch éventuel |
+| Performance surlignage karaoké < 60fps | Moyenne | Moyen | Memoisation agressive, useMemo indexé, throttle 4Hz |
+| Testeurs préfèrent l'audio seul | Faible | Élevé (no-go potentiel) | Itération design + 2e tour de tests si critères non atteints |
+
+---
+
+*Spec produite le 2 mai 2026 — DentalLearn POC Visualisation Audio — version 1.0*
