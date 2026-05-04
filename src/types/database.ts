@@ -54,11 +54,7 @@ export interface Question {
   question_order: number
   question_type: 'qcm' | 'true_false' | 'qcm_image' | 'case_study'
   question_text: string
-  options: {
-    choices?: { id: string; text: string; is_correct: boolean }[]
-    correct_answer?: boolean // pour true_false
-    image_url?: string
-  }
+  options: Array<{ id: string; text: string; correct: boolean }>
   feedback_correct: string
   feedback_incorrect: string
   image_url: string | null
