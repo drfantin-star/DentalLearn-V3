@@ -183,79 +183,18 @@ def generate_chunk(client, chunk, chunk_index, total_chunks):
                 raise
 
 
-# --- HELPERS WITH-TIMESTAMPS (Phase 2B) ---
-
-def _get(obj, *names):
-    """Premier attribut/clé existant parmi `names` — gère snake_case vs camelCase."""
-    for name in names:
-        if hasattr(obj, name):
-            value = getattr(obj, name)
-            if value is not None:
-                return value
-        if isinstance(obj, dict) and name in obj and obj[name] is not None:
-            return obj[name]
-    return None
-
-
-def _alignment_to_dict(alignment_obj):
-    """Convertit un objet alignment SDK en dict {characters, character_start_times_seconds, character_end_times_seconds}."""
-    chars = _get(alignment_obj, "characters")
-    starts = _get(alignment_obj, "character_start_times_seconds", "characterStartTimesSeconds")
-    ends = _get(alignment_obj, "character_end_times_seconds", "characterEndTimesSeconds")
-    if chars is None or starts is None or ends is None:
-        raise RuntimeError(
-            "Alignment incomplet : characters/starts/ends manquants. "
-            "Inspecter la réponse SDK ElevenLabs (cf. test_response_raw.json Phase 2A)."
-        )
-    if not (len(chars) == len(starts) == len(ends)):
-        raise RuntimeError(
-            f"Longueurs alignment incohérentes : chars={len(chars)} "
-            f"starts={len(starts)} ends={len(ends)}"
-        )
-    return {
-        "characters": list(chars),
-        "character_start_times_seconds": [float(t) for t in starts],
-        "character_end_times_seconds": [float(t) for t in ends],
-    }
-
-
-def _voice_segments_to_list(voice_segments_obj):
-    """
-    Normalise le champ voice_segments SDK en liste de dicts
-    {voice_id, start_sec, end_sec, text?}.
-    Gère les variations de naming snake_case/camelCase (start_time_seconds vs startTimeSeconds, etc).
-    """
-    if voice_segments_obj is None:
-        return []
-    normalized = []
-    for seg in voice_segments_obj:
-        voice_id = _get(seg, "voice_id", "voiceId")
-        start = _get(seg, "start_time_seconds", "startTimeSeconds", "start_sec", "start")
-        end = _get(seg, "end_time_seconds", "endTimeSeconds", "end_sec", "end")
-        text = _get(seg, "text")
-        if voice_id is None or start is None or end is None:
-            raise RuntimeError(
-                "voice_segment incomplet (voice_id/start/end manquant). "
-                "Champs disponibles : "
-                f"{sorted(seg.__dict__.keys()) if hasattr(seg, '__dict__') else list(seg.keys()) if isinstance(seg, dict) else 'inconnu'}"
-            )
-        normalized.append({
-            "voice_id": voice_id,
-            "start_sec": float(start),
-            "end_sec": float(end),
-            "text": text if text is not None else "",
-        })
-    return normalized
-
+# --- PIPELINE WITH-TIMESTAMPS (Phase 2B) ---
+# Les noms de champs SDK sont figés sur la structure réelle observée en Phase 2A
+# (cf. scripts/audio/test_response_raw_REFERENCE.json) — tout est snake_case et
+# stable. Pas de fallback de naming.
 
 def generate_chunk_with_timestamps(client, chunk, chunk_index, total_chunks):
     """
     Variante de generate_chunk qui retourne (audio_bytes, alignment_dict, voice_segments_list).
 
-    Adaptations Phase 2A :
-      - Lit `audio_base_64` (typo SDK observée, fallback sur `audio_base64` / `audioBase64`)
-      - Privilégie `normalized_alignment` à `alignment` (plus propre)
-      - Récupère `voice_segments[]` pour la segmentation Sophie/Martin
+    alignment_dict      : {characters, character_start_times_seconds, character_end_times_seconds}
+    voice_segments_list : [{voice_id, start_time_seconds, end_time_seconds,
+                            character_start_index, character_end_index}, ...]
     """
     chars = sum(len(item["text"]) for item in chunk)
 
@@ -272,30 +211,23 @@ def generate_chunk_with_timestamps(client, chunk, chunk_index, total_chunks):
                 settings={"speed": SPEED},
             )
 
-            audio_b64 = _get(response, "audio_base_64", "audio_base64", "audioBase64")
-            if audio_b64 is None:
-                raise RuntimeError(
-                    "Audio base64 introuvable dans la réponse SDK. "
-                    "Attributs essayés : audio_base_64, audio_base64, audioBase64."
-                )
-            audio_bytes = base64.b64decode(audio_b64)
-
-            alignment_obj = _get(response, "normalized_alignment", "normalizedAlignment")
-            if alignment_obj is None:
-                alignment_obj = _get(response, "alignment")
-            if alignment_obj is None:
-                raise RuntimeError(
-                    "Alignment introuvable (ni normalized_alignment ni alignment)."
-                )
-            alignment_dict = _alignment_to_dict(alignment_obj)
-
-            voice_segments_obj = _get(response, "voice_segments", "voiceSegments")
-            voice_segments = _voice_segments_to_list(voice_segments_obj)
-            if not voice_segments:
-                raise RuntimeError(
-                    "voice_segments manquant ou vide dans la réponse SDK. "
-                    "Phase 2A avait validé sa présence — comportement SDK changé ?"
-                )
+            audio_bytes = base64.b64decode(response.audio_base_64)
+            alignment = response.normalized_alignment
+            alignment_dict = {
+                "characters": list(alignment.characters),
+                "character_start_times_seconds": [float(t) for t in alignment.character_start_times_seconds],
+                "character_end_times_seconds": [float(t) for t in alignment.character_end_times_seconds],
+            }
+            voice_segments = [
+                {
+                    "voice_id": seg.voice_id,
+                    "start_time_seconds": float(seg.start_time_seconds),
+                    "end_time_seconds": float(seg.end_time_seconds),
+                    "character_start_index": int(seg.character_start_index),
+                    "character_end_index": int(seg.character_end_index),
+                }
+                for seg in response.voice_segments
+            ]
 
             if total_chunks > 1:
                 print(f"   ✅ Partie {chunk_index + 1} OK")
@@ -312,66 +244,53 @@ def generate_chunk_with_timestamps(client, chunk, chunk_index, total_chunks):
                 raise
 
 
-def chunk_duration_from_alignment(alignment):
-    """Durée d'un chunk = dernier character_end_times_seconds."""
-    ends = alignment["character_end_times_seconds"]
-    return float(ends[-1]) if ends else 0.0
-
-
-def merge_alignments_with_offset(chunk_alignments, chunk_durations_sec):
+def merge_chunk_results(chunk_alignments, chunk_voice_segments):
     """
-    Concatène les alignments de tous les chunks en offsetant les timestamps
-    par la durée cumulée des chunks précédents.
-    """
-    merged = {
-        "characters": [],
-        "character_start_times_seconds": [],
-        "character_end_times_seconds": [],
-    }
-    cumulative_offset = 0.0
-    for alignment, duration in zip(chunk_alignments, chunk_durations_sec):
-        merged["characters"].extend(alignment["characters"])
-        merged["character_start_times_seconds"].extend(
-            t + cumulative_offset for t in alignment["character_start_times_seconds"]
-        )
-        merged["character_end_times_seconds"].extend(
-            t + cumulative_offset for t in alignment["character_end_times_seconds"]
-        )
-        cumulative_offset += duration
-    return merged
+    Concatène alignments + voice_segments de tous les chunks en offsetant à la fois
+    les timestamps (cumulative duration) et les indices caractères (cumulative count).
 
+    Retourne (merged_chars, merged_starts, merged_ends, merged_voice_segments, total_duration_sec)
+    où chaque voice_segment porte des indices et timestamps déjà offsetés (utilisables
+    directement comme slices sur merged_chars/starts/ends).
+    """
+    merged_chars = []
+    merged_starts = []
+    merged_ends = []
+    merged_voice_segments = []
 
-def merge_voice_segments_with_offset(chunk_voice_segments, chunk_durations_sec):
-    """
-    Concatène les voice_segments de tous les chunks en offsetant les timestamps.
-    """
-    merged = []
-    cumulative_offset = 0.0
-    for segments, duration in zip(chunk_voice_segments, chunk_durations_sec):
-        for seg in segments:
-            merged.append({
+    time_offset = 0.0
+    char_offset = 0
+
+    for alignment, voice_segments in zip(chunk_alignments, chunk_voice_segments):
+        merged_chars.extend(alignment["characters"])
+        merged_starts.extend(t + time_offset for t in alignment["character_start_times_seconds"])
+        merged_ends.extend(t + time_offset for t in alignment["character_end_times_seconds"])
+
+        for seg in voice_segments:
+            merged_voice_segments.append({
                 "voice_id": seg["voice_id"],
-                "start_sec": seg["start_sec"] + cumulative_offset,
-                "end_sec": seg["end_sec"] + cumulative_offset,
-                "text": seg["text"],
+                "start_sec": seg["start_time_seconds"] + time_offset,
+                "end_sec": seg["end_time_seconds"] + time_offset,
+                "char_start": seg["character_start_index"] + char_offset,
+                "char_end": seg["character_end_index"] + char_offset,
             })
-        cumulative_offset += duration
-    return merged
+
+        chunk_duration = alignment["character_end_times_seconds"][-1] if alignment["character_end_times_seconds"] else 0.0
+        time_offset += chunk_duration
+        char_offset += len(alignment["characters"])
+
+    return merged_chars, merged_starts, merged_ends, merged_voice_segments, time_offset
 
 
-def characters_to_words(merged_alignment):
+def characters_to_words(chars, starts, ends):
     """
-    Regroupe les caractères en mots par split sur espace / saut de ligne / tab.
+    Regroupe une tranche de caractères en mots par split sur espace / saut de ligne / tab.
     Retourne [{text, start_sec, end_sec}, ...].
     """
     words = []
     cur_chars = []
     cur_start = None
     prev_end = None
-
-    chars = merged_alignment["characters"]
-    starts = merged_alignment["character_start_times_seconds"]
-    ends = merged_alignment["character_end_times_seconds"]
 
     for ch, s, e in zip(chars, starts, ends):
         if ch in (" ", "\n", "\t"):
@@ -398,15 +317,12 @@ def characters_to_words(merged_alignment):
     return words
 
 
-def build_segments_from_voice_segments(merged_voice_segments, merged_words):
+def build_segments(merged_voice_segments, merged_chars, merged_starts, merged_ends):
     """
-    Reconstruit les segments transcript de la Timeline v1.0 depuis :
-      - merged_voice_segments : segmentation Sophie/Martin déjà offsetée
-      - merged_words          : mots avec timestamps déjà offsetés
+    Reconstruit les segments transcript de la Timeline v1.0.
 
-    Pour chaque voice_segment, on prend les mots dont le start_sec tombe dans
-    [seg.start_sec, seg.end_sec] (borne basse incluse, borne haute incluse pour
-    tolérer les arrondis flottants).
+    Pour chaque voice_segment, on slice merged_chars/starts/ends sur
+    [char_start:char_end] (indices déterministes fournis par l'API ElevenLabs).
     """
     segments = []
     for seg in merged_voice_segments:
@@ -416,21 +332,17 @@ def build_segments_from_voice_segments(merged_voice_segments, merged_words):
                 f"voice_id inconnu : {seg['voice_id']}. "
                 "Mettre à jour VOICE_ID_TO_SPEAKER dans generate_audio.py."
             )
-
-        seg_words = [
-            w for w in merged_words
-            if w["start_sec"] >= seg["start_sec"] - 1e-3
-            and w["start_sec"] <= seg["end_sec"] + 1e-3
-        ]
-
-        text = seg["text"].strip() if seg["text"] else " ".join(w["text"] for w in seg_words)
-
+        cs, ce = seg["char_start"], seg["char_end"]
+        slice_chars = merged_chars[cs:ce]
+        slice_starts = merged_starts[cs:ce]
+        slice_ends = merged_ends[cs:ce]
+        words = characters_to_words(slice_chars, slice_starts, slice_ends)
         segments.append({
             "start_sec": float(seg["start_sec"]),
             "end_sec": float(seg["end_sec"]),
             "speaker": speaker,
-            "text": text,
-            "words": seg_words,
+            "text": "".join(slice_chars).strip(),
+            "words": words,
         })
     return segments
 
@@ -516,7 +428,6 @@ if __name__ == "__main__":
     all_audio = b""
     chunk_alignments = []
     chunk_voice_segments = []
-    chunk_durations = []
 
     for i, chunk in enumerate(chunks):
         audio_bytes, alignment, voice_segments = generate_chunk_with_timestamps(
@@ -525,16 +436,13 @@ if __name__ == "__main__":
         all_audio += audio_bytes
         chunk_alignments.append(alignment)
         chunk_voice_segments.append(voice_segments)
-        chunk_durations.append(chunk_duration_from_alignment(alignment))
         if i < len(chunks) - 1:
             time.sleep(2)
 
-    # Merge avec offsets cumulés
-    merged_alignment = merge_alignments_with_offset(chunk_alignments, chunk_durations)
-    merged_voice_segments = merge_voice_segments_with_offset(chunk_voice_segments, chunk_durations)
-    merged_words = characters_to_words(merged_alignment)
-    segments = build_segments_from_voice_segments(merged_voice_segments, merged_words)
-    duration_sec = sum(chunk_durations)
+    merged_chars, merged_starts, merged_ends, merged_voice_segments, duration_sec = \
+        merge_chunk_results(chunk_alignments, chunk_voice_segments)
+    segments = build_segments(merged_voice_segments, merged_chars, merged_starts, merged_ends)
+    total_words = sum(len(s["words"]) for s in segments)
 
     timeline = build_timeline(segments, duration_sec)
 
@@ -546,7 +454,7 @@ if __name__ == "__main__":
 
     print(f"\n✅ Audio généré         : {output_file}")
     print(f"✅ Timeline JSON générée : {timeline_file}")
-    print(f"   → {len(segments)} segments speakers, {len(merged_words)} mots, {duration_sec:.2f} s")
+    print(f"   → {len(segments)} segments speakers, {total_words} mots, {duration_sec:.2f} s")
     print(f"📁 Chemin audio    : {os.path.abspath(output_file)}")
     print(f"📁 Chemin timeline : {os.path.abspath(timeline_file)}")
     print()

@@ -21,12 +21,26 @@ Comparaison avec `REFERENCE_generate_audio_current.py` (snapshot du fichier loca
 |---|---|---|
 | Imports `base64`, `json`, `datetime` | Additive | +3 lignes |
 | Constantes `MAX_CHARS_NO_TIMESTAMPS`, `MAX_CHARS_WITH_TIMESTAMPS`, `WITH_TIMESTAMPS`, `VOICE_ID_TO_SPEAKER`, `SCHEMA_VERSION`, `GENERATOR_TAG` | Additive | +12 lignes |
-| Helpers `_get`, `_alignment_to_dict`, `_voice_segments_to_list` | Additive | +60 lignes |
-| Fonction `generate_chunk_with_timestamps` | Additive | +60 lignes |
-| Helpers `chunk_duration_from_alignment`, `merge_alignments_with_offset`, `merge_voice_segments_with_offset`, `characters_to_words`, `build_segments_from_voice_segments`, `build_timeline` | Additive | +90 lignes |
+| Fonction `generate_chunk_with_timestamps` (accès direct aux champs SDK figés) | Additive | +50 lignes |
+| Helpers `merge_chunk_results`, `characters_to_words`, `build_segments`, `build_timeline` | Additive | +85 lignes |
 | Branche `if not WITH_TIMESTAMPS` dans `__main__` (legacy intact) | Modificative non destructive | +5 lignes |
-| Branche `WITH_TIMESTAMPS=True` dans `__main__` (nouveau pipeline) | Additive | +30 lignes |
-| **Total approximatif** | | **+260 lignes** (vs +125 prévues spec §3.6 — écart dû aux helpers défensifs `_get` / `_alignment_to_dict` / `_voice_segments_to_list`) |
+| Branche `WITH_TIMESTAMPS=True` dans `__main__` (nouveau pipeline) | Additive | +25 lignes |
+| Commentaires d'en-tête (mode timestamps + procédure post-génération) | Additive | +20 lignes |
+| **Total approximatif** | | **+170 lignes** (vs +125 prévues spec §3.6 — écart résiduel dû à la procédure post-génération imprimée et au mapping `VOICE_ID_TO_SPEAKER`) |
+
+### Décision de design : pas de helpers défensifs
+
+La spec §3.2 indiquait « À confirmer en testant l'API réelle : la structure exacte de l'objet response (camelCase vs snake_case, présence du champ normalized_alignment) ».
+
+La Phase 2A (cf. `test_response_raw_REFERENCE.json`) a livré la **structure réelle figée** :
+- Tout est en `snake_case`
+- `audio_base_64` (avec underscore) — confirmé
+- `normalized_alignment` présent et identique à `alignment` sur le test 4 répliques
+- `voice_segments[]` avec `voice_id`, `start_time_seconds`, `end_time_seconds`, **`character_start_index`**, **`character_end_index`**, `dialogue_input_index`
+
+→ Le code de Phase 2B accède aux champs **directement par leur nom réel** (pas de fallback `_get` snake/camelCase). Si le SDK ElevenLabs change ses noms en upgrade, le script échouera explicitement avec `AttributeError` — comportement souhaité, on saura immédiatement qu'il faut mettre à jour.
+
+→ Bonus exploité : `character_start_index` / `character_end_index` permettent de **slicer** la liste `merged_chars` directement par segment voice (au lieu de filtrer par timestamp avec tolérance flottante). Plus déterministe.
 
 **Compatibilité descendante** : ✅ aucune signature existante modifiée, aucune ligne supprimée, mode legacy strictement identique avec `WITH_TIMESTAMPS=False`.
 
