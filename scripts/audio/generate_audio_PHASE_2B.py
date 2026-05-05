@@ -26,10 +26,18 @@
 #     - source_id  → UUID de la sequence Supabase (table sequences)
 #     - audio_url  → URL publique après upload Storage
 #   Voir scripts/audio/README.md pour la procédure complète.
+#
+# PATCH BALISES ÉMOTION ELEVENLABS v3 :
+#   Filtrage post-merge avec réindexation des voice_segments. ElevenLabs
+#   vocalise les balises (ex: [concerned], [serious]) mais les inclut dans
+#   normalized_alignment.characters[] et dans les indices voice_segments.
+#   Sans ce filtrage, le karaoké afficherait les balises à l'écran.
+#   Confirmé scénario A par test isolé du 5 mai 2026.
 
 import base64
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -70,6 +78,9 @@ RETRY_DELAY = 10  # secondes entre chaque tentative
 
 SCHEMA_VERSION = "1.0"
 GENERATOR_TAG = "auto_python_pipeline"
+
+# Regex des balises émotion ElevenLabs v3 (à filtrer du transcript karaoké)
+EMOTION_TAG_PATTERN = re.compile(r'\[[a-zA-Z_]+\]')
 
 
 # --- LECTURE DU FICHIER DIALOGUE ---
@@ -282,6 +293,51 @@ def merge_chunk_results(chunk_alignments, chunk_voice_segments):
     return merged_chars, merged_starts, merged_ends, merged_voice_segments, time_offset
 
 
+def strip_emotion_tags_from_alignment(merged_chars, merged_starts, merged_ends, merged_voice_segments):
+    """
+    Retire les balises émotion ElevenLabs v3 (`[concerned]`, `[serious]`, ...) du
+    transcript karaoké. L'audio reste inchangé — seuls les caractères de balise
+    et leurs entrées correspondantes dans starts/ends sont supprimés, et les
+    char_start/char_end des voice_segments sont réindexés sur la liste filtrée
+    (start_sec/end_sec inchangés puisque l'audio l'est).
+
+    Préserve les espaces autour des balises (deux espaces consécutifs OK :
+    characters_to_words split sur whitespace).
+    """
+    text = "".join(merged_chars)
+    keep = [True] * len(merged_chars)
+    for match in EMOTION_TAG_PATTERN.finditer(text):
+        for i in range(match.start(), match.end()):
+            keep[i] = False
+
+    filtered_chars = [c for c, k in zip(merged_chars, keep) if k]
+    filtered_starts = [s for s, k in zip(merged_starts, keep) if k]
+    filtered_ends = [e for e, k in zip(merged_ends, keep) if k]
+
+    # old_to_new[i] = nombre de caractères conservés strictement avant la position i
+    # → équivalent au nouvel indice de la position i (que i soit conservée ou non).
+    old_to_new = [0] * (len(merged_chars) + 1)
+    count = 0
+    for i, k in enumerate(keep):
+        old_to_new[i] = count
+        if k:
+            count += 1
+    old_to_new[len(merged_chars)] = count
+
+    filtered_voice_segments = [
+        {
+            "voice_id": seg["voice_id"],
+            "start_sec": seg["start_sec"],
+            "end_sec": seg["end_sec"],
+            "char_start": old_to_new[seg["char_start"]],
+            "char_end": old_to_new[seg["char_end"]],
+        }
+        for seg in merged_voice_segments
+    ]
+
+    return filtered_chars, filtered_starts, filtered_ends, filtered_voice_segments
+
+
 def characters_to_words(chars, starts, ends):
     """
     Regroupe une tranche de caractères en mots par split sur espace / saut de ligne / tab.
@@ -441,6 +497,15 @@ if __name__ == "__main__":
 
     merged_chars, merged_starts, merged_ends, merged_voice_segments, duration_sec = \
         merge_chunk_results(chunk_alignments, chunk_voice_segments)
+
+    # Patch ElevenLabs v3 : retirer les balises émotion vocalisées
+    chars_before = len(merged_chars)
+    merged_chars, merged_starts, merged_ends, merged_voice_segments = \
+        strip_emotion_tags_from_alignment(merged_chars, merged_starts, merged_ends, merged_voice_segments)
+    stripped_count = chars_before - len(merged_chars)
+    if stripped_count > 0:
+        print(f"   🧹 {stripped_count} caractères de balises émotion retirés du transcript karaoké.")
+
     segments = build_segments(merged_voice_segments, merged_chars, merged_starts, merged_ends)
     total_words = sum(len(s["words"]) for s in segments)
 

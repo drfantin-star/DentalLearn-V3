@@ -19,14 +19,14 @@ Comparaison avec `REFERENCE_generate_audio_current.py` (snapshot du fichier loca
 
 | Modification | Nature | Impact |
 |---|---|---|
-| Imports `base64`, `json`, `datetime` | Additive | +3 lignes |
-| Constantes `MAX_CHARS_NO_TIMESTAMPS`, `MAX_CHARS_WITH_TIMESTAMPS`, `WITH_TIMESTAMPS`, `VOICE_ID_TO_SPEAKER`, `SCHEMA_VERSION`, `GENERATOR_TAG` | Additive | +12 lignes |
+| Imports `base64`, `json`, `re`, `datetime` | Additive | +4 lignes |
+| Constantes `MAX_CHARS_NO_TIMESTAMPS`, `MAX_CHARS_WITH_TIMESTAMPS`, `WITH_TIMESTAMPS`, `VOICE_ID_TO_SPEAKER`, `SCHEMA_VERSION`, `GENERATOR_TAG`, `EMOTION_TAG_PATTERN` | Additive | +14 lignes |
 | Fonction `generate_chunk_with_timestamps` (accès direct aux champs SDK figés) | Additive | +50 lignes |
-| Helpers `merge_chunk_results`, `characters_to_words`, `build_segments`, `build_timeline` | Additive | +85 lignes |
+| Helpers `merge_chunk_results`, `strip_emotion_tags_from_alignment`, `characters_to_words`, `build_segments`, `build_timeline` | Additive | +130 lignes |
 | Branche `if not WITH_TIMESTAMPS` dans `__main__` (legacy intact) | Modificative non destructive | +5 lignes |
-| Branche `WITH_TIMESTAMPS=True` dans `__main__` (nouveau pipeline) | Additive | +25 lignes |
-| Commentaires d'en-tête (mode timestamps + procédure post-génération) | Additive | +20 lignes |
-| **Total approximatif** | | **+170 lignes** (vs +125 prévues spec §3.6 — écart résiduel dû à la procédure post-génération imprimée et au mapping `VOICE_ID_TO_SPEAKER`) |
+| Branche `WITH_TIMESTAMPS=True` dans `__main__` (nouveau pipeline + appel `strip_emotion_tags_from_alignment`) | Additive | +35 lignes |
+| Commentaires d'en-tête (mode timestamps + procédure post-génération + patch balises émotion) | Additive | +27 lignes |
+| **Total approximatif** | | **+200 lignes** (vs +125 prévues spec §3.6 — écart résiduel dû au patch balises émotion v3 + mapping `VOICE_ID_TO_SPEAKER` + procédure post-génération imprimée) |
 
 ### Décision de design : pas de helpers défensifs
 
@@ -42,7 +42,20 @@ La Phase 2A (cf. `test_response_raw_REFERENCE.json`) a livré la **structure ré
 
 → Bonus exploité : `character_start_index` / `character_end_index` permettent de **slicer** la liste `merged_chars` directement par segment voice (au lieu de filtrer par timestamp avec tolérance flottante). Plus déterministe.
 
-**Compatibilité descendante** : ✅ aucune signature existante modifiée, aucune ligne supprimée, mode legacy strictement identique avec `WITH_TIMESTAMPS=False`.
+### Décision de design : patch balises émotion ElevenLabs v3 (5 mai 2026)
+
+**Scénario A confirmé par test isolé Dr Fantin** : ElevenLabs vocalise les balises (`[concerned]`, `[serious]`, ...) pour influencer le ton, **mais les inclut dans `normalized_alignment.characters[]` et dans `voice_segments[].character_start_index/character_end_index`**. Sans patch, le karaoké afficherait `[concerned]` à l'écran.
+
+→ Nouvelle fonction `strip_emotion_tags_from_alignment(merged_chars, merged_starts, merged_ends, merged_voice_segments)` appelée **après `merge_chunk_results` et avant `build_segments`** :
+
+1. Identifie les ranges via `EMOTION_TAG_PATTERN = re.compile(r'\[[a-zA-Z_]+\]')` sur le texte mergé reconstitué
+2. Filtre `chars` / `starts` / `ends` (audio inchangé — seuls les caractères et timestamps des balises sont retirés ; `start_sec`/`end_sec` des `voice_segments` ne bougent pas)
+3. Réindexe `char_start` / `char_end` des `voice_segments` sur la liste filtrée via une table `old_to_new` (count cumulé des positions conservées)
+4. Préserve les espaces autour des balises → `"Martin. [concerned] Je"` devient `"Martin.  Je"` (double espace, OK car `characters_to_words` split sur whitespace, le mot vide est ignoré)
+
+**Tests inline (script de validation lancé sur cette branche)** : 4 cas passent — pas de balise (identité), balise au milieu d'un seul segment, balise dans le 1er de 2 segments avec réindexation correcte, split double-espace propre dans `characters_to_words`.
+
+**Compatibilité descendante** : ✅ aucune signature existante modifiée, aucune ligne supprimée, mode legacy strictement identique avec `WITH_TIMESTAMPS=False`. Le patch balises émotion est inactif si aucune balise n'est présente dans le texte (cas testé).
 
 ---
 
