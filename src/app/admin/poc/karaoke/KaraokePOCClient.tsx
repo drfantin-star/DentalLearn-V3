@@ -11,12 +11,31 @@ import { flattenTranscript } from '@/lib/timeline/findCurrentWord'
  * AudioContext) — l'intégration avec le tracking DPC viendra en T7.
  *
  * Le seek libre sur les mots est attendu sur cette page de test admin.
+ *
+ * 🔧 [POC-T3-fix3] Mode diagnostic actif :
+ *  - Logs invasifs `[POC-T3-DEBUG]` sur le seek (avant/après) et sur les
+ *    events `seeked` / `error`.
+ *  - handleSeek "force-reload" via pause → currentTime = sec → load() →
+ *    currentTime = sec → play si nécessaire. Si avec ce pattern le seek
+ *    devient audible, on aura confirmé que le bug vient du seek silencieux
+ *    du navigateur sur le MP3 ElevenLabs (probable header Xing/LAME absent
+ *    → seek par offset estimé non fiable).
+ *  À retirer une fois le diagnostic posé.
  */
 
 interface KaraokePOCClientProps {
   sequenceTitle: string
   timelineUrl: string | null
   audioUrl: string
+}
+
+// Helpers debug — extrait `audio.buffered` en tableau JSON-serializable.
+function snapshotBuffered(audio: HTMLAudioElement): Array<[number, number]> {
+  const out: Array<[number, number]> = []
+  for (let i = 0; i < audio.buffered.length; i++) {
+    out.push([audio.buffered.start(i), audio.buffered.end(i)])
+  }
+  return out
 }
 
 export function KaraokePOCClient({
@@ -33,14 +52,47 @@ export function KaraokePOCClient({
     error,
   } = useEnrichedTimeline(timelineUrl)
 
-  // Listener `timeupdate` natif sur l'élément audio.
+  // Listener `timeupdate` natif sur l'élément audio + listeners debug
+  // (`seeked`, `error`) ajoutés en parallèle, pas de remplacement.
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
+
+    // [POC-T3-DEBUG] Snapshot initial au mount.
+    // eslint-disable-next-line no-console
+    console.log('[POC-T3-DEBUG] mount audio:', {
+      src: audio.src,
+      preload: audio.preload,
+      crossOrigin: audio.crossOrigin,
+      readyState: audio.readyState,
+      networkState: audio.networkState,
+    })
+
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
+    const handleSeeked = () => {
+      // eslint-disable-next-line no-console
+      console.log('[POC-T3-DEBUG] seeked event:', {
+        currentTime: audio.currentTime,
+        buffered: snapshotBuffered(audio),
+        paused: audio.paused,
+        readyState: audio.readyState,
+      })
+    }
+    const handleError = () => {
+      // eslint-disable-next-line no-console
+      console.error('[POC-T3-DEBUG] error event:', {
+        code: audio.error?.code,
+        message: audio.error?.message,
+      })
+    }
+
     audio.addEventListener('timeupdate', handleTimeUpdate)
+    audio.addEventListener('seeked', handleSeeked)
+    audio.addEventListener('error', handleError)
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate)
+      audio.removeEventListener('seeked', handleSeeked)
+      audio.removeEventListener('error', handleError)
     }
   }, [])
 
@@ -75,20 +127,45 @@ export function KaraokePOCClient({
   // `onSeek === prev.onSeek`. Sans cela, chaque render parent invaliderait la
   // mémoïsation de TOUS les mots et le handler attaché au DOM serait stale.
   //
-  // Une seule source de vérité : on touche UNIQUEMENT à `audio.currentTime`.
-  // Le state React `currentTime` est synchronisé EXCLUSIVEMENT par le listener
-  // `timeupdate` (cf. useEffect ci-dessus). Le navigateur émet un `timeupdate`
-  // immédiatement après tout seek, donc le state se met à jour spontanément.
-  //
-  // ⚠️ Ne PAS faire `setCurrentTime(sec)` ici : la double écriture
-  // (audio.currentTime + state) crée une race avec un `timeupdate` portant
-  // potentiellement l'ancienne valeur "en vol" pendant le buffering du seek,
-  // ce qui se manifeste comme un re-seek perçu (mini-silence + 2-3 syllabes
-  // rejouées + reprise depuis l'ancienne position).
+  // [POC-T3-fix3] Variante "force-reload" : pause → currentTime = sec →
+  // load() (force une nouvelle range request HTTP) → currentTime = sec →
+  // play si nécessaire. Le double `currentTime = sec` encadre `load()` car
+  // ce dernier reset l'état interne et oublierait sinon la cible.
   const handleSeek = useCallback((sec: number) => {
     const audio = audioRef.current
     if (!audio) return
+    const wasPaused = audio.paused
+
+    // eslint-disable-next-line no-console
+    console.log('[POC-T3-DEBUG] before seek:', {
+      requested: sec,
+      currentTime: audio.currentTime,
+      paused: audio.paused,
+      readyState: audio.readyState,
+      networkState: audio.networkState,
+      buffered: snapshotBuffered(audio),
+    })
+
+    audio.pause()
     audio.currentTime = sec
+    audio.load()
+    audio.currentTime = sec
+    if (!wasPaused) {
+      audio.play().catch((e) => {
+        // eslint-disable-next-line no-console
+        console.error('[POC-T3-DEBUG] play failed:', e)
+      })
+    }
+
+    // eslint-disable-next-line no-console
+    console.log('[POC-T3-DEBUG] after seek:', {
+      requested: sec,
+      currentTime: audio.currentTime,
+      paused: audio.paused,
+      readyState: audio.readyState,
+      networkState: audio.networkState,
+      buffered: snapshotBuffered(audio),
+    })
   }, [])
 
   return (
