@@ -1,0 +1,158 @@
+import { z } from 'zod'
+
+/**
+ * Schémas Zod du Timeline v1.0 — référence : spec POC §2.1.
+ *
+ * Sert à valider runtime les `*.timeline.json` produits par le pipeline Python
+ * (T2) avant consommation côté client. Réutilisable par T4-T8 pour valider
+ * scenes (discriminated union sur `template.kind`), concepts, et outputs LLM.
+ *
+ * Tous les types TypeScript sont dérivés via `z.infer<>` et exportés.
+ */
+
+// ─── Atomes ──────────────────────────────────────────────────────────────────
+
+const SpeakerSchema = z.enum(['sophie', 'martin'])
+
+const TimelineWordSchema = z.object({
+  start_sec: z.number().nonnegative(),
+  end_sec: z.number().nonnegative(),
+  text: z.string().min(1),
+})
+
+const TimelineSegmentSchema = z.object({
+  start_sec: z.number().nonnegative(),
+  end_sec: z.number().nonnegative(),
+  speaker: SpeakerSchema,
+  text: z.string(),
+  words: z.array(TimelineWordSchema).default([]),
+})
+
+// ─── Concepts ────────────────────────────────────────────────────────────────
+
+const TimelineConceptSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  start_sec: z.number().nonnegative(),
+  end_sec: z.number().nonnegative(),
+  importance: z.number().min(0).max(1).optional(),
+})
+
+// ─── Card content (utilisé par les templates whiteboard) ────────────────────
+// Limites de longueur cf. spec §2.1 — appliquées strictement pour empêcher
+// un overflow visuel côté templates whiteboard (T4).
+
+const CardContentSchema = z.object({
+  text: z.string().max(60),
+  subtitle: z.string().max(40).optional(),
+  icon: z.string().optional(),
+})
+
+// ─── Templates de scène (discriminated union sur `kind`) ────────────────────
+
+const FlowchartTemplateSchema = z.object({
+  kind: z.literal('flowchart'),
+  cards: z.array(CardContentSchema),
+})
+
+const GridTemplateSchema = z.object({
+  kind: z.literal('grid'),
+  columns: z.number().int().positive(),
+  cards: z.array(CardContentSchema),
+})
+
+const ComparisonTemplateSchema = z.object({
+  kind: z.literal('comparison'),
+  left: z.object({
+    title: z.string(),
+    cards: z.array(CardContentSchema),
+  }),
+  right: z.object({
+    title: z.string(),
+    cards: z.array(CardContentSchema),
+  }),
+})
+
+const CausalTemplateSchema = z.object({
+  kind: z.literal('causal'),
+  cause: CardContentSchema,
+  effects: z.array(CardContentSchema),
+})
+
+const FiguresTemplateSchema = z.object({
+  kind: z.literal('figures'),
+  figures: z.array(
+    z.object({
+      value: z.string(),
+      label: z.string(),
+    })
+  ),
+})
+
+const TimelineTemplateSchema = z.object({
+  kind: z.literal('timeline'),
+  steps: z.array(CardContentSchema),
+})
+
+const SceneTemplateSchema = z.discriminatedUnion('kind', [
+  FlowchartTemplateSchema,
+  GridTemplateSchema,
+  ComparisonTemplateSchema,
+  CausalTemplateSchema,
+  FiguresTemplateSchema,
+  TimelineTemplateSchema,
+])
+
+// ─── Scenes & Chapters ───────────────────────────────────────────────────────
+
+const SceneSchema = z.object({
+  id: z.string().min(1),
+  start_sec: z.number().nonnegative(),
+  end_sec: z.number().nonnegative(),
+  title: z.string().optional(),
+  template: SceneTemplateSchema,
+})
+
+const ChapterSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  start_sec: z.number().nonnegative(),
+  end_sec: z.number().nonnegative(),
+})
+
+// ─── Transcript ──────────────────────────────────────────────────────────────
+
+const TranscriptSchema = z.object({
+  segments: z.array(TimelineSegmentSchema).default([]),
+})
+
+// ─── Schéma racine ───────────────────────────────────────────────────────────
+
+export const TimelineSchema = z.object({
+  schema_version: z.literal('1.0'),
+  source_type: z.enum(['formation_sequence', 'news_synthesis']),
+  source_id: z.string().min(1),
+  audio_url: z.string(),
+  duration_sec: z.number().positive(),
+  generated_at: z.string().min(1),
+  generator: z.enum([
+    'auto_python_pipeline',
+    'auto_llm_extraction',
+    'manual_admin_edit',
+  ]),
+  transcript: TranscriptSchema.optional(),
+  concepts: z.array(TimelineConceptSchema).default([]),
+  scenes: z.array(SceneSchema).default([]),
+  chapters: z.array(ChapterSchema).default([]),
+})
+
+// ─── Types exportés (dérivés via z.infer) ───────────────────────────────────
+
+export type Timeline = z.infer<typeof TimelineSchema>
+export type TimelineSegment = z.infer<typeof TimelineSegmentSchema>
+export type TimelineWord = z.infer<typeof TimelineWordSchema>
+export type TimelineConcept = z.infer<typeof TimelineConceptSchema>
+export type Scene = z.infer<typeof SceneSchema>
+export type SceneTemplate = z.infer<typeof SceneTemplateSchema>
+export type CardContent = z.infer<typeof CardContentSchema>
+export type Speaker = z.infer<typeof SpeakerSchema>
