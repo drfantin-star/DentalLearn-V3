@@ -11,31 +11,12 @@ import { flattenTranscript } from '@/lib/timeline/findCurrentWord'
  * AudioContext) — l'intégration avec le tracking DPC viendra en T7.
  *
  * Le seek libre sur les mots est attendu sur cette page de test admin.
- *
- * 🔧 [POC-T3-fix3] Mode diagnostic actif :
- *  - Logs invasifs `[POC-T3-DEBUG]` sur le seek (avant/après) et sur les
- *    events `seeked` / `error`.
- *  - handleSeek "force-reload" via pause → currentTime = sec → load() →
- *    currentTime = sec → play si nécessaire. Si avec ce pattern le seek
- *    devient audible, on aura confirmé que le bug vient du seek silencieux
- *    du navigateur sur le MP3 ElevenLabs (probable header Xing/LAME absent
- *    → seek par offset estimé non fiable).
- *  À retirer une fois le diagnostic posé.
  */
 
 interface KaraokePOCClientProps {
   sequenceTitle: string
   timelineUrl: string | null
   audioUrl: string
-}
-
-// Helpers debug — extrait `audio.buffered` en tableau JSON-serializable.
-function snapshotBuffered(audio: HTMLAudioElement): Array<[number, number]> {
-  const out: Array<[number, number]> = []
-  for (let i = 0; i < audio.buffered.length; i++) {
-    out.push([audio.buffered.start(i), audio.buffered.end(i)])
-  }
-  return out
 }
 
 export function KaraokePOCClient({
@@ -52,47 +33,15 @@ export function KaraokePOCClient({
     error,
   } = useEnrichedTimeline(timelineUrl)
 
-  // Listener `timeupdate` natif sur l'élément audio + listeners debug
-  // (`seeked`, `error`) ajoutés en parallèle, pas de remplacement.
+  // Listener `timeupdate` natif : seule source qui pousse `audio.currentTime`
+  // vers le state React. Aucune écriture dans l'autre sens.
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
-
-    // [POC-T3-DEBUG] Snapshot initial au mount.
-    // eslint-disable-next-line no-console
-    console.log('[POC-T3-DEBUG] mount audio:', {
-      src: audio.src,
-      preload: audio.preload,
-      crossOrigin: audio.crossOrigin,
-      readyState: audio.readyState,
-      networkState: audio.networkState,
-    })
-
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
-    const handleSeeked = () => {
-      // eslint-disable-next-line no-console
-      console.log('[POC-T3-DEBUG] seeked event:', {
-        currentTime: audio.currentTime,
-        buffered: snapshotBuffered(audio),
-        paused: audio.paused,
-        readyState: audio.readyState,
-      })
-    }
-    const handleError = () => {
-      // eslint-disable-next-line no-console
-      console.error('[POC-T3-DEBUG] error event:', {
-        code: audio.error?.code,
-        message: audio.error?.message,
-      })
-    }
-
     audio.addEventListener('timeupdate', handleTimeUpdate)
-    audio.addEventListener('seeked', handleSeeked)
-    audio.addEventListener('error', handleError)
     return () => {
       audio.removeEventListener('timeupdate', handleTimeUpdate)
-      audio.removeEventListener('seeked', handleSeeked)
-      audio.removeEventListener('error', handleError)
     }
   }, [])
 
@@ -127,45 +76,32 @@ export function KaraokePOCClient({
   // `onSeek === prev.onSeek`. Sans cela, chaque render parent invaliderait la
   // mémoïsation de TOUS les mots et le handler attaché au DOM serait stale.
   //
-  // [POC-T3-fix3] Variante "force-reload" : pause → currentTime = sec →
-  // load() (force une nouvelle range request HTTP) → currentTime = sec →
-  // play si nécessaire. Le double `currentTime = sec` encadre `load()` car
-  // ce dernier reset l'état interne et oublierait sinon la cible.
+  // Workaround MP3 sans header Xing/LAME (POC-T3-D4) : double-set via
+  // `currentTime = 0` pour forcer le décodeur audio à se reset proprement
+  // entre deux positions. Sans ce workaround, `audio.currentTime` est mis
+  // à jour côté JS mais le flux audio diffusé reste sur la position
+  // d'origine — le décodeur a besoin d'un index Xing/LAME pour seek par
+  // offset, et le pipeline ElevenLabs concatène les chunks sans en
+  // produire. Le délai ~50 ms laisse au navigateur le temps de prendre
+  // en compte le reset à 0 avant le seek vers la cible.
+  // Le state React `currentTime` se met à jour via le listener timeupdate
+  // natif déclenché par le navigateur après le seek effectif (pas de
+  // setCurrentTime manuel ici, cf. fix2).
+  // À terme, intégrer un header Xing dans le pipeline Python T2 v2.
   const handleSeek = useCallback((sec: number) => {
     const audio = audioRef.current
     if (!audio) return
     const wasPaused = audio.paused
-
-    // eslint-disable-next-line no-console
-    console.log('[POC-T3-DEBUG] before seek:', {
-      requested: sec,
-      currentTime: audio.currentTime,
-      paused: audio.paused,
-      readyState: audio.readyState,
-      networkState: audio.networkState,
-      buffered: snapshotBuffered(audio),
-    })
-
-    audio.pause()
-    audio.currentTime = sec
-    audio.load()
-    audio.currentTime = sec
-    if (!wasPaused) {
-      audio.play().catch((e) => {
-        // eslint-disable-next-line no-console
-        console.error('[POC-T3-DEBUG] play failed:', e)
-      })
-    }
-
-    // eslint-disable-next-line no-console
-    console.log('[POC-T3-DEBUG] after seek:', {
-      requested: sec,
-      currentTime: audio.currentTime,
-      paused: audio.paused,
-      readyState: audio.readyState,
-      networkState: audio.networkState,
-      buffered: snapshotBuffered(audio),
-    })
+    audio.currentTime = 0
+    setTimeout(() => {
+      audio.currentTime = sec
+      if (!wasPaused) {
+        audio.play().catch((err) => {
+          // eslint-disable-next-line no-console
+          console.error('Audio play failed after seek:', err)
+        })
+      }
+    }, 50)
   }, [])
 
   return (
