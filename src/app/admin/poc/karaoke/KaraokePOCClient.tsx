@@ -74,12 +74,21 @@ export function KaraokePOCClient({
   // useCallback pour stabiliser la référence : `KaraokeWord` est mémoïsé sur
   // `onSeek === prev.onSeek`. Sans cela, chaque render parent invaliderait la
   // mémoïsation de TOUS les mots et le handler attaché au DOM serait stale.
+  //
+  // Une seule source de vérité : on touche UNIQUEMENT à `audio.currentTime`.
+  // Le state React `currentTime` est synchronisé EXCLUSIVEMENT par le listener
+  // `timeupdate` (cf. useEffect ci-dessus). Le navigateur émet un `timeupdate`
+  // immédiatement après tout seek, donc le state se met à jour spontanément.
+  //
+  // ⚠️ Ne PAS faire `setCurrentTime(sec)` ici : la double écriture
+  // (audio.currentTime + state) crée une race avec un `timeupdate` portant
+  // potentiellement l'ancienne valeur "en vol" pendant le buffering du seek,
+  // ce qui se manifeste comme un re-seek perçu (mini-silence + 2-3 syllabes
+  // rejouées + reprise depuis l'ancienne position).
   const handleSeek = useCallback((sec: number) => {
     const audio = audioRef.current
     if (!audio) return
     audio.currentTime = sec
-    // Force un update immédiat (sinon on attend le prochain `timeupdate`).
-    setCurrentTime(sec)
   }, [])
 
   return (
