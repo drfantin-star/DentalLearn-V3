@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { KaraokeTranscript } from '@/components/audio-enriched/KaraokeTranscript'
 import { useEnrichedTimeline } from '@/hooks/useEnrichedTimeline'
@@ -12,6 +12,29 @@ import { flattenTranscript } from '@/lib/timeline/findCurrentWord'
  *
  * Le seek libre sur les mots est attendu sur cette page de test admin.
  */
+
+// Note POC-T3-D5 : seek-by-click sur les mots du transcript désactivé
+// sur cette page POC.
+//
+// Symptôme observé : un seek JS (audio.currentTime = sec depuis un handler
+// React) sur ce MP3 met à jour currentTime côté navigateur (events seeking,
+// seeked, timeupdate firent normalement à la nouvelle position) mais le flux
+// audio diffusé reste sur la position d'origine.
+//
+// Workarounds tentés sans succès :
+//   - audio.load() avant set currentTime (aggrave le bug)
+//   - double-set via currentTime = 0 puis setTimeout currentTime = sec
+//
+// Confirmation par test utilisateur : le seek natif via barre HTML5 est lui
+// aussi partiellement cassé sur ce MP3 (drag arrière atterrit au mauvais
+// endroit). Cause probable : pipeline Python ElevenLabs concatène les chunks
+// sans réindexer un header Xing/LAME, ce qui prive le navigateur d'une table
+// de mapping temps→byte fiable.
+//
+// Tracking : POC-T3-D4 — à corriger en T2-v2 par post-traitement Python
+// (mutagen.mp3 ou ffmpeg) injectant un header Xing valide. Une fois corrigé,
+// ré-activer simplement le passage de onSeek à KaraokeTranscript pour
+// restaurer le seek-by-click.
 
 interface KaraokePOCClientProps {
   sequenceTitle: string
@@ -71,38 +94,6 @@ export function KaraokePOCClient({
     }
     return candidate + 1 // 1-indexed pour l'affichage
   }, [flatWords, currentTime])
-
-  // useCallback pour stabiliser la référence : `KaraokeWord` est mémoïsé sur
-  // `onSeek === prev.onSeek`. Sans cela, chaque render parent invaliderait la
-  // mémoïsation de TOUS les mots et le handler attaché au DOM serait stale.
-  //
-  // Workaround MP3 sans header Xing/LAME (POC-T3-D4) : double-set via
-  // `currentTime = 0` pour forcer le décodeur audio à se reset proprement
-  // entre deux positions. Sans ce workaround, `audio.currentTime` est mis
-  // à jour côté JS mais le flux audio diffusé reste sur la position
-  // d'origine — le décodeur a besoin d'un index Xing/LAME pour seek par
-  // offset, et le pipeline ElevenLabs concatène les chunks sans en
-  // produire. Le délai ~50 ms laisse au navigateur le temps de prendre
-  // en compte le reset à 0 avant le seek vers la cible.
-  // Le state React `currentTime` se met à jour via le listener timeupdate
-  // natif déclenché par le navigateur après le seek effectif (pas de
-  // setCurrentTime manuel ici, cf. fix2).
-  // À terme, intégrer un header Xing dans le pipeline Python T2 v2.
-  const handleSeek = useCallback((sec: number) => {
-    const audio = audioRef.current
-    if (!audio) return
-    const wasPaused = audio.paused
-    audio.currentTime = 0
-    setTimeout(() => {
-      audio.currentTime = sec
-      if (!wasPaused) {
-        audio.play().catch((err) => {
-          // eslint-disable-next-line no-console
-          console.error('Audio play failed after seek:', err)
-        })
-      }
-    }, 50)
-  }, [])
 
   return (
     <main className="mx-auto max-w-4xl p-6">
@@ -169,7 +160,6 @@ export function KaraokePOCClient({
           <KaraokeTranscript
             transcript={timeline.transcript}
             currentTime={currentTime}
-            onSeek={handleSeek}
           />
         )}
       </section>
