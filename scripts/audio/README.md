@@ -1,53 +1,148 @@
-# scripts/audio — Phase 2A POC-T2 staging
+# scripts/audio — POC-T2 staging
 
 Ces fichiers sont destinés à être copiés dans `~/Desktop/DentalLearn-Audio/`
 sur la machine locale Dr Fantin. Le script Python de production
 `generate_audio.py` vit hors repo (cf. ticket POC-T2) ; ce dossier sert
-uniquement de **zone de staging versionnée** pour les livrables Phase 2A.
+uniquement de **zone de staging versionnée** pour les livrables POC.
 
 ## Contenu
 
-| Fichier | Rôle |
-|---|---|
-| `test_eleven_labs_with_timestamps.py` | Script de test isolé Phase 2A — valide en réel le format de réponse de `client.text_to_dialogue.convert_with_timestamps`. |
-| `POC_T2_PHASE_A_OBSERVATIONS.md` | Template d'observations à compléter après le run. |
+| Fichier | Rôle | Phase |
+|---|---|---|
+| `test_eleven_labs_with_timestamps.py` | Script de test isolé — valide en réel le format de réponse de `client.text_to_dialogue.convert_with_timestamps`. | 2A |
+| `POC_T2_PHASE_A_OBSERVATIONS.md` | Observations Phase 2A (rempli, GO formel Dr Fantin du 5 mai 2026). | 2A |
+| `REFERENCE_generate_audio_current.py` | Snapshot anonymisé (clé API en placeholder) du `generate_audio.py` local Dr Fantin avant Phase 2B. Sert de référence pour vérifier la compatibilité descendante. | 2B |
+| `generate_audio_PHASE_2B.py` | Nouvelle version du script avec mode `WITH_TIMESTAMPS=True` qui produit `.mp3` + `.timeline.json`. Compat descendante stricte avec le legacy si `WITH_TIMESTAMPS=False`. | 2B |
+| `POC_T2_PHASE_B_RECAP.md` | Template de récap à compléter par Dr Fantin après run sur **Communication et Écoute Active S2**. | 2B |
 
-> **Hors scope ici** : le `generate_audio.py` actuel n'est **pas** committé.
-> Il contient la clé API en clair et doit rester hors repo.
+> **Hors scope ici** : le `generate_audio.py` actuel (avec clé API en clair)
+> n'est **pas** committé. Il vit chez Dr Fantin.
 
-## Procédure d'exécution (Dr Fantin)
+---
+
+## Phase 2A — exécution (DÉJÀ FAITE, mergée via PR #241)
 
 ```bash
-# 1. Copier le script de test à côté du generate_audio.py local
 cp scripts/audio/test_eleven_labs_with_timestamps.py ~/Desktop/DentalLearn-Audio/
 cp scripts/audio/POC_T2_PHASE_A_OBSERVATIONS.md      ~/Desktop/DentalLearn-Audio/
-
-# 2. Lancer le test (~50 mots, coût négligeable)
 cd ~/Desktop/DentalLearn-Audio
 python3 test_eleven_labs_with_timestamps.py
-
-# 3. Le script produit 3 fichiers :
-#    - test_response_raw.json       → dump complet de la réponse SDK
-#    - test_response_audio.mp3      → audio décodé (validation auditive)
-#    - test_response_summary.txt    → résumé lisible (mots échantillonnés)
-
-# 4. Compléter POC_T2_PHASE_A_OBSERVATIONS.md :
-#    - Recopier les ✅/❌ console (section 1)
-#    - Écouter test_response_audio.mp3 et noter les écarts (section 2)
-#    - Décider GO / NO-GO (section 4)
 ```
 
-## Point d'arrêt obligatoire
+Résultat acquis :
+- `audio_base_64` (avec underscore) confirmé comme attribut SDK
+- `normalized_alignment` présent et préféré à `alignment`
+- `voice_segments[]` livré par l'API → simplifie la segmentation Sophie/Martin
 
-À l'issue de Phase 2A, on **stoppe**. Phase 2B (modification effective de
-`generate_audio.py`) n'est lancée qu'après validation explicite Dr Fantin sur
-ce document d'observations. Cf. §10 ticket 2 de
-`spec_poc_visualisation_audio_v1_0`.
+---
+
+## Phase 2B — modification de `generate_audio.py`
+
+### Procédure de remplacement (Dr Fantin)
+
+```bash
+# 1. Backup obligatoire de l'existant
+cp ~/Desktop/DentalLearn-Audio/generate_audio.py \
+   ~/Desktop/DentalLearn-Audio/generate_audio.py.backup_$(date +%Y%m%d_%H%M%S)
+
+# 2. Copie de la Phase 2B en remplacement
+cp scripts/audio/generate_audio_PHASE_2B.py \
+   ~/Desktop/DentalLearn-Audio/generate_audio.py
+
+# 3. Réinjection de la clé API
+#    Éditer ~/Desktop/DentalLearn-Audio/generate_audio.py ligne 41 :
+#    API_KEY = "REMPLACER_PAR_TA_CLE"   →   API_KEY = "<la vraie clé locale>"
+```
+
+### Bascule du mode
+
+Dans le fichier, ligne `WITH_TIMESTAMPS = True` :
+- `True`  (défaut Phase 2B) : endpoint `convert_with_timestamps`, produit `.mp3` + `.timeline.json`, limite chunk **1900 car**.
+- `False` : comportement legacy strict (= ancien `generate_audio.py`), produit uniquement `.mp3`, limite chunk **4500 car**. Aucun changement comportemental vs avant Phase 2B.
+
+### Test recommandé sur S2
+
+```bash
+cd ~/Desktop/DentalLearn-Audio
+python3 generate_audio.py dialogues/communication_ecoute_active_s2.txt
+```
+
+Sortie attendue :
+- `dialogues/communication_ecoute_active_s2.mp3`
+- `dialogues/communication_ecoute_active_s2.timeline.json`
+
+### Vérifications post-run
+
+```bash
+# 1. JSON valide + clés attendues
+python3 -c "import json; d=json.load(open('dialogues/communication_ecoute_active_s2.timeline.json')); print(sorted(d.keys())); print('segments:', len(d['transcript']['segments'])); print('duration:', d['duration_sec'])"
+
+# 2. 10 mots tirés au hasard pour la validation auditive (<100 ms d'écart)
+python3 -c "
+import json, random
+d = json.load(open('dialogues/communication_ecoute_active_s2.timeline.json'))
+all_words = [w for s in d['transcript']['segments'] for w in s['words']]
+for w in random.sample(all_words, min(10, len(all_words))):
+    print(f\"{w['start_sec']:.2f}s → {w['text']}\")
+"
+```
+
+Puis ouvrir le `.mp3` dans un lecteur capable de seek à la seconde près et vérifier l'écart sur les 10 mots tirés.
+
+---
+
+## Format Timeline v1.0 produit
+
+Conforme spec §2.1 de `spec_poc_visualisation_audio_v1_0` :
+
+```json
+{
+  "schema_version": "1.0",
+  "source_type": "formation_sequence",
+  "source_id": "TODO_REMPLIR_MANUELLEMENT_AVANT_UPLOAD",
+  "audio_url": "TODO_REMPLIR_APRES_UPLOAD_SUPABASE",
+  "duration_sec": 612.34,
+  "generated_at": "2026-05-05T14:30:00Z",
+  "generator": "auto_python_pipeline",
+  "transcript": {
+    "segments": [
+      {
+        "start_sec": 0.0,
+        "end_sec": 6.8,
+        "speaker": "sophie",
+        "text": "Bonjour Martin, on parle aujourd'hui...",
+        "words": [
+          { "text": "Bonjour", "start_sec": 0.0, "end_sec": 0.4 },
+          { "text": "Martin,", "start_sec": 0.5, "end_sec": 0.9 }
+        ]
+      }
+    ]
+  },
+  "concepts": [],
+  "scenes": []
+}
+```
+
+Champs `concepts` et `scenes` sont volontairement vides côté pipeline Python — ils seront remplis par l'agent LLM (ticket T5) ou par l'éditeur admin (ticket T6).
+
+---
+
+## TODO post-génération (manuel pour le POC)
+
+Le script ne touche pas Supabase. Après chaque génération, **étapes manuelles** :
+
+1. Uploader le `.mp3` dans le bucket Storage `audio` (existant)
+2. Récupérer l'URL publique → remplacer `audio_url` dans le `.timeline.json`
+3. Récupérer l'UUID de la `sequence` Supabase → remplacer `source_id`
+4. Uploader le `.timeline.json` dans le bucket Storage `audio-timelines` (créé par PR #240)
+5. UPDATE en BDD : `sequences.timeline_url = <URL>` + `timeline_published = true` (colonnes créées par PR #240)
+
+Cette automatisation viendra dans T7 (ticket d'intégration).
+
+---
 
 ## Sécurité
 
-- Ne **jamais** committer `generate_audio.py` ni les fichiers de dump dans le
-  repo (la clé API y figure en clair côté local, et les dumps peuvent contenir
-  l'audio + transcription).
-- Si une clé API a été exposée (chat, screenshot, log…), la révoquer
-  immédiatement depuis le dashboard ElevenLabs et regénérer.
+- Ne **jamais** committer `generate_audio.py` (la version locale qui contient la clé), ni les fichiers de dump (`test_response_*`).
+- Le `REFERENCE_generate_audio_current.py` du repo est **anonymisé** (clé = placeholder).
+- Si une clé API a été exposée (chat, screenshot, log…), la révoquer immédiatement depuis le dashboard ElevenLabs.
