@@ -144,11 +144,8 @@ export function KaraokeTranscript({
                     text={word.text}
                     isActive={isActive}
                     isPast={isPast}
-                    onClick={
-                      onSeek
-                        ? () => onSeek(word.start_sec)
-                        : undefined
-                    }
+                    startSec={word.start_sec}
+                    onSeek={onSeek}
                   />
                 )
               })}

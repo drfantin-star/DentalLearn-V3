@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { KaraokeTranscript } from '@/components/audio-enriched/KaraokeTranscript'
 import { useEnrichedTimeline } from '@/hooks/useEnrichedTimeline'
@@ -71,13 +71,16 @@ export function KaraokePOCClient({
     return candidate + 1 // 1-indexed pour l'affichage
   }, [flatWords, currentTime])
 
-  const handleSeek = (sec: number) => {
+  // useCallback pour stabiliser la référence : `KaraokeWord` est mémoïsé sur
+  // `onSeek === prev.onSeek`. Sans cela, chaque render parent invaliderait la
+  // mémoïsation de TOUS les mots et le handler attaché au DOM serait stale.
+  const handleSeek = useCallback((sec: number) => {
     const audio = audioRef.current
     if (!audio) return
     audio.currentTime = sec
     // Force un update immédiat (sinon on attend le prochain `timeupdate`).
     setCurrentTime(sec)
-  }
+  }, [])
 
   return (
     <main className="mx-auto max-w-4xl p-6">
