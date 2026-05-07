@@ -83,11 +83,70 @@ const ComparisonTemplateSchema = z.object({
   }),
 })
 
-const CausalTemplateSchema = z.object({
-  kind: z.literal('causal'),
-  cause: CardContentSchema,
-  effects: z.array(CardContentSchema),
+/**
+ * Template "causal" : graphe physiopathologique. Cf. spec POC §5.2.
+ *
+ * Comportement dual (extension additive T4.3 — payloads T3 restent valides) :
+ *  - Mode legacy "cause+effects" (T3) : 1 cause → N effets, rendu en étoile.
+ *    Ne porte aucune sémantique de relation entre effets.
+ *  - Mode "nodes+edges" (T4.3, conforme spec POC §5.2) : graphe orienté avec
+ *    nodes typés `CardContent` + un `id` requis pour matching, et edges
+ *    `{from, to, label?}` étiquetées. Rendu graphe (losange/triangle/etc.)
+ *    en desktop, chaîne verticale en mobile.
+ *
+ * Le `.refine()` valide qu'on est dans l'un ou l'autre mode :
+ *  - mode legacy : `cause` + `effects[≥1]` présents
+ *  - mode graphe : `nodes[≥2]` tous avec `id`, et toutes les edges référencent
+ *    des `id` existants. Les edges orphelines sont rejetées.
+ *
+ * Les composants Causal préfèrent toujours le mode graphe si `nodes` est
+ * présent (cf. `Causal.tsx`). Le mode legacy est rendu en étoile simple.
+ */
+
+const CausalEdgeSchema = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+  label: z.string().max(40).optional(),
 })
+
+const CausalNodeSchema = CardContentSchema.extend({
+  // `id` requis quand on est en mode graphe (matching edges.from/to). Optionnel
+  // sur `CardContent` en général parce que les autres templates n'en ont pas
+  // besoin. Validé au niveau du `.refine()` ci-dessous.
+  id: z.string().min(1).optional(),
+})
+
+const CausalTemplateSchema = z
+  .object({
+    kind: z.literal('causal'),
+    // Mode legacy "cause+effects" (T3) : 1 cause → N effets, rendu étoile.
+    cause: CardContentSchema.optional(),
+    effects: z.array(CardContentSchema).optional(),
+    // Mode "nodes+edges" (T4.3, conforme spec POC §5.2) : graphe étiqueté.
+    nodes: z.array(CausalNodeSchema).min(2).max(5).optional(),
+    edges: z.array(CausalEdgeSchema).optional(),
+  })
+  .refine(
+    (t) => {
+      if (t.cause && t.effects && t.effects.length > 0) return true
+      if (t.nodes && t.nodes.length >= 2) {
+        const allHaveId = t.nodes.every(
+          (n) => typeof n.id === 'string' && n.id.length > 0
+        )
+        if (!allHaveId) return false
+        const ids = new Set(t.nodes.map((n) => n.id as string))
+        const edgesValid = (t.edges ?? []).every(
+          (e) => ids.has(e.from) && ids.has(e.to)
+        )
+        return edgesValid
+      }
+      return false
+    },
+    {
+      message:
+        'causal template requires either (cause+effects) OR (nodes[≥2 with id]+edges referencing those ids)',
+    }
+  )
 
 const FiguresTemplateSchema = z.object({
   kind: z.literal('figures'),

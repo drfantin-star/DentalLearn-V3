@@ -6,6 +6,7 @@ import { useMemo } from 'react'
 import { getActiveScene } from '@/lib/timeline/getActiveScene'
 import type { Scene, SceneTemplate } from '@/lib/timeline/schema'
 
+import { Causal } from './templates/Causal'
 import { Comparison } from './templates/Comparison'
 import { Figures } from './templates/Figures'
 import { Flowchart } from './templates/Flowchart'
@@ -25,7 +26,7 @@ import { TimelineTemplate } from './templates/Timeline'
  *    inutile de recalculer à 60 Hz).
  *
  * Templates livrés en T4.1 : `grid`, `figures`. T4.2 ajoute `flowchart`,
- * `comparison`, `timeline`. `causal` reste placeholder (livraison T4.3).
+ * `comparison`, `timeline`. T4.3 ajoute `causal`. Bibliothèque complète.
  */
 
 interface StructuredWhiteboardProps {
@@ -95,8 +96,8 @@ export function StructuredWhiteboard({
 }
 
 /**
- * Sélecteur de template. T4.1 : `grid`, `figures`. T4.2 : ajoute `flowchart`,
- * `comparison`, `timeline`. `causal` reçoit un placeholder pointant vers T4.3.
+ * Sélecteur de template. Bibliothèque complète T4.3 : `grid`, `figures`,
+ * `flowchart`, `comparison`, `timeline`, `causal`.
  */
 function SceneRenderer({ template }: { template: SceneTemplate }) {
   switch (template.kind) {
@@ -123,21 +124,15 @@ function SceneRenderer({ template }: { template: SceneTemplate }) {
         />
       )
     case 'causal':
-      return <NotYetImplemented kind={template.kind} />
+      return (
+        <Causal
+          cause={template.cause}
+          effects={template.effects}
+          nodes={template.nodes}
+          edges={template.edges}
+        />
+      )
   }
-}
-
-function NotYetImplemented({ kind }: { kind: 'causal' }) {
-  // Mapping ticket de livraison cf. spec §10.
-  const ticket: Record<typeof kind, string> = {
-    causal: 'T4.3',
-  }
-  return (
-    <div className="bg-[color:var(--color-bg-card)] border border-dashed border-white/20 rounded-lg p-6 text-center text-[color:var(--color-text-muted)]">
-      Template <code className="text-ds-turquoise">{kind}</code> — à livrer
-      dans {ticket[kind]}
-    </div>
-  )
 }
 
 /**
