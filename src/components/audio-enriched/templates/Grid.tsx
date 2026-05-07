@@ -21,10 +21,13 @@ interface GridProps {
 
 // Mapping explicite (pas d'interpolation `grid-cols-${n}`) pour que le purge
 // JIT Tailwind détecte les classes statiquement.
+//
+// Responsive (T4.2 §6.1) : on stack/réduit en mobile pour rester lisible
+// côté T7/T8 user-side.
 const COLS_CLASS: Record<2 | 3 | 4, string> = {
-  2: 'grid-cols-2',
-  3: 'grid-cols-3',
-  4: 'grid-cols-4',
+  2: 'grid-cols-1 sm:grid-cols-2',
+  3: 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3',
+  4: 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
 }
 
 const VARIANT_CLASS: Record<CardVariant, string> = {

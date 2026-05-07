@@ -25,7 +25,7 @@ interface FiguresProps {
 export function Figures({ figures, className }: FiguresProps) {
   return (
     <div
-      className={`flex flex-wrap gap-4 justify-center items-stretch ${className ?? ''}`}
+      className={`flex flex-col sm:flex-row sm:flex-wrap gap-3 sm:gap-4 justify-center items-stretch sm:items-center ${className ?? ''}`}
     >
       {figures.map((item, index) => {
         const isEmphasis = !!item.emphasis

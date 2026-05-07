@@ -6,8 +6,11 @@ import { useMemo } from 'react'
 import { getActiveScene } from '@/lib/timeline/getActiveScene'
 import type { Scene, SceneTemplate } from '@/lib/timeline/schema'
 
+import { Comparison } from './templates/Comparison'
 import { Figures } from './templates/Figures'
+import { Flowchart } from './templates/Flowchart'
 import { Grid } from './templates/Grid'
+import { TimelineTemplate } from './templates/Timeline'
 
 /**
  * Wrapper whiteboard structuré : sélectionne le sous-template selon
@@ -21,10 +24,8 @@ import { Grid } from './templates/Grid'
  *    on ne recalcule la scène active qu'à 2 Hz (les scènes durent 20-45s,
  *    inutile de recalculer à 60 Hz).
  *
- * Templates livrés en T4.1 : `grid`, `figures`. Les autres (`flowchart`,
- * `comparison`, `causal`, `timeline`) rendent un placeholder explicite
- * pour permettre la validation de `getActiveScene` sur l'ensemble de la
- * timeline mockée. Ces placeholders seront remplacés en T4.2 / T4.3.
+ * Templates livrés en T4.1 : `grid`, `figures`. T4.2 ajoute `flowchart`,
+ * `comparison`, `timeline`. `causal` reste placeholder (livraison T4.3).
  */
 
 interface StructuredWhiteboardProps {
@@ -94,8 +95,8 @@ export function StructuredWhiteboard({
 }
 
 /**
- * Sélecteur de template. Pour T4.1 on ne render que `grid` et `figures` ; les
- * autres `kind` reçoivent un placeholder pointant vers le ticket de livraison.
+ * Sélecteur de template. T4.1 : `grid`, `figures`. T4.2 : ajoute `flowchart`,
+ * `comparison`, `timeline`. `causal` reçoit un placeholder pointant vers T4.3.
  */
 function SceneRenderer({ template }: { template: SceneTemplate }) {
   switch (template.kind) {
@@ -106,24 +107,30 @@ function SceneRenderer({ template }: { template: SceneTemplate }) {
     case 'figures':
       return <Figures figures={template.figures} />
     case 'flowchart':
+      return (
+        <Flowchart
+          cards={template.cards}
+          orientation={template.orientation}
+        />
+      )
     case 'comparison':
-    case 'causal':
+      return <Comparison left={template.left} right={template.right} />
     case 'timeline':
+      return (
+        <TimelineTemplate
+          steps={template.steps}
+          events={template.events}
+        />
+      )
+    case 'causal':
       return <NotYetImplemented kind={template.kind} />
   }
 }
 
-function NotYetImplemented({
-  kind,
-}: {
-  kind: 'flowchart' | 'comparison' | 'causal' | 'timeline'
-}) {
+function NotYetImplemented({ kind }: { kind: 'causal' }) {
   // Mapping ticket de livraison cf. spec §10.
   const ticket: Record<typeof kind, string> = {
-    flowchart: 'T4.2',
-    comparison: 'T4.2',
     causal: 'T4.3',
-    timeline: 'T4.2',
   }
   return (
     <div className="bg-[color:var(--color-bg-card)] border border-dashed border-white/20 rounded-lg p-6 text-center text-[color:var(--color-text-muted)]">

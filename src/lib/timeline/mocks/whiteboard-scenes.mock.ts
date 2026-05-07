@@ -5,12 +5,10 @@ import type { Timeline } from '@/lib/timeline/schema'
  *
  * Sert exclusivement à la page POC `/admin/poc/whiteboard-templates` pour
  * tester `getActiveScene` en condition réelle (gaps, fenêtres, transitions)
- * et valider visuellement les 2 templates livrés en T4.1 ainsi que les
- * placeholders des 4 autres templates (T4.2 / T4.3).
+ * et valider visuellement les templates livrés.
  *
- * ⚠️ Côté T4.1, seuls `grid` et `figures` sont rendus pour de vrai. Les
- * autres entrées sont là pour exercer le sélecteur du wrapper sur tous les
- * `kind` du discriminated union.
+ * ⚠️ T4.2 : `grid`, `figures`, `flowchart`, `comparison`, `timeline` sont
+ * tous rendus pour de vrai. Seul `causal` reste en placeholder T4.3.
  */
 
 export const MOCK_WHITEBOARD_TIMELINE: Timeline = {
@@ -55,7 +53,7 @@ export const MOCK_WHITEBOARD_TIMELINE: Timeline = {
         ],
       },
     },
-    // 30-50s : Flowchart (placeholder T4.2)
+    // 30-50s : Flowchart (T4.2)
     {
       id: 'scene-flowchart',
       title: 'Arbre diagnostic',
@@ -63,6 +61,7 @@ export const MOCK_WHITEBOARD_TIMELINE: Timeline = {
       end_sec: 50,
       template: {
         kind: 'flowchart',
+        orientation: 'horizontal',
         cards: [
           { text: 'Douleur à la mastication', subtitle: 'Signe d\'appel' },
           { text: 'Test de morsure positif', subtitle: 'Examen' },
@@ -75,7 +74,7 @@ export const MOCK_WHITEBOARD_TIMELINE: Timeline = {
         ],
       },
     },
-    // 53-68s : Comparison (placeholder T4.2)
+    // 53-68s : Comparison (T4.2)
     {
       id: 'scene-comparison',
       title: 'Reconstitution corono-radiculaire',
@@ -86,20 +85,17 @@ export const MOCK_WHITEBOARD_TIMELINE: Timeline = {
         left: {
           title: 'Tenon fibré',
           cards: [
-            {
-              text: 'Module élastique proche dentine',
-              subtitle: 'Préserve la racine',
-            },
+            { text: 'Module élastique proche dentine' },
+            { text: 'Adhésif compatible' },
+            { text: 'Retraitement aisé', variant: 'success' },
           ],
         },
         right: {
           title: 'Tenon métallique',
           cards: [
-            {
-              text: 'Risque fracture radiculaire',
-              subtitle: 'Module trop rigide',
-              variant: 'warning',
-            },
+            { text: 'Module élevé' },
+            { text: 'Risque fracture radiculaire', variant: 'warning' },
+            { text: 'Retraitement difficile' },
           ],
         },
       },
@@ -120,7 +116,7 @@ export const MOCK_WHITEBOARD_TIMELINE: Timeline = {
         ],
       },
     },
-    // 88-100s : Timeline (placeholder T4.2)
+    // 88-100s : Timeline (mode events, T4.2)
     {
       id: 'scene-timeline',
       title: 'Protocole de prise en charge',
@@ -128,11 +124,11 @@ export const MOCK_WHITEBOARD_TIMELINE: Timeline = {
       end_sec: 100,
       template: {
         kind: 'timeline',
-        steps: [
-          { text: 'J0 — Diagnostic clinique + CBCT' },
-          { text: 'J7 — Reconstitution provisoire' },
-          { text: 'J21 — Couronne définitive' },
-          { text: '6 mois — Contrôle' },
+        events: [
+          { at_label: 'J0', text: 'Diagnostic clinique + CBCT' },
+          { at_label: 'J7', text: 'Reconstitution provisoire' },
+          { at_label: 'J21', text: 'Couronne définitive' },
+          { at_label: '6 mois', text: 'Contrôle' },
         ],
       },
     },
