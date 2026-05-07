@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
 import { StructuredWhiteboard } from '@/components/audio-enriched/StructuredWhiteboard'
+import { Comparison } from '@/components/audio-enriched/templates/Comparison'
 import { Figures } from '@/components/audio-enriched/templates/Figures'
+import { Flowchart } from '@/components/audio-enriched/templates/Flowchart'
 import { Grid } from '@/components/audio-enriched/templates/Grid'
 import { getActiveScene } from '@/lib/timeline/getActiveScene'
 import { MOCK_WHITEBOARD_TIMELINE } from '@/lib/timeline/mocks/whiteboard-scenes.mock'
@@ -29,12 +31,30 @@ const ISOLATED_FIGURES = [
   { value: '5 ans', label: 'suivi moyen' },
 ]
 
+const FLOWCHART_DEMO = [
+  { text: 'Diagnostic', subtitle: 'Étape 1' },
+  { text: 'Imagerie', subtitle: 'Étape 2' },
+  { text: 'Traitement', subtitle: 'Étape 3', variant: 'highlight' as const },
+]
+
+const COMPARISON_DEMO = {
+  left: {
+    title: 'Option A',
+    cards: [
+      { text: 'Avantage 1' },
+      { text: 'Avantage 2', variant: 'success' as const },
+    ],
+  },
+  right: {
+    title: 'Option B',
+    cards: [{ text: 'Risque connu', variant: 'warning' as const }],
+  },
+}
+
 const PLACEHOLDER_TEMPLATES: Array<{
-  kind: 'flowchart' | 'comparison' | 'causal' | 'timeline'
+  kind: 'causal' | 'timeline'
   ticket: string
 }> = [
-  { kind: 'flowchart', ticket: 'T4.2' },
-  { kind: 'comparison', ticket: 'T4.2' },
   { kind: 'causal', ticket: 'T4.3' },
   { kind: 'timeline', ticket: 'T4.2' },
 ]
@@ -52,15 +72,15 @@ export function WhiteboardTemplatesPOCClient() {
       <div className="mx-auto max-w-5xl">
         <header className="mb-6 space-y-2">
           <p className="text-xs uppercase tracking-wider text-[color:var(--color-text-muted)]">
-            POC Whiteboard · Admin · T4.1
+            POC Whiteboard · Admin · T4.2
           </p>
           <h1 className="text-2xl font-bold text-white">
             Whiteboard templates POC
           </h1>
           <p className="text-sm text-[color:var(--color-text-secondary)]">
-            Fondations (helper de scène + wrapper) + 2 templates : Grid et
-            Figures. Les 4 autres templates (flowchart, comparison, causal,
-            timeline) affichent un placeholder en attendant T4.2 / T4.3.
+            T4.1 : Grid + Figures. T4.2 (en cours) : Flowchart + Comparison
+            câblés ; Timeline en placeholder jusqu'à la fin du ticket. Causal
+            reste en placeholder T4.3.
           </p>
           <div className="text-xs">
             <Link
@@ -156,6 +176,23 @@ export function WhiteboardTemplatesPOCClient() {
               code={JSON.stringify({ figures: ISOLATED_FIGURES }, null, 2)}
             >
               <Figures figures={ISOLATED_FIGURES} />
+            </GalleryCard>
+
+            <GalleryCard
+              title="Flowchart · 3 étapes · highlight"
+              code={JSON.stringify({ cards: FLOWCHART_DEMO }, null, 2)}
+            >
+              <Flowchart cards={FLOWCHART_DEMO} />
+            </GalleryCard>
+
+            <GalleryCard
+              title="Comparison · 2 colonnes · success/warning"
+              code={JSON.stringify(COMPARISON_DEMO, null, 2)}
+            >
+              <Comparison
+                left={COMPARISON_DEMO.left}
+                right={COMPARISON_DEMO.right}
+              />
             </GalleryCard>
 
             {PLACEHOLDER_TEMPLATES.map(({ kind, ticket }) => (
