@@ -7,8 +7,8 @@ import type { Timeline } from '@/lib/timeline/schema'
  * tester `getActiveScene` en condition réelle (gaps, fenêtres, transitions)
  * et valider visuellement les templates livrés.
  *
- * ⚠️ T4.2 : `grid`, `figures`, `flowchart`, `comparison`, `timeline` sont
- * tous rendus pour de vrai. Seul `causal` reste en placeholder T4.3.
+ * T4.3 : tous les templates sont rendus pour de vrai (`grid`, `figures`,
+ * `flowchart`, `comparison`, `timeline`, `causal`).
  */
 
 export const MOCK_WHITEBOARD_TIMELINE: Timeline = {
@@ -100,7 +100,7 @@ export const MOCK_WHITEBOARD_TIMELINE: Timeline = {
         },
       },
     },
-    // 70-85s : Causal (placeholder T4.3)
+    // 70-85s : Causal (T4.3) — chaîne physiopathologique en mode nodes+edges
     {
       id: 'scene-causal',
       title: 'Mécanisme de la fêlure',
@@ -108,11 +108,16 @@ export const MOCK_WHITEBOARD_TIMELINE: Timeline = {
       end_sec: 85,
       template: {
         kind: 'causal',
-        cause: { text: 'Stress occlusal répété' },
-        effects: [
-          { text: 'Microfissure émail' },
-          { text: 'Propagation dentine' },
-          { text: 'Fracture complète', variant: 'warning' },
+        nodes: [
+          { id: 'n1', text: 'Stress occlusal répété' },
+          { id: 'n2', text: 'Microfissure émail' },
+          { id: 'n3', text: 'Propagation dentine' },
+          { id: 'n4', text: 'Fracture complète', variant: 'warning' },
+        ],
+        edges: [
+          { from: 'n1', to: 'n2', label: 'fatigue' },
+          { from: 'n2', to: 'n3' },
+          { from: 'n3', to: 'n4', label: 'si non traité' },
         ],
       },
     },

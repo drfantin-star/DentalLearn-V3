@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
 import { StructuredWhiteboard } from '@/components/audio-enriched/StructuredWhiteboard'
+import { Causal } from '@/components/audio-enriched/templates/Causal'
 import { Comparison } from '@/components/audio-enriched/templates/Comparison'
 import { Figures } from '@/components/audio-enriched/templates/Figures'
 import { Flowchart } from '@/components/audio-enriched/templates/Flowchart'
@@ -58,10 +59,20 @@ const TIMELINE_EVENTS_DEMO = [
   { at_label: 'M6', text: 'Bilan' },
 ]
 
-const PLACEHOLDER_TEMPLATES: Array<{
-  kind: 'causal'
-  ticket: string
-}> = [{ kind: 'causal', ticket: 'T4.3' }]
+const CAUSAL_DEMO = {
+  nodes: [
+    { id: 'a', text: 'Cause initiale' },
+    { id: 'b', text: 'Conséquence A' },
+    { id: 'c', text: 'Conséquence B' },
+    { id: 'd', text: 'Résultat final', variant: 'highlight' as const },
+  ],
+  edges: [
+    { from: 'a', to: 'b', label: 'directe' },
+    { from: 'a', to: 'c' },
+    { from: 'b', to: 'd' },
+    { from: 'c', to: 'd' },
+  ],
+}
 
 export function WhiteboardTemplatesPOCClient() {
   const [currentTime, setCurrentTime] = useState<number>(0)
@@ -76,14 +87,14 @@ export function WhiteboardTemplatesPOCClient() {
       <div className="mx-auto max-w-5xl">
         <header className="mb-6 space-y-2">
           <p className="text-xs uppercase tracking-wider text-[color:var(--color-text-muted)]">
-            POC Whiteboard · Admin · T4.2
+            POC Whiteboard · Admin · T4.3
           </p>
           <h1 className="text-2xl font-bold text-white">
             Whiteboard templates POC
           </h1>
           <p className="text-sm text-[color:var(--color-text-secondary)]">
-            T4.1 : Grid + Figures. T4.2 : Flowchart + Comparison + Timeline.
-            Causal reste en placeholder T4.3.
+            T4.1, T4.2 et T4.3 livrés. Bibliothèque whiteboard complète :
+            Grid, Figures, Flowchart, Comparison, TimelineTemplate, Causal.
           </p>
           <div className="text-xs">
             <Link
@@ -159,7 +170,8 @@ export function WhiteboardTemplatesPOCClient() {
           </h2>
           <p className="mb-6 text-xs text-[color:var(--color-text-muted)]">
             Chaque card render le template avec des données simples. Les
-            templates non livrés en T4.1 affichent un placeholder explicite.
+            6 templates de la bibliothèque sont rendus en live (plus aucun
+            placeholder).
           </p>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -205,18 +217,15 @@ export function WhiteboardTemplatesPOCClient() {
               <TimelineTemplate events={TIMELINE_EVENTS_DEMO} />
             </GalleryCard>
 
-            {PLACEHOLDER_TEMPLATES.map(({ kind, ticket }) => (
-              <GalleryCard
-                key={kind}
-                title={`${kind} · à livrer dans ${ticket}`}
-                code=""
-              >
-                <div className="rounded-lg border border-dashed border-white/20 bg-[color:var(--color-bg-card)] p-6 text-center text-sm text-[color:var(--color-text-muted)]">
-                  Template <code className="text-ds-turquoise">{kind}</code>{' '}
-                  — à livrer dans {ticket}
-                </div>
-              </GalleryCard>
-            ))}
+            <GalleryCard
+              title="Causal · 4 nodes losange · convergence"
+              code={JSON.stringify(CAUSAL_DEMO, null, 2)}
+            >
+              <Causal
+                nodes={CAUSAL_DEMO.nodes}
+                edges={CAUSAL_DEMO.edges}
+              />
+            </GalleryCard>
           </div>
         </section>
       </div>
