@@ -8,6 +8,7 @@ import { Comparison } from '@/components/audio-enriched/templates/Comparison'
 import { Figures } from '@/components/audio-enriched/templates/Figures'
 import { Flowchart } from '@/components/audio-enriched/templates/Flowchart'
 import { Grid } from '@/components/audio-enriched/templates/Grid'
+import { TimelineTemplate } from '@/components/audio-enriched/templates/Timeline'
 import { getActiveScene } from '@/lib/timeline/getActiveScene'
 import { MOCK_WHITEBOARD_TIMELINE } from '@/lib/timeline/mocks/whiteboard-scenes.mock'
 
@@ -51,13 +52,16 @@ const COMPARISON_DEMO = {
   },
 }
 
-const PLACEHOLDER_TEMPLATES: Array<{
-  kind: 'causal' | 'timeline'
-  ticket: string
-}> = [
-  { kind: 'causal', ticket: 'T4.3' },
-  { kind: 'timeline', ticket: 'T4.2' },
+const TIMELINE_EVENTS_DEMO = [
+  { at_label: 'J0', text: 'Initial' },
+  { at_label: 'J14', text: 'Suivi' },
+  { at_label: 'M6', text: 'Bilan' },
 ]
+
+const PLACEHOLDER_TEMPLATES: Array<{
+  kind: 'causal'
+  ticket: string
+}> = [{ kind: 'causal', ticket: 'T4.3' }]
 
 export function WhiteboardTemplatesPOCClient() {
   const [currentTime, setCurrentTime] = useState<number>(0)
@@ -78,9 +82,8 @@ export function WhiteboardTemplatesPOCClient() {
             Whiteboard templates POC
           </h1>
           <p className="text-sm text-[color:var(--color-text-secondary)]">
-            T4.1 : Grid + Figures. T4.2 (en cours) : Flowchart + Comparison
-            câblés ; Timeline en placeholder jusqu'à la fin du ticket. Causal
-            reste en placeholder T4.3.
+            T4.1 : Grid + Figures. T4.2 : Flowchart + Comparison + Timeline.
+            Causal reste en placeholder T4.3.
           </p>
           <div className="text-xs">
             <Link
@@ -193,6 +196,13 @@ export function WhiteboardTemplatesPOCClient() {
                 left={COMPARISON_DEMO.left}
                 right={COMPARISON_DEMO.right}
               />
+            </GalleryCard>
+
+            <GalleryCard
+              title="TimelineTemplate · 3 events"
+              code={JSON.stringify({ events: TIMELINE_EVENTS_DEMO }, null, 2)}
+            >
+              <TimelineTemplate events={TIMELINE_EVENTS_DEMO} />
             </GalleryCard>
 
             {PLACEHOLDER_TEMPLATES.map(({ kind, ticket }) => (

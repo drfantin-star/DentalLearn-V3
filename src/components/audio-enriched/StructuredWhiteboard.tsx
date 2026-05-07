@@ -10,6 +10,7 @@ import { Comparison } from './templates/Comparison'
 import { Figures } from './templates/Figures'
 import { Flowchart } from './templates/Flowchart'
 import { Grid } from './templates/Grid'
+import { TimelineTemplate } from './templates/Timeline'
 
 /**
  * Wrapper whiteboard structuré : sélectionne le sous-template selon
@@ -23,9 +24,8 @@ import { Grid } from './templates/Grid'
  *    on ne recalcule la scène active qu'à 2 Hz (les scènes durent 20-45s,
  *    inutile de recalculer à 60 Hz).
  *
- * Templates livrés en T4.1 : `grid`, `figures`. T4.2 ajoute `flowchart`
- * et `comparison`. `timeline` reste placeholder (livraison T4.2 finale),
- * `causal` reste placeholder (livraison T4.3).
+ * Templates livrés en T4.1 : `grid`, `figures`. T4.2 ajoute `flowchart`,
+ * `comparison`, `timeline`. `causal` reste placeholder (livraison T4.3).
  */
 
 interface StructuredWhiteboardProps {
@@ -95,9 +95,8 @@ export function StructuredWhiteboard({
 }
 
 /**
- * Sélecteur de template. T4.1 : `grid`, `figures`. T4.2 : ajoute `flowchart`
- * et `comparison`. Les `kind` non encore livrés reçoivent un placeholder
- * pointant vers le ticket de livraison.
+ * Sélecteur de template. T4.1 : `grid`, `figures`. T4.2 : ajoute `flowchart`,
+ * `comparison`, `timeline`. `causal` reçoit un placeholder pointant vers T4.3.
  */
 function SceneRenderer({ template }: { template: SceneTemplate }) {
   switch (template.kind) {
@@ -116,21 +115,22 @@ function SceneRenderer({ template }: { template: SceneTemplate }) {
       )
     case 'comparison':
       return <Comparison left={template.left} right={template.right} />
-    case 'causal':
     case 'timeline':
+      return (
+        <TimelineTemplate
+          steps={template.steps}
+          events={template.events}
+        />
+      )
+    case 'causal':
       return <NotYetImplemented kind={template.kind} />
   }
 }
 
-function NotYetImplemented({
-  kind,
-}: {
-  kind: 'causal' | 'timeline'
-}) {
+function NotYetImplemented({ kind }: { kind: 'causal' }) {
   // Mapping ticket de livraison cf. spec §10.
   const ticket: Record<typeof kind, string> = {
     causal: 'T4.3',
-    timeline: 'T4.2',
   }
   return (
     <div className="bg-[color:var(--color-bg-card)] border border-dashed border-white/20 rounded-lg p-6 text-center text-[color:var(--color-text-muted)]">
