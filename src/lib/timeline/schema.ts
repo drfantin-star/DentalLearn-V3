@@ -36,6 +36,15 @@ const TimelineConceptSchema = z.object({
   start_sec: z.number().nonnegative(),
   end_sec: z.number().nonnegative(),
   importance: z.number().min(0).max(1).optional(),
+  // T5.0 — additifs spec POC §4.2 et §6.2 (tous optionnels, rétro-compat).
+  // Le pipeline T2 (Python) ne remplit pas ces champs ; ils sont peuplés
+  // par l'extraction LLM Sonnet (T5) et lus côté karaoké/whiteboard
+  // pour afficher la définition au tap sur un terme.
+  term: z.string().min(1).optional(),
+  definition: z.string().max(300).optional(),
+  at_sec: z.number().nonnegative().optional(),
+  at_word_index: z.number().int().nonnegative().optional(),
+  source: z.string().min(1).optional(),
 })
 
 // ─── Card content (utilisé par les templates whiteboard) ────────────────────
