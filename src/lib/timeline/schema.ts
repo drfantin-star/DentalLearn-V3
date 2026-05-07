@@ -60,6 +60,9 @@ const CardContentSchema = z.object({
 const FlowchartTemplateSchema = z.object({
   kind: z.literal('flowchart'),
   cards: z.array(CardContentSchema),
+  // `orientation` (ajouté T4.2) : direction du flowchart.
+  // Optionnel — défaut 'horizontal' côté composant. Payloads T3 restent valides.
+  orientation: z.enum(['horizontal', 'vertical']).optional(),
 })
 
 const GridTemplateSchema = z.object({
@@ -99,10 +102,28 @@ const FiguresTemplateSchema = z.object({
   ),
 })
 
-const TimelineTemplateSchema = z.object({
-  kind: z.literal('timeline'),
-  steps: z.array(CardContentSchema),
-})
+const TimelineTemplateSchema = z
+  .object({
+    kind: z.literal('timeline'),
+    // Mode "steps" (T3 legacy) : liste de cards rendues en frise simple.
+    steps: z.array(CardContentSchema).optional(),
+    // Mode "events" (T4.2, conforme spec POC §5.2) : frise chronologique
+    // avec labels temporels. Si présent, les composants Timeline préfèrent
+    // ce mode à `steps`.
+    events: z
+      .array(
+        z.object({
+          at_label: z.string().min(1), // ex : "J0", "J7", "6 mois"
+          text: z.string().min(1),
+        })
+      )
+      .optional(),
+  })
+  .refine(
+    (t) =>
+      (t.steps && t.steps.length > 0) || (t.events && t.events.length > 0),
+    { message: 'timeline template requires either steps[] or events[]' }
+  )
 
 const SceneTemplateSchema = z.discriminatedUnion('kind', [
   FlowchartTemplateSchema,
