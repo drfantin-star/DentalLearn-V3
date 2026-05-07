@@ -22,8 +22,12 @@ import {
   buildTimelineFromRaw,
   extractScenesFromScript,
 } from '@/lib/timeline/llm-extraction'
+import type { Timeline } from '@/lib/timeline/schema'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+
+const TIMELINE_STORAGE_BUCKET = 'audio-timelines'
+const TIMELINE_STORAGE_PREFIX = 'poc'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -208,6 +212,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // ----- 8. Persistance Storage (mode normal — T5.3) -----
+    let persistence: PersistenceReport | null = null
+    if (!dryRun) {
+      persistence = await persistTimelineToStorage(
+        builtTimeline.timeline,
+        body.source_id
+      )
+    }
+
     return NextResponse.json({
       success: true,
       timeline: builtTimeline.timeline,
@@ -221,8 +234,8 @@ export async function POST(req: NextRequest) {
         attempts: result.attempts,
       },
       warnings: [...result.warnings, ...builtTimeline.warnings],
-      // dryRun n'a pas d'effet en T5.2 — la persistance arrive en T5.3.
       dry_run: dryRun,
+      persistence,
     })
   } catch (e) {
     // Catch top-level — anonymise vers le client mais loggue côté serveur.
@@ -360,5 +373,91 @@ async function loadFormationContextFromTimeline(
     transcript: transcriptParsed.data,
     audio_url: audioUrl,
     duration_sec: durationSec,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helper — persistance Storage + UPDATE sequences.timeline_url (T5.3)
+// ---------------------------------------------------------------------------
+
+interface PersistenceReport {
+  storage_path: string
+  storage_url: string | null
+  sequence_updated: boolean
+  warnings: string[]
+}
+
+/**
+ * Persiste la Timeline finale au format JSON dans le bucket `audio-timelines`,
+ * sous-dossier `poc/`, fichier `${source_id}-${ISO timestamp}.json`. Pattern
+ * cohérent avec les timelines T2 actuelles (cf. structure existante du bucket).
+ *
+ * Met à jour `sequences.timeline_url` avec l'URL publique du nouveau fichier
+ * (le bucket est déclaré public en lecture par la migration T1). Le
+ * `timeline_published` n'est PAS modifié — seul l'admin via T6 décidera de
+ * publier la timeline générée par LLM.
+ *
+ * Le path est construit avec un timestamp pour ne PAS écraser les versions
+ * précédentes (utile pour comparaison admin entre deux runs T5).
+ */
+async function persistTimelineToStorage(
+  timeline: Timeline,
+  sourceId: string
+): Promise<PersistenceReport> {
+  const warnings: string[] = []
+  const admin = createAdminClient()
+  const isoStamp = new Date().toISOString().replace(/[:.]/g, '-')
+  const path = `${TIMELINE_STORAGE_PREFIX}/${sourceId}-${isoStamp}.json`
+
+  const json = JSON.stringify(timeline, null, 2)
+  const bytes = new TextEncoder().encode(json)
+
+  const { error: uploadError } = await admin.storage
+    .from(TIMELINE_STORAGE_BUCKET)
+    .upload(path, bytes, {
+      contentType: 'application/json',
+      cacheControl: '0',
+      upsert: false,
+    })
+
+  if (uploadError) {
+    warnings.push(`storage_upload_failed:${uploadError.message}`)
+    return {
+      storage_path: path,
+      storage_url: null,
+      sequence_updated: false,
+      warnings,
+    }
+  }
+
+  // URL publique — bucket déclaré public par la migration T1 ; getPublicUrl
+  // retourne toujours une string même si le bucket est privé (le caller
+  // doit faire confiance à la config Storage).
+  const { data: publicData } = admin.storage
+    .from(TIMELINE_STORAGE_BUCKET)
+    .getPublicUrl(path)
+  const publicUrl = publicData?.publicUrl ?? null
+
+  // UPDATE sequences.timeline_url (colonne créée par migration T1 —
+  // 20260504a_poc_timelines.sql)
+  let sequenceUpdated = false
+  if (publicUrl) {
+    const { error: updateError, data: updateData } = await admin
+      .from('sequences')
+      .update({ timeline_url: publicUrl })
+      .eq('id', sourceId)
+      .select('id')
+    if (updateError) {
+      warnings.push(`sequence_update_failed:${updateError.message}`)
+    } else {
+      sequenceUpdated = (updateData ?? []).length > 0
+    }
+  }
+
+  return {
+    storage_path: path,
+    storage_url: publicUrl,
+    sequence_updated: sequenceUpdated,
+    warnings,
   }
 }
