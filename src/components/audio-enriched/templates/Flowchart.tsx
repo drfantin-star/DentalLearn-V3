@@ -9,6 +9,11 @@ import type { CardContent, CardVariant } from '@/lib/timeline/schema'
  * Template "flowchart" : suite ordonnée de cards reliées par des flèches
  * (horizontal par défaut, vertical en option). Cf. spec POC §5.2.
  *
+ * Responsive (T4.2 §6.3) : en mobile (< md), même quand `orientation` est
+ * 'horizontal', on bascule automatiquement en layout vertical (flèches
+ * verticales) — la frise horizontale est illisible sur 375-430px côté
+ * T7/T8 user-side. `orientation: 'vertical'` reste toujours vertical.
+ *
  * Animation : cascade card → flèche → card → flèche, stagger 100ms.
  * Tokens design alignés sur Grid (T4.1) — variants partagés.
  */
@@ -44,11 +49,13 @@ export function Flowchart({
   orientation = 'horizontal',
   className,
 }: FlowchartProps) {
-  const isVertical = orientation === 'vertical'
+  const isForcedVertical = orientation === 'vertical'
 
-  const containerClass = isVertical
+  // 'vertical' : toujours vertical (mobile + desktop).
+  // 'horizontal' : vertical en mobile, horizontal en md+.
+  const containerClass = isForcedVertical
     ? 'flex flex-col items-center gap-3'
-    : 'flex flex-row items-stretch gap-3 flex-wrap justify-center'
+    : 'flex flex-col items-center gap-3 md:flex-row md:items-stretch md:flex-wrap md:justify-center'
 
   return (
     <div className={`${containerClass} ${className ?? ''}`}>
@@ -62,14 +69,8 @@ export function Flowchart({
         return (
           <Fragment key={index}>
             <motion.div
-              initial={
-                isVertical
-                  ? { opacity: 0, x: 4 }
-                  : { opacity: 0, y: 4 }
-              }
-              animate={
-                isVertical ? { opacity: 1, x: 0 } : { opacity: 1, y: 0 }
-              }
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{
                 duration: CARD_DURATION,
                 delay: cardStepIndex * STEP_DELAY,
@@ -103,7 +104,19 @@ export function Flowchart({
                 className="flex items-center justify-center"
                 aria-hidden="true"
               >
-                <FlowchartArrow vertical={isVertical} />
+                {isForcedVertical ? (
+                  <FlowchartArrow vertical />
+                ) : (
+                  <>
+                    {/* Mobile : flèche verticale ; md+ : flèche horizontale */}
+                    <span className="md:hidden">
+                      <FlowchartArrow vertical />
+                    </span>
+                    <span className="hidden md:inline-flex">
+                      <FlowchartArrow vertical={false} />
+                    </span>
+                  </>
+                )}
               </motion.div>
             )}
           </Fragment>
