@@ -22,7 +22,8 @@ import {
   buildFormationPrompt,
 } from './llm-prompt-formations'
 import { parseStrictWithRecovery } from './parse-json-recovery'
-import type { Timeline } from './schema'
+import { TimelineSchema, type Timeline } from './schema'
+import { makeWordIndexLookup, countWordsFlat } from './word-index-lookup'
 
 // ---------------------------------------------------------------------------
 // Constants — figées en haut de fichier pour ajustement rapide
@@ -46,6 +47,29 @@ export const SONNET_CALL_TIMEOUT_MS = 45_000
 
 /** Clés top-level requises dans la sortie LLM brute. */
 const REQUIRED_TOP_LEVEL_KEYS = ['scenes', 'concepts'] as const
+
+// ---------------------------------------------------------------------------
+// T5.2 — Constantes de garde pour la conversion raw → Timeline finale
+// ---------------------------------------------------------------------------
+
+/** Cap dur sur le nombre de scènes — spec POC §6 (max 5). Sonnet est instruit
+ *  via le prompt mais le serveur tronque défensivement si la consigne dérive. */
+export const MAX_SCENES = 5
+
+/** Bornes display_duration_sec — spec POC §6 (20-45s). Clamping côté serveur
+ *  pour éviter un end_sec qui dépasse l'audio ou une scène trop courte. */
+export const MIN_DURATION_SEC = 20
+export const MAX_DURATION_SEC = 45
+
+/** Durée par défaut affichée pour un concept (en secondes). Le concept reste
+ *  highlightable pendant 4s autour de son `at_sec` — choix arbitraire pour
+ *  donner un end_sec valide au schéma sans faire dépendre la durée réelle
+ *  d'un champ Sonnet (qui ne contrôle que `at_word_index`). */
+export const CONCEPT_HIGHLIGHT_DURATION_SEC = 4
+
+/** Limites text/subtitle des cards — alignées sur CardContentSchema. */
+const MAX_CARD_TEXT_LEN = 60
+const MAX_CARD_SUBTITLE_LEN = 40
 
 // ---------------------------------------------------------------------------
 // Types — output BRUT LLM (avant conversion → Timeline finale T5.2)
@@ -413,4 +437,320 @@ export async function extractScenesFromScript(
     attempts: attemptsDone,
     duration_ms: Math.round(performance.now() - startedAt),
   }
+}
+
+// ---------------------------------------------------------------------------
+// T5.2 — buildTimelineFromRaw : conversion raw LLM → Timeline Zod-validée
+// ---------------------------------------------------------------------------
+
+export interface BuildTimelineSuccess {
+  ok: true
+  timeline: Timeline
+  warnings: string[]
+}
+
+export interface BuildTimelineFailure {
+  ok: false
+  stage: 'validation'
+  errors: string[]
+  /** Objet brut tel que construit avant TimelineSchema.parse — exposé pour
+   *  permettre un debug admin (ex : voir un id de causal node manquant). */
+  partial_timeline: unknown
+  warnings: string[]
+}
+
+export type BuildTimelineResult = BuildTimelineSuccess | BuildTimelineFailure
+
+export interface BuildTimelineArgs {
+  raw: SonnetExtractionRaw
+  transcript: Timeline['transcript']
+  source_id: string
+  audio_url: string
+  duration_sec: number
+}
+
+/**
+ * Pipeline de conversion (ordre exact spec POC §6.3) :
+ *  1. Tronque scenes à MAX_SCENES + warning `scenes_truncated`
+ *  2. Truncate text/subtitle ≥ limites + warning `text_truncated`
+ *  3. Conversion `trigger_at_word_index → start_sec` via lookup transcript
+ *     (fallback proportionnel si index hors bornes)
+ *  4. Calcul end_sec = start_sec + clamp(display_duration_sec, [20,45])
+ *     (warning `duration_clamped` si clamp actif)
+ *  5. Génération id scènes (`scene-${index+1}`) si absent ou non unique
+ *  6. Génération id cards synthétique pour les non-causal templates ;
+ *     causal validé par TimelineSchema.refine() (échec → stage='validation')
+ *  7. Concepts : at_sec via lookup, fallback at_sec=0 + warning, dérive
+ *     id/label/start_sec/end_sec
+ *  8. Chapters : un par scène, tri ASC sur start_sec
+ *  9. Validation Zod finale via TimelineSchema.safeParse — si fail, retourne
+ *     stage='validation' avec partial_timeline et erreurs Zod aplaties
+ */
+export function buildTimelineFromRaw(
+  args: BuildTimelineArgs
+): BuildTimelineResult {
+  const warnings: string[] = []
+  const lookup = makeWordIndexLookup(args.transcript)
+  const totalWords = countWordsFlat(args.transcript)
+
+  // ----- 1. Tronquer scenes à MAX_SCENES -----
+  const sourceScenes = args.raw.scenes ?? []
+  let scenes = sourceScenes
+  if (sourceScenes.length > MAX_SCENES) {
+    scenes = sourceScenes.slice(0, MAX_SCENES)
+    warnings.push(`scenes_truncated:${sourceScenes.length}->${MAX_SCENES}`)
+  }
+
+  // ----- 2 + 3 + 4 + 5 + 6 — Conversion scènes -----
+  const usedIds = new Set<string>()
+  const convertedScenes = scenes.map((scene, index) => {
+    const sceneIndexLabel = `scene-${index + 1}`
+    const safeId = ensureUniqueSceneId(scene.id, sceneIndexLabel, usedIds)
+
+    // Conversion start_sec
+    let startSec = lookup(scene.trigger_at_word_index)
+    if (startSec === null) {
+      startSec =
+        totalWords > 0
+          ? (index * args.duration_sec) / Math.max(scenes.length, 1)
+          : 0
+      warnings.push(`word_index_out_of_bounds:${safeId}`)
+    }
+
+    // Clamp display_duration_sec
+    const rawDuration = Number(scene.display_duration_sec ?? MIN_DURATION_SEC)
+    let duration = Number.isFinite(rawDuration) ? rawDuration : MIN_DURATION_SEC
+    if (duration < MIN_DURATION_SEC || duration > MAX_DURATION_SEC) {
+      duration = clamp(duration, MIN_DURATION_SEC, MAX_DURATION_SEC)
+      warnings.push(`duration_clamped:${safeId}`)
+    }
+
+    // Truncate text/subtitle défensif sur tout le template
+    const safeTemplate = sanitizeTemplate(scene.template, safeId, warnings)
+
+    return {
+      id: safeId,
+      title: typeof scene.title === 'string' ? scene.title : safeId,
+      start_sec: startSec,
+      end_sec: Math.min(startSec + duration, args.duration_sec),
+      template: safeTemplate,
+    }
+  })
+
+  // ----- 7. Concepts — conversion at_word_index → at_sec + dérivation id/label -----
+  const sourceConcepts = args.raw.concepts ?? []
+  const convertedConcepts = sourceConcepts.map((concept, index) => {
+    let atSec = lookup(concept.at_word_index)
+    if (atSec === null) {
+      atSec = 0
+      warnings.push(
+        `concept_word_index_out_of_bounds:${concept.term ?? `idx-${index}`}`
+      )
+    }
+    const id = generateConceptId()
+    const label = (concept.term ?? '').trim() || `concept-${index + 1}`
+    return {
+      id,
+      label,
+      start_sec: atSec,
+      end_sec: Math.min(
+        atSec + CONCEPT_HIGHLIGHT_DURATION_SEC,
+        args.duration_sec
+      ),
+      term: concept.term,
+      definition: truncateString(concept.definition, 300),
+      at_sec: atSec,
+      at_word_index: concept.at_word_index,
+      source: concept.source,
+    }
+  })
+
+  // ----- 8. Chapters — un par scène, ASC -----
+  const chapters = convertedScenes
+    .slice()
+    .sort((a, b) => a.start_sec - b.start_sec)
+    .map((scene, idx) => ({
+      id: `chapter-${idx + 1}`,
+      title: scene.title,
+      start_sec: scene.start_sec,
+      end_sec: scene.end_sec,
+    }))
+
+  // ----- 9. Construction objet Timeline -----
+  const timelineDraft: unknown = {
+    schema_version: '1.0',
+    source_type: 'formation_sequence',
+    source_id: args.source_id,
+    audio_url: args.audio_url,
+    duration_sec: args.duration_sec,
+    generated_at: new Date().toISOString(),
+    generator: 'auto_llm_extraction',
+    transcript: args.transcript,
+    scenes: convertedScenes,
+    concepts: convertedConcepts,
+    chapters,
+  }
+
+  // ----- 10. Validation Zod finale -----
+  const parsed = TimelineSchema.safeParse(timelineDraft)
+  if (!parsed.success) {
+    const flat = parsed.error.flatten()
+    const formErrors = flat.formErrors ?? []
+    const fieldErrors = flat.fieldErrors ?? {}
+    const fieldErrorList = Object.entries(fieldErrors).flatMap(([k, vs]) =>
+      (vs ?? []).map((v) => `${k}: ${v}`)
+    )
+    const errors = [...formErrors, ...fieldErrorList]
+    return {
+      ok: false,
+      stage: 'validation',
+      errors:
+        errors.length > 0 ? errors : [parsed.error.message ?? 'validation failed'],
+      partial_timeline: timelineDraft,
+      warnings,
+    }
+  }
+
+  return {
+    ok: true,
+    timeline: parsed.data,
+    warnings,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// T5.2 — Helpers internes
+// ---------------------------------------------------------------------------
+
+function clamp(n: number, lo: number, hi: number): number {
+  return Math.min(hi, Math.max(lo, n))
+}
+
+function truncateString<T>(s: T, max: number): T {
+  if (typeof s !== 'string') return s
+  if (s.length <= max) return s
+  // -3 pour réserver place du "..."
+  return ((s.slice(0, Math.max(0, max - 3)) + '...') as unknown) as T
+}
+
+function ensureUniqueSceneId(
+  rawId: string | undefined,
+  fallback: string,
+  used: Set<string>
+): string {
+  const candidate =
+    typeof rawId === 'string' && rawId.trim().length > 0 ? rawId.trim() : fallback
+  const safe = used.has(candidate) ? fallback : candidate
+  used.add(safe)
+  return safe
+}
+
+function generateConceptId(): string {
+  // crypto.randomUUID() est dispo en Node 18+ et côté Edge — pas besoin de
+  // shim. Fallback string vide si jamais runtime sans crypto (improbable).
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
+  }
+  return `concept-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
+
+/**
+ * Truncate les `text` (≤60) et `subtitle` (≤40) sur tous les contenus du
+ * template. Loggue un warning par scène (pas par card — éviterait la
+ * cardinalité explosive si une scène a 5 cards toutes trop longues).
+ */
+function sanitizeTemplate(
+  template: SonnetRawTemplate,
+  sceneId: string,
+  warnings: string[]
+): SonnetRawTemplate {
+  let textTouched = false
+  let subtitleTouched = false
+
+  const sanitizeCard = (c: SonnetRawCardContent): SonnetRawCardContent => {
+    let text = c.text ?? ''
+    let subtitle = c.subtitle
+    if (typeof text === 'string' && text.length > MAX_CARD_TEXT_LEN) {
+      text = text.slice(0, MAX_CARD_TEXT_LEN - 3) + '...'
+      textTouched = true
+    }
+    if (
+      typeof subtitle === 'string' &&
+      subtitle.length > MAX_CARD_SUBTITLE_LEN
+    ) {
+      subtitle = subtitle.slice(0, MAX_CARD_SUBTITLE_LEN - 3) + '...'
+      subtitleTouched = true
+    }
+    return { ...c, text, ...(subtitle !== undefined ? { subtitle } : {}) }
+  }
+
+  let result: SonnetRawTemplate
+  switch (template.kind) {
+    case 'flowchart':
+      result = { ...template, cards: template.cards.map(sanitizeCard) }
+      break
+    case 'grid':
+      result = { ...template, cards: template.cards.map(sanitizeCard) }
+      break
+    case 'comparison':
+      result = {
+        ...template,
+        left: { ...template.left, cards: template.left.cards.map(sanitizeCard) },
+        right: {
+          ...template.right,
+          cards: template.right.cards.map(sanitizeCard),
+        },
+      }
+      break
+    case 'causal':
+      result = {
+        ...template,
+        nodes: template.nodes.map((n) => ({
+          ...sanitizeCard(n),
+          id: n.id,
+        })),
+      }
+      break
+    case 'figures':
+      // figures.value/label ne sont pas bornés par CardContentSchema mais on
+      // tronque label défensivement à MAX_CARD_TEXT_LEN pour éviter overflow
+      // visuel côté composant Figures (qui s'aligne avec les autres cards).
+      result = {
+        ...template,
+        figures: template.figures.map((f) => {
+          let label = f.label ?? ''
+          if (typeof label === 'string' && label.length > MAX_CARD_TEXT_LEN) {
+            label = label.slice(0, MAX_CARD_TEXT_LEN - 3) + '...'
+            textTouched = true
+          }
+          return { ...f, label }
+        }),
+      }
+      break
+    case 'timeline':
+      result = {
+        ...template,
+        events: template.events.map((e) => {
+          let text = e.text ?? ''
+          if (typeof text === 'string' && text.length > MAX_CARD_TEXT_LEN) {
+            text = text.slice(0, MAX_CARD_TEXT_LEN - 3) + '...'
+            textTouched = true
+          }
+          return { ...e, text }
+        }),
+      }
+      break
+    default: {
+      // Exhaustiveness check — TS error si on oublie un kind. Cast pour ne
+      // pas planter en runtime sur un kind inattendu : on laisse passer tel
+      // quel, la validation Zod finale rejettera proprement.
+      const _exhaustive: never = template
+      result = template
+      void _exhaustive
+    }
+  }
+
+  if (textTouched) warnings.push(`text_truncated:${sceneId}`)
+  if (subtitleTouched) warnings.push(`subtitle_truncated:${sceneId}`)
+  return result
 }

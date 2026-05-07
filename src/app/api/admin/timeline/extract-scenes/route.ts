@@ -19,8 +19,10 @@ import { z } from 'zod'
 import { isSuperAdmin } from '@/lib/auth/rbac'
 import {
   SONNET_MODEL_T5,
+  buildTimelineFromRaw,
   extractScenesFromScript,
 } from '@/lib/timeline/llm-extraction'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
@@ -57,6 +59,12 @@ const BodySchema = z.object({
   source_id: z.string().uuid(),
   script_text: z.string().min(50).optional(),
   transcript: TranscriptInputSchema.optional(),
+  /** T5.2 — audio_url + duration_sec sont nécessaires pour construire la
+   *  Timeline finale Zod-validée. Optionnels en T5.1 (la route les ignorait) ;
+   *  exigés à partir de T5.2 (sinon la route lit le timeline_url de la
+   *  séquence côté serveur — branchement T5.3). */
+  audio_url: z.string().url().optional(),
+  duration_sec: z.number().positive().optional(),
 })
 
 // ---------------------------------------------------------------------------
@@ -112,25 +120,40 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ----- 4. Vérification présence script_text + transcript -----
-    if (!body.script_text || !body.transcript) {
-      return NextResponse.json(
-        {
-          error: 'missing_context',
-          message:
-            'script_text and transcript are required for source_type=formation_sequence (T5.1). The admin UI in T5.3 will populate them server-side from sequences.timeline_url.',
-        },
-        { status: 400 }
-      )
+    // ----- 4. Récupération contexte (script + transcript + audio + duration) -----
+    // Si le caller fournit tout dans le body, on utilise tel quel. Sinon, on
+    // lit le timeline_url existant de la séquence côté serveur (Option A spec
+    // T5.3). En T5.2, garder les deux chemins ouverts pour permettre les
+    // tests curl/Postman avant la page admin.
+    let scriptText = body.script_text
+    let transcript = body.transcript
+    let audioUrl = body.audio_url
+    let durationSec = body.duration_sec
+
+    if (!scriptText || !transcript || !audioUrl || !durationSec) {
+      const ctx = await loadFormationContextFromTimeline(body.source_id)
+      if (!ctx.ok) {
+        return NextResponse.json(
+          {
+            error: 'missing_context',
+            message: ctx.message,
+          },
+          { status: 400 }
+        )
+      }
+      scriptText = scriptText ?? ctx.script_text
+      transcript = transcript ?? ctx.transcript
+      audioUrl = audioUrl ?? ctx.audio_url
+      durationSec = durationSec ?? ctx.duration_sec
     }
 
     // ----- 5. Dry-run flag (utilisé en T5.3 pour persister ou non) -----
     const dryRun = req.nextUrl.searchParams.get('dry_run') === 'true'
 
-    // ----- 6. Délégation extraction -----
+    // ----- 6. Délégation extraction Sonnet -----
     const result = await extractScenesFromScript({
-      script_text: body.script_text,
-      transcript: body.transcript,
+      script_text: scriptText,
+      transcript,
       source_id: body.source_id,
     })
 
@@ -154,20 +177,51 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // ----- 7. Conversion raw → Timeline Zod-validée (T5.2) -----
+    const builtTimeline = buildTimelineFromRaw({
+      raw: result.raw_output,
+      transcript,
+      source_id: body.source_id,
+      audio_url: audioUrl,
+      duration_sec: durationSec,
+    })
+
+    if (!builtTimeline.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          stage: builtTimeline.stage,
+          errors: builtTimeline.errors,
+          partial_timeline: builtTimeline.partial_timeline,
+          warnings: [...result.warnings, ...builtTimeline.warnings],
+          llm_meta: {
+            model: SONNET_MODEL_T5,
+            input_tokens: result.tokens.input,
+            output_tokens: result.tokens.output,
+            duration_ms: result.duration_ms,
+            scenes_count: result.raw_output.scenes.length,
+            concepts_count: result.raw_output.concepts.length,
+            attempts: result.attempts,
+          },
+        },
+        { status: 422 }
+      )
+    }
+
     return NextResponse.json({
       success: true,
-      raw_output: result.raw_output,
+      timeline: builtTimeline.timeline,
       llm_meta: {
         model: SONNET_MODEL_T5,
         input_tokens: result.tokens.input,
         output_tokens: result.tokens.output,
         duration_ms: result.duration_ms,
-        scenes_count: result.raw_output.scenes.length,
-        concepts_count: result.raw_output.concepts.length,
+        scenes_count: builtTimeline.timeline.scenes.length,
+        concepts_count: builtTimeline.timeline.concepts.length,
         attempts: result.attempts,
       },
-      warnings: result.warnings,
-      // dryRun n'a pas d'effet en T5.1 — la persistance arrive en T5.3.
+      warnings: [...result.warnings, ...builtTimeline.warnings],
+      // dryRun n'a pas d'effet en T5.2 — la persistance arrive en T5.3.
       dry_run: dryRun,
     })
   } catch (e) {
@@ -184,5 +238,127 @@ export async function POST(req: NextRequest) {
       { error: 'internal_error', message: 'Extraction route failed' },
       { status: 500 }
     )
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helper — chargement du contexte formation depuis le timeline_url existant
+// ---------------------------------------------------------------------------
+
+interface FormationContext {
+  script_text: string
+  transcript: z.infer<typeof TranscriptInputSchema>
+  audio_url: string
+  duration_sec: number
+}
+
+interface LoadOk extends FormationContext {
+  ok: true
+}
+
+interface LoadFail {
+  ok: false
+  message: string
+}
+
+/**
+ * Lit la timeline existante de la séquence (générée par T2 — pipeline Python)
+ * et en extrait :
+ *   - transcript (segments[].words[]) — réutilisé tel quel
+ *   - audio_url + duration_sec — copiés depuis les champs racine
+ *   - script_text — reconstitué par concat des segment.text avec marqueurs
+ *     speaker (Sonnet a besoin de la voix Sophie/Martin pour différencier
+ *     les passages didactiques)
+ *
+ * Si la séquence n'a pas encore de timeline_url (T2 pas exécuté), retourne
+ * une erreur explicite pour que l'admin sache qu'il doit d'abord faire
+ * tourner T2 avant T5.
+ */
+async function loadFormationContextFromTimeline(
+  sourceId: string
+): Promise<LoadOk | LoadFail> {
+  const admin = createAdminClient()
+  const { data: sequence, error } = await admin
+    .from('sequences')
+    .select('id, timeline_url')
+    .eq('id', sourceId)
+    .maybeSingle()
+
+  if (error) {
+    return { ok: false, message: `sequences read failed: ${error.message}` }
+  }
+  if (!sequence) {
+    return { ok: false, message: `sequence ${sourceId} not found` }
+  }
+  if (!sequence.timeline_url) {
+    return {
+      ok: false,
+      message:
+        'sequences.timeline_url is null — run T2 (Python pipeline) first to generate the karaoke timeline.',
+    }
+  }
+
+  let json: unknown
+  try {
+    const resp = await fetch(sequence.timeline_url, { cache: 'no-store' })
+    if (!resp.ok) {
+      return {
+        ok: false,
+        message: `timeline_url fetch failed (HTTP ${resp.status})`,
+      }
+    }
+    json = await resp.json()
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return { ok: false, message: `timeline_url fetch error: ${msg}` }
+  }
+
+  if (!json || typeof json !== 'object') {
+    return { ok: false, message: 'timeline_url is not a JSON object' }
+  }
+  const obj = json as Record<string, unknown>
+
+  const audioUrl = typeof obj.audio_url === 'string' ? obj.audio_url : null
+  const durationSec =
+    typeof obj.duration_sec === 'number' ? obj.duration_sec : null
+  const transcript = obj.transcript
+
+  if (!audioUrl || !durationSec || !transcript) {
+    return {
+      ok: false,
+      message:
+        'timeline JSON is missing required fields (audio_url / duration_sec / transcript).',
+    }
+  }
+
+  const transcriptParsed = TranscriptInputSchema.safeParse(transcript)
+  if (!transcriptParsed.success) {
+    return {
+      ok: false,
+      message: `transcript shape invalid: ${transcriptParsed.error.message}`,
+    }
+  }
+
+  // Reconstitution script_text : un bloc par segment, préfixé par le speaker.
+  // Format proche du dialogue source (dialogues/sequence_*.txt) — donne au LLM
+  // la même structure que les pilotes écrits manuellement.
+  const scriptText = transcriptParsed.data.segments
+    .map((seg) => `${seg.speaker.toUpperCase()}: ${seg.text}`)
+    .join('\n\n')
+    .trim()
+
+  if (scriptText.length < 50) {
+    return {
+      ok: false,
+      message: 'reconstructed script_text too short (< 50 chars)',
+    }
+  }
+
+  return {
+    ok: true,
+    script_text: scriptText,
+    transcript: transcriptParsed.data,
+    audio_url: audioUrl,
+    duration_sec: durationSec,
   }
 }
