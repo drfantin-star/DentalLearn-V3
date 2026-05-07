@@ -41,11 +41,18 @@ const TimelineConceptSchema = z.object({
 // ─── Card content (utilisé par les templates whiteboard) ────────────────────
 // Limites de longueur cf. spec §2.1 — appliquées strictement pour empêcher
 // un overflow visuel côté templates whiteboard (T4).
+//
+// `variant` (ajouté T4.1) : permet de marquer visuellement une card comme
+// importante (`highlight`), risquée (`warning`) ou positive (`success`).
+// Ajout strictement additif (optionnel) — les payloads T3 restent valides.
+
+const CardVariantSchema = z.enum(['highlight', 'warning', 'success'])
 
 const CardContentSchema = z.object({
   text: z.string().max(60),
   subtitle: z.string().max(40).optional(),
   icon: z.string().optional(),
+  variant: CardVariantSchema.optional(),
 })
 
 // ─── Templates de scène (discriminated union sur `kind`) ────────────────────
@@ -85,6 +92,9 @@ const FiguresTemplateSchema = z.object({
     z.object({
       value: z.string(),
       label: z.string(),
+      // `emphasis` (ajouté T4.1) : met en avant le chiffre (couleur turquoise
+      // + pulse subtil). Optionnel — payloads T3 restent valides.
+      emphasis: z.boolean().optional(),
     })
   ),
 })
@@ -155,4 +165,5 @@ export type TimelineConcept = z.infer<typeof TimelineConceptSchema>
 export type Scene = z.infer<typeof SceneSchema>
 export type SceneTemplate = z.infer<typeof SceneTemplateSchema>
 export type CardContent = z.infer<typeof CardContentSchema>
+export type CardVariant = z.infer<typeof CardVariantSchema>
 export type Speaker = z.infer<typeof SpeakerSchema>
