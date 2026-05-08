@@ -6,108 +6,101 @@ import { StructuredWhiteboard } from '@/components/audio-enriched/StructuredWhit
 import type { Scene } from '@/lib/timeline/schema'
 
 /**
- * Centre éditeur — audio HTML natif + whiteboard (POC-T6.1.c).
+ * Centre éditeur — audio HTML natif + whiteboard (POC-T6 patches B+C).
  *
  * Architecture (CONTRAINTE T3) :
  *  - On NE TOUCHE PAS à `AudioContext`. Player audio = `<audio>` HTML natif
- *    isolé. Listener `timeupdate` → setCurrentTime.
- *  - Toggle radio "fixed" / "sync" :
- *      * fixed : on positionne le seek de la scène sélectionnée + on lit
- *        la timeline whiteboard en stagnant à `start_sec + 0.5s` (pour que
- *        `getActiveScene` rende la scène).
- *      * sync : currentTime suit l'audio en lecture libre.
+ *    isolé.
+ *
+ * Comportement UX simplifié (Patch C — décision Dr Fantin option β) :
+ *  - Pas de toggle "Figer / Suivre". Le parent contrôle quelle scène
+ *    afficher via la prop `sceneToRender` (calculée à partir de l'état
+ *    `isPlaying` + `currentTime` + `selectedSceneId`).
+ *  - Listeners audio : `play` / `pause` (→ onPlayingChange),
+ *    `timeupdate` (→ onTimeUpdate), `loadedmetadata` (→ onDurationDetected).
+ *
+ * Contrat preview (Patch B) : `<StructuredWhiteboard>` reçoit un tableau
+ * d'1 seule scène (la scène à rendre) + un `currentTime` synthétique
+ * placé à `start_sec + 0.5s` pour garantir que `getActiveScene` la
+ * retourne. Plus de conflit entre `currentTime` audio et sélection
+ * sidebar.
  */
 
 interface Props {
   audioUrl: string
-  scenes: Scene[]
-  currentTime: number
-  onTimeUpdate: (t: number) => void
-  selectedScene: Scene | null
-  audioMode: 'fixed' | 'sync'
-  onAudioModeChange: (m: 'fixed' | 'sync') => void
+  sceneToRender: Scene | null
+  onTimeUpdate: (currentTime: number) => void
+  onPlayingChange: (isPlaying: boolean) => void
+  onDurationDetected?: (duration: number) => void
+  /** Forwarded depuis le parent pour permettre les seek programmatiques
+   *  (ex : à la sélection d'une scène en sidebar). */
+  audioRef: React.MutableRefObject<HTMLAudioElement | null>
 }
 
 export function TimelinePreviewPanel({
   audioUrl,
-  scenes,
-  currentTime,
+  sceneToRender,
   onTimeUpdate,
-  selectedScene,
-  audioMode,
-  onAudioModeChange,
+  onPlayingChange,
+  onDurationDetected,
+  audioRef,
 }: Props) {
-  const audioRef = useRef<HTMLAudioElement | null>(null)
+  // Listeners attachés via useEffect pour garantir cleanup et accès
+  // au DOM réel (pas via React onTimeUpdate qui throttle).
+  const localRef = useRef<HTMLAudioElement | null>(null)
 
-  // Mode fixed : si l'utilisateur clique une autre scène, on saute le
-  // currentTime au début de la scène (start_sec + 0.5s, marge de sécurité
-  // pour que getActiveScene rende la scène et pas null).
   useEffect(() => {
-    if (audioMode !== 'fixed') return
-    if (!selectedScene) return
-    const target = selectedScene.start_sec + 0.5
-    onTimeUpdate(target)
-    if (audioRef.current && Math.abs(audioRef.current.currentTime - target) > 0.5) {
-      try {
-        audioRef.current.currentTime = target
-      } catch {
-        // ignore — peut throw si l'audio n'est pas encore chargé
+    const el = localRef.current
+    if (!el) return
+    audioRef.current = el
+
+    const handleTimeUpdate = () => onTimeUpdate(el.currentTime)
+    const handlePlay = () => onPlayingChange(true)
+    const handlePause = () => onPlayingChange(false)
+    const handleLoadedMetadata = () => {
+      if (
+        !Number.isNaN(el.duration) &&
+        Number.isFinite(el.duration) &&
+        el.duration > 0
+      ) {
+        onDurationDetected?.(el.duration)
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedScene?.id, audioMode])
 
-  function handleTimeUpdate(e: React.SyntheticEvent<HTMLAudioElement>) {
-    if (audioMode !== 'sync') return
-    onTimeUpdate(e.currentTarget.currentTime)
-  }
+    el.addEventListener('timeupdate', handleTimeUpdate)
+    el.addEventListener('play', handlePlay)
+    el.addEventListener('pause', handlePause)
+    el.addEventListener('loadedmetadata', handleLoadedMetadata)
+
+    // Si les métadonnées sont déjà chargées (cache HTTP), trigger manuel.
+    if (el.readyState >= 1) handleLoadedMetadata()
+
+    return () => {
+      el.removeEventListener('timeupdate', handleTimeUpdate)
+      el.removeEventListener('play', handlePlay)
+      el.removeEventListener('pause', handlePause)
+      el.removeEventListener('loadedmetadata', handleLoadedMetadata)
+      if (audioRef.current === el) audioRef.current = null
+    }
+  }, [audioRef, onTimeUpdate, onPlayingChange, onDurationDetected])
 
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-xl bg-[color:var(--color-bg-card)]/40 p-4">
         <audio
-          ref={audioRef}
+          ref={localRef}
           src={audioUrl}
           controls
           preload="metadata"
           className="w-full"
-          onTimeUpdate={handleTimeUpdate}
         />
-        <div className="mt-3 flex items-center gap-4 text-xs">
-          <label className="inline-flex items-center gap-1.5 cursor-pointer">
-            <input
-              type="radio"
-              name="audio-mode"
-              value="fixed"
-              checked={audioMode === 'fixed'}
-              onChange={() => onAudioModeChange('fixed')}
-              className="accent-ds-turquoise"
-            />
-            <span className="text-[color:var(--color-text-secondary)]">
-              Figer sur la scène sélectionnée
-            </span>
-          </label>
-          <label className="inline-flex items-center gap-1.5 cursor-pointer">
-            <input
-              type="radio"
-              name="audio-mode"
-              value="sync"
-              checked={audioMode === 'sync'}
-              onChange={() => onAudioModeChange('sync')}
-              className="accent-ds-turquoise"
-            />
-            <span className="text-[color:var(--color-text-secondary)]">
-              Suivre l&apos;audio
-            </span>
-          </label>
-          <span className="ml-auto text-[10px] text-[color:var(--color-text-muted)]">
-            t = {currentTime.toFixed(1)}s
-          </span>
-        </div>
       </div>
 
-      {scenes.length > 0 ? (
-        <StructuredWhiteboard scenes={scenes} currentTime={currentTime} />
+      {sceneToRender ? (
+        <StructuredWhiteboard
+          scenes={[sceneToRender]}
+          currentTime={sceneToRender.start_sec + 0.5}
+        />
       ) : (
         <div className="rounded-xl bg-[color:var(--color-bg-card)]/30 p-8 text-center text-sm italic text-[color:var(--color-text-muted)]">
           Sélectionne une scène à gauche pour voir l&apos;aperçu.

@@ -40,28 +40,40 @@ export default async function FormationTimelineEditorPage({
 
   // ─── Données ─────────────────────────────────────────────
   const admin = createAdminClient()
-  const { data: seq } = await admin
+  // Patch E — SELECT explicite des colonnes utilisées. La colonne titre
+  // s'appelle `title` dans `public.sequences` (cf. types.ts + migration
+  // initiale) — surtout pas `course_title`.
+  // `course_duration_seconds` peut être NULL (cas observé sur la séquence
+  // pilote) — on ne s'en sert pas pour calculer les nouvelles scènes ;
+  // le client utilise `timeline.duration_sec` (priorité 1) et
+  // `audio.duration` runtime (priorité 2). Cf. Patch A.
+  const { data: seq, error: seqError } = await admin
     .from('sequences')
     .select(
-      'id, title, sequence_number, timeline_url, timeline_published, course_duration_seconds'
+      'id, title, sequence_number, course_media_url, course_duration_seconds, timeline_url, timeline_published'
     )
     .eq('id', params.sequence_id)
     .maybeSingle()
 
-  if (!seq) {
+  if (seqError || !seq) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[color:var(--color-bg)] text-[color:var(--color-text-primary)]">
         <p className="text-sm text-[color:var(--color-text-muted)]">
           Séquence introuvable : {params.sequence_id}
+          {seqError ? ` (${seqError.message})` : ''}
         </p>
       </main>
     )
   }
 
-  const sourceTitle =
-    `#${(seq.sequence_number as number | null) ?? '?'} — ${
-      (seq.title as string | null)?.trim() || '(sans titre)'
-    }`
+  // Fallback titre en cascade — sequence_number et title peuvent être null
+  // sur des séquences brouillon non finalisées.
+  const seqNum = seq.sequence_number as number | null
+  const seqTitle = (seq.title as string | null)?.trim() || ''
+  const sourceTitle = [
+    seqNum != null ? `#${seqNum}` : 'Séquence',
+    seqTitle || 'Sans titre',
+  ].join(' — ')
 
   const timelineUrl = (seq.timeline_url as string | null) ?? null
   const published = Boolean(seq.timeline_published ?? false)

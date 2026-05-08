@@ -1,31 +1,32 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { DirtyStateIndicator } from '@/components/admin/timeline-editor/DirtyStateIndicator'
 import { PublishToggleButton } from '@/components/admin/timeline-editor/PublishToggleButton'
 import { SceneEditor } from '@/components/admin/timeline-editor/SceneEditor'
 import { SceneListSidebar } from '@/components/admin/timeline-editor/SceneListSidebar'
 import { TimelinePreviewPanel } from '@/components/admin/timeline-editor/TimelinePreviewPanel'
+import { getActiveScene } from '@/lib/timeline/getActiveScene'
 import { getDefaultTemplatePayload } from '@/lib/timeline/template-defaults'
 import type { Scene, Timeline } from '@/lib/timeline/schema'
 
 /**
- * Client universel d'édition de timeline (POC-T6.1.c → T6.3).
+ * Client universel d'édition de timeline (POC-T6.1.c → T6.3 + patches A/B/C).
  *
  * Layout : 3 colonnes desktop, stack vertical mobile.
- *  - Sidebar gauche : liste scènes + add/delete + bouton "régénérer LLM"
- *    (disabled — placeholder BLOC 2)
- *  - Centre : `<TimelinePreviewPanel>` (audio HTML natif + StructuredWhiteboard)
- *  - Droite : `<SceneEditor>` (métadonnées + template)
  *
  * État local :
  *  - timeline (Timeline | null) — peut être null si la source n'a jamais
  *    été générée (cas news pré-T8).
  *  - selectedSceneId
  *  - isDirty / isSaving
- *  - currentTime, audioMode
+ *  - currentTime, isPlaying — état audio pur (Patch C, plus de toggle UX)
+ *  - audioDurationSec — cascade timeline.duration_sec → audio.duration runtime
+ *    → fallback 300 (Patch A, fix add-scene avec course_duration_seconds null)
+ *  - sceneToRender (memo) — calculée à partir de isPlaying / currentTime /
+ *    selectedSceneId (Patch B, plus de conflit currentTime ↔ sélection)
  *  - published
  *
  * Sauvegarde : PUT /api/admin/timelines/{type}/{id} avec timeline complète.
@@ -83,6 +84,8 @@ function formatZodFlattened(
   return parts.length > 0 ? parts.join(' · ') : null
 }
 
+const FALLBACK_DURATION_SEC = 300
+
 export function TimelineEditorClient({
   type,
   id,
@@ -98,9 +101,27 @@ export function TimelineEditorClient({
   const [isDirty, setIsDirty] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
-  const [audioMode, setAudioMode] = useState<'fixed' | 'sync'>('fixed')
+  const [isPlaying, setIsPlaying] = useState(false)
   const [published, setPublished] = useState(initialPublished)
   const [toast, setToast] = useState<ToastState | null>(null)
+
+  // Patch A — Cascade durée audio. Initialisée depuis timeline.duration_sec
+  // (priorité 1, peuplée par T2 en BDD), surchargée par audio.duration runtime
+  // si le browser remonte une durée différente (priorité 2), fallback 300s
+  // si rien (priorité 3, log explicite).
+  const [audioDurationSec, setAudioDurationSec] = useState<number>(() => {
+    const fromTimeline = initialTimeline?.duration_sec
+    if (fromTimeline && fromTimeline > 0) return fromTimeline
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[TimelineEditor] No reliable audio duration for source ${id}, using fallback ${FALLBACK_DURATION_SEC}s — will be replaced by browser metadata once <audio> loads.`
+    )
+    return FALLBACK_DURATION_SEC
+  })
+
+  // Ref vers l'élément <audio> contrôlé par TimelinePreviewPanel.
+  // Utilisé pour seek programmatique au clic d'une scène en sidebar.
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // Avertissement avant fermeture si dirty.
   useEffect(() => {
@@ -116,8 +137,8 @@ export function TimelineEditorClient({
   // Auto-dismiss toast.
   useEffect(() => {
     if (!toast) return
-    const id = setTimeout(() => setToast(null), 4500)
-    return () => clearTimeout(id)
+    const tid = setTimeout(() => setToast(null), 4500)
+    return () => clearTimeout(tid)
   }, [toast])
 
   const selectedScene = useMemo(() => {
@@ -130,31 +151,86 @@ export function TimelineEditorClient({
     return timeline.scenes.filter((s) => s.id !== selectedSceneId)
   }, [timeline, selectedSceneId])
 
-  const updateScene = useCallback(
-    (next: Scene) => {
-      setTimeline((cur) => {
-        if (!cur) return cur
-        return {
-          ...cur,
-          scenes: cur.scenes.map((s) => (s.id === next.id ? next : s)),
-        }
-      })
-      setIsDirty(true)
+  // Patch B+C — Calcule la scène à rendre dans la preview.
+  //  - Si lecture en cours : on suit `currentTime` via `getActiveScene`.
+  //  - Sinon : on rend la scène sélectionnée en sidebar.
+  const sceneToRender = useMemo<Scene | null>(() => {
+    if (!timeline) return null
+    if (isPlaying) {
+      return getActiveScene(currentTime, timeline.scenes)
+    }
+    return selectedScene
+  }, [isPlaying, currentTime, selectedScene, timeline])
+
+  // Patch C — Quand la scène sélectionnée change ET qu'on n'est pas en
+  // lecture, on seek le curseur audio au début de la scène (UX option β).
+  useEffect(() => {
+    if (isPlaying || !selectedScene || !audioRef.current) return
+    const target = selectedScene.start_sec
+    if (Math.abs(audioRef.current.currentTime - target) > 0.5) {
+      try {
+        audioRef.current.currentTime = target
+      } catch {
+        // ignore : peut throw si l'audio n'est pas encore chargé
+      }
+    }
+  }, [selectedSceneId, isPlaying, selectedScene])
+
+  // Patch A — Callback duration detected depuis loadedmetadata.
+  const handleDurationDetected = useCallback(
+    (duration: number) => {
+      if (
+        duration > 0 &&
+        Number.isFinite(duration) &&
+        Math.abs(duration - audioDurationSec) > 1
+      ) {
+        setAudioDurationSec(duration)
+      }
     },
-    []
+    [audioDurationSec]
   )
 
+  const updateScene = useCallback((next: Scene) => {
+    setTimeline((cur) => {
+      if (!cur) return cur
+      return {
+        ...cur,
+        scenes: cur.scenes.map((s) => (s.id === next.id ? next : s)),
+      }
+    })
+    setIsDirty(true)
+  }, [])
+
+  // Patch A — Add scene avec cascade durée + bornes safe.
   const addScene = useCallback(() => {
     setTimeline((cur) => {
       if (!cur) return cur
-      const audioDuration = cur.duration_sec
-      const start = audioDuration / 2
-      const end = Math.min(start + 20, audioDuration)
+      const dur = audioDurationSec
+      let startSec: number
+      let endSec: number
+      if (dur > 20) {
+        startSec = dur / 2
+        endSec = Math.min(startSec + 20, dur)
+      } else if (dur >= 5) {
+        startSec = 0
+        endSec = dur
+      } else {
+        // Cas dégénéré : on alerte l'admin et on n'ajoute rien.
+        if (typeof window !== 'undefined') {
+          window.alert(
+            'Impossible de créer une scène : durée audio invalide. Recharge la page ou contacte un développeur.'
+          )
+        }
+        return cur
+      }
+      // Garde-fou : strict <
+      if (endSec <= startSec) endSec = startSec + 1
+
       const newScene: Scene = {
         id: newSceneId(),
         title: 'Nouvelle scène',
-        start_sec: start,
-        end_sec: end,
+        start_sec: startSec,
+        end_sec: endSec,
         template: getDefaultTemplatePayload('grid'),
       }
       const nextScenes = [...cur.scenes, newScene]
@@ -162,25 +238,22 @@ export function TimelineEditorClient({
       return { ...cur, scenes: nextScenes }
     })
     setIsDirty(true)
-  }, [])
+  }, [audioDurationSec])
 
-  const deleteScene = useCallback(
-    (sceneId: string) => {
-      setTimeline((cur) => {
-        if (!cur) return cur
-        const idx = cur.scenes.findIndex((s) => s.id === sceneId)
-        if (idx < 0) return cur
-        const nextScenes = cur.scenes.filter((s) => s.id !== sceneId)
-        // Sélectionner une scène voisine.
-        const fallback =
-          nextScenes[idx] ?? nextScenes[idx - 1] ?? nextScenes[0] ?? null
-        setSelectedSceneId(fallback?.id ?? null)
-        return { ...cur, scenes: nextScenes }
-      })
-      setIsDirty(true)
-    },
-    []
-  )
+  const deleteScene = useCallback((sceneId: string) => {
+    setTimeline((cur) => {
+      if (!cur) return cur
+      const idx = cur.scenes.findIndex((s) => s.id === sceneId)
+      if (idx < 0) return cur
+      const nextScenes = cur.scenes.filter((s) => s.id !== sceneId)
+      // Sélectionner une scène voisine.
+      const fallback =
+        nextScenes[idx] ?? nextScenes[idx - 1] ?? nextScenes[0] ?? null
+      setSelectedSceneId(fallback?.id ?? null)
+      return { ...cur, scenes: nextScenes }
+    })
+    setIsDirty(true)
+  }, [])
 
   async function handleSave() {
     if (!timeline) return
@@ -193,7 +266,8 @@ export function TimelineEditorClient({
       })
       const data = await res.json()
       if (!res.ok) {
-        const detail = formatZodFlattened(data?.details) ??
+        const detail =
+          formatZodFlattened(data?.details) ??
           data?.message ??
           data?.error ??
           'Erreur inconnue'
@@ -316,12 +390,11 @@ export function TimelineEditorClient({
           <section>
             <TimelinePreviewPanel
               audioUrl={timeline.audio_url}
-              scenes={timeline.scenes}
-              currentTime={currentTime}
+              sceneToRender={sceneToRender}
               onTimeUpdate={setCurrentTime}
-              selectedScene={selectedScene}
-              audioMode={audioMode}
-              onAudioModeChange={setAudioMode}
+              onPlayingChange={setIsPlaying}
+              onDurationDetected={handleDurationDetected}
+              audioRef={audioRef}
             />
           </section>
 
@@ -331,7 +404,7 @@ export function TimelineEditorClient({
               <SceneEditor
                 scene={selectedScene}
                 onChange={updateScene}
-                audioDurationSec={timeline.duration_sec}
+                audioDurationSec={audioDurationSec}
                 siblingScenes={siblingScenes}
               />
             ) : (

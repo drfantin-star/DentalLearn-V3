@@ -97,6 +97,9 @@ Dossier `src/components/admin/timeline-editor/` :
 | D-T6.3-timeline | Idem : éditeur Timeline cible uniquement `events`, auto-migration depuis `steps`. **Scan pilote 8 mai** : aucune scène legacy à migrer (cf. §6). |
 | D-build | `npm install` n'avait jamais tourné dans le sandbox — j'ai dû l'installer pour valider le build. Aucune dépendance ajoutée à `package.json`. Build typecheck + lint OK. La prerender de pages existantes échoue sans `.env.local` (état pré-existant). |
 | D-script-migr | Le script de migration ne dépend de PERSONNE (tsx en npx, pas de dotenv) — lecture manuelle de `.env.local`. Évite d'ajouter une dépendance pour un script one-shot. |
+| D-T6-PatchA | **Mis à jour 8 mai post-livraison** : cascade durée audio (`timeline.duration_sec` → `audio.duration` runtime → fallback 300s). Évite le bug 400 « start_sec must be < end_sec » sur add-scene quand `course_duration_seconds` est NULL. T6-D5 documenté. |
+| D-T6-PatchBC | **Mis à jour 8 mai post-livraison** : la preview reflète directement la sélection sidebar (état `isPlaying` + memo `sceneToRender`). Suppression du toggle « Figer / Suivre ». Audio piloté via `<audio>` HTML natif avec listeners `play`/`pause`/`timeupdate`/`loadedmetadata`. |
+| D-T6-col-title | **Note 8 mai post-livraison** : la colonne titre dans `public.sequences` s'appelle `title` (cf. types Supabase + migration initiale). Pas `course_title`. Le SELECT explicite côté page formation (Patch E) liste les colonnes effectivement utilisées par le client pour éviter une régression silencieuse en cas de drift de schéma. |
 
 ---
 
@@ -152,6 +155,31 @@ un jour browse versions précédentes via UI, il faudra soit lister le
 folder à chaque GET (déjà fait, retourné dans `versions[]`) soit créer
 une table `timeline_versions` (id, source_id, type, version, url, created_at,
 created_by). Hors scope BLOC 1.
+
+### POC-T6-D5 — `sequences.course_duration_seconds` peut être NULL
+
+**Symptôme historique** (avant Patch A) : sur la séquence pilote
+`e8dfa6b8-...`, la colonne `course_duration_seconds` est NULL. Le
+client utilisait alors `timeline.duration_sec` directement, mais on
+n'avait aucun garde-fou pour les éditions de séquences sans cette
+donnée non plus.
+
+**Fix appliqué (Patch A, 8 mai post-livraison)** : cascade de durée
+en 3 sources :
+
+  1. `timeline.duration_sec` (priorité 1, peuplée par T2)
+  2. `audio.duration` runtime (priorité 2, captée via
+     `loadedmetadata` sur l'`<audio>` HTML)
+  3. Fallback `300` secondes avec `console.warn` (priorité 3)
+
+Le client expose `audioDurationSec` via state. `handleAddScene`
+calcule des bornes safe (`start = dur/2`, `end = min(start+20, dur)`)
+et alerte l'admin si la durée est < 5s (cas dégénéré). La route PUT
+reste indemne (pas de fix nécessaire côté serveur).
+
+**Note BDD** : à terme, valider que le pipeline T2 peuple
+`course_duration_seconds` à la même valeur que `timeline.duration_sec`
+pour cohérence. Hors scope BLOC 1.
 
 ---
 
@@ -383,14 +411,20 @@ recharge. Tout doit persister.
 3. Le navigateur affiche un avertissement « Quitter le site ? Vos
    modifications ne seront peut-être pas enregistrées ».
 
-### Test 15 — Audio et synchronisation
+### Test 15 — Audio et synchronisation (UX simplifiée — Patch C)
 
-1. Le mode par défaut est « Figer sur la scène sélectionnée ».
-2. Cliquer une autre scène saute le curseur audio à son début.
-3. Bascule sur « Suivre l'audio ». Lance la lecture. La preview
-   whiteboard suit en temps réel selon le `currentTime` de l'audio
-   (la scène active change quand le curseur passe d'une fenêtre à
-   l'autre).
+1. **Cliquer une scène en sidebar** : le curseur audio saute au début
+   de la scène (`scene.start_sec`). L'audio reste **en pause**. La
+   preview centre affiche le contenu de la scène sélectionnée.
+2. **Cliquer Play sur le lecteur audio** : la lecture démarre. La
+   preview suit en temps réel — quand le curseur passe d'une fenêtre
+   `[start_sec, end_sec]` à une autre, la preview change automatiquement.
+3. **Cliquer Pause** : la preview reste figée sur la scène active du
+   moment. Tu peux alors éditer dans le panneau droit.
+4. **Re-cliquer une autre scène en sidebar** : retour au mode édition,
+   l'audio saute au début de la nouvelle scène (toujours en pause).
+5. Plus de toggle « Figer / Suivre » dans l'UI — le comportement est
+   automatique.
 
 ---
 
