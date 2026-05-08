@@ -3,6 +3,7 @@
 import type { CardContent, SceneTemplate } from '@/lib/timeline/schema'
 
 import { CardContentEditor } from '../CardContentEditor'
+import { DragHandle, SortableList } from '../SortableList'
 
 type ComparisonTemplate = Extract<SceneTemplate, { kind: 'comparison' }>
 type Side = 'left' | 'right'
@@ -23,6 +24,13 @@ export function ComparisonEditor({ template, onChange }: Props) {
   function setSideCard(side: Side, idx: number, card: CardContent) {
     const cards = template[side].cards.slice()
     cards[idx] = card
+    onChange({
+      ...template,
+      [side]: { ...template[side], cards },
+    })
+  }
+
+  function setSideCards(side: Side, cards: CardContent[]) {
     onChange({
       ...template,
       [side]: { ...template[side], cards },
@@ -53,7 +61,10 @@ export function ComparisonEditor({ template, onChange }: Props) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {(['left', 'right'] as Side[]).map((side) => (
-        <div key={side} className="space-y-3 rounded-lg bg-[color:var(--color-bg-card)]/30 p-3">
+        <div
+          key={side}
+          className="space-y-3 rounded-lg bg-[color:var(--color-bg-card)]/30 p-3"
+        >
           <div>
             <label className="mb-1 block text-[11px] font-medium uppercase tracking-wider text-[color:var(--color-text-muted)]">
               {side === 'left' ? 'Colonne gauche' : 'Colonne droite'}
@@ -66,27 +77,41 @@ export function ComparisonEditor({ template, onChange }: Props) {
               className="w-full rounded-md border border-white/10 bg-[color:var(--color-bg-input)] px-2.5 py-1.5 text-sm text-white focus:border-ds-turquoise focus:outline-none"
             />
           </div>
-          <div className="space-y-2">
-            {template[side].cards.map((card, idx) => (
-              <div key={idx} className="relative">
-                <CardContentEditor
-                  card={card}
-                  onChange={(next) => setSideCard(side, idx, next)}
-                  label={`Item ${idx + 1}`}
-                />
-                {template[side].cards.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeCard(side, idx)}
-                    className="absolute right-2 top-2 rounded p-1 text-[color:var(--color-text-muted)] hover:bg-red-500/15 hover:text-red-300"
-                    aria-label="Retirer"
-                  >
-                    ×
-                  </button>
-                )}
+
+          <SortableList
+            items={template[side].cards}
+            getItemId={(_, idx) => `cmp-${side}-${idx}`}
+            onReorder={(cards) => setSideCards(side, cards)}
+            className="space-y-2"
+            renderItem={(card, idx, handleProps) => (
+              <div className="flex items-stretch gap-1.5">
+                <div className="flex flex-col items-center pt-3">
+                  <DragHandle
+                    {...handleProps}
+                    ariaLabel={`Réordonner ${side === 'left' ? 'la colonne gauche' : 'la colonne droite'}, item ${idx + 1}`}
+                  />
+                </div>
+                <div className="relative flex-1">
+                  <CardContentEditor
+                    card={card}
+                    onChange={(next) => setSideCard(side, idx, next)}
+                    label={`Item ${idx + 1}`}
+                  />
+                  {template[side].cards.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeCard(side, idx)}
+                      className="absolute right-2 top-2 rounded p-1 text-[color:var(--color-text-muted)] hover:bg-red-500/15 hover:text-red-300"
+                      aria-label="Retirer"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
-            ))}
-          </div>
+            )}
+          />
+
           <button
             type="button"
             onClick={() => addCard(side)}

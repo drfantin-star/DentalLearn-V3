@@ -99,6 +99,7 @@ export default async function NewsTimelineEditorPage({ params }: PageProps) {
       type="news"
       id={params.synthesis_id}
       initialTimeline={initialTimeline}
+      initialTimelineUrl={timelineUrl}
       initialPublished={published}
       initialVersions={initialVersions}
       sourceTitle={sourceTitle}

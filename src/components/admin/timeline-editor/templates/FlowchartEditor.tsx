@@ -3,6 +3,7 @@
 import type { CardContent, SceneTemplate } from '@/lib/timeline/schema'
 
 import { CardContentEditor } from '../CardContentEditor'
+import { DragHandle, SortableList } from '../SortableList'
 
 type FlowchartTemplate = Extract<SceneTemplate, { kind: 'flowchart' }>
 
@@ -60,27 +61,39 @@ export function FlowchartEditor({ template, onChange }: Props) {
         </select>
       </div>
 
-      <div className="space-y-2">
-        {template.cards.map((card, idx) => (
-          <div key={idx} className="relative">
-            <CardContentEditor
-              card={card}
-              onChange={(next) => setCard(idx, next)}
-              label={`Étape ${idx + 1}`}
-            />
-            {template.cards.length > 1 && (
-              <button
-                type="button"
-                onClick={() => removeCard(idx)}
-                className="absolute right-2 top-2 rounded p-1 text-[color:var(--color-text-muted)] hover:bg-red-500/15 hover:text-red-300"
-                aria-label="Retirer cette étape"
-              >
-                ×
-              </button>
-            )}
+      <SortableList
+        items={template.cards}
+        getItemId={(_, idx) => `flow-step-${idx}`}
+        onReorder={(cards) => onChange({ ...template, cards })}
+        className="space-y-2"
+        renderItem={(card, idx, handleProps) => (
+          <div className="flex items-stretch gap-1.5">
+            <div className="flex flex-col items-center pt-3">
+              <DragHandle
+                {...handleProps}
+                ariaLabel={`Réordonner l'étape ${idx + 1}`}
+              />
+            </div>
+            <div className="relative flex-1">
+              <CardContentEditor
+                card={card}
+                onChange={(next) => setCard(idx, next)}
+                label={`Étape ${idx + 1}`}
+              />
+              {template.cards.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeCard(idx)}
+                  className="absolute right-2 top-2 rounded p-1 text-[color:var(--color-text-muted)] hover:bg-red-500/15 hover:text-red-300"
+                  aria-label="Retirer cette étape"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
-        ))}
-      </div>
+        )}
+      />
 
       <button
         type="button"

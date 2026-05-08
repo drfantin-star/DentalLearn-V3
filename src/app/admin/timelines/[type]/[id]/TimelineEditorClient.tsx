@@ -3,33 +3,34 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { ConceptsEditor } from '@/components/admin/timeline-editor/ConceptsEditor'
 import { DirtyStateIndicator } from '@/components/admin/timeline-editor/DirtyStateIndicator'
 import { PublishToggleButton } from '@/components/admin/timeline-editor/PublishToggleButton'
+import { RegenerateConfirmModal } from '@/components/admin/timeline-editor/RegenerateConfirmModal'
 import { SceneEditor } from '@/components/admin/timeline-editor/SceneEditor'
 import { SceneListSidebar } from '@/components/admin/timeline-editor/SceneListSidebar'
 import { TimelinePreviewPanel } from '@/components/admin/timeline-editor/TimelinePreviewPanel'
+import { VersionsPanel } from '@/components/admin/timeline-editor/VersionsPanel'
 import { getActiveScene } from '@/lib/timeline/getActiveScene'
 import { getDefaultTemplatePayload } from '@/lib/timeline/template-defaults'
-import type { Scene, Timeline } from '@/lib/timeline/schema'
+import type {
+  Scene,
+  Timeline,
+  TimelineConcept,
+} from '@/lib/timeline/schema'
 
 /**
- * Client universel d'édition de timeline (POC-T6.1.c → T6.3 + patches A/B/C).
+ * Client universel d'édition de timeline (POC-T6 BLOC 1 + BLOC 2).
  *
- * Layout : 3 colonnes desktop, stack vertical mobile.
- *
- * État local :
- *  - timeline (Timeline | null) — peut être null si la source n'a jamais
- *    été générée (cas news pré-T8).
- *  - selectedSceneId
- *  - isDirty / isSaving
- *  - currentTime, isPlaying — état audio pur (Patch C, plus de toggle UX)
- *  - audioDurationSec — cascade timeline.duration_sec → audio.duration runtime
- *    → fallback 300 (Patch A, fix add-scene avec course_duration_seconds null)
- *  - sceneToRender (memo) — calculée à partir de isPlaying / currentTime /
- *    selectedSceneId (Patch B, plus de conflit currentTime ↔ sélection)
- *  - published
+ * BLOC 2 ajoute :
+ *  - Drag-reorder scènes en sidebar (cosmétique, start_sec inchangé)
+ *  - Drag-reorder cards intra-template (cf. SortableList)
+ *  - Bouton « Régénérer via LLM » + modal (formations uniquement)
+ *  - Édition concepts (ConceptsEditor, panneau dépliable)
+ *  - Versions Storage visibles (VersionsPanel)
  *
  * Sauvegarde : PUT /api/admin/timelines/{type}/{id} avec timeline complète.
+ * Régénération : POST /api/admin/timeline/extract-scenes puis reload via GET.
  */
 
 type SourceType = 'formation' | 'news'
@@ -38,6 +39,7 @@ interface Props {
   type: SourceType
   id: string
   initialTimeline: Timeline | null
+  initialTimelineUrl: string | null
   initialPublished: boolean
   initialVersions: string[]
   sourceTitle: string
@@ -64,9 +66,7 @@ function newSceneId(): string {
  * l'erreur dans `formErrors` puisque le `path` est nested. On fait un
  * effort raisonnable pour afficher au moins un message clair.
  */
-function formatZodFlattened(
-  details: unknown
-): string | null {
+function formatZodFlattened(details: unknown): string | null {
   if (!details || typeof details !== 'object') return null
   const d = details as {
     formErrors?: string[]
@@ -90,16 +90,24 @@ export function TimelineEditorClient({
   type,
   id,
   initialTimeline,
+  initialTimelineUrl,
   initialPublished,
+  initialVersions,
   sourceTitle,
   noTimelineMessage,
 }: Props) {
   const [timeline, setTimeline] = useState<Timeline | null>(initialTimeline)
+  const [currentTimelineUrl, setCurrentTimelineUrl] = useState<string | null>(
+    initialTimelineUrl
+  )
+  const [versions, setVersions] = useState<string[]>(initialVersions)
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(
     initialTimeline?.scenes[0]?.id ?? null
   )
   const [isDirty, setIsDirty] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isRegenerating, setIsRegenerating] = useState(false)
+  const [showRegenModal, setShowRegenModal] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [published, setPublished] = useState(initialPublished)
@@ -201,6 +209,16 @@ export function TimelineEditorClient({
     setIsDirty(true)
   }, [])
 
+  // T6.4.b — Drag-reorder cosmétique : seul l'ordre du tableau change. Les
+  // start_sec/end_sec restent intacts. Aucun risque de casser getActiveScene.
+  const reorderScenes = useCallback((next: Scene[]) => {
+    setTimeline((cur) => {
+      if (!cur) return cur
+      return { ...cur, scenes: next }
+    })
+    setIsDirty(true)
+  }, [])
+
   // Patch A — Add scene avec cascade durée + bornes safe.
   const addScene = useCallback(() => {
     setTimeline((cur) => {
@@ -255,6 +273,14 @@ export function TimelineEditorClient({
     setIsDirty(true)
   }, [])
 
+  const updateConcepts = useCallback((next: TimelineConcept[]) => {
+    setTimeline((cur) => {
+      if (!cur) return cur
+      return { ...cur, concepts: next }
+    })
+    setIsDirty(true)
+  }, [])
+
   async function handleSave() {
     if (!timeline) return
     setIsSaving(true)
@@ -278,6 +304,15 @@ export function TimelineEditorClient({
         return
       }
       setIsDirty(false)
+      // Mise à jour URL + versions list (la route renvoie la nouvelle URL).
+      if (typeof data?.url === 'string') {
+        setCurrentTimelineUrl(data.url)
+      }
+      if (typeof data?.version === 'string') {
+        setVersions((v) =>
+          v.includes(data.version) ? v : [data.version, ...v]
+        )
+      }
       setToast({
         kind: 'success',
         message: `Sauvegardé (version ${data.version}).`,
@@ -318,6 +353,107 @@ export function TimelineEditorClient({
     }
   }
 
+  // T6.5.a — Régénération LLM (formations uniquement).
+  // 1) POST /api/admin/timeline/extract-scenes (la route fait extraction
+  //    Sonnet + persistance Storage + UPDATE BDD)
+  // 2) GET /api/admin/timelines/[type]/[id] pour récupérer la timeline
+  //    fraîchement persistée + la liste de versions à jour.
+  async function handleRegenerate() {
+    setShowRegenModal(false)
+    if (type !== 'formation') return
+    setIsRegenerating(true)
+    setIsPlaying(false)
+    try {
+      const extractRes = await fetch(
+        '/api/admin/timeline/extract-scenes',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source_type: 'formation_sequence',
+            source_id: id,
+          }),
+        }
+      )
+      const extractData = await extractRes.json()
+      if (!extractRes.ok || extractData?.success === false) {
+        const detail =
+          formatZodFlattened(extractData?.details) ??
+          extractData?.message ??
+          extractData?.error ??
+          extractData?.errors?.[0] ??
+          (typeof extractData?.stage === 'string'
+            ? `étape "${extractData.stage}" en échec`
+            : null) ??
+          'Erreur LLM inconnue'
+        setToast({
+          kind: 'error',
+          message: `Régénération échouée : ${detail}`,
+        })
+        return
+      }
+
+      const llmMeta = extractData?.llm_meta ?? {}
+      const inputTokens: number =
+        typeof llmMeta.input_tokens === 'number' ? llmMeta.input_tokens : 0
+      const outputTokens: number =
+        typeof llmMeta.output_tokens === 'number' ? llmMeta.output_tokens : 0
+      // Estimation prix Sonnet 4.6 : $3 / 1M input, $15 / 1M output ; ~ €0.92/$
+      const priceUsd = (inputTokens / 1_000_000) * 3 + (outputTokens / 1_000_000) * 15
+      const priceEur = priceUsd * 0.92
+      const scenesCount = llmMeta.scenes_count ?? 0
+      const conceptsCount = llmMeta.concepts_count ?? 0
+
+      // Reload via GET pour récupérer la timeline fraîche + versions.
+      const getRes = await fetch(`/api/admin/timelines/${type}/${id}`, {
+        cache: 'no-store',
+      })
+      const getData = await getRes.json()
+      if (!getRes.ok || !getData?.timeline) {
+        setToast({
+          kind: 'error',
+          message:
+            'Régénération OK mais reload de la timeline échoué. Recharge la page.',
+        })
+        return
+      }
+
+      setTimeline(getData.timeline as Timeline)
+      setVersions(Array.isArray(getData.versions) ? getData.versions : [])
+      setPublished(Boolean(getData.published))
+      setSelectedSceneId(getData.timeline.scenes?.[0]?.id ?? null)
+      // L'URL courante est la dernière version listée (la plus récente).
+      // On reconstitue l'URL en partant de l'ancienne `currentTimelineUrl`
+      // (même bucket / dossier — seul le nom de fichier change).
+      const latestVersion =
+        Array.isArray(getData.versions) && getData.versions.length > 0
+          ? getData.versions[0]
+          : null
+      if (latestVersion && currentTimelineUrl) {
+        const lastSlash = currentTimelineUrl.lastIndexOf('/')
+        if (lastSlash >= 0) {
+          setCurrentTimelineUrl(
+            `${currentTimelineUrl.slice(0, lastSlash + 1)}${latestVersion}.json`
+          )
+        }
+      }
+      setIsDirty(false)
+
+      setToast({
+        kind: 'success',
+        message: `Nouvelle version générée — ${scenesCount} scènes, ${conceptsCount} concepts, ${priceEur.toFixed(2)} €`,
+      })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setToast({ kind: 'error', message: `Erreur réseau : ${msg}` })
+    } finally {
+      setIsRegenerating(false)
+    }
+  }
+
+  // Lock l'UI éditeur quand on régénère (sidebar + éditeur droit + bouton save).
+  const editorLocked = isRegenerating
+
   return (
     <main className="min-h-screen bg-[color:var(--color-bg)] text-[color:var(--color-text-primary)]">
       {/* ─── Header ───────────────────────────────────────────── */}
@@ -337,13 +473,13 @@ export function TimelineEditorClient({
           <PublishToggleButton
             published={published}
             onPublish={handlePublish}
-            disabled={!timeline}
+            disabled={!timeline || editorLocked}
           />
 
           <button
             type="button"
             onClick={handleSave}
-            disabled={!isDirty || isSaving || !timeline}
+            disabled={!isDirty || isSaving || !timeline || editorLocked}
             className="rounded-lg bg-ds-turquoise px-4 py-1.5 text-xs font-semibold text-axe3 hover:bg-ds-turquoise-dark disabled:opacity-50"
           >
             {isSaving ? 'Sauvegarde…' : 'Enregistrer'}
@@ -374,46 +510,82 @@ export function TimelineEditorClient({
           </div>
         </div>
       ) : (
-        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-4 p-4 lg:grid-cols-[280px_1fr_360px]">
-          {/* Sidebar */}
-          <aside className="lg:max-h-[calc(100vh-90px)] lg:overflow-y-auto">
-            <SceneListSidebar
-              scenes={timeline.scenes}
-              selectedSceneId={selectedSceneId}
-              onSelect={(sceneId) => setSelectedSceneId(sceneId)}
-              onAdd={addScene}
-              onDelete={deleteScene}
-            />
-          </aside>
-
-          {/* Center */}
-          <section>
-            <TimelinePreviewPanel
-              audioUrl={timeline.audio_url}
-              sceneToRender={sceneToRender}
-              onTimeUpdate={setCurrentTime}
-              onPlayingChange={setIsPlaying}
-              onDurationDetected={handleDurationDetected}
-              audioRef={audioRef}
-            />
-          </section>
-
-          {/* Right editor */}
-          <aside className="lg:max-h-[calc(100vh-90px)]">
-            {selectedScene ? (
-              <SceneEditor
-                scene={selectedScene}
-                onChange={updateScene}
-                audioDurationSec={audioDurationSec}
-                siblingScenes={siblingScenes}
+        <div
+          className={`mx-auto max-w-[1400px] p-4 ${
+            editorLocked ? 'pointer-events-none opacity-60' : ''
+          }`}
+        >
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr_360px]">
+            {/* Sidebar */}
+            <aside className="lg:max-h-[calc(100vh-90px)] lg:overflow-y-auto">
+              <SceneListSidebar
+                scenes={timeline.scenes}
+                selectedSceneId={selectedSceneId}
+                onSelect={(sceneId) => setSelectedSceneId(sceneId)}
+                onAdd={addScene}
+                onDelete={deleteScene}
+                onReorder={reorderScenes}
+                onRegenerate={
+                  type === 'formation'
+                    ? () => setShowRegenModal(true)
+                    : undefined
+                }
+                isRegenerating={isRegenerating}
               />
-            ) : (
-              <div className="rounded-xl bg-[color:var(--color-bg-card)]/30 p-6 text-center text-sm italic text-[color:var(--color-text-muted)]">
-                Aucune scène sélectionnée.
-              </div>
-            )}
-          </aside>
+            </aside>
+
+            {/* Center */}
+            <section>
+              <TimelinePreviewPanel
+                audioUrl={timeline.audio_url}
+                sceneToRender={sceneToRender}
+                onTimeUpdate={setCurrentTime}
+                onPlayingChange={setIsPlaying}
+                onDurationDetected={handleDurationDetected}
+                audioRef={audioRef}
+              />
+            </section>
+
+            {/* Right editor */}
+            <aside className="lg:max-h-[calc(100vh-90px)]">
+              {selectedScene ? (
+                <SceneEditor
+                  scene={selectedScene}
+                  onChange={updateScene}
+                  audioDurationSec={audioDurationSec}
+                  siblingScenes={siblingScenes}
+                />
+              ) : (
+                <div className="rounded-xl bg-[color:var(--color-bg-card)]/30 p-6 text-center text-sm italic text-[color:var(--color-text-muted)]">
+                  Aucune scène sélectionnée.
+                </div>
+              )}
+            </aside>
+          </div>
+
+          {/* ─── Footer panels (concepts + versions) ───────────── */}
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <ConceptsEditor
+              concepts={timeline.concepts ?? []}
+              audioDurationSec={audioDurationSec}
+              onChange={updateConcepts}
+            />
+            <VersionsPanel
+              type={type}
+              sourceId={id}
+              versions={versions}
+              currentTimelineUrl={currentTimelineUrl}
+            />
+          </div>
         </div>
+      )}
+
+      {/* ─── Modal de régénération ─────────────────────────────── */}
+      {showRegenModal && (
+        <RegenerateConfirmModal
+          onCancel={() => setShowRegenModal(false)}
+          onConfirm={handleRegenerate}
+        />
       )}
 
       {/* ─── Toast ────────────────────────────────────────────── */}
