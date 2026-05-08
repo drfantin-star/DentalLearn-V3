@@ -109,6 +109,7 @@ export default async function FormationTimelineEditorPage({
       type="formation"
       id={params.sequence_id}
       initialTimeline={initialTimeline}
+      initialTimelineUrl={timelineUrl}
       initialPublished={published}
       initialVersions={initialVersions}
       sourceTitle={sourceTitle}

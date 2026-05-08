@@ -45,6 +45,11 @@ const TimelineConceptSchema = z.object({
   at_sec: z.number().nonnegative().optional(),
   at_word_index: z.number().int().nonnegative().optional(),
   source: z.string().min(1).optional(),
+  // T6.5.b — additif strictement optionnel (rétro-compat) : permet à l'admin
+  // de masquer un concept de l'affichage côté karaoké/whiteboard sans le
+  // supprimer du payload. `undefined` (cas de toutes les timelines T2/T5
+  // existantes) = concept affiché par défaut. `false` = idem. `true` = masqué.
+  hidden: z.boolean().optional(),
 })
 
 // ─── Card content (utilisé par les templates whiteboard) ────────────────────
