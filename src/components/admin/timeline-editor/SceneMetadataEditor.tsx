@@ -15,7 +15,8 @@ import type { Scene } from '@/lib/timeline/schema'
  *    au schéma — voir dette dans RECAP_TECHNIQUE_T6_BLOC1.md.)
  *
  * Validation :
- *  - Bordure rouge si start_sec >= end_sec (incohérence locale).
+ *  - Bordure rouge si start_sec >= end_sec — refusé côté schéma Zod
+ *    depuis T6-D1 (résolu). La sauvegarde retourne 400.
  *  - Banner orange si overlap avec une scène voisine.
  *  - Banner orange si durée < 5s ou > 60s.
  *
@@ -28,9 +29,6 @@ interface Props {
   onChange: (next: Scene) => void
   audioDurationSec: number
   siblingScenes: Scene[] // toutes scènes sauf celle en cours
-  // Le prompt mentionne pedagogical_intent en optionnel — local-only en V1.
-  pedagogicalIntent?: string
-  onPedagogicalIntentChange?: (s: string) => void
 }
 
 function formatSec(sec: number): string {
@@ -50,8 +48,6 @@ export function SceneMetadataEditor({
   onChange,
   audioDurationSec,
   siblingScenes,
-  pedagogicalIntent,
-  onPedagogicalIntentChange,
 }: Props) {
   const startInvalid = scene.start_sec >= scene.end_sec
   const duration = Math.max(0, scene.end_sec - scene.start_sec)
@@ -169,21 +165,36 @@ export function SceneMetadataEditor({
         )}
       </div>
 
-      {/* Pedagogical intent — local-only en V1 (cf. dette T6-D2) */}
+      {/* Pedagogical intent — persisté dans scene.pedagogical_intent (T6-D2 résolu) */}
       <div>
         <label className="mb-1 block text-[11px] font-medium text-[color:var(--color-text-secondary)]">
           Intention pédagogique
           <span className="ml-2 text-[9px] font-normal italic text-[color:var(--color-text-muted)]">
-            (optionnel · note locale, non persistée en V1)
+            (optionnel · max 500 caractères)
           </span>
         </label>
         <textarea
-          value={pedagogicalIntent ?? ''}
-          onChange={(e) => onPedagogicalIntentChange?.(e.target.value)}
+          value={scene.pedagogical_intent ?? ''}
+          onChange={(e) => {
+            const v = e.target.value
+            const next = { ...scene }
+            if (v.length === 0) {
+              delete next.pedagogical_intent
+            } else {
+              next.pedagogical_intent = v
+            }
+            onChange(next)
+          }}
           rows={2}
+          maxLength={500}
           placeholder="Ex : Faire mémoriser les 3 facteurs aggravants…"
           className="w-full resize-none rounded-lg border border-white/10 bg-[color:var(--color-bg-input)] px-3 py-2 text-sm text-white focus:border-ds-turquoise focus:outline-none"
         />
+        <div className="mt-0.5 flex justify-end">
+          <span className="font-mono text-[10px] text-[color:var(--color-text-muted)]">
+            {(scene.pedagogical_intent ?? '').length}/500
+          </span>
+        </div>
       </div>
     </section>
   )

@@ -14,8 +14,6 @@ interface Props {
   onChange: (next: Scene) => void
   audioDurationSec: number
   siblingScenes: Scene[]
-  pedagogicalIntent?: string
-  onPedagogicalIntentChange?: (s: string) => void
 }
 
 export function SceneEditor({
@@ -23,8 +21,6 @@ export function SceneEditor({
   onChange,
   audioDurationSec,
   siblingScenes,
-  pedagogicalIntent,
-  onPedagogicalIntentChange,
 }: Props) {
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto pr-1">
@@ -33,8 +29,6 @@ export function SceneEditor({
         onChange={onChange}
         audioDurationSec={audioDurationSec}
         siblingScenes={siblingScenes}
-        pedagogicalIntent={pedagogicalIntent}
-        onPedagogicalIntentChange={onPedagogicalIntentChange}
       />
       <SceneTemplateEditor scene={scene} onChange={onChange} />
     </div>

@@ -204,13 +204,23 @@ const SceneTemplateSchema = z.discriminatedUnion('kind', [
 
 // ─── Scenes & Chapters ───────────────────────────────────────────────────────
 
-const SceneSchema = z.object({
-  id: z.string().min(1),
-  start_sec: z.number().nonnegative(),
-  end_sec: z.number().nonnegative(),
-  title: z.string().optional(),
-  template: SceneTemplateSchema,
-})
+const SceneSchema = z
+  .object({
+    id: z.string().min(1),
+    start_sec: z.number().nonnegative(),
+    end_sec: z.number().nonnegative(),
+    title: z.string().optional(),
+    template: SceneTemplateSchema,
+    // T6-D2 (résolu) — note pédagogique persistée par scène. Optionnel,
+    // strictement additif : aucune timeline antérieure n'est invalidée.
+    pedagogical_intent: z.string().max(500).optional(),
+  })
+  // T6-D1 (résolu) — start_sec doit être strictement < end_sec, sinon
+  // `getActiveScene` ne renverrait jamais cette scène (whiteboard inerte).
+  .refine((s) => s.start_sec < s.end_sec, {
+    message: 'start_sec must be strictly less than end_sec',
+    path: ['end_sec'],
+  })
 
 const ChapterSchema = z.object({
   id: z.string().min(1),

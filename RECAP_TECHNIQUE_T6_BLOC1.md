@@ -91,9 +91,10 @@ Dossier `src/components/admin/timeline-editor/` :
 | ID | Décision |
 |----|----------|
 | D-PROMPT | Toutes les décisions D1-D5, D8 du prompt respectées telles quelles. |
-| D-T6.2-pi | `pedagogical_intent` exposé via UI mais **non persisté** : le `SceneSchema` Zod ne contient pas ce champ. Pour respecter la consigne « ne pas patcher le schéma sans validation explicite », on stocke les intentions dans un `Record<sceneId,string>` côté state local. Visible mais perdu au reload. À arbitrer : ajouter un champ optionnel au schéma OU retirer l'UI. → Logged comme **dette T6-D2**. |
+| D-T6.2-pi | **Mis à jour 8 mai post-livraison** : `pedagogical_intent` désormais persisté via `SceneSchema` (champ optionnel, max 500). T6-D2 résolu. |
+| D-T6.2-end | **Mis à jour 8 mai post-livraison** : ajout d'un `.refine(start_sec < end_sec)` au `SceneSchema`. T6-D1 résolu. Vérifié sur le pilote — aucune scène invalidée. |
 | D-T6.3-causal | L'éditeur Causal V1 cible uniquement le mode `nodes+edges` (spec POC §5.2). Le mode legacy `cause+effects` est auto-migré au premier `onChange` (helper `migrateLegacyIfNeeded`). Cohérent avec la préférence du composant `<Causal>` côté whiteboard (qui rend le mode graphe si `nodes` est présent). |
-| D-T6.3-timeline | Idem : éditeur Timeline cible uniquement `events`, auto-migration depuis `steps`. |
+| D-T6.3-timeline | Idem : éditeur Timeline cible uniquement `events`, auto-migration depuis `steps`. **Scan pilote 8 mai** : aucune scène legacy à migrer (cf. §6). |
 | D-build | `npm install` n'avait jamais tourné dans le sandbox — j'ai dû l'installer pour valider le build. Aucune dépendance ajoutée à `package.json`. Build typecheck + lint OK. La prerender de pages existantes échoue sans `.env.local` (état pré-existant). |
 | D-script-migr | Le script de migration ne dépend de PERSONNE (tsx en npx, pas de dotenv) — lecture manuelle de `.env.local`. Évite d'ajouter une dépendance pour un script one-shot. |
 
@@ -101,47 +102,38 @@ Dossier `src/components/admin/timeline-editor/` :
 
 ## 3. Dettes techniques loggées (numérotation continuant T5)
 
-### POC-T6-D1 — `SceneSchema` ne valide pas `start_sec < end_sec`
+### POC-T6-D1 — RÉSOLU (patch additif post-livraison)
 
-**Symptôme** : on peut sauvegarder une scène avec `start_sec >= end_sec`.
-La route PUT laisse passer car le schéma Zod n'a pas la contrainte.
-Côté UI : bordure rouge avertit déjà, mais la save serveur l'accepte.
+**Sujet** : `SceneSchema` ne validait pas `start_sec < end_sec`.
 
-**Risque** : `getActiveScene` (cf. `src/lib/timeline/getActiveScene.ts`)
-ne renverra jamais cette scène car `currentTime >= start && currentTime <= end`
-sera faux pour tout `t`. Donc whiteboard inerte sur cette scène, mais pas
-de crash.
-
-**Reco fix** :
+**Fix appliqué** : ajout d'un `.refine()` au `SceneSchema`
+(`src/lib/timeline/schema.ts`) :
 ```ts
-// dans schema.ts
-const SceneSchema = z.object({...}).refine(
-  s => s.start_sec < s.end_sec,
-  { message: 'start_sec must be < end_sec' }
-)
-```
-**NON appliqué en BLOC 1** : modification additive risquée post-T5
-(toutes les timelines existantes seraient revalidées au PUT — vérifier
-que le pilote pilote n'a aucune scène en limite).
-
-**Action recommandée Sprint suivant** : appliquer le `.refine`, puis
-relancer un dry-run de la migration storage pour vérifier la validité.
-
-### POC-T6-D2 — `pedagogical_intent` non persisté
-
-**Symptôme** : champ visible dans l'UI mais lost au reload. Le prompt
-mentionnait ce champ comme optionnel mais le schéma Zod actuel ne l'a
-pas. Pour ne pas patcher le schéma sans validation explicite, on a
-choisi un state local par session.
-
-**Reco fix** : ajout strictement additif :
-```ts
-const SceneSchema = z.object({
-  ...,
-  pedagogical_intent: z.string().max(500).optional(),
+.refine((s) => s.start_sec < s.end_sec, {
+  message: 'start_sec must be strictly less than end_sec',
+  path: ['end_sec'],
 })
 ```
-À discuter avec Dr Fantin : utile en V1 ou ferraille à enlever ?
+La route PUT retourne désormais 400 si la contrainte échoue. Le toast
+client affiche la nature de l'erreur (helper `formatZodFlattened` dans
+`TimelineEditorClient.tsx`).
+
+**Vérification pilote** (séquence `e8dfa6b8-...`) : les 5 scènes ont
+toutes `start_sec < end_sec` (vérifié par requête SQL le 8 mai 2026,
+cf. §6 ci-dessous). Aucune timeline existante invalidée.
+
+### POC-T6-D2 — RÉSOLU (patch additif post-livraison)
+
+**Sujet** : `pedagogical_intent` n'était pas persisté (state local).
+
+**Fix appliqué** : ajout d'un champ optionnel au `SceneSchema` :
+```ts
+pedagogical_intent: z.string().max(500).optional(),
+```
+Le `TimelineEditorClient` n'a plus de `Record<sceneId, string>` ; le
+champ est lu/écrit directement comme `scene.pedagogical_intent`. Le PUT
+le sérialise, le GET le relit. Aucune timeline existante invalidée
+(champ optionnel).
 
 ### POC-T6-D3 — `news_syntheses` n'a pas de colonne `title`
 
@@ -165,9 +157,9 @@ created_by). Hors scope BLOC 1.
 
 ## 4. Incohérences trouvées dans la codebase post-T5
 
-### a. Schéma Zod permissif sur les `start_sec` vs `end_sec`
+### a. Schéma Zod permissif sur les `start_sec` vs `end_sec` — résolu
 
-Cf. T6-D1 ci-dessus. Pas de garde-fou côté schéma.
+Cf. T6-D1 ci-dessus. Refine ajoutée le 8 mai post-livraison initiale.
 
 ### b. `CausalTemplate` et `TimelineTemplate` ont chacun deux modes
 
@@ -210,6 +202,29 @@ nécessaires.
 - [x] Page accessible mobile en stack vertical (`grid-cols-1 lg:grid-cols-[280px_1fr_360px]`)
 
 ---
+
+## 5b. Scan du pilote (vérification compatibilité schéma post-patch)
+
+Effectué le 8 mai 2026 via `pg_net.http_get` + parsing JSONB de la
+timeline pilote `e8dfa6b8-...`. Résultat brut (ordre par `start_sec`) :
+
+| scene_id | kind | start_sec | end_sec | start<end | legacy ? |
+|----------|------|-----------|---------|-----------|----------|
+| scene-1 | figures | 108.3 | 133.3 | ✓ | non |
+| scene-2 | grid | 157.6 | 187.6 | ✓ | non |
+| scene-3 | comparison | 250.4 | 280.4 | ✓ | non |
+| scene-4 | grid | 321.3 | 356.3 | ✓ | non |
+| scene-5 | flowchart | 455.2 | 483.2 | ✓ | non |
+
+**Conclusion** :
+- **0 scène legacy** dans le pilote (aucune scène avec
+  `kind=causal+cause/effects` ni `kind=timeline+steps`).
+- **5 scènes / 5 valides** vis-à-vis du nouveau `.refine(start<end)`.
+- Le toast informatif d'auto-migration n'a donc PAS été ajouté (X=0).
+  Le code de migration silencieuse reste en place dans
+  `templates/CausalEditor.tsx` et `templates/TimelineTemplateEditor.tsx`
+  pour gérer les cas futurs (anciennes timelines pilote ou import
+  manuel JSON).
 
 ## 6. Procédure post-merge
 
@@ -287,10 +302,12 @@ Suivre le protocole de test plus bas.
 1. Sélectionne une scène. Change le « Début (sec) » pour `100`.
 2. Si ça crée un chevauchement avec une autre scène, un bandeau orange
    apparaît : « Cette scène chevauche la scène X ». L'enregistrement
-   reste possible.
-3. Si tu mets « Fin (sec) » plus petite que « Début (sec) », les deux
-   inputs deviennent rouges. Tu peux quand même enregistrer (le schéma
-   actuel le permet — voir la dette `POC-T6-D1`).
+   reste possible (chevauchement = warning non bloquant).
+3. Si tu mets « Fin (sec) » plus petite que « Début (sec) » (ex : début
+   200, fin 100), les deux inputs deviennent rouges. Si tu cliques
+   « Enregistrer », tu obtiens un toast rouge en bas à droite :
+   « Sauvegarde refusée : … start_sec must be strictly less than
+   end_sec ». Tu corriges, le toast disparaît, le save passe.
 
 ### Test 6 — Ajouter une scène
 

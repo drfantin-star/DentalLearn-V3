@@ -56,6 +56,33 @@ function newSceneId(): string {
   return `sc-${Math.random().toString(36).slice(2, 10)}`
 }
 
+/**
+ * Convertit le `details` retourné par la route API (issu de
+ * `ZodError.flatten()`) en chaîne lisible. Pour les erreurs nested d'un
+ * `.refine()` au niveau scène (ex : start_sec < end_sec), Zod range
+ * l'erreur dans `formErrors` puisque le `path` est nested. On fait un
+ * effort raisonnable pour afficher au moins un message clair.
+ */
+function formatZodFlattened(
+  details: unknown
+): string | null {
+  if (!details || typeof details !== 'object') return null
+  const d = details as {
+    formErrors?: string[]
+    fieldErrors?: Record<string, string[]>
+  }
+  const parts: string[] = []
+  if (d.formErrors && d.formErrors.length > 0) {
+    parts.push(...d.formErrors)
+  }
+  if (d.fieldErrors) {
+    for (const [field, errs] of Object.entries(d.fieldErrors)) {
+      if (errs && errs.length > 0) parts.push(`${field}: ${errs.join(', ')}`)
+    }
+  }
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
 export function TimelineEditorClient({
   type,
   id,
@@ -74,11 +101,6 @@ export function TimelineEditorClient({
   const [audioMode, setAudioMode] = useState<'fixed' | 'sync'>('fixed')
   const [published, setPublished] = useState(initialPublished)
   const [toast, setToast] = useState<ToastState | null>(null)
-
-  // Notes locales par scène (intention pédagogique non persistée — V1).
-  const [pedagogicalIntents, setPedagogicalIntents] = useState<
-    Record<string, string>
-  >({})
 
   // Avertissement avant fermeture si dirty.
   useEffect(() => {
@@ -171,13 +193,10 @@ export function TimelineEditorClient({
       })
       const data = await res.json()
       if (!res.ok) {
-        const detail =
-          data?.details?.fieldErrors
-            ? JSON.stringify(data.details.fieldErrors)
-            : data?.details?.formErrors?.join('; ') ??
-              data?.message ??
-              data?.error ??
-              'Erreur inconnue'
+        const detail = formatZodFlattened(data?.details) ??
+          data?.message ??
+          data?.error ??
+          'Erreur inconnue'
         setToast({
           kind: 'error',
           message: `Sauvegarde refusée : ${detail}`,
@@ -314,13 +333,6 @@ export function TimelineEditorClient({
                 onChange={updateScene}
                 audioDurationSec={timeline.duration_sec}
                 siblingScenes={siblingScenes}
-                pedagogicalIntent={pedagogicalIntents[selectedScene.id] ?? ''}
-                onPedagogicalIntentChange={(s) =>
-                  setPedagogicalIntents((cur) => ({
-                    ...cur,
-                    [selectedScene.id]: s,
-                  }))
-                }
               />
             ) : (
               <div className="rounded-xl bg-[color:var(--color-bg-card)]/30 p-6 text-center text-sm italic text-[color:var(--color-text-muted)]">
