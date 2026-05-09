@@ -152,8 +152,13 @@ export default function EnrichedAudioPlayer({
             // Tab "combined" — desktop : grid 2 colonnes (karaoké à gauche,
             // whiteboard à droite). Mobile : stack vertical, whiteboard en
             // haut, karaoké en bas (Q3).
+            // Desktop : whiteboard en sticky pour rester visible quand
+            // l'utilisateur scrolle dans le karaoké (toujours plus haut).
+            // `md:self-start` est critique — sans lui, `align-items: stretch`
+            // par défaut casserait le sticky en imposant la même hauteur que
+            // la colonne karaoké.
             <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:items-start md:gap-6">
-              <div className="order-1 md:order-2">
+              <div className="order-1 md:order-2 md:sticky md:top-6 md:self-start md:max-h-[calc(100vh-3rem)] md:overflow-y-auto">
                 <WhiteboardOrCover
                   hasActiveScene={Boolean(activeScene)}
                   timeline={timeline}
