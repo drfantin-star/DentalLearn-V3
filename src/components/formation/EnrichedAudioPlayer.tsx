@@ -163,8 +163,15 @@ export default function EnrichedAudioPlayer({
             // `md:min-h-0` est obligatoire pour que `overflow-y-auto` fonctionne
             // dans un grid item (sinon `min-height: auto` impose la hauteur
             // du contenu et neutralise l'overflow).
+            //
+            // Mobile (variante A) : whiteboard sticky top-0 (le sticky se cale
+            // sur le `<main overflow-auto>` admin, qui est le scroll container
+            // effectif sur mobile). `md:static` neutralise le sticky sur
+            // desktop pour préserver le internal-scroll layout. `bg-…` opaque
+            // obligatoire — sans ça, le karaoké défilerait visiblement
+            // derrière le whiteboard sticky.
             <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-6 md:h-[calc(100vh-32rem)]">
-              <div className="order-1 md:order-2 md:min-h-0 md:overflow-hidden">
+              <div className="order-1 md:order-2 sticky top-0 z-10 bg-[color:var(--color-bg)] md:static md:min-h-0 md:overflow-hidden">
                 <WhiteboardOrCover
                   hasActiveScene={Boolean(activeScene)}
                   timeline={timeline}
