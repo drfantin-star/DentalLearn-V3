@@ -6,7 +6,8 @@ import { KaraokeTranscript } from '@/components/audio-enriched/KaraokeTranscript
 import { StructuredWhiteboard } from '@/components/audio-enriched/StructuredWhiteboard'
 import { useAudio } from '@/context/AudioContext'
 import { useEnrichedTimeline } from '@/hooks/useEnrichedTimeline'
-import { getActiveScene } from '@/lib/timeline/getActiveScene'
+import { getActiveOrLastScene } from '@/lib/timeline/getActiveScene'
+import type { Scene } from '@/lib/timeline/schema'
 
 import AudioPlayer from './AudioPlayer'
 
@@ -100,11 +101,14 @@ export default function EnrichedAudioPlayer({
     shouldFetchTimeline ? timelineUrl : null
   )
 
-  // Q6 (gap avant scène 1 / entre scènes / après dernière scène) :
-  // `getActiveScene` retourne null hors fenêtre, on rend la cover dans ce
-  // cas plutôt que le placeholder texte natif du whiteboard. Throttle 2 Hz.
-  const activeScene = useMemo(
-    () => (timeline ? getActiveScene(state.currentTime, timeline.scenes) : null),
+  // Continuité visuelle (décision produit Dr Fantin, T7.2 itération
+  // post-smoke) : on étend la dernière scène connue à travers les gaps
+  // inter-scènes et au-delà de la dernière scène jusqu'à la fin de l'audio.
+  // Seul le gap initial avant la première scène déclenche l'affichage de
+  // la cover (Q6 cas 5). Cf. `getActiveOrLastScene` dans
+  // `src/lib/timeline/getActiveScene.ts`. Throttle 2 Hz inchangé.
+  const displayedScene = useMemo(
+    () => (timeline ? getActiveOrLastScene(state.currentTime, timeline.scenes) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [Math.floor(state.currentTime * 2), timeline]
   )
@@ -141,9 +145,8 @@ export default function EnrichedAudioPlayer({
           {activeTab === 'whiteboard' ? (
             <div className="w-full">
               <WhiteboardOrCover
-                hasActiveScene={Boolean(activeScene)}
+                displayedScene={displayedScene}
                 timeline={timeline}
-                currentTime={state.currentTime}
                 coverImageUrl={coverImageUrl}
                 title={sequenceTitle}
               />
@@ -173,9 +176,8 @@ export default function EnrichedAudioPlayer({
             <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-6 md:h-[calc(100vh-32rem)]">
               <div className="order-1 md:order-2 sticky top-0 z-10 bg-[color:var(--color-bg)] md:static md:min-h-0 md:overflow-hidden">
                 <WhiteboardOrCover
-                  hasActiveScene={Boolean(activeScene)}
+                  displayedScene={displayedScene}
                   timeline={timeline}
-                  currentTime={state.currentTime}
                   coverImageUrl={coverImageUrl}
                   title={sequenceTitle}
                 />
@@ -195,30 +197,37 @@ export default function EnrichedAudioPlayer({
 }
 
 // ──────────────────────────────────────────────────────────────
-// Sous-composant : whiteboard quand une scène est active, cover
-// sinon (Q6 — gap avant scène 1 / entre scènes / après dernière).
+// Sous-composant : whiteboard quand une scène doit être affichée
+// (active ou en extension via getActiveOrLastScene), cover sinon
+// (uniquement le gap initial avant la première scène — Q6 cas 5).
 // ──────────────────────────────────────────────────────────────
 
 interface WhiteboardOrCoverProps {
-  hasActiveScene: boolean
+  displayedScene: Scene | null
   timeline: NonNullable<ReturnType<typeof useEnrichedTimeline>['timeline']>
-  currentTime: number
   coverImageUrl?: string | null
   title?: string
 }
 
 function WhiteboardOrCover({
-  hasActiveScene,
+  displayedScene,
   timeline,
-  currentTime,
   coverImageUrl,
   title,
 }: WhiteboardOrCoverProps) {
-  if (hasActiveScene) {
+  if (displayedScene) {
+    // `<StructuredWhiteboard>` consomme `currentTime` uniquement pour
+    // recalculer sa propre `getActiveScene` interne. Pour l'amener à
+    // afficher la scène voulue (y compris pendant un gap où le vrai
+    // `currentTime` audio ne tomberait dans aucune fenêtre), on lui
+    // passe une valeur calée à l'intérieur de la fenêtre de la scène.
+    // Pattern `start_sec + 0.5` déjà utilisé dans
+    // `src/components/admin/timeline-editor/TimelinePreviewPanel.tsx`.
+    const lockedCurrentTime = displayedScene.start_sec + 0.5
     return (
       <StructuredWhiteboard
         scenes={timeline.scenes}
-        currentTime={currentTime}
+        currentTime={lockedCurrentTime}
       />
     )
   }

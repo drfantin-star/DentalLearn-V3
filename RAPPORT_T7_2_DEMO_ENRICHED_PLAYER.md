@@ -263,25 +263,29 @@ Storage.
 ### 6.2 Whiteboard vs cover (Q6 gap)
 
 ```ts
-const activeScene = useMemo(
-  () => timeline ? getActiveScene(state.currentTime, timeline.scenes) : null,
+const displayedScene = useMemo(
+  () => timeline ? getActiveOrLastScene(state.currentTime, timeline.scenes) : null,
   [Math.floor(state.currentTime * 2), timeline]
 )
 // Render :
-{activeScene
-  ? <StructuredWhiteboard scenes={timeline.scenes} currentTime={state.currentTime} />
+{displayedScene
+  ? <StructuredWhiteboard
+      scenes={timeline.scenes}
+      currentTime={displayedScene.start_sec + 0.5}
+    />
   : <CoverFallback coverUrl={coverImageUrl} title={sequenceTitle} />}
 ```
 
-Note : la sémantique de `getActiveScene` est `null` dans **tous** les gaps
-(avant scène 1, entre scènes, après dernière). Le prompt T7.2 mentionnait
-"la dernière scène active reste affichée jusqu'à la suivante" pour les gaps
-inter-scènes — ce comportement n'est pas implémenté actuellement par
-`getActiveScene`. Pour rester cohérent avec le rapport T7.0 (§5.3 et code
-lu) et ne pas modifier la lib partagée hors scope, le wrapper rend la cover
-dans tous les cas où aucune scène n'est active. Une évolution
-"persistance de la dernière scène" serait à traiter comme un changement
-de `getActiveScene` (ou un nouveau helper) dans une future itération T7.x.
+Note (mise à jour post-smoke) : un helper distinct `getActiveOrLastScene`
+a été ajouté dans `src/lib/timeline/getActiveScene.ts` (export additif,
+Option B confirmée par Dr Fantin). Sémantique : retourne la dernière
+scène dont `start_sec ≤ currentTime`, sauf gap initial avant la première
+scène où la cover est préservée. `getActiveScene` lui-même n'est pas
+modifié — T3/T4/T5/T6 admin restent intacts. Pour que le `<StructuredWhiteboard>`
+(qui utilise `getActiveScene` strict en interne) affiche la scène
+"étendue" pendant un gap, le wrapper lui passe un `currentTime` calé
+à `displayedScene.start_sec + 0.5` (pattern déjà utilisé dans
+`TimelinePreviewPanel.tsx`).
 
 ### 6.3 Layout responsive (Q3)
 
@@ -311,7 +315,7 @@ breakpoint custom — tous les composants enfants ont déjà leurs propres
 |---|---|---|
 | `demoMode = true` hard-codé dans `SequencePlayer.tsx` ligne 238 | Q7.5 / D7-7 | À traiter hors T7.2. Sans impact direct sur T7.2 mais affecte le scénario de recette (le bouton "Passer au Quiz" reste actif sans avoir écouté). |
 | Panneau debug visible | T7.2 ([type]/[id] Client Component) | À retirer en T7.3 (ou gater par un flag URL `?debug=1`) avant intégration au flow user. Pour l'instant, c'est un outil de validation visuelle pour Dr Fantin. |
-| `getActiveScene` retourne `null` dans les gaps inter-scènes | Sémantique actuelle T3 | Si Dr Fantin veut "persistance de la dernière scène", c'est un changement à apporter à `src/lib/timeline/getActiveScene.ts` ou à introduire un helper distinct. Hors scope T7.2. |
+| ~~`getActiveScene` retourne `null` dans les gaps inter-scènes~~ ✅ **Résolu** | `getActiveOrLastScene` ajouté à `getActiveScene.ts` (Option B confirmée par Dr Fantin) | Helper distinct exporté dans le même module. Sémantique : retourne la dernière scène dont `start_sec ≤ currentTime`, sauf gap initial avant la première scène (cover préservée). Le wrapper T7.2 utilise `getActiveOrLastScene` à la place de `getActiveScene` ; à `<StructuredWhiteboard>` on passe un `currentTime` calé à `displayedScene.start_sec + 0.5` (pattern existant `TimelinePreviewPanel.tsx`) pour que le `getActiveScene` interne du whiteboard la trouve. `getActiveScene` lui-même n'est pas modifié → T3/T4/T5/T6 admin inchangés. Cas pilote : t=200s (gap 1-2) → s1 ; t=400s (gap 3-4) → s4 ; t=530s (post-s5) → s5 ; t<s1.start_sec → cover. |
 | Bug seek MP3 pilote (POC-T3-D4) | Cf. KaraokePOCClient lignes 17-37 | Sans impact T7.2 (pas de seek). À garder en tête lors de la recette : si on observe une désynchro après un seek-arrière depuis le MiniPlayer (`-15s`), c'est probablement ce bug qui s'exprime. |
 | Page démo sous `/admin/*` ne bénéficie pas du `MiniPlayer` global | Architecture admin | Cohérent avec les autres POC. Si Dr Fantin veut tester l'interaction MiniPlayer ↔ EnrichedAudioPlayer (cas Q7.7), c'est en T7.3 sous `/(app)/...` que ce sera observable. |
 | **D7-10 — `<main class="flex-1 overflow-auto">` du admin layout casse `position: sticky`** | `src/app/admin/layout.tsx` ligne 200 | Le scroll container global empêche les composants enfants d'utiliser `sticky` : l'élément ne peut pas "coller" au viewport puisque le scroll est interne à `<main>`. Tentative initiale (commit `4b4d5a1`) abandonnée. Stratégie de remplacement (commit suivant) : grid Combined desktop avec hauteur cappée `md:h-[calc(100vh-32rem)]` + scroll interne sur la colonne karaoké (`md:overflow-y-auto md:min-h-0`), colonne whiteboard `md:overflow-hidden`. La valeur `32rem` (≈ 512px) est calibrée pour DemoHeader + TabSelector + AudioPlayer + paddings ; ajuster si la composition change. Si d'autres composants admin ont besoin de `sticky` à l'avenir → soit overrider `overflow` localement, soit revoir le layout admin. |
