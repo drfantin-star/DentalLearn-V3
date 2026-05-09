@@ -49,6 +49,11 @@ export interface Sequence {
   course_duration_seconds: number | null
   subtitles_url: string | null
   infographic_url: string | null
+  // POC-T7.2 — extension additive pour <EnrichedAudioPlayer>.
+  // Optionnels pour ne pas casser les fetches existants qui ne sélectionnent
+  // pas ces colonnes. timeline_published est NOT NULL en BDD (default false).
+  timeline_url?: string | null
+  timeline_published?: boolean
   created_at: string
   updated_at: string
 }
