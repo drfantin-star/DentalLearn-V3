@@ -8,6 +8,7 @@ import { generateFormationPDF, getFormationPDFFilename } from '@/lib/attestation
 import { generateEppPDF, getEppPDFFilename } from '@/lib/attestations/generateEppPDF'
 import { saveAttestation, generateVerificationCode, downloadBlob } from '@/lib/attestations/saveAttestation'
 import { TYPE_CNP_BY_AXE, type AttestationOrganisme } from '@/lib/attestations/types'
+import { SatisfactionSurveyModal } from './SatisfactionSurveyModal'
 
 interface Props {
   type: 'formation_online' | 'epp'
@@ -27,6 +28,8 @@ export function GenerateAttestationButton({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [rppsMissing, setRppsMissing] = useState(false)
+  const [showSurveyModal, setShowSurveyModal] = useState(false)
+  const [surveyContext, setSurveyContext] = useState<{ formationTitle: string } | null>(null)
   const router = useRouter()
 
   const handleClick = async () => {
@@ -73,6 +76,29 @@ export function GenerateAttestationButton({
         onGenerated?.(existing.id)
         router.push('/profil/attestations')
         return
+      }
+
+      // 2bis. Gating questionnaire de satisfaction (Qualiopi #30) — uniquement formation_online
+      if (type === 'formation_online') {
+        const { data: hasCompleted, error: rpcErr } = await supabase.rpc(
+          'has_user_completed_satisfaction',
+          { p_formation_id: sourceId }
+        )
+        if (rpcErr) {
+          console.error('has_user_completed_satisfaction error:', rpcErr)
+          // fail open : on ouvre la modal pour ne pas bloquer en cas d'erreur RPC
+        }
+        if (!hasCompleted) {
+          const { data: formationRow } = await supabase
+            .from('formations')
+            .select('title')
+            .eq('id', sourceId)
+            .single()
+          setSurveyContext({ formationTitle: formationRow?.title || 'Formation' })
+          setShowSurveyModal(true)
+          setLoading(false)
+          return
+        }
       }
 
       // 3. Générer le PDF selon le type
@@ -303,6 +329,20 @@ export function GenerateAttestationButton({
         )}
       </button>
       {error && <p className="text-xs text-red-400">{error}</p>}
+
+      {showSurveyModal && surveyContext && type === 'formation_online' && (
+        <SatisfactionSurveyModal
+          isOpen={showSurveyModal}
+          formationId={sourceId}
+          formationTitle={surveyContext.formationTitle}
+          onClose={() => setShowSurveyModal(false)}
+          onSubmitted={() => {
+            setShowSurveyModal(false)
+            // Relance la génération maintenant que la satisfaction est enregistrée
+            handleClick()
+          }}
+        />
+      )}
     </div>
   )
 }
