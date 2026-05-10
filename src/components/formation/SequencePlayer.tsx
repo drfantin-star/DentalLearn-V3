@@ -15,6 +15,8 @@ import {
   AlertCircle,
   ChevronUp,
   ChevronDown,
+  Info,
+  Play,
 } from 'lucide-react'
 import {
   useSequenceQuestions,
@@ -25,6 +27,7 @@ import {
 import AudioPlayer from './AudioPlayer'
 import EnrichedAudioPlayer, { type EnrichedPlayerTab } from './EnrichedAudioPlayer'
 import TreasureChest from '@/components/sequences/TreasureChest'
+import { useAudio } from '@/context/AudioContext'
 
 // ============================================
 // TYPES (basés sur types/questions.ts)
@@ -229,6 +232,10 @@ export default function SequencePlayer({
 }: SequencePlayerProps) {
   const { questions, loading: loadingQuestions, error } = useSequenceQuestions(sequence.id)
   const { submit: submitResult, loading: submitting } = useSubmitSequenceResult()
+  // POC-T7.4-UX-FAB : on a besoin de `playAudio` pour démarrer la track depuis
+  // le FAB overlay du wrapper enrichi (la card legacy étant masquée par
+  // T7.4-UX-B). Aucune autre méthode du context n'est consommée ici.
+  const { playAudio } = useAudio()
 
   const hasMedia = !!sequence.course_media_url
   const hasPdf = !!sequence.infographic_url
@@ -244,6 +251,8 @@ export default function SequencePlayer({
   const [courseCompleted, setCourseCompleted] = useState(false)
   const [courseProgress, setCourseProgress] = useState(0)
   const [enrichedActiveTab, setEnrichedActiveTab] = useState<EnrichedPlayerTab>('combined')
+  // POC-T7.4-UX-D/E : drawer Objectifs mobile, useState local (pas de localStorage).
+  const [objectivesDrawerOpen, setObjectivesDrawerOpen] = useState(false)
   const [currentQ, setCurrentQ] = useState(0)
   
   // États pour différents types
@@ -630,8 +639,11 @@ export default function SequencePlayer({
         <span className="font-bold text-[13px] text-amber-600">⭐ {totalPoints}</span>
       </div>
 
-      {/* Contenu */}
-      <div className="flex-1 p-4 overflow-auto pb-24">
+      {/* Contenu — POC-T7.4-UX-F : pb-40 (160px) au lieu de pb-24 (96px) pour
+          clear le MiniPlayer global flottant (`bottom-20` = 80px, hauteur ~70px,
+          top à 150px du viewport bottom). pb-24 laissait 54px de contenu
+          (notamment fenêtre karaoké) recouverts par le MiniPlayer. */}
+      <div className="flex-1 p-4 overflow-auto pb-40">
         {/* COURS (VIDEO ou AUDIO) */}
         {playerStep === 'video' && (
           <div className="text-center py-6">
@@ -639,11 +651,32 @@ export default function SequencePlayer({
             {mediaType === 'audio' && sequence.course_media_url && (
               <div className="mb-6">
                 {sequence.timeline_url && sequence.timeline_published && (
-                  <EnrichedTabSelector
-                    active={enrichedActiveTab}
-                    onChange={setEnrichedActiveTab}
-                    categoryGradient={categoryGradient}
-                  />
+                  <>
+                    {/* POC-T7.4-UX-D : header compact mobile (Option α). Visible
+                        uniquement en mode enriched mobile, le desktop a son
+                        propre header sticky ligne ~625. Donne accès au drawer
+                        Objectifs (T7.4-UX-E) qui restitue le contenu objectives
+                        de l'ancienne card gradient (supprimée par T7.4-UX-B). */}
+                    <div className="md:hidden mb-3 flex items-center gap-2">
+                      <p className="flex-1 font-bold text-base truncate" style={{ color: '#e5e5e5' }}>
+                        {sequence.title}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setObjectivesDrawerOpen(true)}
+                        className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-colors hover:bg-white/5"
+                        style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a', color: '#a3a3a3' }}
+                        aria-label="Objectifs de la séquence"
+                      >
+                        <Info size={20} />
+                      </button>
+                    </div>
+                    <EnrichedTabSelector
+                      active={enrichedActiveTab}
+                      onChange={setEnrichedActiveTab}
+                      categoryGradient={categoryGradient}
+                    />
+                  </>
                 )}
                 <EnrichedAudioPlayer
                   src={sequence.course_media_url}
@@ -659,6 +692,21 @@ export default function SequencePlayer({
                   timelineUrl={sequence.timeline_url ?? null}
                   timelinePublished={sequence.timeline_published ?? false}
                   activeTab={enrichedActiveTab}
+                  hideLegacyCardWhenEnriched={true}
+                  onPlayRequest={() =>
+                    playAudio({
+                      audioUrl: sequence.course_media_url!,
+                      sequenceTitle: sequence.title,
+                      formationTitle: '',
+                      accentColor: categoryGradient.from,
+                      sequenceId: sequence.id,
+                      userId: '',
+                      duration: sequence.course_duration_seconds || 0,
+                      coverImageUrl: coverImageUrl || undefined,
+                      onComplete: () => setCourseCompleted(true),
+                      onProgress: (percent) => setCourseProgress(percent),
+                    })
+                  }
                 />
               </div>
             )}
@@ -1400,6 +1448,18 @@ export default function SequencePlayer({
           </div>
         </div>
       )}
+
+      {/* POC-T7.4-UX-E : drawer Objectifs mobile (bottom sheet). Restitue le
+          contenu objectives qui vivait dans la card gradient legacy supprimée
+          par T7.4-UX-B. md:hidden — desktop garde son header sticky et la
+          card legacy en mode audio_only. */}
+      {objectivesDrawerOpen && (
+        <ObjectivesDrawer
+          title={sequence.title}
+          objectives={sequence.learning_objectives ?? null}
+          onClose={() => setObjectivesDrawerOpen(false)}
+        />
+      )}
     </div>
   )
 }
@@ -1458,6 +1518,81 @@ function EnrichedTabSelector({
             </button>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+// POC-T7.4-UX-E — Drawer Objectifs mobile (bottom sheet). Pattern aligné sur
+// `NewsModal.tsx` (fixed inset-0 z-50 + items-end mobile). useState local côté
+// SequencePlayer (pas de localStorage). Fermeture : tap backdrop ou bouton X.
+function ObjectivesDrawer({
+  title,
+  objectives,
+  onClose,
+}: {
+  title: string
+  objectives: string[] | null
+  onClose: () => void
+}) {
+  return (
+    <div
+      className="md:hidden fixed inset-0 z-50 bg-black/60 flex items-end justify-center"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Objectifs de la séquence"
+    >
+      <div
+        className="w-full rounded-t-3xl max-h-[85vh] overflow-y-auto relative pb-safe"
+        style={{ background: '#1a1a1a', borderTop: '0.5px solid #2a2a2a' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Drag handle visuel (cue iOS sheet) */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 rounded-full" style={{ background: 'rgba(255,255,255,0.18)' }} />
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fermer"
+          className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full flex items-center justify-center hover:bg-white/5 transition-colors"
+          style={{ background: '#242424', color: '#a3a3a3' }}
+        >
+          <X size={18} />
+        </button>
+
+        <div className="px-5 py-4">
+          <p className="font-bold text-xl pr-12 leading-snug" style={{ color: '#e5e5e5' }}>
+            {title}
+          </p>
+
+          {objectives && objectives.length > 0 ? (
+            <>
+              <p className="text-xs uppercase tracking-wider mt-5 mb-3" style={{ color: '#a3a3a3' }}>
+                À l'issue de cette séquence
+              </p>
+              <ul className="space-y-3">
+                {objectives.map((obj, i) => (
+                  <li key={i} className="flex items-start gap-3">
+                    <span
+                      className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: 'rgba(255,255,255,0.08)' }}
+                    >
+                      <Check size={12} style={{ color: '#e5e5e5' }} />
+                    </span>
+                    <p className="text-sm leading-snug" style={{ color: '#e5e5e5' }}>{obj}</p>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p className="text-sm mt-3" style={{ color: '#a3a3a3' }}>
+              Aucun objectif renseigné pour cette séquence.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   )
