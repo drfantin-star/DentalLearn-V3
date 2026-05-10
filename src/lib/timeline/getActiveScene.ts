@@ -70,3 +70,65 @@ function isAscByStart(scenes: Scene[]): boolean {
   }
   return true
 }
+
+/**
+ * Variante "continuité visuelle" de `getActiveScene` pour POC-T7.2.
+ *
+ * Sémantique :
+ *  - `scenes` vide ⇒ `null`
+ *  - `currentTime < 0` ⇒ `null`
+ *  - `currentTime < firstScene.start_sec` (gap initial avant la première
+ *    scène) ⇒ `null` (on veut afficher la cover de la séquence pendant
+ *    cet intervalle, pas une scène)
+ *  - Sinon ⇒ la dernière scène dont `start_sec <= currentTime`. Cela
+ *    couvre :
+ *      - la scène activement en cours (start_sec ≤ t ≤ end_sec)
+ *      - les gaps inter-scènes (la scène précédente reste affichée)
+ *      - le gap après la dernière scène (la dernière scène reste
+ *        affichée jusqu'à la fin de l'audio)
+ *
+ * Pourquoi un helper distinct : `getActiveScene` est consommé par les
+ * pages T3/T4/T5/T6 (admin) qui s'appuient sur sa sémantique stricte
+ * (« null pendant les gaps »). Modifier `getActiveScene` casserait ces
+ * pages. Le helper distinct est utilisé uniquement par le wrapper user
+ * `<EnrichedAudioPlayer>` (T7.2 et T7.3) où la continuité visuelle est
+ * souhaitée.
+ *
+ * Robustesse : tri défensif comme `getActiveScene` (réutilise
+ * `isAscByStart` du même module).
+ *
+ * @example
+ *   const scenes = [
+ *     { id: 's1', start_sec: 0,   end_sec: 187.5, ... },
+ *     { id: 's2', start_sec: 250.4, end_sec: 350,  ... },
+ *   ]
+ *   getActiveOrLastScene(50,  scenes)  // → s1 (active)
+ *   getActiveOrLastScene(200, scenes)  // → s1 (gap inter, dernière connue)
+ *   getActiveOrLastScene(300, scenes)  // → s2 (active)
+ *   getActiveOrLastScene(400, scenes)  // → s2 (post-dernière)
+ *   getActiveOrLastScene(-1,  scenes)  // → null
+ */
+export function getActiveOrLastScene(
+  currentTime: number,
+  scenes: Scene[]
+): Scene | null {
+  if (!scenes.length) return null
+  if (currentTime < 0) return null
+
+  const sorted =
+    isAscByStart(scenes) ? scenes : [...scenes].sort((a, b) => a.start_sec - b.start_sec)
+
+  // Gap initial avant la première scène : on préserve la cover.
+  if (currentTime < sorted[0].start_sec) return null
+
+  // Itération inverse : on prend la dernière scène (la plus récente)
+  // dont `start_sec <= currentTime`. Couvre intra-scène, gap inter, et
+  // post-dernière-scène d'un seul coup.
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    if (sorted[i].start_sec <= currentTime) {
+      return sorted[i]
+    }
+  }
+  // Inatteignable : on a déjà testé `currentTime >= sorted[0].start_sec`.
+  return null
+}
