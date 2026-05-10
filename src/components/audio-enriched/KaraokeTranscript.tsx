@@ -82,8 +82,18 @@ export function KaraokeTranscript({
   const activeSegmentIndex = activeWord?.segmentIndex ?? -1
   const activeWordIndex = activeWord?.wordIndex ?? -1
 
-  // Auto-scroll : déclenché quand le segment actif change, sauf si l'utilisateur
-  // a scrollé manuellement il y a moins de 5 s.
+  // POC-T7.4a-G (D7-11) — Détection du mode "fenêtre Spotify" : actif quand le
+  // container a un overflow effectif (mobile, `max-h-[180px] overflow-y-auto`),
+  // inactif sur desktop où `md:max-h-none md:overflow-visible` laisse le wrapper
+  // parent (Variante A T7.2 internal-scroll grid) gérer le scroll. Le check
+  // `scrollHeight > clientHeight + 1` est plus simple et stable que matchMedia
+  // (suit l'élément réel, pas la viewport CSS) et évite un re-render React.
+  const isWindowedMode = (el: HTMLElement | null): boolean =>
+    !!el && el.scrollHeight > el.clientHeight + 1
+
+  // Auto-scroll segment-level (desktop) : déclenché quand le segment actif change,
+  // sauf si l'utilisateur a scrollé manuellement il y a moins de 5 s. Sur mobile
+  // (mode fenêtre) on neutralise pour laisser le mot-level prendre la main.
   useEffect(() => {
     if (!autoScroll) return
     if (activeSegmentIndex < 0) return
@@ -92,12 +102,61 @@ export function KaraokeTranscript({
     const sinceManualScroll = Date.now() - manualScrollAtRef.current
     if (sinceManualScroll < MANUAL_SCROLL_PAUSE_MS) return
 
+    const containerEl = containerRef.current
+    if (isWindowedMode(containerEl)) {
+      lastScrolledSegmentRef.current = activeSegmentIndex
+      return
+    }
+
     const targetEl = segmentRefs.current[activeSegmentIndex]
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
       lastScrolledSegmentRef.current = activeSegmentIndex
     }
   }, [autoScroll, activeSegmentIndex])
+
+  // POC-T7.4a-G (D7-11) — Auto-scroll mot-level (mobile uniquement, mode fenêtre).
+  // Garde-fou impératif : on ne scrolle QUE si le mot actif est hors fenêtre
+  // visible du container (test getBoundingClientRect). Pas de scroll à chaque
+  // tick 4Hz, sinon "scroll permanent" gênant. `containerEl.scrollTo` ne scrolle
+  // que le container interne (pas la chaîne d'ancêtres comme ferait scrollIntoView).
+  useEffect(() => {
+    if (!autoScroll) return
+    if (activeSegmentIndex < 0 || activeWordIndex < 0) return
+
+    const sinceManualScroll = Date.now() - manualScrollAtRef.current
+    if (sinceManualScroll < MANUAL_SCROLL_PAUSE_MS) return
+
+    const containerEl = containerRef.current
+    if (!isWindowedMode(containerEl)) return
+    if (!containerEl) return
+
+    const wordEl = containerEl.querySelector<HTMLElement>(
+      `[data-word-key="${activeSegmentIndex}-${activeWordIndex}"]`
+    )
+    if (!wordEl) return
+
+    const containerRect = containerEl.getBoundingClientRect()
+    const wordRect = wordEl.getBoundingClientRect()
+    const wordTopInContainer = wordRect.top - containerRect.top
+    const wordBottomInContainer = wordRect.bottom - containerRect.top
+
+    // Mot dans la fenêtre visible → ne rien faire.
+    if (
+      wordTopInContainer >= 0 &&
+      wordBottomInContainer <= containerEl.clientHeight
+    ) {
+      return
+    }
+
+    // Mot hors fenêtre → scroll interne pour le centrer.
+    const targetScrollTop =
+      containerEl.scrollTop +
+      wordTopInContainer -
+      containerEl.clientHeight / 2 +
+      wordRect.height / 2
+    containerEl.scrollTo({ top: targetScrollTop, behavior: 'smooth' })
+  }, [autoScroll, activeSegmentIndex, activeWordIndex])
 
   // Cas vide : transcript absent ou aucun segment.
   if (!transcript || !transcript.segments.length) {
@@ -111,9 +170,16 @@ export function KaraokeTranscript({
   }
 
   return (
+    // POC-T7.4a-G (D7-11) — `max-h-[180px] overflow-y-auto` sur mobile crée la
+    // "fenêtre Spotify" (~3 lignes visibles, scroll interne au mot actif piloté
+    // par useEffect mot-level ci-dessus). `md:max-h-none md:overflow-visible`
+    // restaure le comportement Variante A T7.2 sur desktop : le container interne
+    // s'étire à la hauteur du contenu et c'est le wrapper grid parent
+    // (`md:overflow-y-auto md:min-h-0` dans EnrichedAudioPlayer) qui scrolle, ce
+    // qui préserve le auto-scroll segment-level desktop tel quel.
     <div
       ref={containerRef}
-      className={`mx-auto max-w-3xl space-y-6 py-4 ${className ?? ''}`}
+      className={`mx-auto max-w-3xl space-y-6 py-4 max-h-[180px] overflow-y-auto md:max-h-none md:overflow-visible ${className ?? ''}`}
     >
       {transcript.segments.map((segment, segmentIndex) => {
         const isPastSegment =
@@ -138,15 +204,25 @@ export function KaraokeTranscript({
                 const isPast =
                   isPastSegment ||
                   (isCurrentSegment && wordIndex < activeWordIndex)
+                // POC-T7.4a-G (D7-11) — wrapper inline porteur de
+                // `data-word-key` consommé par le sélecteur CSS du useEffect
+                // mot-level ci-dessus. `<KaraokeWord>` est interdit à modifier
+                // (composant audio-enriched/), donc on l'enveloppe sans le
+                // toucher. Le wrap est `display: inline` par défaut → aucun
+                // impact sur le line-wrap du `<p>` parent.
                 return (
-                  <KaraokeWord
+                  <span
                     key={wordIndex}
-                    text={word.text}
-                    isActive={isActive}
-                    isPast={isPast}
-                    startSec={word.start_sec}
-                    onSeek={onSeek}
-                  />
+                    data-word-key={`${segmentIndex}-${wordIndex}`}
+                  >
+                    <KaraokeWord
+                      text={word.text}
+                      isActive={isActive}
+                      isPast={isPast}
+                      startSec={word.start_sec}
+                      onSeek={onSeek}
+                    />
+                  </span>
                 )
               })}
             </p>
