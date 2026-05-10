@@ -23,6 +23,7 @@ import {
   type Question,
 } from '@/lib/supabase'
 import AudioPlayer from './AudioPlayer'
+import EnrichedAudioPlayer, { type EnrichedPlayerTab } from './EnrichedAudioPlayer'
 import TreasureChest from '@/components/sequences/TreasureChest'
 
 // ============================================
@@ -242,6 +243,7 @@ export default function SequencePlayer({
   const [playerStep, setPlayerStep] = useState<PlayerStep>(showVideo ? 'video' : 'quiz')
   const [courseCompleted, setCourseCompleted] = useState(false)
   const [courseProgress, setCourseProgress] = useState(0)
+  const [enrichedActiveTab, setEnrichedActiveTab] = useState<EnrichedPlayerTab>('combined')
   const [currentQ, setCurrentQ] = useState(0)
   
   // États pour différents types
@@ -633,10 +635,16 @@ export default function SequencePlayer({
         {/* COURS (VIDEO ou AUDIO) */}
         {playerStep === 'video' && (
           <div className="text-center py-6">
-            {/* ─── AudioPlayer ─── */}
+            {/* ─── AudioPlayer enrichi (POC-T7.3) ─── */}
             {mediaType === 'audio' && sequence.course_media_url && (
               <div className="mb-6">
-                <AudioPlayer
+                {sequence.timeline_url && sequence.timeline_published && (
+                  <EnrichedTabSelector
+                    active={enrichedActiveTab}
+                    onChange={setEnrichedActiveTab}
+                  />
+                )}
+                <EnrichedAudioPlayer
                   src={sequence.course_media_url}
                   duration={sequence.course_duration_seconds || 0}
                   sequenceId={sequence.id}
@@ -647,6 +655,9 @@ export default function SequencePlayer({
                   onProgress={(percent) => setCourseProgress(percent)}
                   accentColor={categoryGradient.from}
                   accentColorSecondary={categoryGradient.to}
+                  timelineUrl={sequence.timeline_url ?? null}
+                  timelinePublished={sequence.timeline_published ?? false}
+                  activeTab={enrichedActiveTab}
                 />
               </div>
             )}
@@ -1388,6 +1399,44 @@ export default function SequencePlayer({
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// POC-T7.3.1 — Tab selector affiché uniquement quand la séquence a un
+// `timeline_url` publié. Design repris de la page démo
+// `/admin/poc/enriched-player/[type]/[id]/EnrichedPlayerPocClient.tsx`
+// (3 boutons pill, ds-turquoise actif). Q2 (3 tabs Combiné/Whiteboard/
+// Audio seul) — décision design Dr Fantin.
+function EnrichedTabSelector({
+  active,
+  onChange,
+}: {
+  active: EnrichedPlayerTab
+  onChange: (tab: EnrichedPlayerTab) => void
+}) {
+  const tabs: { id: EnrichedPlayerTab; label: string; hint: string }[] = [
+    { id: 'combined', label: 'Combiné', hint: 'Karaoké + Whiteboard' },
+    { id: 'whiteboard', label: 'Whiteboard', hint: 'Visuels seuls' },
+    { id: 'audio_only', label: 'Audio seul', hint: 'Player nu (pas d\'enrichissement)' },
+  ]
+  return (
+    <div className="flex flex-wrap justify-center gap-2 mb-4">
+      {tabs.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => onChange(t.id)}
+          className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+            active === t.id
+              ? 'bg-ds-turquoise text-[#0F0F0F]'
+              : 'border border-[color:var(--color-border)] bg-[color:var(--color-bg-card)] text-[color:var(--color-text-primary)] hover:border-ds-turquoise/50 hover:bg-[color:var(--color-bg-card-hover)]'
+          }`}
+          title={t.hint}
+          type="button"
+        >
+          {t.label}
+        </button>
+      ))}
     </div>
   )
 }

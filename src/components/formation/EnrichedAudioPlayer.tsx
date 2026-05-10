@@ -147,8 +147,6 @@ export default function EnrichedAudioPlayer({
               <WhiteboardOrCover
                 displayedScene={displayedScene}
                 timeline={timeline}
-                coverImageUrl={coverImageUrl}
-                title={sequenceTitle}
               />
             </div>
           ) : (
@@ -178,8 +176,6 @@ export default function EnrichedAudioPlayer({
                 <WhiteboardOrCover
                   displayedScene={displayedScene}
                   timeline={timeline}
-                  coverImageUrl={coverImageUrl}
-                  title={sequenceTitle}
                 />
               </div>
               <div className="order-2 md:order-1 md:min-h-0 md:overflow-y-auto">
@@ -198,22 +194,22 @@ export default function EnrichedAudioPlayer({
 
 // ──────────────────────────────────────────────────────────────
 // Sous-composant : whiteboard quand une scène doit être affichée
-// (active ou en extension via getActiveOrLastScene), cover sinon
-// (uniquement le gap initial avant la première scène — Q6 cas 5).
+// (active ou en extension via getActiveOrLastScene), placeholder
+// texte sinon (uniquement le gap initial avant la première scène
+// — Q6 cas 5). T7.3.1 : la cover image n'est plus rendue ici car
+// `<AudioPlayer>` affiche déjà la cover (mobile au-dessus de la
+// carte gradient, desktop à gauche), ce qui produisait une
+// duplication visible en flow user (cf. dette D7-13 résolue T7.3.1).
 // ──────────────────────────────────────────────────────────────
 
 interface WhiteboardOrCoverProps {
   displayedScene: Scene | null
   timeline: NonNullable<ReturnType<typeof useEnrichedTimeline>['timeline']>
-  coverImageUrl?: string | null
-  title?: string
 }
 
 function WhiteboardOrCover({
   displayedScene,
   timeline,
-  coverImageUrl,
-  title,
 }: WhiteboardOrCoverProps) {
   if (displayedScene) {
     // `<StructuredWhiteboard>` consomme `currentTime` uniquement pour
@@ -233,17 +229,9 @@ function WhiteboardOrCover({
   }
   return (
     <div className="bg-[color:var(--color-bg-card)]/30 rounded-xl p-6 flex items-center justify-center min-h-[240px]">
-      {coverImageUrl ? (
-        <img
-          src={coverImageUrl}
-          alt={title ?? 'Cover'}
-          className="max-h-[240px] w-auto rounded-lg object-contain"
-        />
-      ) : (
-        <p className="text-sm italic text-[color:var(--color-text-muted)]">
-          Visualisation suivante à venir…
-        </p>
-      )}
+      <p className="text-sm italic text-[color:var(--color-text-muted)]">
+        Visualisation suivante à venir…
+      </p>
     </div>
   )
 }
