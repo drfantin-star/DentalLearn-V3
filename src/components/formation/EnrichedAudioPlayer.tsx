@@ -227,11 +227,14 @@ function WhiteboardOrCover({
       />
     )
   }
+  // POC-T7.4a-E — gap initial : 3 dots pulsants staggered (validation Dr Fantin).
   return (
     <div className="bg-[color:var(--color-bg-card)]/30 rounded-xl p-6 flex items-center justify-center min-h-[240px]">
-      <p className="text-sm italic text-[color:var(--color-text-muted)]">
-        Visualisation suivante à venir…
-      </p>
+      <div className="flex items-center gap-2 text-[color:var(--color-text-muted)]" role="status" aria-label="Visualisation à venir">
+        <span className="w-2 h-2 rounded-full bg-current opacity-40 animate-pulse" />
+        <span className="w-2 h-2 rounded-full bg-current opacity-40 animate-pulse" style={{ animationDelay: '200ms' }} />
+        <span className="w-2 h-2 rounded-full bg-current opacity-40 animate-pulse" style={{ animationDelay: '400ms' }} />
+      </div>
     </div>
   )
 }
