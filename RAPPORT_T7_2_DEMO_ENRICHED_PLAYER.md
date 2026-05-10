@@ -1,406 +1,341 @@
-# Rapport POC-T7.2 — Démo `<EnrichedAudioPlayer>`
+# Rapport POC-T7.2 — Démo `<EnrichedAudioPlayer>` (clôture)
 
 > Composant wrapper minimal pour visualisation audio enrichie (karaoké +
 > whiteboard structuré), rendu sur une page démo isolée sous `/admin/poc/`.
 >
-> Branche : `claude/enriched-audio-player-demo-embxq`
-> Date : 09/05/2026
-> Périmètre : T7.2 selon `prompt POC-T7.2` + matrice Q1→Q7.7.
+> Branche : `claude/enriched-audio-player-demo-embxq` — PR #252.
+> Date : 09–10/05/2026 (session T7.2 complète).
+> Périmètre : T7.2 selon prompt initial + matrice Q1→Q7.7 + 4 patches reçus
+> en feedback smoke.
 > Hors scope : T7.3 (intégration `SequencePlayer.tsx`) et T7.4 (smoke prod).
 
 ---
 
-## 1. Contexte et périmètre
+## §1. Contexte et périmètre
 
-T7.0 (rapport d'inspection) a documenté l'API exacte de `useAudio()` exposée
-par `src/context/AudioContext.tsx` et la signature de `<AudioPlayer>`. T7.1 a
-fixé le header Xing du MP3 pilote et synchronisé `timeline_url` en BDD.
-T7.2 livre :
+POC-T7.2 = **composant wrapper `<EnrichedAudioPlayer>` rendu sur une page
+démo isolée**, sous `/admin/poc/enriched-player/...`. Aucune modification
+de `SequencePlayer.tsx` (= T7.3). Aucun smoke prod (= T7.4). T7.2 doit
+être visible et testable en local et en preview Vercel par Dr Fantin.
 
-1. Le composant wrapper `<EnrichedAudioPlayer>` qui rend `<AudioPlayer>`
-   inchangé puis, en sibling vertical, un panneau enrichi
-   (karaoké + whiteboard) synchronisé sur `state.currentTime`.
-2. Une page démo Server Component sous
-   `/admin/poc/enriched-player/[type]/[id]` (auth super_admin) + son
-   compagnon Client Component.
-3. Une page index `/admin/poc/enriched-player` listant les séquences avec
-   `timeline_url IS NOT NULL`.
-4. Une extension additive du type `Sequence` (ajout de `timeline_url?` et
-   `timeline_published?`).
+### Références amont
 
-T7.2 ne touche **ni** à `AudioContext.tsx`, **ni** à `AudioPlayer.tsx`,
-**ni** à `SequencePlayer.tsx`. Vérifié par `git diff` :
+- `RAPPORT_T7_0_INSPECTION.md` — audit lecture seule du flux audio user.
+  Documente l'API exacte de `useAudio()` (`src/context/AudioContext.tsx`),
+  les props de `<AudioPlayer>` (lignes 11-24), les call-sites (a) et (b)
+  de `<AudioPlayer>` dans `SequencePlayer.tsx`, les 6 risques identifiés,
+  et les hooks/composants T3/T4 réutilisables (`useEnrichedTimeline`,
+  `useCurrentWord`, `<KaraokeTranscript>`, `<StructuredWhiteboard>`).
+- `RAPPORT_T7_1_PREPARATION_PILOTE.md` — fix Xing du MP3 pilote (header
+  Xing/LAME injecté pour rendre la durée nominale fiable côté navigateur)
+  + UPDATE BDD `course_duration_seconds = 538` sur la séquence pilote.
+- Matrice de décisions Q1 → Q7.7 (14 décisions arbitrées avant codage),
+  reprises en §2 et §4 ci-dessous.
 
-```
-$ git diff origin/main -- src/context/AudioContext.tsx \
-    src/components/formation/AudioPlayer.tsx \
-    src/components/formation/SequencePlayer.tsx
-(empty)
-```
+### Hors scope confirmé
+
+- ❌ Modification de `src/context/AudioContext.tsx`
+- ❌ Modification de `src/components/formation/SequencePlayer.tsx` (= T7.3)
+- ❌ Modification de `src/components/formation/AudioPlayer.tsx`
+- ❌ Toute écriture vers `course_watch_logs` ou `user_points` autre que
+  l'existant (pas de nouveau write path)
+- ❌ `localStorage` / `sessionStorage`
+- ❌ Bouton de seek depuis le whiteboard ou les concepts (Q5)
+- ❌ Logique de validation/publication de timeline (= T6 admin)
 
 ---
 
-## 2. Décisions matrice T7 — application T7.2
+## §2. Livrables T7.2
 
-| # | Décision | Application T7.2 |
+### 2.1 Fichiers créés
+
+| Fichier | Lignes | Rôle |
 |---|---|---|
-| Q2 | 3 tabs Combiné/Whiteboard/Audio seul | `EnrichedPlayerTab` = `'combined' \| 'whiteboard' \| 'audio_only'`, state local au Client Component démo (cf. `EnrichedPlayerPocClient.tsx`). |
-| Q3 | Panneau enrichi sous AudioPlayer | Wrapper rend `<AudioPlayer>` puis `<div className="mt-6">…</div>` en sibling vertical. Combiné desktop = grid 2 colonnes (karaoké gauche, whiteboard droite) ; mobile = stack vertical (whiteboard en haut, karaoké en bas). |
-| Q4 | Toggle off-enrichment scope page | `enrichmentEnabled` dérivé de `activeTab` à l'intérieur du wrapper. Aucun localStorage. |
-| Q5 | Lecture seule stricte sur AudioContext | `useAudio()` ne destructure que `state`. Aucune référence à `seekTo/playAudio/pauseAudio/resumeAudio/closePlayer` dans `EnrichedAudioPlayer.tsx` ni dans le Client Component démo (vérifié grep). `<KaraokeTranscript>` rendu **sans** `onSeek`. |
-| Q6 | Fallback gracieux | Le panneau enrichi est masqué silencieusement si `timeline_url == null`, `timeline_published !== true`, fetch KO, `state.audioUrl !== src`, ou `activeTab === 'audio_only'`. Aucun toast côté user. |
-| Q6 (gap) | Cover en l'absence de scène active | Le wrapper calcule `activeScene = getActiveScene(state.currentTime, timeline.scenes)` (throttle 2 Hz) et rend la cover de la formation à la place du whiteboard quand `activeScene === null` (avant scène 1, gaps inter-scènes, après dernière). |
-| Q7.1 | Wrapper sibling, pas wrap invasif | `<AudioPlayer>` rendu inchangé, panneau enrichi en sibling. Aucune modification de la card audio. |
-| Q7.2 | Call-site (b) audio + quiz | T7.2 reproduit le pattern de la branche (b) lignes 637-652 de `SequencePlayer.tsx` (audio principal de séquence). Pas de quiz dans la page démo (Q7.6). |
-| Q7.3 | Type `Sequence` étendu additivement | `src/lib/supabase/types.ts` : ajout de `timeline_url?: string \| null` et `timeline_published?: boolean`. Aucun champ existant retiré ni renommé. |
-| Q7.4 | `timeline_published === false` ⇒ pas d'enrichissement | Check `timelinePublished === true` dans le wrapper. Si false, le hook `useEnrichedTimeline` n'est même pas déclenché (l'URL passée est `null`). |
-| Q7.5 | `demoMode = true` hard-codé | Hors scope T7.2 — D7-7 reste à traiter en T7.3 ou ultérieurement (cf. §7). |
-| Q7.6 | Pas de userId pour la démo | La page démo ne passe pas explicitement de `userId` ; `<AudioPlayer>` propage `userId=''`, et `AudioContext.insertWatchLog()` résout via `supabase.auth.getUser()`. Pas d'écriture additionnelle. |
-| Q7.7 | `state.audioUrl !== src` ⇒ panneau masqué | Vérifié dans le wrapper : `isCurrentTrack = state.audioUrl === src`. Si `false`, panneau enrichi non rendu. Le hook `useEnrichedTimeline` n'est déclenché que si `isCurrentTrack === true`, évitant un fetch inutile. |
+| `src/components/formation/EnrichedAudioPlayer.tsx` | 249 | Composant wrapper (default export). Rend `<AudioPlayer>` inchangé puis le panneau enrichi conditionnel. 3 tabs (combined/whiteboard/audio_only). Lecture seule sur `useAudio()`. |
+| `src/app/admin/poc/enriched-player/page.tsx` | 144 | Page index (Server Component). Liste les séquences avec `timeline_url IS NOT NULL`, triées par `updated_at DESC`. Auth super_admin. Theme dark DentalLearn forcé via `bg-[color:var(--color-bg)]`. |
+| `src/app/admin/poc/enriched-player/[type]/[id]/page.tsx` | 85 | Page démo (Server Component). Auth super_admin + fetch séquence + parents. Seul `params.type === 'formation'` supporté en V1. |
+| `src/app/admin/poc/enriched-player/[type]/[id]/EnrichedPlayerPocClient.tsx` | 255 | Page démo (Client Component). Monte un `<AudioProvider>` local, gère l'état des tabs, rend `<EnrichedAudioPlayer>` + `<DebugPanel>` (transient, à retirer en T7.3). |
+
+### 2.2 Fichiers modifiés (additif uniquement)
+
+| Fichier | Diff | Rôle |
+|---|---|---|
+| `src/lib/supabase/types.ts` | +5 lignes | Extension additive du type `Sequence` avec `timeline_url?: string \| null` et `timeline_published?: boolean`. **Note** : c'est ici (et pas dans `src/types/sequence.ts` qui n'existe pas) que le type `Sequence` est défini côté frontend (cf. rapport T7.0 §5.1). |
+| `src/lib/timeline/getActiveScene.ts` | +62 lignes (additif après ligne 70) | Ajout du helper `getActiveOrLastScene` exporté. **`getActiveScene` lui-même n'est pas modifié** → T3/T4/T5/T6 admin restent intacts. |
+| `src/lib/timeline/getActiveScene.spec-cases.md` | +73 lignes | Section dédiée `getActiveOrLastScene` avec cas 16-38 (extension intra-gap, post-dernière, cas pilote réels). |
+| `RAPPORT_T7_2_DEMO_ENRICHED_PLAYER.md` | +406 lignes | Ce rapport (clôture). |
+
+### 2.3 Récap
+
+- 8 fichiers, 1 279 insertions, 0 suppression cumulée.
+- 4 fichiers protégés (`AudioContext.tsx`, `AudioPlayer.tsx`,
+  `SequencePlayer.tsx`, `getActiveScene.ts` partie historique) : 0 ligne
+  modifiée. Vérifié `git diff origin/main` = vide pour les 3 premiers ;
+  `getActiveScene.ts` diff démarre ligne 70 (post-existant).
 
 ---
 
-## 3. Fichiers livrés
+## §3. Historique des 6 commits
 
-### 3.1 Créés
+| Ordre | SHA court | Message | Fichiers touchés | Synthèse |
+|---|---|---|---|---|
+| 1 | `ca66f8d` | `feat(poc-t7-2): demo page <EnrichedAudioPlayer>` | 6 nouveaux : composant wrapper + 3 pages démo + extension `Sequence` + ce rapport (initial) | Livrable initial conforme au prompt T7.2. 3 tabs Q2, fallback gracieux Q6, lecture seule Q5, masquage si `state.audioUrl !== src` (Q7.7). Theme dark assumé (1ère version utilisait `text-white/X`). |
+| 2 | `4696756` | `fix(poc-t7-2): contrast on demo page texts` | `enriched-player/page.tsx`, `EnrichedPlayerPocClient.tsx` | Smoke §1.1 Dr Fantin — texte invisible sur `bg-gray-100` admin. Migration `text-white/X` → tokens DentalLearn (`var(--color-text-primary)`/`secondary`/`muted`). `<main>` forcé en `bg-[color:var(--color-bg)]` pour overrider le `bg-gray-100` du admin layout. Pattern repris des POC T3/T5/T6. |
+| 3 | `4b4d5a1` | `fix(poc-t7-2): sticky whiteboard column desktop` | `EnrichedAudioPlayer.tsx` | Tentative initiale `md:sticky md:top-6 md:self-start md:max-h-[calc(100vh-3rem)] md:overflow-y-auto` sur la colonne whiteboard. **Échec en preview** — diagnostic console Dr Fantin : `<main class="flex-1 overflow-auto">` du admin layout crée un scroll container qui invalide le sticky enfant. |
+| 4 | `52cb415` | `fix(poc-t7-2): replace sticky whiteboard with internal-scroll layout` | `EnrichedAudioPlayer.tsx`, ce rapport | Revert sticky desktop. Remplacement par grid à hauteur cappée `md:h-[calc(100vh-32rem)]` + `md:min-h-0 md:overflow-y-auto` sur colonne karaoké + `md:overflow-hidden` sur colonne whiteboard. Whiteboard reste visible en permanence, karaoké scrollable indépendamment. Dette D7-10 loggée. |
+| 5 | `7211495` | `fix(poc-t7-2): mobile sticky whiteboard above karaoke` | `EnrichedAudioPlayer.tsx`, ce rapport | Variante A mobile validée Dr Fantin : `sticky top-0 z-10 bg-[color:var(--color-bg)] md:static`. Le `md:static` neutralise le sticky sur desktop (préserve l'internal-scroll). Sur mobile, le sticky se cale sur le `<main overflow-auto>` admin (qui est le scroll container effectif) parce que le whiteboard a sa hauteur naturelle dans un stack vertical. `bg-…` opaque obligatoire pour cacher le karaoké défilant derrière. |
+| 6 | `14a1482` | `feat(poc-t7-2): add getActiveOrLastScene helper for gap continuity` | `getActiveScene.ts`, `getActiveScene.spec-cases.md`, `EnrichedAudioPlayer.tsx`, ce rapport | Smoke Dr Fantin t=200s : cover affichée à la place de la scène 1 étendue. Décision Option B (helper distinct) pour ne pas casser T3/T4/T5/T6. Wrapper T7.2 utilise le nouveau helper et passe à `<StructuredWhiteboard>` un `currentTime` calé à `displayedScene.start_sec + 0.5` (pattern existant `TimelinePreviewPanel.tsx`) pour que le `getActiveScene` interne du whiteboard la trouve, même pendant un gap. |
 
-| Fichier | Rôle |
+Branche locale et remote synchronisées (`git log origin/HEAD..HEAD` =
+vide après chaque commit pushé).
+
+---
+
+## §4. Décisions produit prises pendant la session
+
+### D1 — Layout desktop : internal-scroll (pas sticky)
+
+**Tentative initiale** (commit `4b4d5a1`) : appliquer `md:sticky md:top-6
+md:self-start` sur la colonne whiteboard du grid Combiné.
+
+**Échec** : diagnostic console Dr Fantin a montré que `<main
+class="flex-1 overflow-auto">` du admin layout (`src/app/admin/layout.tsx`
+ligne 200) crée un scroll container intermédiaire. Le sticky ne se cale
+pas sur le viewport mais essaie de se caler sur le grid voisin (qui a la
+même hauteur). Test `main.style.overflow = 'visible'` en console → sticky
+fonctionne. Confirmation que le coupable est unique.
+
+**Solution adoptée** (commit `52cb415`) : grid à hauteur cappée
+`md:h-[calc(100vh-32rem)]` + scroll interne sur colonne karaoké
+(`md:min-h-0 md:overflow-y-auto`) + `md:overflow-hidden` sur colonne
+whiteboard. Whiteboard reste fixe en permanence, karaoké scrollable
+indépendamment, pas de double scrollbar. La valeur `32rem` (≈ 512px)
+réserve approximativement DemoHeader (~120px) + TabSelector (~50px) +
+AudioPlayer (~280px) + paddings/gaps (~60px).
+
+**Pourquoi pas l'approche flexbox pure** (chaînage `h-full` depuis
+`<main>`) : exigerait un overhaul du admin layout partagé. Hors scope
+T7.2.
+
+### D2 — Layout mobile : Variante A (whiteboard sticky top + karaoké scroll naturel)
+
+**Choix** entre Variante A (whiteboard sticky, AudioPlayer scrollable hors
+viewport) et Variante B (tout sticky : DemoHeader + AudioPlayer + Whiteboard
++ karaoké interne scrollable). Variante B rejetée pour risque
+double-scroll mobile + zone karaoké trop réduite.
+
+**Variante A retenue** (commit `7211495`) : `sticky top-0 z-10
+bg-[color:var(--color-bg)] md:static` sur la colonne whiteboard.
+Conséquence assumée : l'AudioPlayer scrolle hors viewport quand le user
+descend dans le karaoké → l'utilisateur perd l'accès aux contrôles Pause
+**sur la page démo T7.2** car le `MiniPlayer` global de DentalLearn (qui
+prend le relais en prod) n'est pas monté sous `/admin/*`. Acceptable en
+démo super_admin. La vraie ergonomie mobile sera validée en T7.3 dans
+`/sequences/[id]` (sous `(app)/layout.tsx`) où le MiniPlayer flottant
+prend le relais.
+
+**Pourquoi le sticky fonctionne sur mobile alors qu'il échouait sur
+desktop** : sur mobile, pas de grid, stack vertical naturel, le whiteboard
+a sa hauteur propre, le sticky se cale sur le `<main overflow-auto>`
+admin parent → top-0 = haut du viewport. Sur desktop, le sticky était
+piégé dans une colonne grid avec `align-items: stretch` qui forçait sa
+hauteur à celle du karaoké.
+
+### D3 — Extension de scène : helper distinct `getActiveOrLastScene` (Option B)
+
+**Comportement initial** (commit `ca66f8d`) : le wrapper rendait la cover
+dans **tous** les gaps (avant scène 1, entre scènes, après dernière) car
+`getActiveScene` retourne `null` hors fenêtre. Documenté en §6.2 du
+rapport initial comme limitation assumée.
+
+**Décision produit** Dr Fantin post-smoke t=200s : éliminer la cover entre
+scènes pour avoir un flow visuel continu. Trois cas à couvrir :
+
+- t=200s (gap inter 1-2 entre s1.end_sec=187.5 et s2.start_sec=250.4) →
+  s1 doit rester affichée
+- t=400s (gap inter 3-4) → s4 doit rester affichée
+- t=520-538s (post-s5 jusqu'à fin audio) → s5 doit rester affichée
+- t < s1.start_sec (gap initial) → cover préservée (cas 5 de Q6)
+
+**Implémentation Option B** (commit `14a1482`, helper distinct) au lieu
+d'Option A (modifier `getActiveScene` global). Justification : trois
+autres pages consomment `getActiveScene` strict (`StructuredWhiteboard`
+T4, `TimelineEditorClient` T6, `TimelinePreviewPanel` T6). Modifier
+`getActiveScene` casserait potentiellement leur logique. Le helper
+distinct est utilisé uniquement par `<EnrichedAudioPlayer>` (T7.2 et
+T7.3), zéro régression sur T3/T4/T5/T6.
+
+**Effet collatéral utile** : `Scene.end_sec` devient un indicateur
+éditorial (consommé par le LLM T5 et l'éditeur T6 pour borner la fenêtre
+attendue) mais n'a plus d'impact sur le rendu user via T7. Permet à T5-bis
+de produire des scènes naturellement plus denses sans contrainte
+end_sec/start_sec_next stricte.
+
+### D4 — Concepts dormants en T7.2
+
+Les 12 concepts du timeline pilote sont chargés par `useEnrichedTimeline`
+(via `TimelineSchema.parse`) mais **aucun composant ne les rend** dans le
+panneau enrichi T7.2. Décision : laisser dormants en T7.2, exploiter
+dans un ticket dédié post-T7 (`<ConceptBadges>` user-facing T3-bis, après
+T5-bis pour bénéficier d'une timeline plus dense).
+
+---
+
+## §5. Dettes loggées
+
+| ID | Statut | Description | Action |
+|---|---|---|---|
+| **D7-2** | ouverte | 21 versions JSON dans `audio-timelines/formation/e8dfa6b8-…/` (régénérations T6). | Ménage à faire après T7.4 quand la timeline finale sera figée. Ne rien supprimer avant — préserver la possibilité de rollback. |
+| **D7-7** | ouverte (existante) | `demoMode = true` hard-codé ligne 238 de `SequencePlayer.tsx`. Le bouton "Passer au Quiz" reste actif sans avoir écouté l'audio. | Hors scope T7.2/T7.3. À traiter dans un ticket de hardening DPC. |
+| **D7-9** | ouverte (nouvelle) | Page index/démo a nécessité un patch dédié contraste (`4696756`) parce que la 1ère version utilisait `text-white/X` (assumait un fond sombre) alors que `/admin/*` hérite de `bg-gray-100` du layout admin. | Vigilance future : sur les pages POC sous `/admin/*`, forcer le thème dark DentalLearn au niveau `<main>` via `bg-[color:var(--color-bg)]` et utiliser les tokens `var(--color-text-primary)`/`secondary`/`muted` (pattern T3/T5/T6 existant). |
+| **D7-10** | ouverte (nouvelle) | `<main class="flex-1 overflow-auto">` (`src/app/admin/layout.tsx` ligne 200) crée un scroll container qui casse silencieusement les patterns `position: sticky` enfants. | À documenter dans le memo ops. Solution alternative connue : flexbox + `min-h-0` + overflow interne (pattern utilisé en T7.2 desktop, commit `52cb415`). Si d'autres composants admin ont besoin de sticky, soit overrider `overflow` localement, soit revoir le layout admin. |
+| **D7-11** | ouverte (nouvelle, mobile UX) | Karaoké mobile défile actuellement sur toute sa longueur sous le whiteboard sticky. Dr Fantin souhaite à terme une fenêtre fixe façon Spotify (2-3 lignes visibles, scroll interne au mot actif). | Reporté en T7.4 hardening ou ticket T7.2-bis dédié, à arbitrer après T7.3. |
+
+---
+
+## §6. Roadmap POC mise à jour
+
+```
+✅ T1   — POC schema timeline + storage bucket (livré)
+✅ T2   — Pipeline génération timeline ElevenLabs + Python (livré)
+✅ T3   — KaraokeTranscript + transcript schema/hooks (livré)
+✅ T4   — StructuredWhiteboard + 6 templates (livré)
+✅ T5   — LLM extraction Sonnet + Zod validation (livré)
+✅ T6   — Timeline editor admin (livré)
+✅ T7.0 — Inspection silencieuse flux audio user (livré)
+✅ T7.1 — Préparation pilote (fix Xing + UPDATE BDD) (livré)
+✅ T7.2 — <EnrichedAudioPlayer> + page démo (cette session)
+🔵 T7.3 — Intégration dans SequencePlayer.tsx call-site (b)
+🔵 T7.4 — Hardening + smoke prod + recap final T7
+🆕 T5-bis — Re-prompt agent extraction pour timeline plus dense (avant T9)
+🔵 T3-bis — <ConceptBadges> user-facing (après T5-bis)
+🔵 T8   — <NewsVisualSequence> + génération auto news
+🔵 T9   — Tests utilisateurs + doc + smoke prod + go/no-go
+```
+
+**POC-T5-bis** : nouveau ticket ouvert pendant la session T7.2.
+**Objectif** : reprendre le prompt T5 LLM pour produire une timeline
+naturellement dense (couverture cible ~100 % du temps audio, concepts
+mieux placés). Motivation : la timeline pilote actuelle a une couverture
+scènes très inégale (cf. §9 banc de test) — les gaps sont importants. À
+traiter avant T9 pour que les testeurs voient une qualité finale.
+Effort estimé ~0,5 jour.
+
+---
+
+## §7. Smoke validé
+
+Validé en preview Vercel par Dr Fantin pendant la session (cf. messages
+de session du 09–10/05/2026). **Aucun fichier `SMOKE_TEST_T7_2.md` n'a
+été créé** — les validations sont consignées ici.
+
+| Section | Smoke | Statut | Commit qui a satisfait |
+|---|---|---|---|
+| 1 | Page index `/admin/poc/enriched-player` lisible (titre, description, cartes, footer) | ✅ | `4696756` (post-contrast) |
+| 2 | Tab Combiné default (desktop + mobile) avec extension de scène | ✅ | `52cb415` (desktop internal-scroll) + `7211495` (mobile sticky) + `14a1482` (extension de scène) |
+| 3 | Tab Whiteboard seul (mobile + desktop) | ✅ | `ca66f8d` (initial) |
+| 4 | Tab Audio seul — panneau enrichi entièrement masqué | ✅ | `ca66f8d` (initial) |
+| 5 | Fallbacks Q6 — 5 cas (`timeline_url == null`, `timeline_published === false`, fetch KO, `state.audioUrl !== src`, gap initial) | ✅ | `ca66f8d` initial |
+| 6 | Régression DPC (`course_watch_logs` insert/update/complete inchangés) | ✅ | Pas de write path nouveau ; vérifié `git diff origin/main -- src/context/AudioContext.tsx` = vide |
+| 7 | Responsive sweep (375/414/768/1024/1280) | ✅ | `52cb415` (desktop) + `7211495` (mobile) |
+
+---
+
+## §8. Critères d'acceptation T7.2 (checklist du prompt initial §6)
+
+| # | Critère | Statut | Commit |
+|---|---|---|---|
+| 1 | Composant `<EnrichedAudioPlayer>` créé sous `src/components/formation/` | ✅ | `ca66f8d` |
+| 2 | Page démo accessible à `/admin/poc/enriched-player/formation/[id]` (super_admin only) | ✅ | `ca66f8d` |
+| 3 | Page index accessible à `/admin/poc/enriched-player` | ✅ | `ca66f8d` |
+| 4 | Type `Sequence` étendu additivement avec `timeline_url` + `timeline_published` | ✅ | `ca66f8d` (`src/lib/supabase/types.ts`) |
+| 5 | 3 tabs Combiné / Whiteboard / Audio seul fonctionnels | ✅ | `ca66f8d` |
+| 6 | Layout desktop = grid 2 colonnes en mode Combiné, mobile = stack vertical | ✅ | `ca66f8d` (initial) + `52cb415` (desktop internal-scroll affiné) |
+| 7 | Lecture seule sur `useAudio()` — aucune mention de `seekTo`, `playAudio`, etc. dans la diff | ✅ | Vérifié `grep -nE "seekTo\|playAudio\|pauseAudio\|resumeAudio\|closePlayer"` sur `EnrichedAudioPlayer.tsx` et `EnrichedPlayerPocClient.tsx` — uniquement dans un commentaire JSDoc (Q5) |
+| 8 | `<KaraokeTranscript>` rendu **sans** prop `onSeek` | ✅ | `ca66f8d`, vérifié au call-site dans `EnrichedAudioPlayer.tsx` |
+| 9 | Fallback gracieux validé sur les 5 cas Q6 (cover seule, pas de toast d'erreur) | ✅ | `ca66f8d` ; smoke §7 cas 5 validé |
+| 10 | `state.audioUrl !== src` → panneau enrichi masqué (Q7.7) | ✅ | `ca66f8d` (`isCurrentTrack = state.audioUrl === src`) |
+| 11 | `AudioContext.tsx` non modifié | ✅ | `git diff origin/main -- src/context/AudioContext.tsx` = vide |
+| 12 | `AudioPlayer.tsx` non modifié | ✅ | `git diff origin/main -- src/components/formation/AudioPlayer.tsx` = vide |
+| 13 | `SequencePlayer.tsx` non modifié | ✅ | `git diff origin/main -- src/components/formation/SequencePlayer.tsx` = vide |
+| 14 | Aucun `localStorage` / `sessionStorage` (grep négatif sur la diff) | ✅ | `grep -rn "localStorage\|sessionStorage"` sur les fichiers livrés = 0 hit |
+| 15 | `npm run build` clean | ✅ | `Compiled successfully` à chaque commit ; les erreurs prerender restantes sont préexistantes (env vars sandbox manquantes), affectant uniquement les pages déjà cassées en sandbox (login, admin/news, formation, etc.). Mes nouvelles pages sont en `dynamic = 'force-dynamic'` donc skippent le prerender. |
+| 16 | Rapport `RAPPORT_T7_2_DEMO_ENRICHED_PLAYER.md` rédigé | ✅ | Ce document |
+
+---
+
+## §9. Banc de test pilote
+
+| Élément | Valeur |
 |---|---|
-| `src/components/formation/EnrichedAudioPlayer.tsx` | Composant wrapper. Rend `<AudioPlayer>` (inchangé) puis le panneau enrichi conditionnel. Default export pour cohérence avec `AudioPlayer.tsx`. |
-| `src/app/admin/poc/enriched-player/page.tsx` | Page index (Server Component). Liste des séquences avec `timeline_url` non-null, triées par `updated_at DESC`. Auth super_admin. |
-| `src/app/admin/poc/enriched-player/[type]/[id]/page.tsx` | Page démo (Server Component). Charge la séquence + parents (titre/cover formation) en lecture seule. Auth super_admin. Seul `params.type === 'formation'` supporté en V1. |
-| `src/app/admin/poc/enriched-player/[type]/[id]/EnrichedPlayerPocClient.tsx` | Page démo (Client Component). Monte un `<AudioProvider>` local, gère le state des tabs, rend `<EnrichedAudioPlayer>` + panneau debug. |
+| Séquence ID | `e8dfa6b8-ef34-4454-a198-e6f973f466de` |
+| Titre | "La communication non verbale au fauteuil" |
+| Formation parente | `99b270dd-c411-40e0-b865-1930e59464f1` ("Écoute active & Communication bienveillante") |
+| Audio Storage | `formations/communication-ecoute-active/audio/sequence_02_non_verbale-1778057695.mp3` |
+| Taille MP3 | 8 630 901 octets (Xing-fixed T7.1) |
+| Durée audio | 538.45 s (header Xing fiable post-T7.1, BDD `course_duration_seconds = 538`) |
+| `timeline_url` actuel (BDD) | `https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/audio-timelines/formation/e8dfa6b8-ef34-4454-a198-e6f973f466de/2026-05-09T07-38-27-896Z.json` |
+| Schéma | `schema_version: "1.0"` (Zod `TimelineSchema`) |
+| Generated_at interne au JSON (T5 LLM) | `2026-05-08T12:56:44.129Z` (cf. T7.1 §2.2) |
+| Scenes count | 5 |
+| Concepts count | 12 |
+| Transcript segments | 26 (cf. T7.1 §2.2) |
+| `timeline_published` actuel | `true` post-smoke (Dr Fantin a basculé pour validation ; revert décidé en fonction de T7.3) |
 
-### 3.2 Modifiés
+### Bornes scènes (vérifiées par Dr Fantin pendant le smoke)
 
-| Fichier | Diff |
-|---|---|
-| `src/lib/supabase/types.ts` | Ajout additif au type `Sequence` : `timeline_url?: string \| null` et `timeline_published?: boolean`. Aucun champ existant supprimé ou renommé. |
+- s1 : `[?, 187.5]` (s1.end_sec confirmé pendant le diagnostic gap inter 1-2)
+- s2 : `[250.4, ?]` (s2.start_sec confirmé)
+- s3, s4, s5 : bornes non re-vérifiées dans cette session
 
-### 3.3 Non modifiés (vérification explicite)
+→ Les gaps inter-scènes sont substantiels (entre s1.end_sec=187.5 et
+s2.start_sec=250.4 = ~63 s de gap, soit ~12 % de la durée audio juste
+sur ce gap-là). C'est précisément la motivation de **POC-T5-bis** : un
+re-prompt LLM pour produire une couverture plus dense.
+
+### Hash SHA-256 du timeline JSON pilote
+
+⚠️ **À calculer par Dr Fantin localement** — la sandbox d'exécution
+courante n'a pas accès à Supabase Storage (proxy `host_not_allowed`).
+Commande à exécuter en local après merge de la PR :
 
 ```bash
-$ git diff origin/main -- \
-    src/context/AudioContext.tsx \
-    src/components/formation/AudioPlayer.tsx \
-    src/components/formation/SequencePlayer.tsx
-(0 octets, 0 lignes)
+curl -s "https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/audio-timelines/formation/e8dfa6b8-ef34-4454-a198-e6f973f466de/2026-05-09T07-38-27-896Z.json" \
+  | shasum -a 256
 ```
+
+Le hash obtenu sera la référence de traçabilité pour POC-T5-bis (avant
+remplacement) et T7.4 (recap final).
 
 ---
 
-## 4. Architecture technique
+## §10. Prochaines étapes T7.3
 
-### 4.1 Diagramme d'arbre de rendu (page démo T7.2)
-
-```
-/admin/poc/enriched-player/formation/[id]   [Server Component]
-└─ EnrichedPlayerPocClient                    [Client Component]
-   └─ <AudioProvider>  ← local à la page démo (cf. §4.2)
-      └─ PocPageBody
-         ├─ <DemoHeader>            (badges + ID + flag publish)
-         ├─ <TabSelector>           (3 boutons Q2)
-         ├─ <EnrichedAudioPlayer>
-         │  ├─ <AudioPlayer>        (inchangé, default export)
-         │  └─ Panneau enrichi (conditionnel)
-         │     ├─ <KaraokeTranscript> (sans onSeek — Q5)
-         │     └─ <StructuredWhiteboard> ou <CoverFallback>
-         └─ <DebugPanel>            (read-only state.* — sera retiré T7.3)
-```
-
-### 4.2 AudioProvider local — décision et conséquences
-
-Les routes `/admin/*` ne sont **pas** dans le route group `(app)`, donc le
-`AudioProvider` global monté dans `src/app/(app)/layout.tsx` n'est **pas**
-disponible. Le client component démo monte donc son propre `<AudioProvider>`.
-
-**Conséquences assumées** :
-
-- Quand l'admin clique "Écouter" dans la page démo, l'`AudioContext` insère
-  une ligne dans `course_watch_logs` (INSERT démarrage, UPDATE pause/fin)
-  exactement comme côté user. C'est le comportement existant : T7.2
-  n'introduit **aucun nouveau write path**. Cf. rapport T7.0 §2.1.
-- L'anti-skip DPC reste actif (les deux dispositifs documentés T7.0 §2.3).
-- Le `MiniPlayer` global (déclaré dans `(app)/layout.tsx`) n'est pas rendu
-  sur cette page admin. C'est cohérent avec les autres pages POC
-  (`/admin/poc/karaoke`).
-
-→ Cas d'usage : un admin qui clique Play sur la page démo générera un log
-DPC pour son propre compte. C'est OK pour la recette T7.2 (les logs admins
-ne polluent pas les analytics user — le user_id pointe vers le compte admin).
-
-### 4.3 Synchronisation `currentTime`
-
-Source unique : `state.currentTime` exposé par `useAudio()` (mis à jour
-~250 ms via le listener `timeupdate` natif du `<audio>` headless de
-`AudioContext`). Aucun throttling additionnel ajouté côté wrapper :
-
-- `useCurrentWord` (T3) : throttle 4 Hz interne (`Math.floor(t * 4)`).
-- `<StructuredWhiteboard>` (T4) : throttle 2 Hz interne sur `getActiveScene`.
-- Wrapper T7.2 : throttle 2 Hz sur le calcul `activeScene` qui décide
-  whiteboard-vs-cover (re-calcule `getActiveScene` au même rythme que le
-  whiteboard interne, pour cohérence visuelle).
-
-### 4.4 Compatibilité T7.3
-
-La signature de `<EnrichedAudioPlayer>` reproduit exactement les props
-nécessaires à `<AudioPlayer>` (cf. rapport T7.0 §3.1) plus 3 props
-spécifiques T7 (`timelineUrl`, `timelinePublished`, `activeTab`).
-T7.3 pourra remplacer le call-site (b) de `SequencePlayer.tsx`
-(lignes 637-652) par `<EnrichedAudioPlayer>` en passant les mêmes valeurs +
-les nouvelles. Le `activeTab` viendra d'un `useState` au niveau de
-`SequencePlayer`, soit directement, soit via une UI utilisateur à définir
-en T7.3.
+1. **Brancher `<EnrichedAudioPlayer>` au call-site (b) de
+   `SequencePlayer.tsx`** (lignes 637-652 selon `RAPPORT_T7_0_INSPECTION.md`
+   §4.3). La signature de `<EnrichedAudioPlayer>` reproduit exactement
+   les props nécessaires à `<AudioPlayer>` plus 3 props T7
+   (`timelineUrl`, `timelinePublished`, `activeTab`) → substitution
+   sans diff fonctionnel ailleurs.
+2. **Décider du sort du call-site (a)** ("intro audio sans questions",
+   lignes 556-571). Probablement enrichir aussi pour cohérence.
+3. **Étendre la query Supabase de récupération de la `sequence`** côté
+   user pour inclure `timeline_url, timeline_published`. Le type est
+   déjà additivement étendu (T7.2).
+4. **Ajouter un `useState<EnrichedPlayerTab>('combined')`** au niveau de
+   `SequencePlayer`. UI de tab à designer (radio segmented control,
+   dropdown, etc. — décision Dr Fantin).
+5. **Retirer le `<DebugPanel>`** de la page démo T7.2 ou le gater par un
+   flag URL `?debug=1` avant intégration au flow user.
+6. **Validation MiniPlayer global** lors de la sortie de viewport
+   AudioPlayer mobile (cas Variante A documenté en D2).
+7. **Valider non-régression DPC** : `course_watch_logs` insert/update/
+   complete doivent rester strictement inchangés (aucun nouveau write
+   path attendu côté T7.3 — vérification croisée via T7.4).
+8. **Logger D7-11** (fenêtre karaoké fixe Spotify-like mobile) à
+   l'arbitrage en T7.4 hardening ou ticket T7.2-bis.
 
 ---
 
-## 5. Validation et tests
-
-### 5.1 Vérifications statiques
-
-| Check | Résultat |
-|---|---|
-| `npx tsc --noEmit` | ✅ exit 0 (aucune erreur TypeScript) |
-| `next build` — phase compilation | ✅ `Compiled successfully` (la phase prerender échoue sur `/login`, `/admin/news`, etc. à cause de `NEXT_PUBLIC_SUPABASE_URL` absent dans la sandbox — **erreurs préexistantes**, non causées par T7.2). |
-| Routes T7.2 buildées ? | ✅ `.next/server/app/admin/poc/enriched-player/page.js` et `.next/server/app/admin/poc/enriched-player/[type]/[id]/page.js` présents. |
-| `grep -rn "localStorage\|sessionStorage"` sur les fichiers livrés | ✅ 0 hit (aucun stockage navigateur). |
-| `grep -nE "seekTo\|playAudio\|pauseAudio\|resumeAudio\|closePlayer"` sur les fichiers livrés | ✅ unique hit dans un commentaire JSDoc (« Q5 : aucun seekTo/playAudio… »). Aucun appel effectif. |
-| `git diff origin/main -- AudioContext.tsx AudioPlayer.tsx SequencePlayer.tsx` | ✅ 0 ligne (no-touch invariant respecté). |
-
-### 5.2 Smoke test admin local — plan
-
-⚠️ La sandbox d'exécution n'a pas de navigateur. Le plan ci-dessous est
-exécutable par Dr Fantin sur son environnement local après merge de la PR.
-
-**Pré-requis** : `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-configurés, super_admin connecté.
-
-**Séquence pilote** (rappel rapport T7.1 §3) :
-- ID : `e8dfa6b8-ef34-4454-a198-e6f973f466de`
-- Titre : « La communication non verbale au fauteuil »
-- MP3 fixé Xing (T7.1) : `sequence_02_non_verbale-1778057695.mp3`
-- Durée BDD : 538 s (= 8:58)
-- `timeline_url` : présent (JSON 5 scènes / 12 concepts / 26 segments)
-- `timeline_published` actuel en BDD : **`false`** (vérifié par MCP Supabase
-  le 09/05/2026)
-
-**Étape 1 — basculer le flag à `true` pour le test** :
-
-```sql
--- Via /admin/timelines (UI T6) ou MCP Supabase :
-UPDATE sequences
-SET timeline_published = true
-WHERE id = 'e8dfa6b8-ef34-4454-a198-e6f973f466de';
-```
-
-**Étape 2 — vérifier les 5 cas de fallback Q6** :
-
-| # | Cas | Action | Attendu |
-|---|---|---|---|
-| 1 | `timeline_url == null` | Naviguer vers une séquence sans timeline (ex : autre séquence formation pilote) | Panneau enrichi masqué, AudioPlayer fonctionne. |
-| 2 | `timeline_published === false` | Re-`UPDATE` à `false`, recharger | Idem cas 1 (panneau masqué silencieusement). |
-| 3 | Fetch timeline KO | DevTools → Network → throttle "Offline" + recharger | Panneau masqué (l'erreur du hook est swallow par la condition `!error && timeline !== null`). |
-| 4 | `state.audioUrl !== src` | Avec timeline publiée, lancer la séquence puis ouvrir le MiniPlayer global et lancer une autre piste | Panneau enrichi disparaît dès que `state.audioUrl` change. |
-| 5 | Gap avant scène 1 | Cliquer Play, observer 0-2 s avant la scène 1 | La cover de la formation est affichée à la place du whiteboard. |
-
-**Étape 3 — vérifier les 3 tabs (Q2)** :
-
-| Tab | Attendu |
-|---|---|
-| Combiné (default) | Desktop : grid 2 colonnes (karaoké à gauche, whiteboard à droite). Mobile : stack vertical (whiteboard en haut, karaoké en bas). Le mot actif s'allume en synchronisation 4 Hz (cf. `useCurrentWord`). Le whiteboard transite à 2 Hz. |
-| Whiteboard | Whiteboard pleine largeur, pas de karaoké. |
-| Audio seul | Panneau enrichi entièrement masqué — équivalent au comportement legacy de `<AudioPlayer>`. |
-
-**Étape 4 — sanity-check anti-skip et logs DPC** :
-- Vérifier qu'un click sur un mot du karaoké ne provoque **aucun seek** (Q5
-  — `<KaraokeTranscript>` rendu sans `onSeek`).
-- Vérifier qu'un play complet écrit bien dans `course_watch_logs`
-  (`SELECT * FROM course_watch_logs WHERE sequence_id = 'e8dfa6b8…'
-  ORDER BY started_at DESC LIMIT 1`). Les schémas et règles de remplissage
-  documentés en T7.0 §2 doivent être respectés.
-
-**Étape 5 — revert** :
-```sql
-UPDATE sequences
-SET timeline_published = false
-WHERE id = 'e8dfa6b8-ef34-4454-a198-e6f973f466de';
-```
-(Sauf instruction contraire de Dr Fantin pour la suite T7.3.)
-
----
-
-## 6. Comportements implémentés en détail
-
-### 6.1 Décision panneau enrichi (Q6 + Q7.4 + Q7.7)
-
-Pseudo-code du wrapper :
-
-```ts
-const isCurrentTrack = state.audioUrl === src                  // Q7.7
-const enrichmentEnabled = activeTab !== 'audio_only'           // Q4
-const hasTimeline =
-  typeof timelineUrl === 'string' &&
-  timelineUrl.length > 0 &&
-  timelinePublished === true                                   // Q7.4
-const shouldFetchTimeline = enrichmentEnabled && hasTimeline && isCurrentTrack
-const { timeline, isLoading, error } =
-  useEnrichedTimeline(shouldFetchTimeline ? timelineUrl : null)
-
-const showEnrichedPanel =
-  enrichmentEnabled &&
-  hasTimeline &&
-  isCurrentTrack &&
-  !error &&
-  !isLoading &&
-  timeline !== null                                            // Q6
-```
-
-Le hook `useEnrichedTimeline` est délibérément déclenché avec `null`
-quand le panneau ne sera de toute façon pas rendu — évite un fetch
-inutile lors d'un track switch (Q7.7) et économise le quota Supabase
-Storage.
-
-### 6.2 Whiteboard vs cover (Q6 gap)
-
-```ts
-const displayedScene = useMemo(
-  () => timeline ? getActiveOrLastScene(state.currentTime, timeline.scenes) : null,
-  [Math.floor(state.currentTime * 2), timeline]
-)
-// Render :
-{displayedScene
-  ? <StructuredWhiteboard
-      scenes={timeline.scenes}
-      currentTime={displayedScene.start_sec + 0.5}
-    />
-  : <CoverFallback coverUrl={coverImageUrl} title={sequenceTitle} />}
-```
-
-Note (mise à jour post-smoke) : un helper distinct `getActiveOrLastScene`
-a été ajouté dans `src/lib/timeline/getActiveScene.ts` (export additif,
-Option B confirmée par Dr Fantin). Sémantique : retourne la dernière
-scène dont `start_sec ≤ currentTime`, sauf gap initial avant la première
-scène où la cover est préservée. `getActiveScene` lui-même n'est pas
-modifié — T3/T4/T5/T6 admin restent intacts. Pour que le `<StructuredWhiteboard>`
-(qui utilise `getActiveScene` strict en interne) affiche la scène
-"étendue" pendant un gap, le wrapper lui passe un `currentTime` calé
-à `displayedScene.start_sec + 0.5` (pattern déjà utilisé dans
-`TimelinePreviewPanel.tsx`).
-
-### 6.3 Layout responsive (Q3)
-
-Tab "Combiné" :
-
-```
-Mobile (< md)              Desktop (≥ md)
-┌──────────────┐           ┌─────────────┬────────────┐
-│   Whiteboard │           │   Karaoké   │ Whiteboard │
-│  (order: 1)  │           │  (order: 1) │ (order: 2) │
-├──────────────┤           │             │            │
-│   Karaoké    │           │             │            │
-│  (order: 2)  │           │             │            │
-└──────────────┘           └─────────────┴────────────┘
-```
-
-Implémentation : `flex flex-col md:grid md:grid-cols-2 md:items-start
-md:gap-6` + `order-1/order-2` + `md:order-2/md:order-1`. Pas de
-breakpoint custom — tous les composants enfants ont déjà leurs propres
-`max-width` ou sont fluides.
-
----
-
-## 7. Dettes et points d'attention
-
-| Dette | Référence | Action |
-|---|---|---|
-| `demoMode = true` hard-codé dans `SequencePlayer.tsx` ligne 238 | Q7.5 / D7-7 | À traiter hors T7.2. Sans impact direct sur T7.2 mais affecte le scénario de recette (le bouton "Passer au Quiz" reste actif sans avoir écouté). |
-| Panneau debug visible | T7.2 ([type]/[id] Client Component) | À retirer en T7.3 (ou gater par un flag URL `?debug=1`) avant intégration au flow user. Pour l'instant, c'est un outil de validation visuelle pour Dr Fantin. |
-| ~~`getActiveScene` retourne `null` dans les gaps inter-scènes~~ ✅ **Résolu** | `getActiveOrLastScene` ajouté à `getActiveScene.ts` (Option B confirmée par Dr Fantin) | Helper distinct exporté dans le même module. Sémantique : retourne la dernière scène dont `start_sec ≤ currentTime`, sauf gap initial avant la première scène (cover préservée). Le wrapper T7.2 utilise `getActiveOrLastScene` à la place de `getActiveScene` ; à `<StructuredWhiteboard>` on passe un `currentTime` calé à `displayedScene.start_sec + 0.5` (pattern existant `TimelinePreviewPanel.tsx`) pour que le `getActiveScene` interne du whiteboard la trouve. `getActiveScene` lui-même n'est pas modifié → T3/T4/T5/T6 admin inchangés. Cas pilote : t=200s (gap 1-2) → s1 ; t=400s (gap 3-4) → s4 ; t=530s (post-s5) → s5 ; t<s1.start_sec → cover. |
-| Bug seek MP3 pilote (POC-T3-D4) | Cf. KaraokePOCClient lignes 17-37 | Sans impact T7.2 (pas de seek). À garder en tête lors de la recette : si on observe une désynchro après un seek-arrière depuis le MiniPlayer (`-15s`), c'est probablement ce bug qui s'exprime. |
-| Page démo sous `/admin/*` ne bénéficie pas du `MiniPlayer` global | Architecture admin | Cohérent avec les autres POC. Si Dr Fantin veut tester l'interaction MiniPlayer ↔ EnrichedAudioPlayer (cas Q7.7), c'est en T7.3 sous `/(app)/...` que ce sera observable. |
-| **D7-10 — `<main class="flex-1 overflow-auto">` du admin layout casse `position: sticky`** | `src/app/admin/layout.tsx` ligne 200 | Le scroll container global empêche les composants enfants d'utiliser `sticky` : l'élément ne peut pas "coller" au viewport puisque le scroll est interne à `<main>`. Tentative initiale (commit `4b4d5a1`) abandonnée. Stratégie de remplacement (commit suivant) : grid Combined desktop avec hauteur cappée `md:h-[calc(100vh-32rem)]` + scroll interne sur la colonne karaoké (`md:overflow-y-auto md:min-h-0`), colonne whiteboard `md:overflow-hidden`. La valeur `32rem` (≈ 512px) est calibrée pour DemoHeader + TabSelector + AudioPlayer + paddings ; ajuster si la composition change. Si d'autres composants admin ont besoin de `sticky` à l'avenir → soit overrider `overflow` localement, soit revoir le layout admin. |
-| **Mobile UX T7.2 — Variante A : whiteboard sticky top, AudioPlayer scrollable hors viewport** | `EnrichedAudioPlayer.tsx` mode Combined | Sur mobile, le whiteboard est `sticky top-0 z-10 bg-[color:var(--color-bg)]` ; le karaoké scrolle naturellement sous lui. Sur mobile, le sticky fonctionne (contrairement à desktop) parce que le whiteboard a une hauteur naturelle dans un stack vertical, donc il a la place de coller dans le `<main overflow-auto>` admin qui devient son scroll container. `md:static` neutralise le sticky sur desktop pour préserver l'internal-scroll layout. Conséquence assumée : l'AudioPlayer scrolle hors viewport quand le user descend dans le karaoké → l'utilisateur perd les contrôles Pause **sur la page démo T7.2** car le `MiniPlayer` global de DentalLearn (qui prend le relais en prod) n'est pas monté sous `/admin/*`. **Acceptable en page démo super_admin**. La vraie ergonomie mobile sera validée en T7.3 dans `/sequences/[id]` (sous `(app)/layout.tsx`) où le MiniPlayer flottant prend le relais. À tester en T7.4 smoke prod sur compte user réel. |
-
----
-
-## 8. Prochaines étapes (T7.3 et au-delà)
-
-1. **T7.3 — intégration `SequencePlayer.tsx`** :
-   - Remplacer le call-site (b) lignes 637-652 par `<EnrichedAudioPlayer>`.
-   - Décider si on enrichit aussi le call-site (a) lignes 556-571
-     (intro audio sans questions). Probablement oui pour cohérence.
-   - Ajouter un `useState<EnrichedPlayerTab>('combined')` au niveau de
-     `SequencePlayer`. UI de tab à designer (radio segmented control,
-     dropdown, etc. — décision Dr Fantin).
-   - Étendre la query Supabase de récupération de la `sequence` (côté user)
-     pour inclure `timeline_url, timeline_published`. Le type est déjà
-     additivement étendu (T7.2).
-   - Retirer le `<DebugPanel>` (n'apparait que sur la page démo, pas en
-     prod user).
-2. **T7.4 — smoke prod** :
-   - QA manuel sur la séquence pilote en environnement prod.
-   - Vérifier non-régression DPC (`course_watch_logs.watched_percent` non
-     impacté).
-   - Vérifier que le passage `timeline_published` false→true via
-     `/admin/timelines` propage bien à l'utilisateur sans déploiement.
-
----
-
-## Annexe A — Inventaire des fichiers modifiés/créés
-
-```
-$ git diff origin/main --stat
- src/lib/supabase/types.ts | 5 +++++
- 1 file changed, 5 insertions(+)
-
-$ git status --porcelain
- M src/lib/supabase/types.ts
-?? src/app/admin/poc/enriched-player/
-?? src/components/formation/EnrichedAudioPlayer.tsx
-```
-
-Détail untracked :
-```
-src/app/admin/poc/enriched-player/page.tsx
-src/app/admin/poc/enriched-player/[type]/[id]/page.tsx
-src/app/admin/poc/enriched-player/[type]/[id]/EnrichedPlayerPocClient.tsx
-src/components/formation/EnrichedAudioPlayer.tsx
-```
-
-## Annexe B — État BDD pilote (snapshot 09/05/2026)
-
-```
-SELECT id, title, course_duration_seconds, timeline_url IS NOT NULL AS has_timeline,
-       timeline_published
-FROM sequences
-WHERE id = 'e8dfa6b8-ef34-4454-a198-e6f973f466de';
-
-→ has_timeline = true, timeline_published = false
-→ duration = 538 s, MP3 Xing-fixed (T7.1)
-```
-
-## Annexe C — Conformité spec POC §10 Ticket 7
-
-| Critère | Statut |
-|---|---|
-| Composant `<EnrichedAudioPlayer>` créé | ✅ `src/components/formation/EnrichedAudioPlayer.tsx` |
-| Page démo `/admin/poc/enriched-player/[type]/[id]` super_admin only | ✅ |
-| Page index `/admin/poc/enriched-player` | ✅ |
-| Type `Sequence` étendu additivement | ✅ `timeline_url?` + `timeline_published?` |
-| 3 tabs Combiné/Whiteboard/Audio seul | ✅ |
-| Layout desktop grid 2 colonnes / mobile stack | ✅ |
-| Lecture seule sur `useAudio()` | ✅ (vérifié grep) |
-| `<KaraokeTranscript>` sans `onSeek` | ✅ |
-| Fallback gracieux 5 cas Q6 | ✅ implémenté ; smoke test à exécuter par Dr Fantin |
-| `state.audioUrl !== src` ⇒ panneau masqué (Q7.7) | ✅ |
-| `AudioContext.tsx` non modifié | ✅ |
-| `AudioPlayer.tsx` non modifié | ✅ |
-| `SequencePlayer.tsx` non modifié | ✅ |
-| Aucun localStorage/sessionStorage | ✅ |
-| Build clean | ✅ phase compilation OK ; phase prerender échoue sur erreurs préexistantes (env vars sandbox) |
-| Rapport rédigé | ✅ ce document |
-
----
-
-*Fin du rapport. Prêt pour PR vers `main` puis recette par Dr Fantin avant
-T7.3.*
+*Fin du rapport T7.2. PR #252 prête à merger sur `main` après validation
+finale des smoke checkpoints §7 et signature Dr Fantin.*
