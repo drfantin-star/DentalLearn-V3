@@ -22,6 +22,7 @@ import {
   type Sequence,
 } from '@/lib/supabase'
 import { GenerateAttestationButton } from '@/components/attestations/GenerateAttestationButton'
+import { ColdSurveyEligibilityBadge } from '@/components/satisfaction/ColdSurveyEligibilityBadge'
 
 // ============================================
 // TYPES
@@ -382,7 +383,10 @@ export default function FormationDetail({
       <div className="fixed bottom-20 left-0 right-0 p-4 shadow-lg z-20" style={{ background: '#1a1a1a', borderTop: '0.5px solid #2a2a2a' }}>
         <div className="max-w-lg mx-auto">
           {completedInFormation >= sequences.length && sequences.length > 0 && (
-            <div className="mb-3">
+            <div className="mb-3 space-y-3">
+              <div className="flex justify-center">
+                <ColdSurveyEligibilityBadge formationId={formation.id} />
+              </div>
               <GenerateAttestationButton
                 type="formation_online"
                 sourceId={formation.id}

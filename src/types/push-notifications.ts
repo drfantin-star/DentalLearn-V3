@@ -2,7 +2,8 @@ export type NotificationType =
   | 'leaderboard_result'
   | 'new_sequence'
   | 'new_formation'
-  | 'daily_reminder';
+  | 'daily_reminder'
+  | 'cold_survey';
 
 export interface PushNotificationPayload {
   title: string;

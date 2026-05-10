@@ -4,5 +4,6 @@ export {
   createLeaderboardResultNotification,
   createNewSequenceNotification,
   createDailyReminderNotification,
+  createColdSurveyNotification,
   createNotification
 } from './notifications';
