@@ -31,6 +31,7 @@ import type {
 
 type StatusFilter = 'all' | 'unvalidated' | 'stale' | 'valid'
 type TabFilter = 'all' | EditorialContentType
+type PublishStatusFilter = 'all' | 'draft' | 'published'
 
 function formatDateFr(iso: string | null): string {
   if (!iso) return '—'
@@ -104,9 +105,29 @@ function TypeBadge({ type }: { type: EditorialContentType }) {
   )
 }
 
+function DraftBadge({ candidate }: { candidate: ValidationCandidate }) {
+  if (candidate.content_type !== 'news_episode' || candidate.episode_status !== 'draft') {
+    return null
+  }
+  return (
+    <span className="ml-2 inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-gray-200 text-gray-700">
+      Brouillon
+    </span>
+  )
+}
+
 export default function AdminEditorialValidationsPage() {
   const [tab, setTab] = useState<TabFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [publishStatusFilter, setPublishStatusFilter] = useState<PublishStatusFilter>('all')
+
+  // Le filtre Publication ne s'applique qu'aux news : on le reset si on passe
+  // sur l'onglet Formations.
+  useEffect(() => {
+    if (tab === 'formation' && publishStatusFilter !== 'all') {
+      setPublishStatusFilter('all')
+    }
+  }, [tab, publishStatusFilter])
 
   const candidatesType = tab === 'all' ? undefined : tab
   const { candidates, loading, error, refetch } = useValidationCandidates(candidatesType)
@@ -128,8 +149,39 @@ export default function AdminEditorialValidationsPage() {
   }
 
   const filteredCandidates = useMemo(() => {
-    if (statusFilter === 'all') return candidates
-    return candidates.filter((c) => candidateStatusKey(c) === statusFilter)
+    return candidates.filter((c) => {
+      if (statusFilter !== 'all' && candidateStatusKey(c) !== statusFilter) {
+        return false
+      }
+      if (publishStatusFilter !== 'all' && c.content_type === 'news_episode') {
+        if (publishStatusFilter === 'draft' && c.episode_status !== 'draft') return false
+        if (
+          publishStatusFilter === 'published' &&
+          c.episode_status !== 'published' &&
+          c.episode_status !== 'archived'
+        )
+          return false
+      }
+      return true
+    })
+  }, [candidates, statusFilter, publishStatusFilter])
+
+  // Compteurs Publication : dépendent de Type (déjà appliqué via candidates) et
+  // du filtre Statut validation, mais pas du filtre Publication lui-même.
+  const publishCounts = useMemo(() => {
+    let all = 0
+    let draft = 0
+    let published = 0
+    for (const c of candidates) {
+      if (c.content_type !== 'news_episode') continue
+      if (statusFilter !== 'all' && candidateStatusKey(c) !== statusFilter) continue
+      all++
+      if (c.episode_status === 'draft') draft++
+      else if (c.episode_status === 'published' || c.episode_status === 'archived') {
+        published++
+      }
+    }
+    return { all, draft, published }
   }, [candidates, statusFilter])
 
   const counts = useMemo(() => {
@@ -247,6 +299,30 @@ export default function AdminEditorialValidationsPage() {
             </button>
           ))}
         </div>
+
+        {tab !== 'formation' && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-gray-700 mr-1">Publication :</span>
+            {[
+              { key: 'all' as const, label: `Tous (${publishCounts.all})` },
+              { key: 'draft' as const, label: `Brouillon (${publishCounts.draft})` },
+              { key: 'published' as const, label: `Publié·archivé (${publishCounts.published})` },
+            ].map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                onClick={() => setPublishStatusFilter(p.key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                  publishStatusFilter === p.key
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       {error && (
@@ -299,6 +375,7 @@ export default function AdminEditorialValidationsPage() {
                       <tr key={`${c.content_type}:${c.content_id}`} className="text-gray-800">
                         <td className="px-4 py-3 whitespace-nowrap">
                           <TypeBadge type={c.content_type} />
+                          <DraftBadge candidate={c} />
                         </td>
                         <td className="px-4 py-3 max-w-md">
                           <div className="font-medium truncate" title={c.content_title}>
@@ -380,7 +457,10 @@ export default function AdminEditorialValidationsPage() {
                   className="bg-white rounded-2xl shadow p-4"
                 >
                   <div className="flex items-start justify-between gap-2 flex-wrap">
-                    <TypeBadge type={c.content_type} />
+                    <div className="flex items-center">
+                      <TypeBadge type={c.content_type} />
+                      <DraftBadge candidate={c} />
+                    </div>
                     <StatusBadge candidate={c} />
                   </div>
                   <div className="font-semibold text-gray-900 mt-2">{c.content_title}</div>
@@ -580,6 +660,7 @@ function ValidateModal({
             </h2>
             <p className="text-xs mt-1 truncate" style={{ color: '#a3a3a3' }}>
               <TypeBadge type={candidate.content_type} />
+              <DraftBadge candidate={candidate} />
               <span className="ml-2">{candidate.content_title}</span>
             </p>
           </div>

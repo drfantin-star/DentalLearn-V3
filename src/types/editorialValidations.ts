@@ -57,6 +57,7 @@ export interface ValidationCandidate {
   content_title: string
   axe_cp?: number | null      // formation uniquement
   episode_type?: string | null // news uniquement
+  episode_status?: string | null // news uniquement : 'draft' | 'published' | 'archived'
   is_stale: boolean
   current_validation_id: string | null
   current_validated_at: string | null

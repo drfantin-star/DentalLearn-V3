@@ -260,6 +260,7 @@ interface NewsEpisodeRow {
   id: string
   title: string
   type: string
+  status: string
 }
 
 function statusOrderKey(c: ValidationCandidate): number {
@@ -305,8 +306,8 @@ export function useValidationCandidates(
           ? (async () => {
               const res = await supabase
                 .from('news_episodes')
-                .select('id, title, type')
-                .in('status', ['published', 'archived'])
+                .select('id, title, type, status')
+                .in('status', ['draft', 'published', 'archived'])
                 .order('title', { ascending: true })
               return {
                 data: (res.data || []) as NewsEpisodeRow[],
@@ -332,6 +333,7 @@ export function useValidationCandidates(
         title: string
         axe_cp?: number | null
         episode_type?: string | null
+        episode_status?: string | null
         status: ValidationStatus | null
       }
 
@@ -370,6 +372,7 @@ export function useValidationCandidates(
               id: e.id,
               title: e.title,
               episode_type: e.type,
+              episode_status: e.status,
               status:
                 Array.isArray(res.data) && res.data.length > 0
                   ? (res.data[0] as ValidationStatus)
@@ -390,6 +393,7 @@ export function useValidationCandidates(
           content_title: s.title,
           axe_cp: s.axe_cp ?? null,
           episode_type: s.episode_type ?? null,
+          episode_status: s.episode_status ?? null,
           is_stale: validated ? Boolean(s.status?.is_stale) : false,
           current_validation_id: validated ? s.status?.validation_id ?? null : null,
           current_validated_at: validated ? s.status?.validated_at ?? null : null,
