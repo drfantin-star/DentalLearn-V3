@@ -642,6 +642,7 @@ export default function SequencePlayer({
                   <EnrichedTabSelector
                     active={enrichedActiveTab}
                     onChange={setEnrichedActiveTab}
+                    categoryGradient={categoryGradient}
                   />
                 )}
                 <EnrichedAudioPlayer
@@ -1403,17 +1404,20 @@ export default function SequencePlayer({
   )
 }
 
-// POC-T7.3.1 — Tab selector affiché uniquement quand la séquence a un
-// `timeline_url` publié. Design repris de la page démo
-// `/admin/poc/enriched-player/[type]/[id]/EnrichedPlayerPocClient.tsx`
-// (3 boutons pill, ds-turquoise actif). Q2 (3 tabs Combiné/Whiteboard/
-// Audio seul) — décision design Dr Fantin.
+// POC-T7.4a-D — Reskin segmented control dark + accent gradient catégorie
+// (Maquette 1 validée par Dr Fantin le 2026-05-10). Design désormais cohérent
+// avec l'AudioPlayer card juste en dessous (qui utilise déjà le même gradient
+// `categoryGradient.from → .to`). Q2 (3 tabs Combiné/Whiteboard/Audio seul)
+// inchangé. Composant gardé inline (Option A T7.3.1, validation Dr Fantin —
+// pas d'extraction en composant séparé en T7.4a).
 function EnrichedTabSelector({
   active,
   onChange,
+  categoryGradient,
 }: {
   active: EnrichedPlayerTab
   onChange: (tab: EnrichedPlayerTab) => void
+  categoryGradient: { from: string; to: string }
 }) {
   const tabs: { id: EnrichedPlayerTab; label: string; hint: string }[] = [
     { id: 'combined', label: 'Combiné', hint: 'Karaoké + Whiteboard' },
@@ -1421,22 +1425,40 @@ function EnrichedTabSelector({
     { id: 'audio_only', label: 'Audio seul', hint: 'Player nu (pas d\'enrichissement)' },
   ]
   return (
-    <div className="flex flex-wrap justify-center gap-2 mb-4">
-      {tabs.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => onChange(t.id)}
-          className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-            active === t.id
-              ? 'bg-ds-turquoise text-[#0F0F0F]'
-              : 'border border-[color:var(--color-border)] bg-[color:var(--color-bg-card)] text-[color:var(--color-text-primary)] hover:border-ds-turquoise/50 hover:bg-[color:var(--color-bg-card-hover)]'
-          }`}
-          title={t.hint}
-          type="button"
-        >
-          {t.label}
-        </button>
-      ))}
+    <div className="flex justify-center mb-4">
+      <div
+        className="inline-flex items-center gap-1 rounded-full p-1"
+        style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a' }}
+        role="tablist"
+      >
+        {tabs.map((t) => {
+          const isActive = active === t.id
+          return (
+            <button
+              key={t.id}
+              onClick={() => onChange(t.id)}
+              className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
+                isActive
+                  ? 'text-white shadow-sm'
+                  : 'text-[#a3a3a3] hover:text-[#e5e5e5] hover:bg-white/5'
+              }`}
+              style={
+                isActive
+                  ? {
+                      background: `linear-gradient(135deg, ${categoryGradient.from}, ${categoryGradient.to})`,
+                    }
+                  : undefined
+              }
+              role="tab"
+              aria-selected={isActive}
+              title={t.hint}
+              type="button"
+            >
+              {t.label}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
