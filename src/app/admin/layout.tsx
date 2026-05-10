@@ -11,6 +11,7 @@ import {
   Users,
   LogOut,
   Shield,
+  ShieldCheck,
   Beaker,
   ClipboardCheck,
   MessageSquareWarning,
@@ -181,6 +182,24 @@ export default function AdminLayout({
               >
                 <Star className="w-5 h-5" />
                 Satisfaction
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/cs-members"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <Users className="w-5 h-5" />
+                Comité scientifique
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/editorial-validations"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <ShieldCheck className="w-5 h-5" />
+                Validations éditoriales
               </Link>
             </li>
             <li>

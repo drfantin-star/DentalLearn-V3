@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Beaker, BookOpen, FileText, HelpCircle, Users, Shield, Star } from 'lucide-react';
+import { Beaker, BookOpen, FileText, HelpCircle, Users, Shield, ShieldCheck, Star } from 'lucide-react';
 import Link from 'next/link';
 
 interface Stats {
@@ -168,6 +168,13 @@ export default function AdminDashboard() {
           >
             <Star className="w-5 h-5 text-[#2D1B96]" />
             <span className="font-medium text-[#2D1B96]">Satisfaction (Qualiopi #30)</span>
+          </Link>
+          <Link
+            href="/admin/editorial-validations"
+            className="flex items-center gap-3 p-4 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors"
+          >
+            <ShieldCheck className="w-5 h-5 text-emerald-600" />
+            <span className="font-medium text-emerald-600">Validations éditoriales</span>
           </Link>
         </div>
       </div>
