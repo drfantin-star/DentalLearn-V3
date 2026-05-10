@@ -23,6 +23,7 @@ import {
   type Question,
 } from '@/lib/supabase'
 import AudioPlayer from './AudioPlayer'
+import EnrichedAudioPlayer from './EnrichedAudioPlayer'
 import TreasureChest from '@/components/sequences/TreasureChest'
 
 // ============================================
@@ -633,10 +634,10 @@ export default function SequencePlayer({
         {/* COURS (VIDEO ou AUDIO) */}
         {playerStep === 'video' && (
           <div className="text-center py-6">
-            {/* ─── AudioPlayer ─── */}
+            {/* ─── AudioPlayer enrichi (POC-T7.3) ─── */}
             {mediaType === 'audio' && sequence.course_media_url && (
               <div className="mb-6">
-                <AudioPlayer
+                <EnrichedAudioPlayer
                   src={sequence.course_media_url}
                   duration={sequence.course_duration_seconds || 0}
                   sequenceId={sequence.id}
@@ -647,6 +648,9 @@ export default function SequencePlayer({
                   onProgress={(percent) => setCourseProgress(percent)}
                   accentColor={categoryGradient.from}
                   accentColorSecondary={categoryGradient.to}
+                  timelineUrl={sequence.timeline_url ?? null}
+                  timelinePublished={sequence.timeline_published ?? false}
+                  activeTab="combined"
                 />
               </div>
             )}
