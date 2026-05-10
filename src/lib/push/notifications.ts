@@ -94,3 +94,32 @@ export function createNotification(
     }
   };
 }
+
+/**
+ * Crée la notification push de relance à froid (J+90).
+ * Type 'first' = 1ère notif, 'reminder' = 2ème notif (J+97).
+ */
+export function createColdSurveyNotification(
+  formationTitle: string,
+  formationId: string,
+  type: 'first' | 'reminder'
+): PushNotificationPayload {
+  const title =
+    type === 'first'
+      ? '💬 Votre avis 3 mois après ?'
+      : '🔔 Petit rappel : votre avis nous intéresse';
+
+  const body = `Comment avez-vous appliqué ${formationTitle} dans votre pratique ?`;
+
+  return {
+    title,
+    body,
+    icon: DEFAULT_ICON,
+    badge: DEFAULT_BADGE,
+    tag: `cold-survey-${formationId}`,
+    data: {
+      url: `/satisfaction-froid/${formationId}`,
+      type: 'cold_survey' as NotificationType
+    }
+  };
+}

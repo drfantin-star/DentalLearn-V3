@@ -14,7 +14,8 @@ import {
   Beaker,
   ClipboardCheck,
   MessageSquareWarning,
-  Building2
+  Building2,
+  Star
 } from 'lucide-react';
 
 export default function AdminLayout({
@@ -171,6 +172,15 @@ export default function AdminLayout({
               >
                 <MessageSquareWarning className="w-5 h-5" />
                 Réclamations
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/satisfaction"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <Star className="w-5 h-5" />
+                Satisfaction
               </Link>
             </li>
             <li>

@@ -3,6 +3,10 @@
     {
       "path": "/api/push/daily-reminder",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/push/cold-survey-reminder",
+      "schedule": "0 10 * * *"
     }
   ]
 }
