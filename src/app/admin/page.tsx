@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
-import { Beaker, BookOpen, FileText, HelpCircle, Users, Shield } from 'lucide-react';
+import { Beaker, BookOpen, FileText, HelpCircle, Users, Shield, Star } from 'lucide-react';
 import Link from 'next/link';
 
 interface Stats {
@@ -161,6 +161,13 @@ export default function AdminDashboard() {
           >
             <Beaker className="w-5 h-5 text-yellow-600" />
             <span className="font-medium text-yellow-800">Mode Test (débloquer séquences)</span>
+          </Link>
+          <Link
+            href="/admin/satisfaction"
+            className="flex items-center gap-3 p-4 bg-[#2D1B96]/10 rounded-xl hover:bg-[#2D1B96]/20 transition-colors"
+          >
+            <Star className="w-5 h-5 text-[#2D1B96]" />
+            <span className="font-medium text-[#2D1B96]">Satisfaction (Qualiopi #30)</span>
           </Link>
         </div>
       </div>
