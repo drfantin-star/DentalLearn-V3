@@ -474,12 +474,27 @@ $ git diff --numstat src/components/formation/AudioPlayer.tsx \
 | ID | Dette | Statut |
 |---|---|---|
 | D7-14 | Cover #1 mobile en mode enriched | ✅ Résolue via T7.4-UX-B (T7.4-UX-C annulé, AudioPlayer.tsx 0 ligne diff invariant) |
+| **D7-15** | **MiniPlayer overlap transitoire boutons d'action mobile** (cosmétique, non bloquant) | 🟡 **Ouverte — ticket dédié post-T7.4b** — voir §11.2 |
 | D7-7 | `demoMode` hardcodé | 🔵 Sprint 2 dédié |
 | D7-11 | Karaoké mobile fenêtre Spotify | ✅ Résolue T7.4a-G |
 | D7-13 | Cover #2 dupliquée | ✅ Résolue T7.3.1 |
 | D7-1 → D7-12 (autres) | Voir RECAP_SESSION_POC_AUDIO_T7_3_10MAI2026.md | en cours selon priorité |
 | Captures smoke mobile T7.4-UX | 5 captures à produire localement par Dr Fantin AVANT merge | ⚠️ **Dette ouverte** — voir §8.3 |
 | A11y drawer (Escape key) | Touche Esc pour fermer drawer Objectifs | 🔵 Possible add T7.4b post-smoke |
+
+### 11.2 D7-15 — MiniPlayer overlap transitoire boutons d'action mobile (cosmétique, non bloquant)
+
+Au lancement de la lecture audio sur viewport mobile (375px), le MiniPlayer flottant superpose visuellement les boutons "Retour" et "Passer au Quiz" pendant ~200-500ms avant de se positionner correctement en `position: fixed bottom`. Une fois la lecture stable, les boutons redeviennent pleinement visibles et cliquables. Comportement antérieur à T7.4-UX (le MiniPlayer global existait déjà avant le POC-T7), révélé par la suppression du gros player (T7.4-UX-B) qui réduit la distance verticale entre boutons d'action et zone d'apparition MiniPlayer.
+
+Confirmé non bloquant fonctionnellement par smoke utilisateur Dr Fantin : *"passer au quiz caché au lancement, mais une fois la lecture lancée pas de problème"*.
+
+**Pistes de fix pour ticket dédié post-T7.4** :
+
+- **Option A** : `padding-bottom` mobile sur conteneur enrichi équivalent hauteur MiniPlayer (~80-100px) — préserve l'espace même pendant la transition.
+- **Option B** : investiguer l'animation slide-up du MiniPlayer au mount (peut-être supprimer la transition initiale, apparition instantanée).
+- **Option C** : réordonner les boutons Retour/Quiz au-dessus du conteneur enrichi (refactor `SequencePlayer.tsx`).
+
+Renvoyé à ticket UX dédié post-T7.4b. Pas de bloquant pour smoke prod T7.4b ni pour décision go/no-go POC-T7.
 
 ---
 
