@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import { Play } from 'lucide-react'
 
 import { KaraokeTranscript } from '@/components/audio-enriched/KaraokeTranscript'
 import { StructuredWhiteboard } from '@/components/audio-enriched/StructuredWhiteboard'
@@ -59,6 +60,21 @@ interface EnrichedAudioPlayerProps {
   // Mode d'affichage du panneau enrichi (Q2). Le wrapper dérive
   // `enrichmentEnabled` de `activeTab`.
   activeTab: EnrichedPlayerTab
+
+  // POC-T7.4-UX-B (D-UX-2) : si true, masque la card gros player legacy
+  // (`<AudioPlayer>`) quand le panneau enrichi est censé s'afficher. Le
+  // MiniPlayer global (`(app)/layout.tsx`) prend alors le relais une fois
+  // la lecture lancée. Fallback legacy préservé : non-enriched (audio_only
+  // tab), pas de timeline, ou erreur fetch ⇒ card legacy reste visible.
+  hideLegacyCardWhenEnriched?: boolean
+
+  // POC-T7.4-UX-FAB (Q-stop-1) : callback de demande de lecture. Q5 reste
+  // strictement respecté (le wrapper ne fait pas l'appel `playAudio` lui-même
+  // — c'est le parent SequencePlayer qui détient `useAudio().playAudio` et
+  // décide). Le wrapper rend un FAB Play overlay quand le legacy est masqué
+  // et que la track n'a pas encore démarré. Une fois `state.audioUrl === src`,
+  // le FAB disparaît et le panneau enrichi prend le relais.
+  onPlayRequest?: () => void
 }
 
 export default function EnrichedAudioPlayer({
@@ -77,6 +93,8 @@ export default function EnrichedAudioPlayer({
   timelineUrl,
   timelinePublished,
   activeTab,
+  hideLegacyCardWhenEnriched = false,
+  onPlayRequest,
 }: EnrichedAudioPlayerProps) {
   // Lecture seule — Q5. Aucune méthode d'écriture du context n'est extraite.
   const { state } = useAudio()
@@ -122,23 +140,73 @@ export default function EnrichedAudioPlayer({
     !isLoading &&
     timeline !== null
 
+  // POC-T7.4-UX-B (D-UX-2) : la card gros player est masquée optimistiquement
+  // dès qu'on est en mode enriched avec timeline disponible et sans erreur.
+  // L'erreur ⇒ fallback legacy (Q6). audio_only tab ⇒ enrichmentEnabled=false
+  // ⇒ card visible (D-UX-4). isLoading inclus dans hasTimeline-non-fetched-yet
+  // pour éviter un flash legacy → enriched.
+  const hideLegacyCard =
+    hideLegacyCardWhenEnriched && enrichmentEnabled && hasTimeline && !error
+
+  // POC-T7.4-UX-FAB : pre-play state. Quand le legacy est masqué et que la
+  // track n'a pas démarré (state.audioUrl !== src), on rend un FAB Play pour
+  // que l'user puisse lancer la lecture. Une fois lancée, MiniPlayer global
+  // prend le relais (couvre pause/play/seek). Le FAB est aussi visible si
+  // une autre track joue dans le MiniPlayer (Q7.7) — permet de switcher vers
+  // cette séquence.
+  const showPrePlayState = hideLegacyCard && !isCurrentTrack
+
   return (
     <div className="w-full">
       {/* Player audio — INCHANGÉ. Aucune prop modifiée. */}
-      <AudioPlayer
-        src={src}
-        duration={duration}
-        sequenceId={sequenceId}
-        onComplete={onComplete}
-        onProgress={onProgress}
-        accentColor={accentColor}
-        accentColorSecondary={accentColorSecondary}
-        sequenceTitle={sequenceTitle}
-        formationTitle={formationTitle}
-        learningObjectives={learningObjectives}
-        coverImageUrl={coverImageUrl}
-        userId={userId}
-      />
+      {!hideLegacyCard && (
+        <AudioPlayer
+          src={src}
+          duration={duration}
+          sequenceId={sequenceId}
+          onComplete={onComplete}
+          onProgress={onProgress}
+          accentColor={accentColor}
+          accentColorSecondary={accentColorSecondary}
+          sequenceTitle={sequenceTitle}
+          formationTitle={formationTitle}
+          learningObjectives={learningObjectives}
+          coverImageUrl={coverImageUrl}
+          userId={userId}
+        />
+      )}
+
+      {/* POC-T7.4-UX-FAB : pre-play state — large FAB Play centré dans une
+          zone de la taille du futur whiteboard. Pattern YouTube tap-to-play.
+          Disparaît dès `state.audioUrl === src` (la track démarre, le panneau
+          enrichi prend le relais et le MiniPlayer global affiche les controls). */}
+      {showPrePlayState && (
+        <div className="mt-2 md:mt-6">
+          <button
+            type="button"
+            onClick={onPlayRequest}
+            className="w-full rounded-2xl flex flex-col items-center justify-center gap-3 transition-transform active:scale-[0.98] hover:bg-white/[0.02]"
+            style={{
+              background: '#1a1a1a',
+              border: '0.5px solid #2a2a2a',
+              minHeight: '300px',
+            }}
+            aria-label="Démarrer la lecture audio"
+          >
+            <span
+              className="w-20 h-20 rounded-full flex items-center justify-center shadow-2xl"
+              style={{
+                background: `linear-gradient(135deg, ${accentColor ?? '#2D1B96'}, ${accentColorSecondary ?? '#00D1C1'})`,
+              }}
+            >
+              <Play size={36} fill="white" className="text-white ml-1" />
+            </span>
+            <span className="text-sm font-medium" style={{ color: '#a3a3a3' }}>
+              Toucher pour démarrer
+            </span>
+          </button>
+        </div>
+      )}
 
       {showEnrichedPanel && timeline && (
         <div className="mt-6">
@@ -165,14 +233,17 @@ export default function EnrichedAudioPlayer({
             // dans un grid item (sinon `min-height: auto` impose la hauteur
             // du contenu et neutralise l'overflow).
             //
-            // Mobile (variante A) : whiteboard sticky top-0 (le sticky se cale
-            // sur le `<main overflow-auto>` admin, qui est le scroll container
-            // effectif sur mobile). `md:static` neutralise le sticky sur
-            // desktop pour préserver le internal-scroll layout. `bg-…` opaque
-            // obligatoire — sans ça, le karaoké défilerait visiblement
-            // derrière le whiteboard sticky.
+            // POC-T7.4-UX-F (Option F1) : Variante A T7.2 mobile sticky
+            // simplifiée en flex-col plein écran. Le combo T7.4-UX-B (legacy
+            // hidden) + T7.4-UX-G fenêtre karaoké 180px + pb-40 wrapper
+            // (SequencePlayer.tsx) tient en 1 viewport sans scroll de page,
+            // donc le sticky devient redondant. Si T7.5/T8 ajoutent du
+            // contenu scrollable sous le karaoké, le sticky pourra revenir.
+            // Desktop : Variante A T7.2 préservée intacte (md:grid 2 cols
+            // karaoké|whiteboard avec internal-scroll). `md:flex-initial`
+            // implicite via md:grid qui reset le flex behavior.
             <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-6 md:h-[calc(100vh-32rem)]">
-              <div className="order-1 md:order-2 sticky top-0 z-10 bg-[color:var(--color-bg)] md:static md:min-h-0 md:overflow-hidden">
+              <div className="order-1 md:order-2 flex-1 md:min-h-0 md:overflow-hidden">
                 <WhiteboardOrCover
                   displayedScene={displayedScene}
                   timeline={timeline}
