@@ -23,6 +23,7 @@ import {
 } from '@/lib/supabase'
 import { GenerateAttestationButton } from '@/components/attestations/GenerateAttestationButton'
 import { ColdSurveyEligibilityBadge } from '@/components/satisfaction/ColdSurveyEligibilityBadge'
+import { ValidationFooter } from '@/components/editorial/ValidationFooter'
 
 // ============================================
 // TYPES
@@ -377,6 +378,11 @@ export default function FormationDetail({
             Aucune séquence disponible
           </p>
         )}
+      </div>
+
+      {/* Footer Qualiopi #21 + IA Act Article 50 §4 */}
+      <div className="px-4">
+        <ValidationFooter formationId={formation.id} />
       </div>
 
       {/* CTA fixe en bas */}

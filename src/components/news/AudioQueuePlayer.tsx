@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from 'react'
 import { useAudioPlayer } from '@/context/AudioPlayerContext'
+import { ValidationBadgeNews } from '@/components/editorial/ValidationBadgeNews'
 
 // AudioQueuePlayer (T11) : monté une seule fois dans (app)/layout.tsx,
 // il consomme l'AudioPlayerContext (URL-based, voir context/AudioPlayerContext.tsx)
@@ -74,6 +75,7 @@ export default function AudioQueuePlayer() {
           <p className="text-white text-xs font-medium truncate">
             {currentTrack.title}
           </p>
+          <ValidationBadgeNews episodeId={currentTrack.episodeId ?? null} />
           <p className="text-gray-500 text-xs mt-0.5">
             {currentIndex + 1} / {queue.length}
           </p>
