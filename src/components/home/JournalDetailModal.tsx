@@ -1,8 +1,11 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { X, Play, ExternalLink } from 'lucide-react'
 import { useAudioPlayer } from '@/context/AudioPlayerContext'
 import { NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
+import { NewsVisualSequence } from '@/components/news/NewsVisualSequence'
+import { TimelineSchema, type Timeline } from '@/lib/timeline/schema'
 import type { JournalEpisode } from '@/types/news'
 
 interface Props {
@@ -24,6 +27,40 @@ export function JournalDetailModal({ journal, onClose }: Props) {
   const { playTrack } = useAudioPlayer()
   const weekNum = getWeekNumber(journal.week_iso)
   const durationLabel = formatDuration(journal.duration_s)
+
+  // T8 — fetch + état de la timeline pour <NewsVisualSequence> (Q-T8-6=a :
+  // fallback gracieux si pas de timeline publiée OU fetch KO).
+  const [timeline, setTimeline] = useState<Timeline | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [currentSynthesisIndex, setCurrentSynthesisIndex] = useState(0)
+  const [audioIsPlaying, setAudioIsPlaying] = useState(false)
+
+  useEffect(() => {
+    if (!journal.timeline_url || !journal.timeline_published) return
+    let cancelled = false
+    fetch(journal.timeline_url)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (cancelled || !json) return
+        const parsed = TimelineSchema.safeParse(json)
+        if (parsed.success) setTimeline(parsed.data)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [journal.timeline_url, journal.timeline_published])
+
+  // Branche le player audio interne de la modal → indice synthèse courante
+  // depuis chapters[i].start_sec/end_sec (alignement par chapitre Q-T8-3=b).
+  function handleTimeUpdate(e: React.SyntheticEvent<HTMLAudioElement>) {
+    if (!timeline) return
+    const t = e.currentTarget.currentTime
+    const idx = timeline.chapters.findIndex(
+      (c) => t >= c.start_sec && t < c.end_sec,
+    )
+    setCurrentSynthesisIndex(idx >= 0 ? idx : 0)
+  }
 
   return (
     <div
@@ -128,14 +165,31 @@ export function JournalDetailModal({ journal, onClose }: Props) {
         )}
 
         {/* Player audio HTML5 — pas de contrôle vitesse (contrainte produit) */}
-        <div className="mb-6">
+        <div className="mb-4">
           <audio
+            ref={audioRef}
             controls
             src={journal.audio_url}
+            onTimeUpdate={handleTimeUpdate}
+            onPlay={() => setAudioIsPlaying(true)}
+            onPause={() => setAudioIsPlaying(false)}
+            onEnded={() => setAudioIsPlaying(false)}
             className="w-full"
             style={{ height: '40px' }}
           />
         </div>
+
+        {/* T8 — Panneau visuel défilant aligné par chapitre (maquette γ).
+            Affiché uniquement si timeline présente + parsée OK (Q-T8-6=a). */}
+        {timeline && (
+          <div className="mb-6">
+            <NewsVisualSequence
+              timeline={timeline}
+              currentSynthesisIndex={currentSynthesisIndex}
+              isPlaying={audioIsPlaying}
+            />
+          </div>
+        )}
 
         {/* Boutons */}
         <div className="flex gap-3">

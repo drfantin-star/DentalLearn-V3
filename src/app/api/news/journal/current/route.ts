@@ -20,7 +20,7 @@ export async function GET() {
 
     const { data: episode, error: epErr } = await adminSupabase
       .from('news_episodes')
-      .select('id, week_iso, audio_url, duration_s, status, created_at, published_at')
+      .select('id, week_iso, audio_url, duration_s, status, created_at, published_at, timeline_url, timeline_published')
       .eq('type', 'journal')
       .eq('status', 'published')
       .order('created_at', { ascending: false })
@@ -129,6 +129,11 @@ export async function GET() {
       created_at: episode.created_at as string,
       published_at: (episode.published_at as string | null) ?? null,
       syntheses,
+      // T8 — exposé au front pour activer <NewsVisualSequence> côté
+      // JournalDetailModal. NULL si pas de timeline générée (fallback).
+      timeline_url: (episode.timeline_url as string | null) ?? null,
+      timeline_published:
+        (episode.timeline_published as boolean | null) ?? false,
     }
 
     return NextResponse.json(response)

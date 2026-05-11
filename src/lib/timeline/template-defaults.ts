@@ -52,6 +52,15 @@ export function getDefaultTemplatePayload(
         kind: 'timeline',
         events: [{ at_label: 'Étape 1', text: 'À éditer' }],
       }
+    case 'recap':
+      // T8 — template news déterministe. Pas d'édition admin attendue (généré
+      // par buildNewsTimeline), mais le default reste fourni pour la
+      // complétude du switch et au cas où l'admin éditerait à la main.
+      return {
+        kind: 'recap',
+        title: 'En résumé',
+        impact: 'Impact clinique à éditer.',
+      }
   }
 }
 
@@ -65,6 +74,7 @@ export const TEMPLATE_KINDS: ReadonlyArray<SceneTemplate['kind']> = [
   'figures',
   'causal',
   'timeline',
+  'recap',
 ] as const
 
 /**
@@ -77,4 +87,5 @@ export const TEMPLATE_KIND_LABELS: Record<SceneTemplate['kind'], string> = {
   figures: 'Chiffres clés',
   causal: 'Graphe causal',
   timeline: 'Frise chronologique',
+  recap: 'Récap (news)',
 }

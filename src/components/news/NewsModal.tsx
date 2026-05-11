@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import type { NewsDetailResponse } from '@/types/news'
 import { formatDate } from '@/lib/news-display'
 import { NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
+import { NewsRecapCard } from '@/components/news/NewsRecapCard'
 
 interface Props {
   newsId: string | null
@@ -143,6 +144,15 @@ export default function NewsModal({ newsId, onClose }: Props) {
                 <p className="text-xs text-gray-400 mt-2">
                   {formatDate(synthesis.published_at)}
                 </p>
+              ) : null}
+
+              {/* T8 — carte récap statique si la synthèse appartient à un
+                  épisode T8-ready (timeline_url présent). Pas de défilement,
+                  pas de couplage audio (Q-T8-1=a bonus). Sinon : statu quo. */}
+              {episode?.timeline_url ? (
+                <div className="mt-4">
+                  <NewsRecapCard synthesis={synthesis} />
+                </div>
               ) : null}
 
               {episode ? (

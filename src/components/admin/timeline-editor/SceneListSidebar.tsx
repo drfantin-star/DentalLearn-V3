@@ -37,6 +37,11 @@ const KIND_BADGE_BG: Record<SceneTemplate['kind'], string> = {
   figures: 'bg-emerald-500/15 text-emerald-300',
   causal: 'bg-orange-500/15 text-orange-300',
   timeline: 'bg-amber-500/15 text-amber-300',
+  // T8 — propagation de l'ajout `recap` dans le discriminated union
+  // SceneTemplate. Admin timeline-editor ne gère pas l'édition des scènes
+  // recap (générées déterministiquement par buildNewsTimeline), mais le
+  // Record doit rester exhaustif pour TypeScript.
+  recap: 'bg-teal-500/15 text-teal-300',
 }
 
 const KIND_LABEL: Record<SceneTemplate['kind'], string> = {
@@ -46,6 +51,7 @@ const KIND_LABEL: Record<SceneTemplate['kind'], string> = {
   figures: 'Chiffres',
   causal: 'Causal',
   timeline: 'Frise',
+  recap: 'Récap',
 }
 
 function formatRange(start: number, end: number): string {

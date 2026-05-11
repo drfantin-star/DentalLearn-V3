@@ -82,20 +82,29 @@ export async function GET(
     let episode: NewsEpisode | null = null
     const { data: items, error: itemsError } = await supabase
       .from('news_episode_items')
-      .select('episode_id')
+      .select('episode_id, position')
       .eq('synthesis_id', id)
 
     if (itemsError) {
       console.error('news/syntheses[id] items error:', itemsError)
     } else if (items && items.length > 0) {
-      const episodeIds = items
-        .map((it) => (it as Record<string, unknown>).episode_id as string)
-        .filter(Boolean)
+      // T8 — on conserve la position de la synthèse dans l'épisode parent
+      // pour permettre à NewsModal de cibler le bon chapitre de la timeline.
+      const positionByEpisode = new Map<string, number>()
+      for (const it of items) {
+        const row = it as Record<string, unknown>
+        const epId = row.episode_id as string
+        const pos = row.position as number | null
+        if (epId && typeof pos === 'number') {
+          positionByEpisode.set(epId, pos)
+        }
+      }
+      const episodeIds = Array.from(positionByEpisode.keys())
 
       if (episodeIds.length > 0) {
         const { data: episodes, error: episodesError } = await supabase
           .from('news_episodes')
-          .select('audio_url, duration_s, published_at')
+          .select('id, audio_url, duration_s, published_at, timeline_url, timeline_published')
           .in('id', episodeIds)
           .eq('status', 'published')
           .order('published_at', { ascending: false, nullsFirst: false })
@@ -108,7 +117,16 @@ export async function GET(
           const audioUrl = ep.audio_url as string | null
           const durationS = ep.duration_s as number | null
           if (audioUrl && typeof durationS === 'number') {
-            episode = { audio_url: audioUrl, duration_s: durationS }
+            episode = {
+              audio_url: audioUrl,
+              duration_s: durationS,
+              // T8 — exposés au front pour activer <NewsRecapCard> + permettre
+              // de fetcher la timeline JSON sur le chapitre `position`.
+              timeline_url: (ep.timeline_url as string | null) ?? null,
+              timeline_published:
+                (ep.timeline_published as boolean | null) ?? false,
+              position: positionByEpisode.get(ep.id as string) ?? null,
+            }
           }
         }
       }

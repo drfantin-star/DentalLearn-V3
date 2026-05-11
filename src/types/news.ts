@@ -21,6 +21,16 @@ export interface NewsDetail extends NewsCard {
 export interface NewsEpisode {
   audio_url: string
   duration_s: number
+  // T8 — additif. Présent si l'épisode a une timeline générée par
+  // buildNewsTimeline et auto-publiée. NULL = pas de timeline,
+  // fallback texte habituel (Q-T8-6=a).
+  timeline_url?: string | null
+  timeline_published?: boolean
+  // T8 — position de la synthèse courante dans l'épisode (via
+  // news_episode_items.position OU news_episode_syntheses.position),
+  // exposée par /api/news/syntheses/[id] pour permettre à NewsModal
+  // de cibler le chapitre correspondant dans la timeline.
+  position?: number | null
 }
 
 export interface NewsSource {
@@ -62,4 +72,9 @@ export interface JournalEpisode {
   created_at: string
   published_at: string | null
   syntheses: JournalSynthesisProjection[]
+  // T8 — additifs. Présents si le journal a une timeline générée par
+  // buildNewsTimeline (granularité épisode/journal, Q-T8-2=a). NULL =
+  // pas de timeline, fallback texte habituel (Q-T8-6=a).
+  timeline_url?: string | null
+  timeline_published?: boolean
 }

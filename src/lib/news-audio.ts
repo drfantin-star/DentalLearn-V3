@@ -386,3 +386,153 @@ export function validateScriptFormat(
 
   return { valid: errors.length === 0, errors }
 }
+
+// ---------------------------------------------------------------------------
+// T8 — Génération + persistence Timeline news déterministe
+// ---------------------------------------------------------------------------
+//
+// Helper factorisé partagé par les 2 endpoints admin generate-audio :
+//   - /api/admin/news/episodes/[id]/generate-audio (digest/insight)
+//   - /api/admin/news/journal/[id]/generate-audio  (journal hebdo)
+//
+// Pourquoi factoriser : audit v2 a relevé que la v1 du prompt T8 oubliait
+// le 2e endpoint. Ici les deux passent par la même fonction → impossible
+// d'oublier l'un quand on patche l'autre.
+//
+// Idempotence : si une timeline existait déjà (timeline_url non NULL),
+// on archive l'ancien JSON dans `audio-timelines/news/_archive/` puis on
+// écrit la nouvelle version. Pattern aligné avec T5/T6.
+
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { buildNewsTimeline, type NewsSynthesisInput } from '@/lib/timeline/build-news-timeline'
+import { resolveTaxonomyLabels } from '@/lib/news-taxonomy'
+
+const TIMELINE_STORAGE_BUCKET = 'audio-timelines'
+
+export type GenerateAndPersistTimelineParams = {
+  supabase: SupabaseClient
+  episode: {
+    id: string
+    type: 'digest' | 'insight' | 'journal'
+    audio_url: string
+    duration_s: number
+    /** Pré-existant en cas de régénération — sera archivé avant écriture. */
+    existing_timeline_url?: string | null
+  }
+  syntheses: NewsSynthesisInput[]
+}
+
+export type GenerateAndPersistTimelineResult = {
+  timeline_url: string
+  timeline_published: true
+  storage_path: string
+}
+
+/**
+ * Pipeline complet : récolte slugs taxonomy → résout libellés BDD → mapping
+ * déterministe → upload Storage JSON → UPDATE news_episodes.
+ *
+ * Throw `Error` si une étape critique échoue (Storage upload, UPDATE BDD).
+ * Le caller doit catch et décider du status code (les routes admin
+ * generate-audio retournent l'audio même si la timeline échoue — décision
+ * E3 du prompt T8).
+ */
+export async function generateAndPersistTimeline(
+  params: GenerateAndPersistTimelineParams,
+): Promise<GenerateAndPersistTimelineResult> {
+  const { supabase, episode, syntheses } = params
+
+  // 1. Collecter tous les slugs taxonomy à résoudre (specialite, themes[],
+  //    niveau_preuve) pour ne faire qu'une seule query BDD pour tout
+  //    l'épisode.
+  const allSlugs = new Set<string>()
+  for (const s of syntheses) {
+    if (s.specialite) allSlugs.add(s.specialite)
+    if (s.niveau_preuve) allSlugs.add(s.niveau_preuve)
+    for (const t of s.themes ?? []) {
+      if (t) allSlugs.add(t)
+    }
+  }
+  const taxonomyLabels = await resolveTaxonomyLabels(
+    supabase,
+    Array.from(allSlugs),
+  )
+
+  // 2. Mapping déterministe (T8-B).
+  const timeline = buildNewsTimeline({
+    episode: {
+      id: episode.id,
+      type: episode.type,
+      audio_url: episode.audio_url,
+      duration_s: episode.duration_s,
+    },
+    syntheses,
+    taxonomyLabels,
+  })
+
+  // 3. Archivage de l'ancienne timeline si présente (idempotence).
+  if (episode.existing_timeline_url) {
+    try {
+      const oldPath = extractStoragePath(episode.existing_timeline_url)
+      if (oldPath) {
+        const archivePath = `news/_archive/${episode.id}-${Date.now()}.json`
+        await supabase.storage.from(TIMELINE_STORAGE_BUCKET).move(oldPath, archivePath)
+      }
+    } catch (err) {
+      // Non-bloquant : si l'archive échoue, on écrase quand même.
+      console.warn('[generateAndPersistTimeline] archive failed (non-blocking):', err)
+    }
+  }
+
+  // 4. Upload JSON dans Storage (sous-dossier par type).
+  const ISO = new Date().toISOString().replace(/[:.]/g, '-')
+  const subdir = episode.type === 'journal' ? 'journals' : 'episodes'
+  const storagePath = `news/${subdir}/${episode.id}-${ISO}.json`
+
+  const { error: uploadError } = await supabase.storage
+    .from(TIMELINE_STORAGE_BUCKET)
+    .upload(storagePath, JSON.stringify(timeline, null, 2), {
+      contentType: 'application/json',
+      upsert: false,
+    })
+
+  if (uploadError) {
+    throw new Error(`Timeline upload failed: ${uploadError.message}`)
+  }
+
+  const { data: publicUrlData } = supabase.storage
+    .from(TIMELINE_STORAGE_BUCKET)
+    .getPublicUrl(storagePath)
+  const timeline_url = publicUrlData.publicUrl
+
+  // 5. UPDATE news_episodes.timeline_url + timeline_published.
+  const { error: updateError } = await supabase
+    .from('news_episodes')
+    .update({
+      timeline_url,
+      timeline_published: true,
+    })
+    .eq('id', episode.id)
+
+  if (updateError) {
+    throw new Error(`Timeline UPDATE failed: ${updateError.message}`)
+  }
+
+  return {
+    timeline_url,
+    timeline_published: true,
+    storage_path: storagePath,
+  }
+}
+
+/**
+ * Extrait le `path` d'une public URL Supabase Storage pour permettre l'archivage.
+ * Format URL attendu :
+ *   https://{ref}.supabase.co/storage/v1/object/public/{bucket}/{path...}
+ */
+function extractStoragePath(publicUrl: string): string | null {
+  const match = publicUrl.match(
+    /\/storage\/v1\/object\/public\/[^/]+\/(.+)$/,
+  )
+  return match?.[1] ?? null
+}

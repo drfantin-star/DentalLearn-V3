@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { isSuperAdmin } from '@/lib/auth/rbac'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { generateFullAudio } from '@/lib/elevenlabs'
+import { generateAndPersistTimeline } from '@/lib/news-audio'
+import type { NewsSynthesisInput } from '@/lib/timeline/build-news-timeline'
 
 // Heuristique 128 kbps (cf. /api/admin/news/episodes/[id]/generate-audio).
 const BYTES_PER_SECOND_128KBPS = 16_000
@@ -52,7 +54,7 @@ export async function POST(
 
     const { data: episode, error: fetchErr } = await adminSupabase
       .from('news_episodes')
-      .select('id, type, status, script_md')
+      .select('id, type, status, script_md, timeline_url')
       .eq('id', episodeId)
       .eq('type', 'journal')
       .maybeSingle()
@@ -153,10 +155,89 @@ export async function POST(
       )
     }
 
+    // ----- 6. T8 — Génération + persistence Timeline (non-bloquant) -----
+    // Idem episodes : si échec, on retourne l'audio publié sans timeline.
+    // Diff principale : synthèses chargées via news_episode_syntheses (N:N
+    // journal ↔ synthèses, position 1-6) et stockage dans news/journals/.
+    let timeline_info: {
+      timeline_url: string
+      timeline_published: boolean
+    } | null = null
+
+    try {
+      const { data: links, error: linksErr } = await adminSupabase
+        .from('news_episode_syntheses')
+        .select('synthesis_id, position')
+        .eq('episode_id', episode.id)
+        .order('position', { ascending: true })
+
+      if (linksErr) throw linksErr
+
+      if (links && links.length > 0) {
+        const synthesisIds = links.map((l) => l.synthesis_id as string)
+        const { data: synRows, error: synErr } = await adminSupabase
+          .from('news_syntheses')
+          .select(
+            'id, display_title, summary_fr, specialite, themes, key_figures, method, evidence_level, niveau_preuve, clinical_impact, caveats',
+          )
+          .in('id', synthesisIds)
+        if (synErr) throw synErr
+
+        const synById = new Map<string, NewsSynthesisInput>()
+        for (const s of synRows ?? []) {
+          const row = s as Record<string, unknown>
+          synById.set(row.id as string, {
+            id: row.id as string,
+            display_title: (row.display_title as string | null) ?? null,
+            summary_fr: (row.summary_fr as string | null) ?? null,
+            specialite: (row.specialite as string | null) ?? null,
+            themes: (row.themes as string[] | null) ?? null,
+            key_figures: (row.key_figures as string[] | null) ?? null,
+            method: (row.method as string | null) ?? null,
+            evidence_level: (row.evidence_level as string | null) ?? null,
+            niveau_preuve: (row.niveau_preuve as string | null) ?? null,
+            clinical_impact: (row.clinical_impact as string | null) ?? null,
+            caveats: (row.caveats as string | null) ?? null,
+          })
+        }
+
+        const orderedSyntheses: NewsSynthesisInput[] = links.flatMap((l) => {
+          const base = synById.get(l.synthesis_id as string)
+          return base
+            ? [{ ...base, position: l.position as number }]
+            : []
+        })
+
+        if (orderedSyntheses.length > 0) {
+          const result = await generateAndPersistTimeline({
+            supabase: adminSupabase,
+            episode: {
+              id: episode.id,
+              type: 'journal',
+              audio_url,
+              duration_s,
+              existing_timeline_url: (episode.timeline_url as string | null) ?? null,
+            },
+            syntheses: orderedSyntheses,
+          })
+          timeline_info = {
+            timeline_url: result.timeline_url,
+            timeline_published: result.timeline_published,
+          }
+        }
+      }
+    } catch (timelineErr) {
+      console.warn(
+        '[generate-audio journal] Timeline generation failed (non-blocking):',
+        timelineErr,
+      )
+    }
+
     return NextResponse.json({
       audio_url: updated.audio_url,
       duration_s: updated.duration_s,
       status: updated.status,
+      ...(timeline_info ? { timeline: timeline_info } : {}),
     })
   } catch (err) {
     console.error('POST generate-audio journal error:', err)
