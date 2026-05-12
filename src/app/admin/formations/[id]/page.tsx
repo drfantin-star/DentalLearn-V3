@@ -14,7 +14,8 @@ import {
   HelpCircle,
   GripVertical,
   Eye,
-  Play
+  Play,
+  Users
 } from 'lucide-react';
 
 interface Formation {
@@ -235,6 +236,13 @@ export default function FormationDetailPage() {
           >
             {formation.is_published ? '✓ Publiée' : 'Brouillon'}
           </button>
+          <Link
+            href={`/admin/formations/${formation.id}/instructors`}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+          >
+            <Users className="w-4 h-4" />
+            Intervenants
+          </Link>
           <Link
             href={`/admin/formations/${formation.id}/edit`}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"

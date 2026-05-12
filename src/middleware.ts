@@ -115,3 +115,34 @@ export async function requireIntraRole(
 
   return null
 }
+
+/**
+ * Sprint 2 — Redirige vers /login si non connecté, vers /403 si le user
+ * n'a ni le rôle `formateur` ni `super_admin`. Pour les route handlers
+ * dans `/api/formateur/*` (le layout Server Component utilise plutôt
+ * `requireFormateurOrRedirect()` dans `src/lib/auth/guards.ts`).
+ *
+ * Cohérent T2 : un super_admin peut toujours accéder à l'espace formateur
+ * (Dr Fantin doit pouvoir tester l'UX sans s'auto-promouvoir).
+ */
+export async function requireFormateur(request: NextRequest) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    const next = new URL('/login', request.url)
+    next.searchParams.set('next', request.nextUrl.pathname)
+    return NextResponse.redirect(next)
+  }
+
+  const [isFmt, isSA] = await Promise.all([
+    hasRole(user.id, 'formateur'),
+    isSuperAdmin(user.id),
+  ])
+
+  if (!isFmt && !isSA) {
+    return NextResponse.redirect(new URL('/403', request.url))
+  }
+
+  return null
+}
