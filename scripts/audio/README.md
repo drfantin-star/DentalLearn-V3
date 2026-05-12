@@ -5,6 +5,11 @@ sur la machine locale Dr Fantin. Le script Python de production
 `generate_audio.py` vit hors repo (cf. ticket POC-T2) ; ce dossier sert
 uniquement de **zone de staging versionnée** pour les livrables POC.
 
+> **Version canonique à utiliser côté Mac (post D7-6) : `generate_audio_D7-6.py`.**
+> Elle remplace `generate_audio_PHASE_2B.py` (conservée pour traçabilité), avec
+> en plus l'injection du header Xing post-concat (ffmpeg libmp3lame `-write_xing 1`)
+> qui résout le bug de durée mensongère + désync seek HTML5. Cf. `RAPPORT_D7-6_XING_INJECTION.md`.
+
 ## Contenu
 
 | Fichier | Rôle | Phase |
@@ -12,8 +17,9 @@ uniquement de **zone de staging versionnée** pour les livrables POC.
 | `test_eleven_labs_with_timestamps.py` | Script de test isolé — valide en réel le format de réponse de `client.text_to_dialogue.convert_with_timestamps`. | 2A |
 | `POC_T2_PHASE_A_OBSERVATIONS.md` | Observations Phase 2A (rempli, GO formel Dr Fantin du 5 mai 2026). | 2A |
 | `REFERENCE_generate_audio_current.py` | Snapshot anonymisé (clé API en placeholder) du `generate_audio.py` local Dr Fantin avant Phase 2B. Sert de référence pour vérifier la compatibilité descendante. | 2B |
-| `generate_audio_PHASE_2B.py` | Nouvelle version du script avec mode `WITH_TIMESTAMPS=True` qui produit `.mp3` + `.timeline.json`. Compat descendante stricte avec le legacy si `WITH_TIMESTAMPS=False`. | 2B |
+| `generate_audio_PHASE_2B.py` | Version POC-T2 avec mode `WITH_TIMESTAMPS=True` qui produit `.mp3` + `.timeline.json`. Compat descendante stricte avec le legacy si `WITH_TIMESTAMPS=False`. **Conservé pour traçabilité, ne pas copier en Mac.** | 2B |
 | `POC_T2_PHASE_B_RECAP.md` | Template de récap à compléter par Dr Fantin après run sur **Communication et Écoute Active S2**. | 2B |
+| `generate_audio_D7-6.py` | **Version canonique courante.** Identique à PHASE_2B + injection du header Xing post-concat via `ffmpeg -c:a libmp3lame -b:a 128k -ar 44100 -ac 1 -write_xing 1` (flags pivots T7.1). Dépendance externe ajoutée : `ffmpeg` (`brew install ffmpeg` sur macOS). | D7-6 |
 
 > **Hors scope ici** : le `generate_audio.py` actuel (avec clé API en clair)
 > n'est **pas** committé. Il vit chez Dr Fantin.
@@ -40,18 +46,25 @@ Résultat acquis :
 
 ### Procédure de remplacement (Dr Fantin)
 
+> Depuis D7-6, c'est `generate_audio_D7-6.py` qui doit être copié — il
+> remplace `generate_audio_PHASE_2B.py` côté Mac.
+
 ```bash
 # 1. Backup obligatoire de l'existant
 cp ~/Desktop/DentalLearn-Audio/generate_audio.py \
    ~/Desktop/DentalLearn-Audio/generate_audio.py.backup_$(date +%Y%m%d_%H%M%S)
 
-# 2. Copie de la Phase 2B en remplacement
-cp scripts/audio/generate_audio_PHASE_2B.py \
+# 2. Copie de la version canonique courante (D7-6) en remplacement
+cp scripts/audio/generate_audio_D7-6.py \
    ~/Desktop/DentalLearn-Audio/generate_audio.py
 
 # 3. Réinjection de la clé API
-#    Éditer ~/Desktop/DentalLearn-Audio/generate_audio.py ligne 41 :
+#    Éditer ~/Desktop/DentalLearn-Audio/generate_audio.py au niveau du
+#    bloc CONFIGURATION (constante API_KEY) :
 #    API_KEY = "REMPLACER_PAR_TA_CLE"   →   API_KEY = "<la vraie clé locale>"
+
+# 4. Pré-requis D7-6 (à vérifier une seule fois sur la machine)
+which ffmpeg || brew install ffmpeg
 ```
 
 ### Bascule du mode
