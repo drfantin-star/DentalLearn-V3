@@ -198,6 +198,39 @@ const TimelineTemplateSchema = z
     { message: 'timeline template requires either steps[] or events[]' }
   )
 
+/**
+ * Template "recap" (T8) : carte récapitulative 2 colonnes "Chiffres clés /
+ * Impact clinique" + footer optionnel "Limites". Utilisée :
+ *  - en fin de chaque chapitre dans la timeline news pour transition douce
+ *    vers la synthèse suivante,
+ *  - comme carte statique screenshot-able dans NewsModal (synthèse isolée).
+ *
+ * Ajout strictement additif (T8-C, décision Q-T8-4=b) — les payloads
+ * antérieurs (T2/T3/T4/T5/T6) restent valides.
+ */
+const RecapTemplateSchema = z.object({
+  kind: z.literal('recap'),
+  // Titre court "En résumé — {display_title}" rendu en header de la carte.
+  // Limite 80 chars pour permettre un peu plus que les titres de scène
+  // (qui peuvent être assez verbeux dans les synthèses news).
+  title: z.string().max(80),
+  // Chiffres clés (3 max) — réutilise le même shape que FiguresTemplate.
+  figures: z
+    .array(
+      z.object({
+        value: z.string(),
+        label: z.string(),
+        emphasis: z.boolean().optional(),
+      })
+    )
+    .max(3)
+    .optional(),
+  // Impact clinique : phrase d'accroche tronquée à 200 chars.
+  impact: z.string().max(200).optional(),
+  // Caveats (limites) : phrase de précaution tronquée à 160 chars.
+  caveats: z.string().max(160).optional(),
+})
+
 const SceneTemplateSchema = z.discriminatedUnion('kind', [
   FlowchartTemplateSchema,
   GridTemplateSchema,
@@ -205,6 +238,7 @@ const SceneTemplateSchema = z.discriminatedUnion('kind', [
   CausalTemplateSchema,
   FiguresTemplateSchema,
   TimelineTemplateSchema,
+  RecapTemplateSchema,
 ])
 
 // ─── Scenes & Chapters ───────────────────────────────────────────────────────
@@ -253,6 +287,8 @@ export const TimelineSchema = z.object({
     'auto_python_pipeline',
     'auto_llm_extraction',
     'manual_admin_edit',
+    // T8 — mapping déterministe news_syntheses → Timeline (pas de LLM).
+    'auto_news_deterministic',
   ]),
   transcript: TranscriptSchema.optional(),
   concepts: z.array(TimelineConceptSchema).default([]),
