@@ -926,6 +926,153 @@ Rétrocompatibilité : les attestations émises avant T7 ne sont pas re-traitée
 
 ---
 
+## Espace Formateur — Sprint 2 T1 (11 mai 2026)
+
+Migration `20260511_sprint2_formateur_entities.sql` — 5 nouvelles tables + 3 helpers SQL + RLS différenciée + triggers `updated_at`. Aucune modification de code applicatif (T2+).
+
+**Décisions produit appliquées** :
+- S2.1 — masterclass live **gratuite V1** → pas de colonne `price_cents` sur `live_sessions`.
+- S2.2 — visio = **lien Zoom manuel V1** → colonnes `zoom_url` + `zoom_password` sur `live_sessions`.
+- Affichage inscrits formateur (T5) = compteur + prénoms via SELECT scoped `user_profiles.first_name` (cohérent RGPD modèle A).
+- Convention nommage migration = `YYYYMMDD_*` (Sprint 1 prime sur `0017_*` du handoff).
+- Table N:N `formation_instructors` avec `is_primary boolean` (1 formateur ↔ N formations).
+
+### Tables (5)
+
+#### formation_instructors — liaison N:N formateurs ↔ formations
+| Colonne | Type | Notes |
+|---|---|---|
+| id | uuid PK | gen_random_uuid() |
+| formation_id | uuid NOT NULL | FK `formations(id)` ON DELETE CASCADE |
+| user_id | uuid NOT NULL | FK `auth.users(id)` ON DELETE CASCADE |
+| is_primary | boolean NOT NULL | default false ; désigne le formateur principal sur la fiche formation publique |
+| assigned_at | timestamptz NOT NULL | default now() |
+| assigned_by | uuid | FK `auth.users(id)` — qui a fait l'assignation (Dr Fantin V1) |
+
+UNIQUE `(formation_id, user_id)` · index `formation_instructors_user_id_idx (user_id)`.
+
+#### formateur_profiles — profil public formateur (1 ligne / user formateur)
+| Colonne | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| user_id | uuid UNIQUE NOT NULL | FK `auth.users(id)` |
+| slug | varchar(80) UNIQUE NOT NULL | `prenom-nom`, génération T2 |
+| display_name | varchar(120) NOT NULL | |
+| bio_short / bio_long | varchar(280) / text | court = teaser fiche ; long = page profil markdown |
+| photo_pro_url | text | bucket `formateur-photos` (créé en T6) |
+| linkedin_url / website_url | text | |
+| expertise_tags | text[] | multi-select autocomplete T6 |
+| is_published | boolean NOT NULL | default false ; passe true au "Publier mon profil" |
+| published_at | timestamptz | nullable |
+| created_at / updated_at | timestamptz NOT NULL | trigger `set_updated_at_formateur_profiles` |
+
+Index `formateur_profiles_slug_idx` + partiel `formateur_profiles_published_idx (is_published) WHERE is_published = true`.
+
+#### live_events — formations présentielles
+| Colonne | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| formateur_user_id | uuid NOT NULL | FK `auth.users(id)` ON DELETE CASCADE — owner unique |
+| formation_id | uuid | FK `formations(id)` ON DELETE SET NULL — optionnel |
+| title | varchar(200) NOT NULL | |
+| description | text | |
+| location_city | varchar(120) NOT NULL | |
+| location_venue | varchar(200) | |
+| starts_at / ends_at | timestamptz | starts_at NOT NULL ; ends_at optionnel |
+| external_registration_url | text | inscription externe (formateur ou Dentalschool), pas d'inscription DentalLearn pour les présentiels V1 |
+| capacity | int | |
+| is_published | boolean NOT NULL | default false |
+| created_at / updated_at | timestamptz NOT NULL | trigger `set_updated_at_live_events` |
+
+CHECK `live_events_dates_coherent` : `ends_at IS NULL OR ends_at > starts_at`.
+Index : `live_events_formateur_idx`, `live_events_starts_at_idx`, partiel `live_events_published_upcoming_idx (starts_at) WHERE is_published = true` *(prédicat `starts_at > now()` retiré : Postgres interdit les fonctions STABLE dans un WHERE d'index partiel — le planner exploite quand même cet index pour les requêtes "upcoming")*.
+
+#### live_sessions — masterclass live visio (Zoom manuel V1)
+| Colonne | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| formateur_user_id | uuid NOT NULL | owner unique |
+| formation_id | uuid | optionnel |
+| title | varchar(200) NOT NULL | |
+| description | text | |
+| starts_at | timestamptz NOT NULL | |
+| duration_min | int NOT NULL | default 60 |
+| zoom_url | text | saisi manuellement par formateur (S2.2 V1) |
+| zoom_password | varchar(100) | |
+| capacity | int | |
+| status | varchar(20) NOT NULL | default `'scheduled'` ; CHECK in `('draft','scheduled','live','completed','cancelled')` |
+| recording_url | text | rempli post-session |
+| is_published | boolean NOT NULL | default false |
+| created_at / updated_at | timestamptz NOT NULL | trigger `set_updated_at_live_sessions` |
+
+CHECK `live_sessions_status_check`. **Pas de `price_cents`** (S2.1 gratuit V1).
+Index : `live_sessions_formateur_idx`, `live_sessions_starts_at_idx`, `live_sessions_status_idx`.
+
+#### live_registrations — inscriptions aux live_sessions
+| Colonne | Type | Notes |
+|---|---|---|
+| id | uuid PK | |
+| session_id | uuid NOT NULL | FK `live_sessions(id)` ON DELETE CASCADE |
+| user_id | uuid NOT NULL | FK `auth.users(id)` ON DELETE CASCADE |
+| registered_at | timestamptz NOT NULL | default now() |
+| attended | boolean | NULL avant session, set par formateur ou cron après |
+| attended_duration_sec | int | durée effective présence |
+| cancelled_at | timestamptz | annulation user (soft delete) |
+
+UNIQUE `(session_id, user_id)`. Index `live_registrations_user_idx`, `live_registrations_session_idx`.
+
+### Helpers SQL (3)
+
+Pattern identique Sprint 1 : `STABLE SECURITY DEFINER`, `SET search_path = public, pg_temp`, `REVOKE EXECUTE FROM PUBLIC, anon` puis `GRANT EXECUTE TO authenticated, service_role`.
+
+| Helper | Signature | Comportement |
+|---|---|---|
+| `is_formateur_of` | `(p_user_id uuid, p_formation_id uuid) → boolean` | TRUE si user est dans `formation_instructors` pour cette formation, OU super_admin (bypass). |
+| `get_formateur_formations` | `(p_user_id uuid) → SETOF uuid` | liste les `formation_id` assignées au user. |
+| `formateur_aggregated_stats` | `(p_user_id uuid, p_date_from date, p_date_to date) → jsonb` | **Stub T1** : retourne `'{}'::jsonb`. Signature gelée — body réécrit en T3 avec agrégats sur `user_formations` / `user_sequences` / `user_points` scopés sur `get_formateur_formations(p_user_id)` (RGPD modèle A — pas de données nominatives). |
+
+> Note alignement Sprint 1 : les default privileges du schema `public` grantent désormais automatiquement `anon` sur les nouvelles fonctions — il faut REVOKE anon explicitement (en plus de PUBLIC) pour reproduire l'état observé des helpers Sprint 1 (`has_role`, `is_super_admin`, etc.).
+
+### Triggers `updated_at`
+
+Réutilisent la fonction `update_updated_at_column()` déjà en place (créée hors Sprint 1) :
+- `set_updated_at_formateur_profiles` BEFORE UPDATE ON `formateur_profiles`
+- `set_updated_at_live_events` BEFORE UPDATE ON `live_events`
+- `set_updated_at_live_sessions` BEFORE UPDATE ON `live_sessions`
+
+### Policies RLS (20 — 4 par table)
+
+| Table | SELECT | INSERT | UPDATE | DELETE |
+|---|---|---|---|---|
+| `formation_instructors` | public `(true)` — exposé fiche formation publique | super_admin | super_admin | super_admin |
+| `formateur_profiles` | `is_published=true` OU owner OU super_admin | super_admin | owner (`user_id=auth.uid()`) OU super_admin | super_admin |
+| `live_events` | `is_published=true` OU owner OU super_admin | `(formateur_user_id=auth.uid() AND has_role('formateur'))` OU super_admin | owner OU super_admin | owner OU super_admin |
+| `live_sessions` | `is_published=true` OU owner OU super_admin | `(formateur_user_id=auth.uid() AND has_role('formateur'))` OU super_admin | owner OU super_admin | owner OU super_admin |
+| `live_registrations` | user concerné OU **owner strict de la session** (`live_sessions.formateur_user_id=auth.uid()`) OU super_admin | self (`user_id=auth.uid()`) | user (cancellation) OU owner session OU super_admin | super_admin (cancel = UPDATE `cancelled_at`, pas DELETE) |
+
+> Décision Dr Fantin 2026-05-11 : RLS SELECT `live_registrations` côté formateur = **ownership strict sur `live_sessions`**, pas d'élargissement via `formation_instructors` (un co-formateur ne voit pas les inscrits d'une session qu'il n'a pas créée). Évite fuite nominative par effet de bord transitif.
+
+### Tests d'acceptation validés (snapshot 11 mai 2026)
+
+- ✅ Migration applicable + reversible (up/down testés sur prod via execute_sql, cleanup intégral confirmé)
+- ✅ `is_formateur_of` : 3 cas testés (négatif, super_admin bypass, instructor row) → tous corrects
+- ✅ `get_formateur_formations` retourne la formation assignée
+- ✅ UNIQUE `formation_instructors(formation_id, user_id)` déclenche `unique_violation`
+- ✅ UNIQUE `live_registrations(session_id, user_id)` déclenche `unique_violation`
+- ✅ CHECK `live_events_dates_coherent` déclenche `check_violation` sur `ends_at < starts_at`
+- ✅ CHECK `live_sessions_status_check` déclenche `check_violation` sur status invalide
+- ✅ ACL helpers Sprint 2 alignée Sprint 1 : `{postgres, authenticated, service_role}` strict (pas d'anon)
+- ✅ Advisors Supabase : aucun nouveau warning critique ; 3 warnings `authenticated_security_definer_function_executable` cohérents avec ceux des helpers Sprint 1 (`has_role`, `is_super_admin`, etc.)
+
+### Dette T1 loggée
+
+- D20 — Pas de seed initial dans `formation_instructors` ni `formateur_profiles` (assignations test livrées en T2 par Dr Fantin).
+- D21 — Body de `formateur_aggregated_stats` à réécrire en T3 (T1 = stub). Signature gelée, pas de migration ultérieure nécessaire.
+- D22 — Pas de RLS user-level testée en T1 (besoin d'un user formateur réel, livré en T2). Tests RLS d'isolation à T2/T8.
+- D23 — Index partiel `live_events_published_upcoming_idx` sans prédicat `starts_at > now()` (Postgres interdit les fonctions STABLE) — à surveiller perf en T8 sur listing "upcoming" si volumétrie monte.
+
+---
+
 ## NOTES IMPORTANTES
 
 ### ⚠️ Bug mode Preview (formations)
@@ -1001,5 +1148,6 @@ service_role) — voir migrations dédiées pour le détail.
 *Généré automatiquement depuis Supabase le 5 avril 2026*
 *Mis à jour le 3 mai 2026 — clôture Sprint 1 (T1 → T7) + ticket T8 (doc finale)*
 *Mis à jour le 4 mai 2026 — POC visualisation audio T1 (colonnes `timeline_url`/`timeline_published` sur `sequences` et `news_syntheses` + bucket `audio-timelines`)*
+*Mis à jour le 11 mai 2026 — Sprint 2 T1 Espace Formateur (5 nouvelles tables : `formation_instructors`, `formateur_profiles`, `live_events`, `live_sessions`, `live_registrations` + 3 helpers SQL + RLS 20 policies + 3 triggers `updated_at`)*
 *À commiter dans le repo : `drfantin-star/DentalLearn-V3`*
 *Chemin actuel : `docs/prototypes/DATABASE_SCHEMA.md`*
