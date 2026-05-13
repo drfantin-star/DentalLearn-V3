@@ -186,7 +186,7 @@ function MultiPicker({
           value.map((slug) => (
             <span
               key={slug}
-              className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded px-2 py-0.5 text-xs"
+              className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-700"
             >
               {labelOf(slug)}
               <button
@@ -206,7 +206,7 @@ function MultiPicker({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="mt-1 inline-flex items-center gap-1 text-sm border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="mt-1 inline-flex items-center gap-1 text-sm text-gray-700 border border-gray-300 rounded px-2 py-1 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500"
       >
         + Ajouter <span className="text-xs">▾</span>
       </button>
@@ -220,7 +220,7 @@ function MultiPicker({
             placeholder="Filtrer…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full border-b border-gray-200 px-2 py-1 text-sm text-gray-700 outline-none"
+            className="w-full border-b border-gray-200 px-2 py-1 text-sm text-gray-700 bg-white outline-none"
           />
           <ul className="max-h-48 overflow-y-auto">
             {filtered.length === 0 ? (
@@ -235,7 +235,7 @@ function MultiPicker({
                   <button
                     type="button"
                     onClick={() => addSlug(it.slug)}
-                    className="w-full text-left px-2 py-1 text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+                    className="w-full text-left px-2 py-1 text-sm text-gray-700 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
                   >
                     {it.label}
                   </button>

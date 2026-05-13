@@ -298,7 +298,7 @@ export function SynthesisEditForm({
         <div className="flex items-center justify-between gap-2">
           <Link
             href={`/admin/news/${synthesis.id}`}
-            className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+            className="inline-flex items-center gap-2 text-sm text-gray-700 hover:text-gray-900"
           >
             <ArrowLeft className="w-4 h-4" />
             Retour au détail
@@ -306,7 +306,7 @@ export function SynthesisEditForm({
           <button
             type="button"
             onClick={() => setDrawerOpen(true)}
-            className="xl:hidden inline-flex items-center gap-1 text-sm border border-gray-300 rounded px-3 py-1.5 bg-white hover:bg-gray-50"
+            className="xl:hidden inline-flex items-center gap-1 text-sm text-gray-700 border border-gray-300 rounded px-3 py-1.5 bg-white hover:bg-gray-50"
           >
             <ExternalLink className="w-3.5 h-3.5" />
             Détails source
@@ -352,7 +352,7 @@ export function SynthesisEditForm({
                   {CATEGORIES.map((cat) => (
                     <label
                       key={cat}
-                      className="inline-flex items-center gap-1.5 text-sm cursor-pointer"
+                      className="inline-flex items-center gap-1.5 text-sm text-gray-700 cursor-pointer"
                     >
                       <input
                         type="radio"
@@ -392,7 +392,7 @@ export function SynthesisEditForm({
                   type="text"
                   value={form.display_title}
                   onChange={(e) => updateField('display_title', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Ex. Greffes vs tunnel : verdict 2026"
                 />
                 {titleInvalid && (
@@ -416,7 +416,7 @@ export function SynthesisEditForm({
                   value={form.summary_fr}
                   onChange={(e) => updateField('summary_fr', e.target.value)}
                   rows={6}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
                 />
                 {summaryInvalid && (
                   <p className="mt-1 text-xs text-red-600">
@@ -431,7 +431,7 @@ export function SynthesisEditForm({
                   value={form.method}
                   onChange={(e) => updateField('method', e.target.value)}
                   rows={3}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
                 />
               </FieldRow>
 
@@ -447,7 +447,7 @@ export function SynthesisEditForm({
                   type="text"
                   value={form.evidence_level}
                   onChange={(e) => updateField('evidence_level', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Ex. Méta-analyse Cochrane, niveau 1a"
                 />
               </FieldRow>
@@ -457,7 +457,7 @@ export function SynthesisEditForm({
                   value={form.clinical_impact}
                   onChange={(e) => updateField('clinical_impact', e.target.value)}
                   rows={4}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
                 />
               </FieldRow>
 
@@ -466,7 +466,7 @@ export function SynthesisEditForm({
                   value={form.caveats}
                   onChange={(e) => updateField('caveats', e.target.value)}
                   rows={3}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
                 />
               </FieldRow>
             </Section>
@@ -535,7 +535,7 @@ export function SynthesisEditForm({
             <button
               type="button"
               onClick={onCancel}
-              className="text-sm border border-gray-300 rounded px-3 py-1.5 bg-white hover:bg-gray-50"
+              className="text-sm text-gray-700 border border-gray-300 rounded px-3 py-1.5 bg-white hover:bg-gray-50"
             >
               Annuler
             </button>
@@ -633,7 +633,7 @@ function MetadataPanel({
       {raw.abstract && (
         <div>
           <p className="text-xs font-semibold text-gray-700 mb-1">Abstract source</p>
-          <div className="max-h-[60vh] overflow-y-auto border border-gray-200 rounded p-2 bg-gray-50 text-xs whitespace-pre-wrap">
+          <div className="max-h-[60vh] overflow-y-auto border border-gray-200 rounded p-2 bg-white text-xs text-gray-900 whitespace-pre-wrap">
             {raw.abstract}
           </div>
         </div>

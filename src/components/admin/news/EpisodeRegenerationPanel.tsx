@@ -233,7 +233,7 @@ export function EpisodeRegenerationPanel({
             : `Régénérer les episodes sélectionnés (${selected.size})`}
         </button>
         {progress && (
-          <span className="text-sm text-gray-600" aria-live="polite">
+          <span className="text-sm text-gray-700" aria-live="polite">
             {progress}
           </span>
         )}
@@ -275,7 +275,7 @@ function EpisodeRow({
 }) {
   return (
     <li>
-      <label className="inline-flex items-start gap-2 text-sm cursor-pointer">
+      <label className="inline-flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
         <input
           type="checkbox"
           checked={checked}

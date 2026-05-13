@@ -57,7 +57,7 @@ export function KeyFiguresEditor({ value, onChange }: Props) {
               type="text"
               value={fig}
               onChange={(e) => updateAt(idx, e.target.value)}
-              className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="Ex. 85% recouvrement à 12 mois"
             />
             <button
@@ -65,7 +65,7 @@ export function KeyFiguresEditor({ value, onChange }: Props) {
               onClick={() => moveAt(idx, -1)}
               disabled={idx === 0}
               aria-label="Déplacer vers le haut"
-              className="px-2 py-1 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="px-2 py-1 text-xs text-gray-700 border border-gray-300 rounded bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               ↑
             </button>
@@ -74,7 +74,7 @@ export function KeyFiguresEditor({ value, onChange }: Props) {
               onClick={() => moveAt(idx, 1)}
               disabled={idx === value.length - 1}
               aria-label="Déplacer vers le bas"
-              className="px-2 py-1 text-xs border border-gray-300 rounded bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="px-2 py-1 text-xs text-gray-700 border border-gray-300 rounded bg-white hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed"
             >
               ↓
             </button>
