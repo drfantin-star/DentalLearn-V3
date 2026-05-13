@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, BookOpen,
   Loader2, Settings, Award, Briefcase, Building2,
+  Shield, Presentation,
 } from 'lucide-react'
 import StatsCards from '@/components/home/StatsCards'
 import DemarcheCard from '@/components/home/DemarcheCard'
@@ -33,6 +34,8 @@ export default function ProfilPage() {
   const [ordreDate, setOrdreDate] = useState<string | null>(null)
   const [intraRole, setIntraRole] = useState<IntraRole | null>(null)
   const [orgless, setOrgless] = useState(false)
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
+  const [isFormateur, setIsFormateur] = useState(false)
   const [showCabinetModal, setShowCabinetModal] = useState(false)
 
   const demarchesScrollRef = useRef<HTMLDivElement>(null)
@@ -59,16 +62,18 @@ export default function ProfilPage() {
         axe3: cp.axe3 || 0, axe4: cp.axe4 || 0
       })
 
-      // Lecture intra_role + statut orgless via API serveur (cache mémoire RBAC).
+      // Lecture intra_role + flags rôles globaux via API serveur (cache RBAC).
       try {
         const res = await fetch('/api/user/intra-role')
         if (res.ok) {
           const json = await res.json()
           setIntraRole((json.intra_role as IntraRole | null) ?? null)
           setOrgless(Boolean(json.orgless))
+          setIsSuperAdmin(Boolean(json.is_super_admin))
+          setIsFormateur(Boolean(json.is_formateur))
         }
       } catch {
-        // Fail silencieux : carte upgrade simplement masquée si on ne sait pas.
+        // Fail silencieux : cartes simplement masquées si on ne sait pas.
       }
 
       setLoading(false)
@@ -78,6 +83,7 @@ export default function ProfilPage() {
 
   const showTenantLink = intraRole && TENANT_ADMIN_ROLES.has(intraRole)
   const showUpgradeCard = !loading && orgless && !intraRole
+  const showEspacesSection = isSuperAdmin || isFormateur
 
   const handleCabinetCreated = async () => {
     setShowCabinetModal(false)
@@ -91,6 +97,8 @@ export default function ProfilPage() {
         const json = await res.json()
         setIntraRole((json.intra_role as IntraRole | null) ?? null)
         setOrgless(Boolean(json.orgless))
+        setIsSuperAdmin(Boolean(json.is_super_admin))
+        setIsFormateur(Boolean(json.is_formateur))
       }
     } catch {
       // Idem : fail silencieux
@@ -110,7 +118,25 @@ export default function ProfilPage() {
       <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 py-4">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold text-white/80">Mon espace personnel</p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {isSuperAdmin && (
+              <Link
+                href="/admin"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-colors"
+              >
+                <Shield className="w-4 h-4 text-white" />
+                <span className="text-xs font-semibold text-white">Administration</span>
+              </Link>
+            )}
+            {isFormateur && (
+              <Link
+                href="/formateur/dashboard"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-colors"
+              >
+                <Presentation className="w-4 h-4 text-white" />
+                <span className="text-xs font-semibold text-white">Espace formateur</span>
+              </Link>
+            )}
             {showTenantLink && (
               <Link
                 href="/tenant/admin"
@@ -163,6 +189,64 @@ export default function ProfilPage() {
               <ChevronRight className="w-5 h-5 text-[#6b7280]" />
             </div>
           </button>
+        )}
+
+        {/* Mes espaces — visible si super_admin et/ou formateur (cumul OK) */}
+        {showEspacesSection && (
+          <section>
+            <h2 className="text-base font-bold text-[#e5e5e5] mb-1">
+              Mes espaces
+            </h2>
+            <p className="text-xs text-[#6b7280] mb-3">
+              Accédez à vos espaces dédiés selon vos rôles.
+            </p>
+            <div className="space-y-3">
+              {isSuperAdmin && (
+                <Link
+                  href="/admin"
+                  className="block p-4 hover:border-amber-500/60 transition-colors"
+                  style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-amber-400" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-[#e5e5e5] text-sm">
+                        Administration
+                      </div>
+                      <div className="text-xs text-[#6b7280]">
+                        Gestion de la plateforme, formateurs, organisations.
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-[#6b7280]" />
+                  </div>
+                </Link>
+              )}
+              {isFormateur && (
+                <Link
+                  href="/formateur/dashboard"
+                  className="block p-4 hover:border-[#2D1B96] transition-colors"
+                  style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#2D1B96]/15 flex items-center justify-center">
+                      <Presentation className="w-5 h-5 text-[#8B5CF6]" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-[#e5e5e5] text-sm">
+                        Espace Formateur
+                      </div>
+                      <div className="text-xs text-[#6b7280]">
+                        Suivez vos formations animées, masterclass et profil public.
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-[#6b7280]" />
+                  </div>
+                </Link>
+              )}
+            </div>
+          </section>
         )}
 
         {/* Mes démarches en cours */}

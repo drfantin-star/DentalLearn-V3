@@ -5,12 +5,12 @@ import AudioQueuePlayer from '@/components/news/AudioQueuePlayer'
 import { AudioProvider } from '@/context/AudioContext'
 import { AudioPlayerProvider } from '@/context/AudioPlayerContext'
 import { createClient } from '@/lib/supabase/server'
-import { getUserIntraRole } from '@/lib/auth/rbac'
+import { getUserIntraRole, isFormateur, isSuperAdmin } from '@/lib/auth/rbac'
 
-// Layout async : résout l'intra_role côté serveur pour gater l'onglet
-// "Mon cabinet" du BottomNav. Pas de redirection ici — les pages restent
-// accessibles aux users orgless ; seul l'onglet est masqué si l'user n'est
-// pas titulaire / admin_rh / admin_of.
+// Layout async : résout l'intra_role + flags rôles globaux (formateur,
+// super_admin) côté serveur pour gater le 5e onglet contextuel du BottomNav.
+// Pas de redirection ici — les pages restent accessibles aux users orgless ;
+// seul l'onglet est masqué si l'user n'a aucun rôle élevé.
 
 export default async function AppLayout({
   children,
@@ -22,7 +22,13 @@ export default async function AppLayout({
     data: { user },
   } = await supabase.auth.getUser()
 
-  const intraRole = user ? await getUserIntraRole(user.id) : null
+  const [intraRole, superAdminFlag, formateurFlag] = user
+    ? await Promise.all([
+        getUserIntraRole(user.id),
+        isSuperAdmin(user.id),
+        isFormateur(user.id),
+      ])
+    : [null, false, false]
 
   return (
     <AudioProvider>
@@ -32,7 +38,11 @@ export default async function AppLayout({
           <PWAInstallBanner />
           <MiniPlayer />
           <AudioQueuePlayer />
-          <BottomNav intraRole={intraRole} />
+          <BottomNav
+            intraRole={intraRole}
+            isSuperAdmin={superAdminFlag}
+            isFormateur={formateurFlag}
+          />
         </div>
       </AudioPlayerProvider>
     </AudioProvider>
