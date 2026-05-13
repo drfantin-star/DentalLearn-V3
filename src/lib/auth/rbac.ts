@@ -67,51 +67,67 @@ export interface FormateurStats {
 }
 
 // ─── Cache par requête ────────────────────────────────────────────────────────
-// Map en mémoire locale au module. Réinitialisé à chaque nouvelle invocation
-// Edge/Node dans le contexte Next.js App Router — pas de state global persistant.
+// Les helpers sensibles aux mutations de rôles/membership (isSuperAdmin,
+// hasRole, isFormateurOf, getUserIntraRole) ne sont PAS mémoïsés au scope
+// module : un crash MIDDLEWARE_INVOCATION_FAILED a été observé sur la preview
+// T3.5 quand on tentait de wrapper ces helpers avec `cache()` de React —
+// `cache()` n'est pas exposé dans l'Edge Runtime du middleware Next 14.x
+// (TypeError: bt.cache is not a function), et `middleware.ts` importe
+// transitivement `rbac.ts` ce qui force l'évaluation top-level en Edge.
+//
+// Conséquence acceptée : chaque appel = 1 RTT Supabase. Coût négligeable
+// (lecture indexée `user_roles` < 10 ms, 0–2 appels par requête). Bénéfice
+// collatéral : la révocation d'un rôle est répercutée immédiatement, sans
+// fenêtre de cache stale.
+//
+// Les caches `orgCache` et `formateurFormationsCache` restent au scope module
+// pour l'instant (out of scope du fix bug D2-T3.5 ; à revoir Sprint 3 si
+// reproduction d'un symptôme analogue).
 
-const roleCache = new Map<string, boolean>()
 const orgCache = new Map<string, UserOrg | null>()
-const intraRoleCache = new Map<string, IntraRole | null>()
 const formateurFormationsCache = new Map<string, FormateurFormation[]>()
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Vérifie si un userId est super_admin.
- * Appelle le helper SQL `is_super_admin()` créé en T1.
+ * Vérifie si un userId possède un rôle global donné.
+ *
+ * Lit directement la table `user_roles` (RLS `user_roles_select_own` autorise
+ * `auth.uid() = user_id`). On évite la RPC SQL `has_role()` qui retournait
+ * `false` silencieusement depuis le client supabase-js v2 en preview T3.5
+ * (cause profonde non identifiée — probablement bug de sérialisation de
+ * l'enum `app_role` par PostgREST quand passé en string non castée depuis
+ * supabase-js ; le SQL équivalent direct renvoie bien `true`).
+ *
+ * Pas de mémoization — cf. note de section "Cache par requête" plus haut.
  */
-export async function isSuperAdmin(userId: string): Promise<boolean> {
-  const cacheKey = `sa:${userId}`
-  if (roleCache.has(cacheKey)) return roleCache.get(cacheKey)!
-
+export async function hasRole(userId: string, role: AppRole): Promise<boolean> {
   const supabase = createClient()
-  const { data, error } = await supabase.rpc('is_super_admin', {
-    p_user_id: userId,
-  })
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', role)
+    .maybeSingle()
 
-  const result = !error && data === true
-  roleCache.set(cacheKey, result)
-  return result
+  if (error) {
+    console.error('[rbac.hasRole] user_roles read failed', {
+      userId,
+      role,
+      error: error.message,
+    })
+    return false
+  }
+  return data !== null
 }
 
 /**
- * Vérifie si un userId possède un rôle global donné.
- * Appelle le helper SQL `has_role()` créé en T1.
+ * Vérifie si un userId est super_admin.
+ * Délègue à `hasRole(userId, 'super_admin')` pour partager l'implémentation
+ * lecture directe (cf. note de `hasRole`).
  */
-export async function hasRole(userId: string, role: AppRole): Promise<boolean> {
-  const cacheKey = `role:${userId}:${role}`
-  if (roleCache.has(cacheKey)) return roleCache.get(cacheKey)!
-
-  const supabase = createClient()
-  const { data, error } = await supabase.rpc('has_role', {
-    p_user_id: userId,
-    p_role: role,
-  })
-
-  const result = !error && data === true
-  roleCache.set(cacheKey, result)
-  return result
+export async function isSuperAdmin(userId: string): Promise<boolean> {
+  return hasRole(userId, 'super_admin')
 }
 
 /**
@@ -146,11 +162,9 @@ export async function getUserOrg(userId: string): Promise<UserOrg | null> {
 
 /**
  * Retourne l'intra_role actif du user dans son organisation, ou null si orgless.
+ * Pas de mémoization — cf. note de section "Cache par requête" plus haut.
  */
 export async function getUserIntraRole(userId: string): Promise<IntraRole | null> {
-  const cacheKey = `intra:${userId}`
-  if (intraRoleCache.has(cacheKey)) return intraRoleCache.get(cacheKey)!
-
   const supabase = createClient()
   const { data, error } = await supabase
     .from('organization_members')
@@ -159,9 +173,7 @@ export async function getUserIntraRole(userId: string): Promise<IntraRole | null
     .eq('status', 'active')
     .single()
 
-  const result = error || !data ? null : (data.intra_role as IntraRole)
-  intraRoleCache.set(cacheKey, result)
-  return result
+  return error || !data ? null : (data.intra_role as IntraRole)
 }
 
 /**
@@ -252,23 +264,18 @@ export async function getFormateurFormations(
 /**
  * Sprint 2 — Vérifie qu'un userId est rattaché en tant que formateur à
  * une formation donnée. Délègue au helper SQL `is_formateur_of()`.
+ * Pas de mémoization — cf. note de section "Cache par requête" plus haut.
  */
 export async function isFormateurOf(
   userId: string,
   formationId: string
 ): Promise<boolean> {
-  const cacheKey = `fmtof:${userId}:${formationId}`
-  if (roleCache.has(cacheKey)) return roleCache.get(cacheKey)!
-
   const supabase = createClient()
   const { data, error } = await supabase.rpc('is_formateur_of', {
     p_user_id: userId,
     p_formation_id: formationId,
   })
-
-  const result = !error && data === true
-  roleCache.set(cacheKey, result)
-  return result
+  return !error && data === true
 }
 
 /**
