@@ -42,6 +42,30 @@ export interface FormateurFormation {
   is_primary: boolean
 }
 
+export interface FormateurStatsPerFormation {
+  formation_id: string
+  formation_title: string
+  formation_slug: string
+  formation_cover: string | null
+  is_primary: boolean
+  inscrits: number
+  completion_rate: number | null
+  ecoutes: number
+  points_distribues: number
+}
+
+export interface FormateurStats {
+  period: { date_from: string; date_to: string }
+  global: {
+    inscrits_total: number
+    completion_rate: number | null
+    ecoutes_audio: number
+    points_distribues: number
+  }
+  per_formation: FormateurStatsPerFormation[]
+  formations_count: number
+}
+
 // ─── Cache par requête ────────────────────────────────────────────────────────
 // Map en mémoire locale au module. Réinitialisé à chaque nouvelle invocation
 // Edge/Node dans le contexte Next.js App Router — pas de state global persistant.
@@ -245,4 +269,54 @@ export async function isFormateurOf(
   const result = !error && data === true
   roleCache.set(cacheKey, result)
   return result
+}
+
+/**
+ * Sprint 2 / Ticket 3 — KPIs agrégés du formateur sur la fenêtre temporelle
+ * spécifiée. Aucun champ nominatif retourné (RGPD modèle A — agrégations SQL
+ * pures). `completion_rate` est `null` si N<5 sur la fenêtre (masquage
+ * statistique pour éviter la ré-identification sur petits effectifs).
+ *
+ * Période par défaut : 30 jours glissants (dateTo = aujourd'hui UTC).
+ *
+ * Délègue au helper SQL `formateur_aggregated_stats()` (`STABLE SECURITY
+ * DEFINER`). Pas de cache module-local : la période varie et le coût de
+ * recalcul est négligeable (volumes prod observés 13/05/2026 sous la
+ * centaine de lignes par table impliquée).
+ */
+export async function getFormateurStats(
+  userId: string,
+  dateFrom?: Date,
+  dateTo?: Date
+): Promise<FormateurStats> {
+  const to = dateTo ?? new Date()
+  const from = dateFrom ?? new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000)
+
+  const toIso = to.toISOString().slice(0, 10)
+  const fromIso = from.toISOString().slice(0, 10)
+
+  const empty: FormateurStats = {
+    period: { date_from: fromIso, date_to: toIso },
+    global: {
+      inscrits_total: 0,
+      completion_rate: null,
+      ecoutes_audio: 0,
+      points_distribues: 0,
+    },
+    per_formation: [],
+    formations_count: 0,
+  }
+
+  const supabase = createClient()
+  const { data, error } = await supabase.rpc('formateur_aggregated_stats', {
+    p_user_id: userId,
+    p_date_from: fromIso,
+    p_date_to: toIso,
+  })
+
+  if (error || !data || typeof data !== 'object') {
+    return empty
+  }
+
+  return data as FormateurStats
 }
