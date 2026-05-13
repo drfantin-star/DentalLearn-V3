@@ -50,14 +50,14 @@ export function KeyFiguresEditor({ value, onChange }: Props) {
       ) : (
         value.map((fig, idx) => (
           <div key={idx} className="flex items-center gap-1">
-            <span className="text-xs text-gray-400 w-7 shrink-0">
+            <span className="text-xs text-gray-700 w-7 shrink-0">
               [{idx + 1}]
             </span>
             <input
               type="text"
               value={fig}
               onChange={(e) => updateAt(idx, e.target.value)}
-              className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex-1 border border-gray-300 rounded px-2 py-1 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
               placeholder="Ex. 85% recouvrement à 12 mois"
             />
             <button

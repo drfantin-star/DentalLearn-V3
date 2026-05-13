@@ -101,7 +101,7 @@ export function EpisodeRegenerationPanel({
   if (fetchError) {
     return (
       <section className="bg-white border border-gray-200 rounded p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500 mb-2">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-700 mb-2">
           Régénération audio + timeline
         </h2>
         <p className="text-sm text-red-600">
@@ -185,7 +185,7 @@ export function EpisodeRegenerationPanel({
 
   return (
     <section className="bg-white border border-gray-200 rounded p-5 space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-700">
         Régénération audio + timeline
       </h2>
 

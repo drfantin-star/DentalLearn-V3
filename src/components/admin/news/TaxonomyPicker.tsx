@@ -87,7 +87,7 @@ export function TaxonomyPicker(props: Props) {
     )
   }
   if (items === null) {
-    return <p className="text-gray-400 text-sm">Chargement…</p>
+    return <p className="text-gray-700 text-sm">Chargement…</p>
   }
 
   if (props.mode === 'single') {
@@ -108,7 +108,7 @@ function SinglePicker({
 }: SingleProps & { items: TaxonomyItem[] }) {
   return (
     <select
-      className="border border-gray-300 rounded px-2 py-1 text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+      className="border border-gray-300 rounded px-2 py-1 text-sm text-gray-700 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
     >
@@ -193,7 +193,7 @@ function MultiPicker({
                 type="button"
                 onClick={() => removeSlug(slug)}
                 aria-label={`Retirer ${labelOf(slug)}`}
-                className="text-gray-400 hover:text-gray-700 focus:outline-none"
+                className="text-gray-700 hover:text-gray-900 focus:outline-none"
               >
                 ×
               </button>
@@ -220,7 +220,7 @@ function MultiPicker({
             placeholder="Filtrer…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-full border-b border-gray-200 px-2 py-1 text-sm outline-none"
+            className="w-full border-b border-gray-200 px-2 py-1 text-sm text-gray-700 outline-none"
           />
           <ul className="max-h-48 overflow-y-auto">
             {filtered.length === 0 ? (

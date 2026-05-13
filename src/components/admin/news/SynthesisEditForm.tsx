@@ -176,7 +176,7 @@ function titleColorClass(len: number): string {
   if (len > 70) return 'text-red-600'
   if (len === 70) return 'text-green-600'
   if (len >= 60) return 'text-amber-600'
-  return 'text-gray-400'
+  return 'text-gray-700'
 }
 
 // ----------------------------------------------------------------------------
@@ -368,7 +368,7 @@ export function SynthesisEditForm({
                     <button
                       type="button"
                       onClick={() => updateField('category_editorial', null)}
-                      className="text-xs text-gray-500 underline hover:text-gray-700"
+                      className="text-xs text-gray-700 underline hover:text-gray-900"
                     >
                       Effacer
                     </button>
@@ -392,7 +392,7 @@ export function SynthesisEditForm({
                   type="text"
                   value={form.display_title}
                   onChange={(e) => updateField('display_title', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Ex. Greffes vs tunnel : verdict 2026"
                 />
                 {titleInvalid && (
@@ -406,7 +406,7 @@ export function SynthesisEditForm({
                 label={
                   <span>
                     Résumé FR{' '}
-                    <span className="text-xs font-normal text-gray-400">
+                    <span className="text-xs font-normal text-gray-700">
                       (≥ 50 caractères)
                     </span>
                   </span>
@@ -416,7 +416,7 @@ export function SynthesisEditForm({
                   value={form.summary_fr}
                   onChange={(e) => updateField('summary_fr', e.target.value)}
                   rows={6}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
                 />
                 {summaryInvalid && (
                   <p className="mt-1 text-xs text-red-600">
@@ -431,7 +431,7 @@ export function SynthesisEditForm({
                   value={form.method}
                   onChange={(e) => updateField('method', e.target.value)}
                   rows={3}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
                 />
               </FieldRow>
 
@@ -447,7 +447,7 @@ export function SynthesisEditForm({
                   type="text"
                   value={form.evidence_level}
                   onChange={(e) => updateField('evidence_level', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   placeholder="Ex. Méta-analyse Cochrane, niveau 1a"
                 />
               </FieldRow>
@@ -457,7 +457,7 @@ export function SynthesisEditForm({
                   value={form.clinical_impact}
                   onChange={(e) => updateField('clinical_impact', e.target.value)}
                   rows={4}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
                 />
               </FieldRow>
 
@@ -466,7 +466,7 @@ export function SynthesisEditForm({
                   value={form.caveats}
                   onChange={(e) => updateField('caveats', e.target.value)}
                   rows={3}
-                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
+                  className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 font-sans"
                 />
               </FieldRow>
             </Section>
@@ -477,7 +477,7 @@ export function SynthesisEditForm({
 
             {/* Footer info dernière modif (visible uniquement si non-null) */}
             {lastEdited.at && (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-700">
                 Dernière modification : {formatTimestamp(lastEdited.at)}
                 {lastEdited.by ? ` — ${lastEdited.by}` : ''}
               </p>
@@ -511,7 +511,7 @@ export function SynthesisEditForm({
                   type="button"
                   onClick={() => setDrawerOpen(false)}
                   aria-label="Fermer"
-                  className="text-gray-400 hover:text-gray-700"
+                  className="text-gray-700 hover:text-gray-900"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -567,7 +567,7 @@ function Section({
 }) {
   return (
     <section className="bg-white border border-gray-200 rounded p-5 space-y-4">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-700">
         {title}
       </h2>
       {children}
@@ -632,7 +632,7 @@ function MetadataPanel({
       <Field label="Titre original" value={raw.title} />
       {raw.abstract && (
         <div>
-          <p className="text-xs font-semibold text-gray-500 mb-1">Abstract source</p>
+          <p className="text-xs font-semibold text-gray-700 mb-1">Abstract source</p>
           <div className="max-h-[60vh] overflow-y-auto border border-gray-200 rounded p-2 bg-gray-50 text-xs whitespace-pre-wrap">
             {raw.abstract}
           </div>
@@ -657,7 +657,7 @@ function Field({ label, value }: { label: string; value: string | null }) {
   if (!value) return null
   return (
     <div>
-      <p className="text-xs font-semibold text-gray-500">{label}</p>
+      <p className="text-xs font-semibold text-gray-700">{label}</p>
       <p className="text-sm text-gray-800 break-words">{value}</p>
     </div>
   )
