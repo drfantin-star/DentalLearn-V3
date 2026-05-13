@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -67,12 +68,19 @@ export interface FormateurStats {
 }
 
 // ─── Cache par requête ────────────────────────────────────────────────────────
-// Map en mémoire locale au module. Réinitialisé à chaque nouvelle invocation
-// Edge/Node dans le contexte Next.js App Router — pas de state global persistant.
+// Les helpers sensibles aux mutations de rôles/membership (isSuperAdmin,
+// hasRole, isFormateurOf, getUserIntraRole) sont mémoïsés via React `cache()`
+// qui scope strictement la mémoization à la durée d'une seule requête HTTP
+// — y compris dans les Route Handlers App Router. Cela évite les Map au scope
+// module qui persistent sur les Lambdas warm Vercel (bug observé : un user
+// révoqué du rôle formateur voyait encore les flags is_formateur=true en cache
+// jusqu'au cold start).
+//
+// Les caches `orgCache` et `formateurFormationsCache` restent au scope module
+// pour l'instant (out of scope du fix bug D2-T3.5 ; à revoir Sprint 3 si
+// reproduction d'un symptôme analogue).
 
-const roleCache = new Map<string, boolean>()
 const orgCache = new Map<string, UserOrg | null>()
-const intraRoleCache = new Map<string, IntraRole | null>()
 const formateurFormationsCache = new Map<string, FormateurFormation[]>()
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -80,39 +88,29 @@ const formateurFormationsCache = new Map<string, FormateurFormation[]>()
 /**
  * Vérifie si un userId est super_admin.
  * Appelle le helper SQL `is_super_admin()` créé en T1.
+ * Mémoïsé par requête via React `cache()`.
  */
-export async function isSuperAdmin(userId: string): Promise<boolean> {
-  const cacheKey = `sa:${userId}`
-  if (roleCache.has(cacheKey)) return roleCache.get(cacheKey)!
-
+export const isSuperAdmin = cache(async (userId: string): Promise<boolean> => {
   const supabase = createClient()
   const { data, error } = await supabase.rpc('is_super_admin', {
     p_user_id: userId,
   })
-
-  const result = !error && data === true
-  roleCache.set(cacheKey, result)
-  return result
-}
+  return !error && data === true
+})
 
 /**
  * Vérifie si un userId possède un rôle global donné.
  * Appelle le helper SQL `has_role()` créé en T1.
+ * Mémoïsé par requête via React `cache()`.
  */
-export async function hasRole(userId: string, role: AppRole): Promise<boolean> {
-  const cacheKey = `role:${userId}:${role}`
-  if (roleCache.has(cacheKey)) return roleCache.get(cacheKey)!
-
+export const hasRole = cache(async (userId: string, role: AppRole): Promise<boolean> => {
   const supabase = createClient()
   const { data, error } = await supabase.rpc('has_role', {
     p_user_id: userId,
     p_role: role,
   })
-
-  const result = !error && data === true
-  roleCache.set(cacheKey, result)
-  return result
-}
+  return !error && data === true
+})
 
 /**
  * Retourne l'organisation active du user, ou null si orgless / invité.
@@ -146,11 +144,9 @@ export async function getUserOrg(userId: string): Promise<UserOrg | null> {
 
 /**
  * Retourne l'intra_role actif du user dans son organisation, ou null si orgless.
+ * Mémoïsé par requête via React `cache()`.
  */
-export async function getUserIntraRole(userId: string): Promise<IntraRole | null> {
-  const cacheKey = `intra:${userId}`
-  if (intraRoleCache.has(cacheKey)) return intraRoleCache.get(cacheKey)!
-
+export const getUserIntraRole = cache(async (userId: string): Promise<IntraRole | null> => {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('organization_members')
@@ -159,10 +155,8 @@ export async function getUserIntraRole(userId: string): Promise<IntraRole | null
     .eq('status', 'active')
     .single()
 
-  const result = error || !data ? null : (data.intra_role as IntraRole)
-  intraRoleCache.set(cacheKey, result)
-  return result
-}
+  return error || !data ? null : (data.intra_role as IntraRole)
+})
 
 /**
  * Sprint 2 — Vérifie si un userId possède le rôle global `formateur`.
@@ -252,24 +246,19 @@ export async function getFormateurFormations(
 /**
  * Sprint 2 — Vérifie qu'un userId est rattaché en tant que formateur à
  * une formation donnée. Délègue au helper SQL `is_formateur_of()`.
+ * Mémoïsé par requête via React `cache()`.
  */
-export async function isFormateurOf(
+export const isFormateurOf = cache(async (
   userId: string,
   formationId: string
-): Promise<boolean> {
-  const cacheKey = `fmtof:${userId}:${formationId}`
-  if (roleCache.has(cacheKey)) return roleCache.get(cacheKey)!
-
+): Promise<boolean> => {
   const supabase = createClient()
   const { data, error } = await supabase.rpc('is_formateur_of', {
     p_user_id: userId,
     p_formation_id: formationId,
   })
-
-  const result = !error && data === true
-  roleCache.set(cacheKey, result)
-  return result
-}
+  return !error && data === true
+})
 
 /**
  * Sprint 2 / Ticket 3 — KPIs agrégés du formateur sur la fenêtre temporelle

@@ -118,25 +118,13 @@ export default function ProfilPage() {
       <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 py-4">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold text-white/80">Mon espace personnel</p>
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            {isSuperAdmin && (
-              <Link
-                href="/admin"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-colors"
-              >
-                <Shield className="w-4 h-4 text-white" />
-                <span className="text-xs font-semibold text-white">Administration</span>
-              </Link>
-            )}
-            {isFormateur && (
-              <Link
-                href="/formateur/dashboard"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-colors"
-              >
-                <Presentation className="w-4 h-4 text-white" />
-                <span className="text-xs font-semibold text-white">Espace formateur</span>
-              </Link>
-            )}
+          <div className="flex items-center gap-2">
+            {/*
+              D2-T3.5-01 — les liens header "Administration" et "Espace formateur"
+              ont été retirés (doublon avec la section "Mes espaces" du body).
+              Le lien "Mon cabinet" T8 est conservé tel quel : la refonte UX
+              unifiée (header vs section) est planifiée pour Sprint 3.
+            */}
             {showTenantLink && (
               <Link
                 href="/tenant/admin"
