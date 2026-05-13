@@ -1,4 +1,3 @@
-import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -69,12 +68,17 @@ export interface FormateurStats {
 
 // ─── Cache par requête ────────────────────────────────────────────────────────
 // Les helpers sensibles aux mutations de rôles/membership (isSuperAdmin,
-// hasRole, isFormateurOf, getUserIntraRole) sont mémoïsés via React `cache()`
-// qui scope strictement la mémoization à la durée d'une seule requête HTTP
-// — y compris dans les Route Handlers App Router. Cela évite les Map au scope
-// module qui persistent sur les Lambdas warm Vercel (bug observé : un user
-// révoqué du rôle formateur voyait encore les flags is_formateur=true en cache
-// jusqu'au cold start).
+// hasRole, isFormateurOf, getUserIntraRole) ne sont PAS mémoïsés au scope
+// module : un crash MIDDLEWARE_INVOCATION_FAILED a été observé sur la preview
+// T3.5 quand on tentait de wrapper ces helpers avec `cache()` de React —
+// `cache()` n'est pas exposé dans l'Edge Runtime du middleware Next 14.x
+// (TypeError: bt.cache is not a function), et `middleware.ts` importe
+// transitivement `rbac.ts` ce qui force l'évaluation top-level en Edge.
+//
+// Conséquence acceptée : chaque appel = 1 RTT Supabase. Coût négligeable
+// (lecture indexée `user_roles` < 10 ms, 0–2 appels par requête). Bénéfice
+// collatéral : la révocation d'un rôle est répercutée immédiatement, sans
+// fenêtre de cache stale.
 //
 // Les caches `orgCache` et `formateurFormationsCache` restent au scope module
 // pour l'instant (out of scope du fix bug D2-T3.5 ; à revoir Sprint 3 si
@@ -95,9 +99,9 @@ const formateurFormationsCache = new Map<string, FormateurFormation[]>()
  * l'enum `app_role` par PostgREST quand passé en string non castée depuis
  * supabase-js ; le SQL équivalent direct renvoie bien `true`).
  *
- * Mémoïsé par requête via React `cache()`.
+ * Pas de mémoization — cf. note de section "Cache par requête" plus haut.
  */
-export const hasRole = cache(async (userId: string, role: AppRole): Promise<boolean> => {
+export async function hasRole(userId: string, role: AppRole): Promise<boolean> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('user_roles')
@@ -115,17 +119,16 @@ export const hasRole = cache(async (userId: string, role: AppRole): Promise<bool
     return false
   }
   return data !== null
-})
+}
 
 /**
  * Vérifie si un userId est super_admin.
  * Délègue à `hasRole(userId, 'super_admin')` pour partager l'implémentation
  * lecture directe (cf. note de `hasRole`).
- * Mémoïsé par requête via React `cache()`.
  */
-export const isSuperAdmin = cache(async (userId: string): Promise<boolean> => {
+export async function isSuperAdmin(userId: string): Promise<boolean> {
   return hasRole(userId, 'super_admin')
-})
+}
 
 /**
  * Retourne l'organisation active du user, ou null si orgless / invité.
@@ -159,9 +162,9 @@ export async function getUserOrg(userId: string): Promise<UserOrg | null> {
 
 /**
  * Retourne l'intra_role actif du user dans son organisation, ou null si orgless.
- * Mémoïsé par requête via React `cache()`.
+ * Pas de mémoization — cf. note de section "Cache par requête" plus haut.
  */
-export const getUserIntraRole = cache(async (userId: string): Promise<IntraRole | null> => {
+export async function getUserIntraRole(userId: string): Promise<IntraRole | null> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('organization_members')
@@ -171,7 +174,7 @@ export const getUserIntraRole = cache(async (userId: string): Promise<IntraRole 
     .single()
 
   return error || !data ? null : (data.intra_role as IntraRole)
-})
+}
 
 /**
  * Sprint 2 — Vérifie si un userId possède le rôle global `formateur`.
@@ -261,19 +264,19 @@ export async function getFormateurFormations(
 /**
  * Sprint 2 — Vérifie qu'un userId est rattaché en tant que formateur à
  * une formation donnée. Délègue au helper SQL `is_formateur_of()`.
- * Mémoïsé par requête via React `cache()`.
+ * Pas de mémoization — cf. note de section "Cache par requête" plus haut.
  */
-export const isFormateurOf = cache(async (
+export async function isFormateurOf(
   userId: string,
   formationId: string
-): Promise<boolean> => {
+): Promise<boolean> {
   const supabase = createClient()
   const { data, error } = await supabase.rpc('is_formateur_of', {
     p_user_id: userId,
     p_formation_id: formationId,
   })
   return !error && data === true
-})
+}
 
 /**
  * Sprint 2 / Ticket 3 — KPIs agrégés du formateur sur la fenêtre temporelle
