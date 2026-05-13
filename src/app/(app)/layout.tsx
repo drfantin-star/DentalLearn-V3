@@ -4,13 +4,13 @@ import MiniPlayer from '@/components/MiniPlayer'
 import AudioQueuePlayer from '@/components/news/AudioQueuePlayer'
 import { AudioProvider } from '@/context/AudioContext'
 import { AudioPlayerProvider } from '@/context/AudioPlayerContext'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getUserIntraRole, isFormateur, isSuperAdmin } from '@/lib/auth/rbac'
 
-// Layout async : résout l'intra_role + flags rôles globaux (formateur,
-// super_admin) côté serveur pour gater le 5e onglet contextuel du BottomNav.
-// Pas de redirection ici — les pages restent accessibles aux users orgless ;
-// seul l'onglet est masqué si l'user n'a aucun rôle élevé.
+// Guard d'auth sur tout le route group (app). Les users orgless restent
+// autorisés (le 5e onglet BottomNav reste gaté par superAdminFlag/formateurFlag
+// plus bas), seuls les visiteurs non authentifiés sont redirigés vers /login.
 
 export default async function AppLayout({
   children,
@@ -21,6 +21,15 @@ export default async function AppLayout({
   const {
     data: { user },
   } = await supabase.auth.getUser()
+
+  // Guard d'authentification : redirige vers /login si pas de session.
+  // Couvre toutes les pages du route group (app) : /, /sante, /news, /profil,
+  // /patient, /conformite, /formation. Les routes publiques (/login, /register,
+  // /forgot-password, /reset-password, /verify-email, /verify/[code],
+  // /reclamation, /auth/callback) sont hors de ce route group et restent ouvertes.
+  if (!user) {
+    redirect('/login')
+  }
 
   const [intraRole, superAdminFlag, formateurFlag] = user
     ? await Promise.all([
