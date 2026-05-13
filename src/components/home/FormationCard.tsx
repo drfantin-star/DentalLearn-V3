@@ -2,6 +2,7 @@ import React from 'react'
 import Link from 'next/link'
 import { Heart, Play } from 'lucide-react'
 import { getCategoryConfig } from '@/lib/supabase/types'
+import Badge from '@/components/ui/Badge'
 
 export interface FormationEnCours {
   id: string
@@ -34,15 +35,9 @@ export default function FormationCard({ formation }: FormationCardProps) {
             </span>
           )}
           {formation.badge && (
-            <span
-              className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                formation.badge === 'NOUVEAU'
-                  ? 'bg-emerald-50 text-emerald-600'
-                  : 'bg-orange-50 text-orange-600'
-              }`}
-            >
-              {formation.badge}
-            </span>
+            <Badge
+              variant={formation.badge === 'NOUVEAU' ? 'nouveau' : 'populaire'}
+            />
           )}
         </div>
         <div className="flex items-center gap-1 text-gray-400">

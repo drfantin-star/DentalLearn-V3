@@ -20,6 +20,35 @@ body {
   background-color: #0F0F0F;
   color: #e5e5e5;
   color-scheme: dark;
+
+  /*
+   * Variables CSS — Design System DentalLearn
+   * ------------------------------------------
+   * Utilisées principalement par :
+   *   - src/components/audio-enriched/*
+   *   - src/components/admin/timeline-editor/*
+   *   - src/app/admin/poc/* et src/app/admin/timelines/*
+   *
+   * Convention : préférer ces variables aux couleurs Tailwind en dur
+   * (bg-gray-800, text-white...) pour tout élément qui doit pouvoir basculer
+   * entre thèmes (app sombre / admin clair / multi-tenant).
+   *
+   * Surfaces
+   *   --color-bg            Fond global de page
+   *   --color-bg-card       Fond des cartes
+   *   --color-bg-card-hover Fond des cartes au survol
+   *   --color-bg-input      Fond des champs de formulaire
+   *   --color-bottomnav     Fond de la barre de navigation mobile
+   *
+   * Bordures
+   *   --color-border        Bordure standard
+   *   --color-border-light  Bordure subtile (séparateurs)
+   *
+   * Textes
+   *   --color-text-primary    Texte principal
+   *   --color-text-secondary  Texte secondaire
+   *   --color-text-muted      Texte tertiaire / labels
+   */
   --color-bg: #0F0F0F;
   --color-bg-card: #242424;
   --color-bg-card-hover: #2e2e2e;
@@ -71,15 +100,6 @@ body {
   75% { transform: rotate(-5deg); }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 .animate-wiggle {
   animation: wiggle 0.6s ease-in-out;
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.5s ease-out forwards;
 }

@@ -104,7 +104,7 @@ export default function TreasureChest({ pdfUrl, onOpen }: TreasureChestProps) {
           </button>
         </div>
       ) : (
-        <div className="text-center animate-fadeIn">
+        <div className="text-center animate-fade-in">
           <p className="text-lg font-bold text-gray-800 mb-1">
             &#127881; Bravo ! Voici ta fiche mémo
           </p>

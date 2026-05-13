@@ -10,7 +10,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Dentalschool Brand
+        // Tokens sémantiques (design system)
+        primary: {
+          DEFAULT: '#2D1B96',
+          hover: '#231575',
+          muted: '#1a1060',
+        },
+        accent: {
+          DEFAULT: '#00D1C1',
+          hover: '#00B8A9',
+        },
+        // Alias historiques (conservés pendant la migration)
         'ds-turquoise': '#00D1C1',
         'ds-turquoise-dark': '#00B8A9',
         'ds-blue': '#2D1B96',

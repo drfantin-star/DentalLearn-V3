@@ -1,5 +1,6 @@
 import React from 'react'
 import { ChevronRight } from 'lucide-react'
+import Badge from '@/components/ui/Badge'
 
 export interface ThemeContent {
   type: string
@@ -39,11 +40,7 @@ export default function ThemeCard({ theme, onOpen }: ThemeCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-bold text-gray-900 text-sm">{theme.title}</h3>
-            {hasEPP && (
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E0F7F5] text-[#00D1C1]">
-                EPP
-              </span>
-            )}
+            {hasEPP && <Badge variant="epp" />}
           </div>
           <p className="text-xs text-gray-400 leading-relaxed">
             {theme.description}
