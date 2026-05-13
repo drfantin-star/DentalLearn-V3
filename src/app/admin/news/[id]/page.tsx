@@ -203,6 +203,11 @@ export default function NewsDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <BackLink />
+        <div className="mb-4 flex justify-end">
+          <Link href={`/admin/news/${synthesis.id}/edit`} className="inline-flex items-center gap-1 text-sm font-medium bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">
+            ✎ Modifier la synthèse
+          </Link>
+        </div>
         <Header synthesis={synthesis} />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
           <main className="lg:col-span-2 space-y-6">
