@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, ExternalLink, X } from 'lucide-react'
 import { TaxonomyPicker } from './TaxonomyPicker'
 import { KeyFiguresEditor } from './KeyFiguresEditor'
+import { EpisodeRegenerationPanel } from './EpisodeRegenerationPanel'
 
 // ============================================================================
 // <SynthesisEditForm> — POC-T12-C
@@ -469,6 +470,10 @@ export function SynthesisEditForm({
                 />
               </FieldRow>
             </Section>
+
+            {/* Régénération audio + timeline (T12-D-3 — section entièrement
+                cachée si 0 episode lié, géré côté composant) */}
+            <EpisodeRegenerationPanel synthesisId={synthesis.id} />
 
             {/* Footer info dernière modif (visible uniquement si non-null) */}
             {lastEdited.at && (
