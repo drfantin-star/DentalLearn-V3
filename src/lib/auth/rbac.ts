@@ -86,30 +86,45 @@ const formateurFormationsCache = new Map<string, FormateurFormation[]>()
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Vérifie si un userId est super_admin.
- * Appelle le helper SQL `is_super_admin()` créé en T1.
- * Mémoïsé par requête via React `cache()`.
- */
-export const isSuperAdmin = cache(async (userId: string): Promise<boolean> => {
-  const supabase = createClient()
-  const { data, error } = await supabase.rpc('is_super_admin', {
-    p_user_id: userId,
-  })
-  return !error && data === true
-})
-
-/**
  * Vérifie si un userId possède un rôle global donné.
- * Appelle le helper SQL `has_role()` créé en T1.
+ *
+ * Lit directement la table `user_roles` (RLS `user_roles_select_own` autorise
+ * `auth.uid() = user_id`). On évite la RPC SQL `has_role()` qui retournait
+ * `false` silencieusement depuis le client supabase-js v2 en preview T3.5
+ * (cause profonde non identifiée — probablement bug de sérialisation de
+ * l'enum `app_role` par PostgREST quand passé en string non castée depuis
+ * supabase-js ; le SQL équivalent direct renvoie bien `true`).
+ *
  * Mémoïsé par requête via React `cache()`.
  */
 export const hasRole = cache(async (userId: string, role: AppRole): Promise<boolean> => {
   const supabase = createClient()
-  const { data, error } = await supabase.rpc('has_role', {
-    p_user_id: userId,
-    p_role: role,
-  })
-  return !error && data === true
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', role)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[rbac.hasRole] user_roles read failed', {
+      userId,
+      role,
+      error: error.message,
+    })
+    return false
+  }
+  return data !== null
+})
+
+/**
+ * Vérifie si un userId est super_admin.
+ * Délègue à `hasRole(userId, 'super_admin')` pour partager l'implémentation
+ * lecture directe (cf. note de `hasRole`).
+ * Mémoïsé par requête via React `cache()`.
+ */
+export const isSuperAdmin = cache(async (userId: string): Promise<boolean> => {
+  return hasRole(userId, 'super_admin')
 })
 
 /**
