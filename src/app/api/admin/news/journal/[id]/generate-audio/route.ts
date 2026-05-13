@@ -23,12 +23,25 @@ export const maxDuration = 300
 //   5. UPDATE audio_url, duration_s, status='published', published_at,
 //      validated_by
 //   6. Retourne { audio_url, duration_s, status }
+//
+// POC-T12-D-1 — Mode régénération via querystring `?regenerate=true` :
+//   - Skip précondition status (accepte n'importe quel status)
+//   - Skip UPDATE status='published' + published_at + validated_by
+//     (status courant + published_at + validateur préservés strict)
+//   - TOUT le reste identique (pipeline ElevenLabs + Storage upsert: true
+//     + timeline archive via generateAndPersistTimeline T8-E)
+//   - Dette D-T12-D-REGEN-FLAG : pattern temporaire, à extraire dans un
+//     helper partagé en T13.
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } },
 ) {
   try {
+    // POC-T12-D-1 : mode régénération (querystring `?regenerate=true`)
+    const isRegenerate =
+      new URL(request.url).searchParams.get('regenerate') === 'true'
+
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
@@ -66,7 +79,7 @@ export async function POST(
     if (!episode) {
       return NextResponse.json({ error: 'Journal introuvable' }, { status: 404 })
     }
-    if (episode.status !== 'draft') {
+    if (!isRegenerate && episode.status !== 'draft') {
       return NextResponse.json(
         {
           error:
@@ -134,15 +147,22 @@ export async function POST(
     )
 
     // ----- 5. UPDATE episode -----
+    // POC-T12-D-1 : en mode régénération, on ne touche PAS le cycle de
+    // publication (status / published_at / validated_by). Sinon, comportement
+    // historique = première publication (set à 'published' + now() + user.id).
+    const updatePayload: Record<string, unknown> = {
+      audio_url,
+      duration_s,
+    }
+    if (!isRegenerate) {
+      updatePayload.status = 'published'
+      updatePayload.published_at = new Date().toISOString()
+      updatePayload.validated_by = session.user.id
+    }
+
     const { data: updated, error: updErr } = await adminSupabase
       .from('news_episodes')
-      .update({
-        audio_url,
-        duration_s,
-        status: 'published',
-        published_at: new Date().toISOString(),
-        validated_by: session.user.id,
-      })
+      .update(updatePayload)
       .eq('id', episode.id)
       .select('id, audio_url, duration_s, status, published_at')
       .single()
