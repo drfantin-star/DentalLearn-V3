@@ -4,6 +4,7 @@ import React from 'react'
 import type { NewsCard } from '@/types/news'
 import { describeCardDate } from '@/lib/news-display'
 import NewsCardSVG from './NewsCardSVG'
+import Badge, { type BadgeVariant } from '@/components/ui/Badge'
 
 interface Props {
   news: NewsCard
@@ -11,17 +12,16 @@ interface Props {
   variant: 'carousel' | 'grid'
 }
 
-const CATEGORY_BADGE_CLASSES: Record<string, string> = {
-  scientifique: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
-  pratique: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
+const CATEGORY_VARIANT: Record<string, BadgeVariant> = {
+  scientifique: 'news-scientifique',
+  pratique: 'news-pratique',
 }
-const CATEGORY_BADGE_FALLBACK = 'bg-gray-500/20 text-gray-300 border-gray-400/30'
 
-function categoryBadgeClasses(category: string | null): string {
-  if (category && CATEGORY_BADGE_CLASSES[category]) {
-    return CATEGORY_BADGE_CLASSES[category]
+function categoryVariant(category: string | null): BadgeVariant {
+  if (category && CATEGORY_VARIANT[category]) {
+    return CATEGORY_VARIANT[category]
   }
-  return CATEGORY_BADGE_FALLBACK
+  return 'neutral'
 }
 
 function dateLabel(publishedAt: string | null): string | null {
@@ -31,7 +31,6 @@ function dateLabel(publishedAt: string | null): string | null {
 
 export default function NewsCardItem({ news, onClick, variant }: Props) {
   const category = news.category_editorial
-  const badgeClass = categoryBadgeClasses(category)
   const date = dateLabel(news.published_at)
 
   if (variant === 'grid') {
@@ -64,11 +63,9 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
           </h3>
           <div className="flex items-center gap-2 flex-wrap">
             {category ? (
-              <span
-                className={`px-2 py-0.5 rounded-full border text-[10px] font-medium ${badgeClass}`}
-              >
+              <Badge variant={categoryVariant(category)} size="md">
                 {category}
-              </span>
+              </Badge>
             ) : null}
             {date ? (
               <span className="text-xs text-gray-400">{date}</span>
@@ -108,11 +105,9 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
         </h3>
         <div className="flex items-center gap-2 flex-wrap">
           {category ? (
-            <span
-              className={`px-2 py-0.5 rounded-full border text-[10px] font-medium ${badgeClass}`}
-            >
+            <Badge variant={categoryVariant(category)} size="md">
               {category}
-            </span>
+            </Badge>
           ) : null}
         </div>
         {date ? <span className="text-xs text-gray-400">{date}</span> : null}

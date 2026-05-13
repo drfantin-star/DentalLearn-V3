@@ -10,6 +10,7 @@ import { useUser } from '@/lib/hooks/useUser'
 import { getCategoryConfig } from '@/lib/supabase/types'
 import type { Formation } from '@/lib/supabase/types'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
+import Badge from '@/components/ui/Badge'
 
 interface ThemeDetailProps {
   theme: Theme
@@ -218,15 +219,10 @@ export default function ThemeDetail({
                             {content.type}
                           </h3>
                           {content.tag && (
-                            <span
-                              className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border ${
-                                content.tag === 'cp'
-                                  ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                                  : 'bg-yellow-50 text-yellow-600 border-yellow-200'
-                              }`}
-                            >
-                              {content.tag === 'cp' ? 'CP' : 'Bonus'}
-                            </span>
+                            <Badge
+                              variant={content.tag === 'cp' ? 'cp' : 'bonus'}
+                              size="sm"
+                            />
                           )}
                         </div>
                         <p className="text-[11px] text-[#6b7280] mt-0.5">

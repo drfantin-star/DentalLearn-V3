@@ -24,6 +24,7 @@ import {
 // Composants
 import FormationDetail from '@/components/formation/FormationDetail'
 import SequencePlayer from '@/components/formation/SequencePlayer'
+import Badge from '@/components/ui/Badge'
 
 // ============================================
 // TYPES
@@ -53,11 +54,7 @@ function FormationCard({ formation, onSelect }: { formation: Formation; onSelect
           <h3 className="font-semibold text-sm text-gray-800 truncate">
             {formation.title}
           </h3>
-          {formation.cp_eligible && (
-            <span className="text-[9px] font-bold px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded border border-emerald-200">
-              CP
-            </span>
-          )}
+          {formation.cp_eligible && <Badge variant="cp" size="sm" />}
         </div>
         <div className="flex items-center gap-3 text-[11px] text-gray-400">
           <span>{formation.instructor_name}</span>

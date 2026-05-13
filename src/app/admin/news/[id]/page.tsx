@@ -22,6 +22,7 @@ import {
 import { describeCardDate, formatDate } from '@/lib/news-display'
 import { QuestionApprovalButton } from '@/components/admin/news/QuestionApprovalButton'
 import { AudioPodcastBlock } from '@/components/admin/news/AudioPodcastBlock'
+import Badge, { type BadgeVariant } from '@/components/ui/Badge'
 
 // ---------- Types ----------
 
@@ -85,19 +86,19 @@ interface Question {
 
 // ---------- Constantes UI ----------
 
-const CATEGORY_EDITORIAL_BADGE: Record<string, string> = {
-  scientifique: 'bg-blue-50 text-blue-700',
-  pratique: 'bg-green-50 text-green-700',
-  reglementaire: 'bg-orange-50 text-orange-700',
-  humour: 'bg-pink-50 text-pink-700',
+const CATEGORY_EDITORIAL_VARIANT: Record<string, BadgeVariant> = {
+  scientifique: 'info',
+  pratique: 'success',
+  reglementaire: 'warning',
+  humour: 'danger',
 }
 
-const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  active: { label: 'Active', cls: 'bg-emerald-100 text-emerald-700' },
-  failed: { label: 'En échec', cls: 'bg-amber-100 text-amber-700' },
-  failed_permanent: { label: 'Échec permanent', cls: 'bg-red-100 text-red-700' },
-  retracted: { label: 'Rétractée', cls: 'bg-gray-200 text-gray-700' },
-  deleted: { label: 'Supprimée', cls: 'bg-gray-300 text-gray-600' },
+const STATUS_VARIANT: Record<string, { label: string; variant: BadgeVariant }> = {
+  active: { label: 'Active', variant: 'success' },
+  failed: { label: 'En échec', variant: 'warning' },
+  failed_permanent: { label: 'Échec permanent', variant: 'danger' },
+  retracted: { label: 'Rétractée', variant: 'neutral' },
+  deleted: { label: 'Supprimée', variant: 'neutral' },
 }
 
 const QUESTION_TYPE_LABEL: Record<string, string> = {
@@ -265,12 +266,12 @@ function BackLink() {
 
 function Header({ synthesis }: { synthesis: Synthesis }) {
   const dateInfo = describeCardDate(synthesis.published_at, synthesis.created_at)
-  const editorialBadge = synthesis.category_editorial
-    ? CATEGORY_EDITORIAL_BADGE[synthesis.category_editorial] ?? 'bg-gray-100 text-gray-700'
+  const editorialVariant: BadgeVariant | null = synthesis.category_editorial
+    ? CATEGORY_EDITORIAL_VARIANT[synthesis.category_editorial] ?? 'neutral'
     : null
-  const statusBadge = STATUS_BADGE[synthesis.status] ?? {
+  const statusBadge = STATUS_VARIANT[synthesis.status] ?? {
     label: synthesis.status,
-    cls: 'bg-gray-100 text-gray-700',
+    variant: 'neutral' as BadgeVariant,
   }
   const formationLabel =
     synthesis.formation_category_match
@@ -286,15 +287,15 @@ function Header({ synthesis }: { synthesis: Synthesis }) {
       </h1>
       <div className="flex flex-wrap gap-2 mb-3">
         {synthesis.specialite && (
-          <Badge cls="bg-indigo-50 text-indigo-700">{synthesis.specialite}</Badge>
+          <Badge variant="info" size="lg">{synthesis.specialite}</Badge>
         )}
         {synthesis.niveau_preuve && (
-          <Badge cls="bg-purple-50 text-purple-700">{synthesis.niveau_preuve}</Badge>
+          <Badge variant="info" size="lg">{synthesis.niveau_preuve}</Badge>
         )}
-        {synthesis.category_editorial && editorialBadge && (
-          <Badge cls={editorialBadge}>{synthesis.category_editorial}</Badge>
+        {synthesis.category_editorial && editorialVariant && (
+          <Badge variant={editorialVariant} size="lg">{synthesis.category_editorial}</Badge>
         )}
-        <Badge cls={statusBadge.cls}>{statusBadge.label}</Badge>
+        <Badge variant={statusBadge.variant} size="lg">{statusBadge.label}</Badge>
         {formationLabel && (
           <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-yellow-50 text-yellow-800">
             <Link2 className="w-3 h-3" />
@@ -318,12 +319,6 @@ function Header({ synthesis }: { synthesis: Synthesis }) {
         {dateInfo.label}
       </p>
     </header>
-  )
-}
-
-function Badge({ cls, children }: { cls: string; children: React.ReactNode }) {
-  return (
-    <span className={`text-xs font-medium px-2 py-1 rounded-full ${cls}`}>{children}</span>
   )
 }
 
@@ -494,12 +489,12 @@ function QuestionItem({
           <span className="text-sm font-semibold text-gray-900">
             Question {question.question_order ?? '?'}
           </span>
-          <Badge cls="bg-gray-100 text-gray-700">{typeLabel}</Badge>
+          <Badge variant="neutral" size="lg">{typeLabel}</Badge>
           {difficultyLabel && (
-            <Badge cls="bg-amber-50 text-amber-700">{difficultyLabel}</Badge>
+            <Badge variant="warning" size="lg">{difficultyLabel}</Badge>
           )}
           {question.points != null && (
-            <Badge cls="bg-indigo-50 text-indigo-700">{question.points} pts</Badge>
+            <Badge variant="info" size="lg">{question.points} pts</Badge>
           )}
         </div>
         <QuestionApprovalButton
@@ -696,15 +691,15 @@ function MatchFormationCard({
 }
 
 function MetadataCard({ synthesis }: { synthesis: Synthesis }) {
-  const statusBadge = STATUS_BADGE[synthesis.status] ?? {
+  const statusBadge = STATUS_VARIANT[synthesis.status] ?? {
     label: synthesis.status,
-    cls: 'bg-gray-100 text-gray-700',
+    variant: 'neutral' as BadgeVariant,
   }
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
       <h3 className="text-sm font-semibold text-gray-900 mb-3">Métadonnées techniques</h3>
       <dl className="space-y-2 text-sm">
-        <Row label="Statut" value={<Badge cls={statusBadge.cls}>{statusBadge.label}</Badge>} />
+        <Row label="Statut" value={<Badge variant={statusBadge.variant} size="lg">{statusBadge.label}</Badge>} />
         <Row label="Tentatives" value={`${synthesis.failed_attempts} / 2`} />
         <Row
           label="Embedding"
