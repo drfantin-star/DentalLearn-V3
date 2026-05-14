@@ -1,9 +1,10 @@
 # RAPPORT POC-T12 — Éditeur admin synthèse News + régénération audio/timeline
 
-**Statut** : ✅ Livré, smoke validé, prêt pour merge `main`.
-**Date** : 13 mai 2026
-**Branche** : `claude/t12-news-synthesis-editor-v1` (rebasée sur `origin/main` post-PR #266 T3.5)
-**Commits** : 9 commits granulaires (1 migration + 4 features + 2 fix contraste + 2 régénération sous-commits)
+**Statut** : ✅ Livré T12 le 13/05/2026, ✅ Patch T12-D-bis-3 livré le 14/05/2026 (régénération script journal — cf. §10).
+**Date** : 13 mai 2026 (T12) + 14 mai 2026 (T12-D-bis-3)
+**Branche T12** : `claude/t12-news-synthesis-editor-v1` (mergée `main` via PR #267)
+**Branche T12-D-bis-3** : `claude/fix-journal-regeneration-TjWpa`
+**Commits** : 9 commits T12 + 3 commits T12-D-bis-3 (A backend, B frontend, C docs)
 
 ---
 
@@ -124,6 +125,10 @@ Patch additionnel sur page détail existante : +5 lignes sur `src/app/admin/news
 ### Architecture / méthodologie
 
 - **`D-T12-D-AUDIT-MISS`** — Audit v1→v2 §3 pt 4 a vérifié la parité archive Storage entre endpoints generate-audio (insight + journal) mais PAS les préconditions status (insight `!== 'ready'` → 409, journal `!== 'draft'` → 409). Le trou a été détecté en début T12-D et résolu par option B (flag `?regenerate=true`). **Apprentissage rituel session** : à chaque audit pré-cadrage de réutilisation d'endpoint existant, vérifier explicitement les préconditions status/auth/CRUD ET la sémantique des UPDATE downstream, pas seulement les helpers partagés.
+- **`D-T12-D-AUDIT-MISS-2`** *(ajoutée T12-D-bis-3, 14/05)* — 2e trou d'audit consécutif sur T12-D : l'audit T12 a vérifié que generate-audio régénérait bien le MP3 ElevenLabs mais a manqué la **cascade script → audio**. L'orchestrateur `regenerate-linked-episodes` n'appelait pas `generate-script`, donc une correction de synthèse propagée à un journal published régénérait l'audio sur l'ANCIEN script_md. Bug détecté pendant reprise W18-A le 14/05. Résolu par T12-D-bis-3-A (flag `?regenerate=true` sur `journal/[id]/generate-script` + body optionnel fallback BDD) + T12-D-bis-3-B (orchestration script→audio côté client EpisodeRegenerationPanel). **Apprentissage durable** : pattern audit pré-cadrage v3 à 6 dimensions (préconditions, sémantique UPDATE, helpers, effets de bord cascade, dependencies amont, cohérence multi-callers) — cf. §11.
+- **`D-T12-D-bis-3-CLIENT-ORCHESTRATION`** *(ajoutée T12-D-bis-3, 14/05)* — La chaîne script→audio pour journal en T12-D-bis-3-B est orchestrée côté client (browser fetch séquentiel : `generate-script?regenerate=true` puis `generate-audio?regenerate=true`). Si l'admin ferme l'onglet entre le succès de la phase 1 et le déclenchement de la phase 2, le journal reste en état incohérent (`script_md` nouveau + `audio_url` ancien). Acceptable V1 : warning explicite affiché, durée totale ~90s donc improbable de fermer. Mitigation présente : statut `partial_success` + toast amber "⚠️ Script régénéré mais audio non resync, recliquer pour resynchroniser". **À refactor côté serveur** dans le ticket T13 helper audio partagé (orchestration atomique backend, progress via SSE ou polling). Combiné avec `D-T12-D-REGEN-FLAG` ci-dessous.
+- **`D-T12-INSIGHT-MANUAL-WORKFLOW`** *(ajoutée T12-D-bis-3, 14/05)* — Le patch T12-D-bis-3 résout la régénération du script pour les **journaux uniquement**. Le path insight single-synthèse conserve son workflow manuel 2-temps : (1) bouton "🔄 Régénérer le script" dans AudioPodcastBlock (page detail synthèse), (2) bouton "Régénérer audio + timeline" depuis T12 editor. Cause : l'endpoint `syntheses/[id]/generate-script` fait INSERT nouveau row + archivage de l'ancien (vs UPDATE in-place pour journal), donc l'orchestration script→audio nécessiterait de tracker le nouveau `episodeId` côté client + re-fetch des liens, asymétrie trop coûteuse pour V1. **À unifier** dans le ticket T13 helper audio partagé (option : convertir le path insight en UPDATE in-place lui aussi).
+- **`D-T12-D-bis-3-MITIGATION-PARTIAL-NOT-TESTED`** *(ajoutée T12-D-bis-3, 14/05)* — Le statut `partial_success` (échec audio après succès script sur journal) est implémenté côté client mais **non testé en smoke réel** sur preview : simuler un échec ElevenLabs nécessite de désactiver la clé `ELEVENLABS_API_KEY` côté Vercel ou de mocker la lib. Validé uniquement par lecture de diff (branche `if (res.ok) { success } else { partial_success }` isolée). **À couvrir** lors du prochain incident ElevenLabs réel ou via fixture mockée dans le ticket T13 helper audio partagé.
 - **`D-T12-D-REGEN-FLAG`** — Mode régénération exposé via flag querystring `?regenerate=true` sur les 2 endpoints generate-audio. Pattern temporaire choisi en T12 pour ne pas refactorer prod en fin de ticket. **T13 doit extraire la logique audio dans un helper partagé** (`src/lib/news-audio-regenerate.ts` ou équivalent) appelé par 3 callers : initial publish (T11 actuel), regenerate T12, republish T13. C'était l'option C de l'arbitrage T12-D v2, reportée pour préserver l'horizon court de T12.
 - **`D-T12-D-REGEN-REGRESSION`** — Test régression path première publication (`status='ready' → published` insight, `status='draft' → published` journal) non joué en T12-D faute de fixture en ready/draft disponible. Validé indirectement par lecture diff (branches `if (!isRegenerate)` isolées, path par défaut byte-identique pré-T12). **À couvrir par smoke T13** quand le workflow publication produira naturellement des fixtures en `ready_for_review`.
 - **`D-T12-MIG-01`** — Migration `_down.sql` écrite symétriquement (DROP INDEX → DROP COLUMN by → DROP COLUMN at, IF EXISTS partout) mais **non testée en sandbox** (Supabase CLI absente de l'environnement Claude Code). À valider à la première occasion de rollback réel ou en créant une branche dev Supabase via MCP `create_branch` puis `apply_migration` sur cette branche test.
@@ -211,5 +216,58 @@ Patch additionnel sur page détail existante : +5 lignes sur `src/app/admin/news
 - ✅ 9 commits granulaires lisibles dans le git log
 - ✅ Migration BDD appliquée et vérifiée MCP
 - ✅ Smoke T12-A à T12-D-bis-2 OK (cf. §4)
-- ⏳ PR ouverte vers `main` (créée dans la foulée de ce rapport)
-- ⏳ Merge manuel par Dr Fantin après lecture du rapport et review PR
+- ✅ PR #267 mergée sur `main`
+- ✅ Patch T12-D-bis-3 livré le 14/05/2026 (cf. §10)
+
+---
+
+## 10. Patch T12-D-bis-3 post-livraison — régénération script journal manquante
+
+### 10.1 Chronologie
+
+- **14/05/2026 09:43** — Reprise dette `D-T12-W18` (W18-A) par Dr Fantin : corrections des 3 synthèses W18 liées au journal `3ccebf3e` (`095c6778`, `f689c88b`, `9696ec64`) via éditeur T12 mergé. `news_syntheses.last_edited_at` mis à jour pour les 3 synthèses.
+- **14/05/2026 09:46** — Dr Fantin clique "Régénérer audio + timeline" depuis EpisodeRegenerationPanel sur le journal `3ccebf3e` (`status='archived'`). Toast "1/1 — Terminé" affiché.
+- **14/05/2026 vérif MCP** — `news_episodes.audio_url` mis à jour (nouveau MP3 Storage), MAIS `news_episodes.script_md` identique au pré-T12 (md5 inchangé). Les corrections de synthèses sont invisibles dans le podcast final → bug fonctionnel confirmé.
+- **14/05/2026** — Audit 9 points G-SCRIPT-1 à G-SCRIPT-9 exécuté à 100% via 3 agents Explore en parallèle. Scénario B confirmé : endpoint `journal/[id]/generate-script` existe avec sémantique UPDATE in-place correcte, mais rejette en 409 sur `status !== 'draft'`. Pattern flag `?regenerate=true` à étendre comme POC-T12-D-1 l'a fait pour generate-audio.
+- **14/05/2026** — Plan validé Dr Fantin avec 3 précisions (mitigation `partial_success`, body optionnel fallback BDD, smoke cas 4 régression contrat).
+- **14/05/2026 — Commit T12-D-bis-3-A** (`c630f5c`) — Backend `src/app/api/admin/news/journal/[id]/generate-script/route.ts` : flag `?regenerate=true` + précondition status conditionnée + body optionnel avec fallback BDD (format/narrator/target_duration_min/editorial_tone, `editorial_notes` reste éphémère).
+- **14/05/2026 — Smoke régression contrat OK** : cas 2 (sans flag sur archived → 409), cas 3 (avec flag sur archived → 200), cas 4 critique (flag + body `{}` → 4 colonnes fallback BDD préservées, script_md mis à jour). MCP-confirmé.
+- **14/05/2026 — Commit T12-D-bis-3-B** (`6361c9b`) — Frontend `src/components/admin/news/EpisodeRegenerationPanel.tsx` : titre/warning/bouton renommés "script + audio + timeline", `onRegenerate()` refondu avec branchement par type (journal = 2 appels client séquentiels avec toast multi-phases, insight/digest = path inchangé), mitigation `partial_success` (⚠️ amber-700 si script OK mais audio KO).
+- **14/05/2026 14:56 — Smoke critique OK** : édition synthèse `f689c88b` (key_figures[4] "10 jours" → "14 jours") → régénération journal `3ccebf3e` depuis T12 UI → `script_md` du journal contient "14 jours" et ne contient plus "10 jours" (vérif MCP md5 + grep texte). status `archived` préservé, format/narrator/target_duration_min/editorial_tone préservés, audio_url overwritten Storage (5,8 Mo → 6,46 Mo), timeline JSON régénérée. **Bug T12-D-bis-3 résolu**.
+- **14/05/2026 — Commit T12-D-bis-3-C** — Documentation : enrichissement du présent rapport + création RECAP_SESSION_T12_NEWS_SYNTHESIS_EDITOR_13MAI2026.md.
+
+### 10.2 Cause racine
+
+L'orchestrateur `POST /api/admin/news/syntheses/[id]/regenerate-linked-episodes` (livré T12-D-2) appelait uniquement `generate-audio?regenerate=true`, jamais `generate-script`. Pour un journal `published`/`archived`, aucun chemin UI existant ne permettait de régénérer le script (la page T11 admin journal masque le bouton "Régénérer le script" hors `status='draft'`).
+
+Asymétrie identifiée : `journal/[id]/generate-script` fait **UPDATE in-place** (idéal pour régénération) tandis que `syntheses/[id]/generate-script` fait **INSERT + archivage de l'ancien episode** (asymétrie qui complique l'orchestration côté insight — d'où dette `D-T12-INSIGHT-MANUAL-WORKFLOW`).
+
+### 10.3 Scope livré
+
+| Item | Fichier | Type |
+|---|---|---|
+| Flag `?regenerate=true` + body optionnel + fallback BDD | `src/app/api/admin/news/journal/[id]/generate-script/route.ts` | Backend (Commit A) |
+| Orchestration script→audio côté client + toast multi-phases + mitigation `partial_success` | `src/components/admin/news/EpisodeRegenerationPanel.tsx` | Frontend (Commit B) |
+| Documentation post-livraison | `RAPPORT_T12_NEWS_SYNTHESIS_EDITOR.md` + `RECAP_SESSION_T12_NEWS_SYNTHESIS_EDITOR_13MAI2026.md` | Docs (Commit C) |
+
+### 10.4 Hors scope (reporté T13)
+
+- Unification du path insight (cf. `D-T12-INSIGHT-MANUAL-WORKFLOW`).
+- Refactor orchestration script→audio côté serveur (cf. `D-T12-D-bis-3-CLIENT-ORCHESTRATION`).
+- Smoke réel du statut `partial_success` (cf. `D-T12-D-bis-3-MITIGATION-PARTIAL-NOT-TESTED`).
+- Précondition `status='active'` manquante côté `news_syntheses` dans le SELECT de `journal/[id]/generate-script` (cosmétique, géré par contrainte FK `ON DELETE RESTRICT`).
+
+---
+
+## 11. Apprentissage méthodologique — audit pré-cadrage v3 (6 dimensions)
+
+Après 2 trous d'audit consécutifs sur T12-D (`D-T12-D-AUDIT-MISS-1` préconditions status + `D-T12-D-AUDIT-MISS-2` cascade script/audio), le pattern audit pré-cadrage T8 v2 est enrichi à 6 dimensions à vérifier systématiquement pour tout ticket de réutilisation d'endpoint existant :
+
+1. **Préconditions** — `status`, auth, RBAC, payloads requis.
+2. **Sémantique UPDATE downstream** — quelles colonnes BDD sont touchées, INSERT vs UPDATE.
+3. **Helpers partagés** — déjà couvert (audit v1→v2).
+4. **Effets de bord cascade** — colonnes / endpoints invalidés implicitement (ex: régénérer le script touche-t-il `audio_url` ? Non, mais on doit le savoir).
+5. **Dependencies en amont** — l'endpoint A dépend-il qu'un endpoint B ait été appelé d'abord ? (ex: ici, `generate-audio` lit `script_md` mais ne le régénère pas).
+6. **Cohérence multi-callers** — insight vs journal vs autres types : sémantique alignée ? (ex: INSERT vs UPDATE asymétrie révélée pendant T12-D-bis-3).
+
+À reproduire pour T13 audit pré-cadrage et tout ticket futur impliquant réutilisation d'endpoint. Le coût audit est largement amorti par la prévention des trous AUDIT-MISS qui ont fait perdre du temps Dr Fantin entre le 13/05 et le 14/05.
