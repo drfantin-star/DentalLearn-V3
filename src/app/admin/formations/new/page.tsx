@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function NewFormationPage() {
   const [loading, setLoading] = useState(false);
@@ -61,13 +62,7 @@ export default function NewFormationPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <Link href="/admin/formations" className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4">
-          <ArrowLeft className="w-4 h-4" />
-          Retour aux formations
-        </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Nouvelle formation</h1>
-      </div>
+      <PageHeader backHref="/admin/formations" backLabel="Retour aux formations" title="Nouvelle formation" />
 
       <form onSubmit={handleSubmit} className="max-w-2xl">
         <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">

@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  ArrowLeft,
   Loader2,
   Sparkles,
   CheckCircle,
@@ -19,6 +18,7 @@ import {
   NEWS_NIVEAU_PREUVE,
   NEWS_CATEGORIES_EDITORIALES,
 } from '@/lib/constants/news'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 const TITLE_MIN = 5
 const TITLE_MAX = 300
@@ -35,25 +35,18 @@ export default function ManualIngestPage() {
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
-      <Link
-        href="/admin/news"
-        className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Retour à la liste
-      </Link>
-
-      <header className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-1">
-          Ingérer un article manuellement
-        </h1>
-        <p className="text-sm text-gray-500">
-          Deux modes disponibles. <strong>Pipeline auto</strong> : on saisit les
-          métadonnées, le scoring + la synthèse passent par le pipeline LLM.
-          <strong> Enrichi manuel</strong> : on rédige soi-même la synthèse et
-          les questions, l'article devient immédiatement disponible.
-        </p>
-      </header>
+      <PageHeader
+        backHref="/admin/news"
+        backLabel="Retour à la liste"
+        title="Ingérer un article manuellement"
+        className="mb-1"
+      />
+      <p className="text-sm text-gray-500 mb-6">
+        Deux modes disponibles. <strong>Pipeline auto</strong> : on saisit les
+        métadonnées, le scoring + la synthèse passent par le pipeline LLM.
+        <strong> Enrichi manuel</strong> : on rédige soi-même la synthèse et
+        les questions, l'article devient immédiatement disponible.
+      </p>
 
       {/* Toggle mode */}
       <div

@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
-import { ArrowLeft, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
 
 const themeOptions = [
   { value: 'esthetique', label: 'Esthetique Dentaire' },
@@ -118,13 +119,7 @@ export default function EditEppAuditPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <Link href={`/admin/epp/${auditId}`} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4">
-          <ArrowLeft className="w-4 h-4" />
-          Retour a l'audit
-        </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Modifier l'audit EPP</h1>
-      </div>
+      <PageHeader backHref={`/admin/epp/${auditId}`} backLabel="Retour à l'audit" title="Modifier l'audit EPP" />
 
       <form onSubmit={handleSubmit} className="max-w-2xl">
         <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
