@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Shield } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { Card } from '@/components/ui/Card'
 
 type OrgType = 'cabinet' | 'hr_entity' | 'training_org'
 type OrgPlan = 'standard' | 'premium'
@@ -92,7 +93,8 @@ export default function NewOrganizationPage() {
         subtitle="Le membre admin pourra être invité après la création."
       />
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
+      <form onSubmit={handleSubmit}>
+      <Card className="p-6 space-y-6">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">
             {error}
@@ -155,6 +157,7 @@ export default function NewOrganizationPage() {
             {submitting ? 'Création…' : 'Créer'}
           </button>
         </div>
+      </Card>
       </form>
     </div>
   )

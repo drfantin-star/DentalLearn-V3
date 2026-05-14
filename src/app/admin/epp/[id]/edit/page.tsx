@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Save } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Card } from '@/components/ui/Card';
 
 const themeOptions = [
   { value: 'esthetique', label: 'Esthetique Dentaire' },
@@ -122,7 +123,7 @@ export default function EditEppAuditPage() {
       <PageHeader backHref={`/admin/epp/${auditId}`} backLabel="Retour à l'audit" title="Modifier l'audit EPP" />
 
       <form onSubmit={handleSubmit} className="max-w-2xl">
-        <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
+        <Card className="p-8 space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Titre *</label>
             <input
@@ -240,7 +241,7 @@ export default function EditEppAuditPage() {
               {loading ? 'Enregistrement...' : 'Enregistrer'}
             </button>
           </div>
-        </div>
+        </Card>
       </form>
     </div>
   );

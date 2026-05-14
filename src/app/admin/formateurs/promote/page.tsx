@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Search, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { Card } from '@/components/ui/Card'
 
 interface LookupUser {
   id: string
@@ -100,10 +101,8 @@ export default function PromoteFormateurPage() {
         présentielles.
       </p>
 
-      <form
-        onSubmit={handleSearch}
-        className="bg-white rounded-2xl shadow-lg p-6 mb-6 space-y-4"
-      >
+      <form onSubmit={handleSearch}>
+      <Card className="p-6 mb-6 space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Email de l'utilisateur
@@ -125,6 +124,7 @@ export default function PromoteFormateurPage() {
           <Search className="w-4 h-4" />
           {searching ? 'Recherche…' : 'Rechercher'}
         </button>
+      </Card>
       </form>
 
       {error && (
@@ -185,7 +185,7 @@ export default function PromoteFormateurPage() {
       )}
 
       {searched && user && !user.is_formateur && (
-        <div className="bg-white rounded-2xl shadow-lg p-6">
+        <Card className="p-6">
           <div className="flex items-start gap-4 mb-6">
             <div className="w-12 h-12 rounded-full bg-[#2D1B96] text-white flex items-center justify-center font-semibold">
               {initialsOf(user)}
@@ -212,7 +212,7 @@ export default function PromoteFormateurPage() {
             <UserPlus className="w-4 h-4" />
             {promoting ? 'Promotion…' : 'Promouvoir au rôle formateur'}
           </button>
-        </div>
+        </Card>
       )}
     </div>
   )
