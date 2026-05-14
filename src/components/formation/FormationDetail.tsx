@@ -24,6 +24,7 @@ import {
 import { GenerateAttestationButton } from '@/components/attestations/GenerateAttestationButton'
 import { ColdSurveyEligibilityBadge } from '@/components/satisfaction/ColdSurveyEligibilityBadge'
 import { ValidationFooter } from '@/components/editorial/ValidationFooter'
+import UpcomingEvents from '@/components/UpcomingEvents'
 
 // ============================================
 // TYPES
@@ -352,6 +353,9 @@ export default function FormationDetail({
       </div>
 
       {/* Description déplacée dans le header */}
+
+      {/* Prochaines dates présentielles */}
+      <UpcomingEvents formationId={formationId} />
 
       {/* Liste des séquences */}
       <div className="px-4 pt-5">

@@ -1,14 +1,11 @@
-import ComingSoonStub from '@/components/formateur/ComingSoonStub'
+import AgendaClient from '@/components/formateur/AgendaClient'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Agenda · Espace Formateur',
 }
 
 export default function FormateurAgendaPage() {
-  return (
-    <ComingSoonStub
-      title="Agenda des formations"
-      ticketRef="T4 — Agenda événements présentiels"
-    />
-  )
+  return <AgendaClient />
 }
