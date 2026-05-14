@@ -46,6 +46,7 @@ export interface FormateurStatsPerFormation {
   formation_id: string
   formation_title: string
   formation_slug: string
+  formation_category: string | null
   formation_cover: string | null
   is_primary: boolean
   inscrits: number

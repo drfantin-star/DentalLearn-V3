@@ -28,7 +28,7 @@ export default function FormationStatsCard({ stats }: FormationStatsCardProps) {
 
       <div className="p-5 flex-1 flex flex-col">
         <Link
-          href={`/formation/${stats.formation_slug}`}
+          href={`/formation/${stats.formation_category ?? ''}?formation=${stats.formation_slug}`}
           className="text-lg font-bold text-gray-900 hover:text-[#2D1B96] transition-colors line-clamp-2"
         >
           {stats.formation_title}
