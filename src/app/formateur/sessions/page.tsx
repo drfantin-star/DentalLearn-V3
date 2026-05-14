@@ -1,9 +1,11 @@
-import ComingSoonStub from '@/components/formateur/ComingSoonStub'
+import SessionsClient from '@/components/formateur/SessionsClient'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Mes masterclass · Espace Formateur',
 }
 
 export default function FormateurSessionsPage() {
-  return <ComingSoonStub title="Mes masterclass" ticketRef="T5 — Masterclass live" />
+  return <SessionsClient />
 }
