@@ -2,7 +2,7 @@ import React from 'react'
 import { cn } from '@/lib/utils/cn'
 
 export type BadgeVariant =
-  // Métier (préservées pour FormationCard / ThemeCard)
+  // Métier
   | 'cp'
   | 'bonus'
   | 'epp'
