@@ -35,9 +35,11 @@ export const maxDuration = 300
 
 // POST — génère le script unifié du journal via Claude Sonnet à partir des
 // synthèses liées (3 à 6, dans l'ordre de news_episode_syntheses.position).
-// Body : { editorial_notes?: string }
-// Pré-checks : journal en status 'draft' (un journal published/archived ne se
-// régénère pas — il faut en créer un nouveau).
+// Body : { format?, narrator?, target_duration_min?, editorial_tone?, editorial_notes? }
+// Pré-checks : journal en status 'draft' par défaut. Pour régénérer un journal
+// déjà published/archived (après correction de synthèse via T12 editor),
+// utiliser ?regenerate=true — le body devient optionnel et les paramètres non
+// fournis sont récupérés depuis l'episode existant (cf. T12-D-bis-3).
 
 export async function POST(
   request: Request,
@@ -58,31 +60,82 @@ export async function POST(
       return NextResponse.json({ error: 'id manquant' }, { status: 400 })
     }
 
+    const isRegenerate =
+      new URL(request.url).searchParams.get('regenerate') === 'true'
+
     let body: any = {}
     try {
       body = await request.json()
     } catch {
       // body optionnel
     }
+    // editorial_notes est éphémère par design (RECAP T7 v1.3) — jamais persisté,
+    // donc jamais de fallback BDD même en mode regenerate.
     const editorialNotes =
       typeof body?.editorial_notes === 'string' && body.editorial_notes.trim().length > 0
         ? body.editorial_notes.trim()
         : undefined
 
-    // ----- Validation paramètres T7-bis (alignés sur le formulaire admin) -----
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json(
+        { error: 'Clé API Anthropic manquante côté serveur' },
+        { status: 503 },
+      )
+    }
+
+    const adminSupabase = createAdminClient()
+
+    // ----- 1. Vérifier journal + statut + récupérer paramètres pour fallback -----
+    const { data: episode, error: epErr } = await adminSupabase
+      .from('news_episodes')
+      .select(
+        'id, type, status, week_iso, format, narrator, target_duration_min, editorial_tone',
+      )
+      .eq('id', id)
+      .eq('type', 'journal')
+      .maybeSingle()
+
+    if (epErr) {
+      console.error('generate-script journal episode error:', epErr)
+      return NextResponse.json({ error: epErr.message }, { status: 500 })
+    }
+    if (!episode) {
+      return NextResponse.json({ error: 'Journal introuvable' }, { status: 404 })
+    }
+    if (!isRegenerate && episode.status !== 'draft') {
+      return NextResponse.json(
+        {
+          error:
+            'Génération du script autorisée uniquement sur un journal en draft (utiliser ?regenerate=true pour bypass)',
+        },
+        { status: 409 },
+      )
+    }
+
+    // ----- 2. Résolution paramètres avec fallback BDD en mode regenerate -----
+    // Règle : si body fourni ET valide → body. Sinon si isRegenerate ET valeur
+    // BDD valide → BDD. Sinon défaut/erreur.
     const format: ScriptFormat = ALLOWED_FORMATS.includes(body?.format)
       ? body.format
-      : 'dialogue'
+      : isRegenerate && ALLOWED_FORMATS.includes(episode.format as ScriptFormat)
+        ? (episode.format as ScriptFormat)
+        : 'dialogue'
 
     let narrator: ScriptNarrator | null = null
     if (format === 'monologue') {
-      if (!ALLOWED_NARRATORS.includes(body?.narrator)) {
+      if (ALLOWED_NARRATORS.includes(body?.narrator)) {
+        narrator = body.narrator as ScriptNarrator
+      } else if (
+        isRegenerate &&
+        ALLOWED_NARRATORS.includes(episode.narrator as ScriptNarrator)
+      ) {
+        narrator = episode.narrator as ScriptNarrator
+      } else {
         return NextResponse.json(
           { error: 'narrator requis pour format=monologue (sophie ou martin)' },
           { status: 400 },
         )
       }
-      narrator = body.narrator as ScriptNarrator
     } else if (body?.narrator != null) {
       // Le CHECK XOR de news_episodes interdit narrator non-NULL en dialogue.
       return NextResponse.json(
@@ -95,47 +148,20 @@ export async function POST(
       typeof body?.target_duration_min === 'number' &&
       ALLOWED_DURATIONS.has(body.target_duration_min)
         ? (body.target_duration_min as number)
-        : 12
+        : isRegenerate &&
+            typeof episode.target_duration_min === 'number' &&
+            ALLOWED_DURATIONS.has(episode.target_duration_min)
+          ? (episode.target_duration_min as number)
+          : 12
 
     const editorialTone: EditorialTone = ALLOWED_TONES.includes(body?.editorial_tone)
       ? body.editorial_tone
-      : 'standard'
+      : isRegenerate &&
+          ALLOWED_TONES.includes(episode.editorial_tone as EditorialTone)
+        ? (episode.editorial_tone as EditorialTone)
+        : 'standard'
 
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json(
-        { error: 'Clé API Anthropic manquante côté serveur' },
-        { status: 503 },
-      )
-    }
-
-    const adminSupabase = createAdminClient()
-
-    // ----- 1. Vérifier journal + statut -----
-    const { data: episode, error: epErr } = await adminSupabase
-      .from('news_episodes')
-      .select('id, type, status, week_iso')
-      .eq('id', id)
-      .eq('type', 'journal')
-      .maybeSingle()
-
-    if (epErr) {
-      console.error('generate-script journal episode error:', epErr)
-      return NextResponse.json({ error: epErr.message }, { status: 500 })
-    }
-    if (!episode) {
-      return NextResponse.json({ error: 'Journal introuvable' }, { status: 404 })
-    }
-    if (episode.status !== 'draft') {
-      return NextResponse.json(
-        {
-          error:
-            'Génération du script autorisée uniquement sur un journal en draft',
-        },
-        { status: 409 },
-      )
-    }
-
-    // ----- 2. Récupérer les synthèses liées -----
+    // ----- 3. Récupérer les synthèses liées -----
     const { data: links, error: linksErr } = await adminSupabase
       .from('news_episode_syntheses')
       .select('synthesis_id, position')
@@ -194,7 +220,7 @@ export async function POST(
       )
     }
 
-    // ----- 3. Appel Anthropic -----
+    // ----- 4. Appel Anthropic -----
     const systemPrompt = buildJournalPrompt(journalSyntheses, editorialNotes, {
       format,
       narrator,
@@ -221,7 +247,7 @@ export async function POST(
       )
     }
 
-    // ----- 4. UPDATE script_md + paramètres choisis -----
+    // ----- 5. UPDATE script_md + paramètres choisis -----
     // Le CHECK XOR news_episodes_format_narrator_check exige
     // (format='dialogue' AND narrator IS NULL) OR (format='monologue' AND narrator IS NOT NULL).
     // L'objet construit ci-dessous respecte la contrainte.
