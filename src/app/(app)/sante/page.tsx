@@ -1,106 +1,18 @@
 'use client'
 
-import React, { useState, useEffect, Suspense } from 'react'
+import React, { useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { CATEGORIES } from '@/lib/supabase/types'
-import ThemeDetail from '@/components/shared/ThemeDetail'
-import type { Theme } from '@/types/theme'
-
-// Thèmes Santé Pro — basé sur le prototype V5
-const SANTE_THEMES: Theme[] = [
-  {
-    id: 'ergonomie',
-    emoji: '🧘',
-    title: 'Ergonomie au cabinet',
-    description: 'Postures de travail et aménagement du poste',
-    color: '#EC4899',
-    bgLight: 'bg-pink-50',
-    contents: [
-      { type: 'Formation gamifiée', icon: '🎮', status: 'available' },
-      { type: 'Auto-évaluation', icon: '📊', status: 'available' },
-      { type: 'EPP - Audit clinique', icon: '📋', status: 'coming' },
-      { type: 'Programme exercices', icon: '🏋️', status: 'available' },
-    ],
-  },
-  {
-    id: 'tms',
-    emoji: '💪',
-    title: 'Prévention TMS',
-    description: 'Troubles musculosquelettiques et prévention',
-    color: '#EC4899',
-    bgLight: 'bg-pink-50',
-    contents: [
-      { type: 'Formation gamifiée', icon: '🎮', status: 'coming' },
-      { type: 'Fiche pratique', icon: '📄', status: 'available' },
-      { type: 'Programme exercices', icon: '🏋️', status: 'available' },
-    ],
-  },
-  {
-    id: 'stress',
-    emoji: '🧠',
-    title: 'Gestion du stress',
-    description: 'Burn-out, charge mentale et prévention',
-    color: '#EC4899',
-    bgLight: 'bg-pink-50',
-    contents: [
-      { type: 'Formation gamifiée', icon: '🎮', status: 'coming' },
-      { type: 'Auto-évaluation', icon: '📊', status: 'coming' },
-      { type: 'Fiche pratique', icon: '📄', status: 'coming' },
-    ],
-  },
-  {
-    id: 'hygiene-vie',
-    emoji: '😴',
-    title: 'Hygiène de vie',
-    description: 'Sommeil, nutrition et activité physique',
-    color: '#EC4899',
-    bgLight: 'bg-pink-50',
-    contents: [
-      { type: 'Formation gamifiée', icon: '🎮', status: 'coming' },
-      { type: 'Action réflexive', icon: '🪞', status: 'coming' },
-    ],
-  },
-  {
-    id: 'bilan-sante',
-    emoji: '📊',
-    title: 'Bilan santé praticien',
-    description: 'Suivi médical et dépistages recommandés',
-    color: '#EC4899',
-    bgLight: 'bg-pink-50',
-    contents: [
-      { type: 'Fiche pratique', icon: '📄', status: 'coming' },
-      { type: 'Action réflexive', icon: '🪞', status: 'coming' },
-    ],
-  },
-]
 
 function SantePageContent() {
-  const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
 
   useEffect(() => {
     const themeId = searchParams.get('theme')
-    if (themeId) {
-      const found = SANTE_THEMES.find(t => t.id === themeId)
-      if (found) {
-        setSelectedTheme(found)
-        router.replace('/sante')
-      }
-    }
+    if (themeId) router.replace(`/formation/${themeId}?from=/sante`)
   }, [])
-
-  if (selectedTheme) {
-    return (
-      <ThemeDetail
-        theme={selectedTheme}
-        accentColor="#EC4899"
-        onBack={() => setSelectedTheme(null)}
-        fromPage="/sante"
-      />
-    )
-  }
 
   const axe4Categories = CATEGORIES.filter((c) => c.type === 'axe4')
 
@@ -126,46 +38,43 @@ function SantePageContent() {
           🔍 Explorer par thème
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          {axe4Categories.map((cat) => {
-            const theme = SANTE_THEMES.find((t) => t.id === cat.id)
-            return (
-              <button
-                key={cat.id}
-                onClick={() => theme && setSelectedTheme(theme)}
-                className="relative rounded-2xl overflow-hidden"
-                style={{ aspectRatio: '3/2' }}
-              >
-                {cat.labelImageUrl ? (
-                  <img
-                    src={cat.labelImageUrl}
-                    alt={cat.name}
-                    className="w-full h-full object-cover absolute inset-0"
-                  />
-                ) : (
-                  <div
-                    className="w-full h-full absolute inset-0"
-                    style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
-                  />
-                )}
-                <div
-                  className="absolute inset-0"
-                  style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
+          {axe4Categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => router.push(`/formation/${cat.id}?from=/sante`)}
+              className="relative rounded-2xl overflow-hidden"
+              style={{ aspectRatio: '3/2' }}
+            >
+              {cat.labelImageUrl ? (
+                <img
+                  src={cat.labelImageUrl}
+                  alt={cat.name}
+                  className="w-full h-full object-cover absolute inset-0"
                 />
-                <span
-                  className="absolute font-bold text-white leading-tight"
-                  style={{
-                    bottom: '10px',
-                    left: '12px',
-                    fontSize: '16px',
-                    textShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                    maxWidth: 'calc(100% - 24px)',
-                  }}
-                >
-                  {cat.name}
-                </span>
-              </button>
-            )
-          })}
+              ) : (
+                <div
+                  className="w-full h-full absolute inset-0"
+                  style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
+                />
+              )}
+              <div
+                className="absolute inset-0"
+                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
+              />
+              <span
+                className="absolute font-bold text-white leading-tight"
+                style={{
+                  bottom: '10px',
+                  left: '12px',
+                  fontSize: '16px',
+                  textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                  maxWidth: 'calc(100% - 24px)',
+                }}
+              >
+                {cat.name}
+              </span>
+            </button>
+          ))}
         </div>
       </main>
     </>
