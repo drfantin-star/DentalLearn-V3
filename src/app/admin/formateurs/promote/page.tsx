@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Search, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { Search, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 interface LookupUser {
   id: string
@@ -87,15 +88,12 @@ export default function PromoteFormateurPage() {
 
   return (
     <div className="p-8 max-w-3xl">
-      <Link
-        href="/admin/formateurs"
-        className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Retour aux formateurs
-      </Link>
-
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Promouvoir un utilisateur</h1>
+      <PageHeader
+        backHref="/admin/formateurs"
+        backLabel="Retour aux formateurs"
+        title="Promouvoir un utilisateur"
+        className="mb-2"
+      />
       <p className="text-gray-600 mb-8">
         Recherchez un utilisateur existant par email puis attribuez-lui le rôle{' '}
         <strong>formateur</strong> pour qu'il puisse animer des masterclass et des formations

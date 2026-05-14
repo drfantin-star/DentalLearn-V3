@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Shield, UserPlus, Save, Ban } from 'lucide-react'
+import { Shield, UserPlus, Save, Ban } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { INTRA_ROLE_LABELS } from '@/lib/auth/intra-role-matrix'
 import type { IntraRole } from '@/lib/auth/rbac'
 
@@ -192,18 +193,12 @@ export default function OrganizationDetailPage() {
 
   return (
     <div className="p-8">
-      <Link
-        href="/admin/organizations"
-        className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Retour aux organisations
-      </Link>
-
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">{org.name}</h1>
-        <p className="text-gray-600 mt-1">{TYPE_LABEL[org.type]} · Plan {org.plan}</p>
-      </div>
+      <PageHeader
+        backHref="/admin/organizations"
+        backLabel="Retour aux organisations"
+        title={org.name}
+        subtitle={`${TYPE_LABEL[org.type]} · Plan ${org.plan}`}
+      />
 
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex gap-2">

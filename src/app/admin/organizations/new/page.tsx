@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { ArrowLeft, Shield } from 'lucide-react'
+import { Shield } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 type OrgType = 'cabinet' | 'hr_entity' | 'training_org'
 type OrgPlan = 'standard' | 'premium'
@@ -84,18 +85,12 @@ export default function NewOrganizationPage() {
 
   return (
     <div className="p-8 max-w-2xl">
-      <Link
-        href="/admin/organizations"
-        className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Retour aux organisations
-      </Link>
-
-      <h1 className="text-3xl font-bold text-gray-900 mb-2">Nouvelle organisation</h1>
-      <p className="text-gray-600 mb-8">
-        Le membre admin pourra être invité après la création.
-      </p>
+      <PageHeader
+        backHref="/admin/organizations"
+        backLabel="Retour aux organisations"
+        title="Nouvelle organisation"
+        subtitle="Le membre admin pourra être invité après la création."
+      />
 
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
         {error && (

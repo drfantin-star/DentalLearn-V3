@@ -14,6 +14,7 @@ import {
   Save,
   CheckCircle2,
 } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 type ComplaintStatus = 'nouvelle' | 'en_cours' | 'resolue' | 'close'
 
@@ -167,17 +168,11 @@ export default function ComplaintDetailPage() {
 
   return (
     <div className="p-8 max-w-3xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <Link
-          href="/admin/reclamations"
-          className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 mb-3"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Retour à la liste
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-900">{complaint.sujet}</h1>
-      </div>
+      <PageHeader
+        backHref="/admin/reclamations"
+        backLabel="Retour à la liste"
+        title={complaint.sujet}
+      />
 
       {/* Métadonnées */}
       <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">

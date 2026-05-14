@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save, Upload } from 'lucide-react';
+import { Save, Upload } from 'lucide-react';
+import { PageHeader } from '@/components/ui/PageHeader';
 import { createClient } from '@/lib/supabase/client';
 
 interface FormData {
@@ -189,13 +190,7 @@ export default function EditFormationPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-8">
-        <Link href={`/admin/formations/${formationId}`} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4">
-          <ArrowLeft className="w-4 h-4" />
-          Retour à la formation
-        </Link>
-        <h1 className="text-3xl font-bold text-gray-900">Modifier la formation</h1>
-      </div>
+      <PageHeader backHref={`/admin/formations/${formationId}`} backLabel="Retour à la formation" title="Modifier la formation" />
 
       <form onSubmit={handleSubmit} className="max-w-2xl">
         <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
