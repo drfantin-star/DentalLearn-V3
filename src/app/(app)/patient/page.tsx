@@ -1,183 +1,18 @@
 'use client'
 
-import React, { useState, useEffect, Suspense } from 'react'
+import React, { useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { CATEGORIES } from '@/lib/supabase/types'
-import type { Theme } from '@/types/theme'
-import ThemeDetail from '@/components/shared/ThemeDetail'
-import FormationDetail from '@/components/formation/FormationDetail'
-import SequencePlayer from '@/components/formation/SequencePlayer'
-import { useUserFormationProgress, type Sequence } from '@/lib/supabase'
-
-// ============================================
-// DONNÉES — Thèmes Patient (Axe 3)
-// ============================================
-
-const PATIENT_THEMES: Theme[] = [
-  {
-    id: 'communication',
-    emoji: '🗣️',
-    title: 'Communication patient',
-    description: 'Techniques de communication et écoute active',
-    color: '#F59E0B',
-    bgLight: 'bg-amber-50',
-    contents: [
-      { type: 'Écoute active & Communication', icon: '🎮', status: 'available', tag: 'cp', slug: 'communication-relation-therapeutique' },
-      { type: 'Auto-évaluation', icon: '📊', status: 'available', tag: 'cp' },
-      { type: 'EPP - Audit clinique', icon: '📋', status: 'coming', tag: 'cp' },
-      { type: 'Fiche pratique', icon: '📄', status: 'available', tag: 'bonus' },
-    ],
-  },
-  {
-    id: 'consentement',
-    emoji: '📝',
-    title: 'Consentement éclairé',
-    description: 'Cadre juridique et bonnes pratiques',
-    color: '#F59E0B',
-    bgLight: 'bg-amber-50',
-    contents: [
-      { type: 'Formation gamifiée', icon: '🎮', status: 'available', tag: 'cp' },
-      { type: 'EPP - Audit clinique', icon: '📋', status: 'coming', tag: 'cp' },
-      { type: 'Fiche pratique', icon: '📄', status: 'available', tag: 'bonus' },
-    ],
-  },
-  {
-    id: 'conflits',
-    emoji: '🤝',
-    title: 'Gestion des conflits',
-    description: 'Médiation et résolution de conflits',
-    color: '#F59E0B',
-    bgLight: 'bg-amber-50',
-    contents: [
-      { type: 'Formation gamifiée', icon: '🎮', status: 'coming', tag: 'cp' },
-      { type: 'Fiche pratique', icon: '📄', status: 'coming', tag: 'bonus' },
-    ],
-  },
-  {
-    id: 'ethique',
-    emoji: '⚖️',
-    title: 'Éthique & Déontologie',
-    description: 'Obligations déontologiques et cas pratiques',
-    color: '#F59E0B',
-    bgLight: 'bg-amber-50',
-    contents: [
-      { type: 'Formation gamifiée', icon: '🎮', status: 'coming', tag: 'cp' },
-      { type: 'Action réflexive', icon: '🪞', status: 'coming', tag: 'cp' },
-    ],
-  },
-]
-
-// ============================================
-// PAGE
-// ============================================
 
 function PatientPageContent() {
-  const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
 
   useEffect(() => {
     const themeId = searchParams.get('theme')
-    if (themeId) {
-      const found = PATIENT_THEMES.find(t => t.id === themeId)
-      if (found) {
-        setSelectedTheme(found)
-        router.replace('/patient')
-      }
-    }
+    if (themeId) router.replace(`/formation/${themeId}?from=/patient`)
   }, [])
-
-  const [viewMode, setViewMode] = useState<'themes' | 'formation' | 'sequence'>('themes')
-  const [selectedFormationId, setSelectedFormationId] = useState<string | null>(null)
-  const [selectedAccessType, setSelectedAccessType] = useState<'demo' | 'full' | null>(null)
-  const [selectedCoverImageUrl, setSelectedCoverImageUrl] = useState<string | null>(null)
-  const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
-  const [sequenceGradient] = useState({ from: '#F59E0B', to: '#FCD34D' })
-
-  const { markCompleted } = useUserFormationProgress(selectedFormationId)
-
-  const handleContentClick = async (slug: string) => {
-    try {
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('formations')
-        .select('id, access_type, cover_image_url')
-        .eq('slug', slug)
-        .single()
-      if (data) {
-        setSelectedFormationId(data.id)
-        setSelectedAccessType(data.access_type)
-        setSelectedCoverImageUrl(data.cover_image_url)
-        setViewMode('formation')
-      }
-    } catch (err) {
-      console.error('Erreur résolution slug:', err)
-    }
-  }
-
-  const openSequence = (seq: Sequence) => {
-    setSelectedSequence(seq)
-    setViewMode('sequence')
-  }
-
-  const handleSequenceComplete = async (score: number, totalPoints: number) => {
-    if (selectedSequence && selectedFormationId) {
-      markCompleted(selectedSequence.id, selectedSequence.sequence_number + 1)
-    }
-    try { await fetch('/api/streaks/update', { method: 'POST' }) } catch {}
-    setSelectedSequence(null)
-    setViewMode('formation')
-  }
-
-  const goBack = () => {
-    if (viewMode === 'sequence') {
-      setSelectedSequence(null)
-      setViewMode('formation')
-    } else if (viewMode === 'formation') {
-      setSelectedFormationId(null)
-      setSelectedAccessType(null)
-      setViewMode('themes')
-    }
-  }
-
-  // Rendu séquence
-  if (viewMode === 'sequence' && selectedSequence) {
-    return (
-      <SequencePlayer
-        sequence={selectedSequence}
-        categoryGradient={sequenceGradient}
-        coverImageUrl={selectedCoverImageUrl}
-        onBack={goBack}
-        onComplete={handleSequenceComplete}
-      />
-    )
-  }
-
-  // Rendu formation
-  if (viewMode === 'formation' && selectedFormationId) {
-    return (
-      <FormationDetail
-        formationId={selectedFormationId}
-        onBack={goBack}
-        onStartSequence={openSequence}
-      />
-    )
-  }
-
-  // Rendu thème sélectionné
-  if (selectedTheme) {
-    return (
-      <ThemeDetail
-        theme={selectedTheme}
-        accentColor="#F59E0B"
-        onBack={() => setSelectedTheme(null)}
-        onFormationClick={handleContentClick}
-        fromPage="/patient"
-      />
-    )
-  }
 
   const axe3Categories = CATEGORIES.filter((c) => c.type === 'axe3')
 
@@ -203,46 +38,43 @@ function PatientPageContent() {
           🔍 Explorer par thème
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          {axe3Categories.map((cat) => {
-            const theme = PATIENT_THEMES.find((t) => t.id === cat.id)
-            return (
-              <button
-                key={cat.id}
-                onClick={() => theme && setSelectedTheme(theme)}
-                className="relative rounded-2xl overflow-hidden"
-                style={{ aspectRatio: '3/2' }}
-              >
-                {cat.labelImageUrl ? (
-                  <img
-                    src={cat.labelImageUrl}
-                    alt={cat.name}
-                    className="w-full h-full object-cover absolute inset-0"
-                  />
-                ) : (
-                  <div
-                    className="w-full h-full absolute inset-0"
-                    style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
-                  />
-                )}
-                <div
-                  className="absolute inset-0"
-                  style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
+          {axe3Categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => router.push(`/formation/${cat.id}?from=/patient`)}
+              className="relative rounded-2xl overflow-hidden"
+              style={{ aspectRatio: '3/2' }}
+            >
+              {cat.labelImageUrl ? (
+                <img
+                  src={cat.labelImageUrl}
+                  alt={cat.name}
+                  className="w-full h-full object-cover absolute inset-0"
                 />
-                <span
-                  className="absolute font-bold text-white leading-tight"
-                  style={{
-                    bottom: '10px',
-                    left: '12px',
-                    fontSize: '16px',
-                    textShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                    maxWidth: 'calc(100% - 24px)',
-                  }}
-                >
-                  {cat.name}
-                </span>
-              </button>
-            )
-          })}
+              ) : (
+                <div
+                  className="w-full h-full absolute inset-0"
+                  style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
+                />
+              )}
+              <div
+                className="absolute inset-0"
+                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
+              />
+              <span
+                className="absolute font-bold text-white leading-tight"
+                style={{
+                  bottom: '10px',
+                  left: '12px',
+                  fontSize: '16px',
+                  textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                  maxWidth: 'calc(100% - 24px)',
+                }}
+              >
+                {cat.name}
+              </span>
+            </button>
+          ))}
         </div>
       </main>
     </>
