@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { CATEGORIES } from '@/lib/supabase/types'
 import ThemeDetail from '@/components/shared/ThemeDetail'
-import type { Theme } from '@/components/ui/ThemeCard'
+import type { Theme } from '@/types/theme'
 
 // Thèmes Santé Pro — basé sur le prototype V5
 const SANTE_THEMES: Theme[] = [
