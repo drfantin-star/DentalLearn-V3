@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic'
 
 // GET /api/sessions/[id]
 // Retourne les détails d'une session publiée + l'état d'inscription de l'user connecté.
-// zoom_url et zoom_password sont inclus (la page client les affiche uniquement aux inscrits).
+// zoom_url et zoom_password sont masqués (null) si l'user n'est PAS inscrit.
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
@@ -40,8 +40,18 @@ export async function GET(
     .eq('user_id', user.id)
     .single()
 
+  const isRegistered = registration !== null
+
+  // zoom_url et zoom_password masqués pour les non-inscrits
+  const safeSession = {
+    ...sessionData,
+    registration_count,
+    zoom_url: isRegistered ? sessionData.zoom_url : null,
+    zoom_password: isRegistered ? sessionData.zoom_password : null,
+  }
+
   return NextResponse.json({
-    session: { ...sessionData, registration_count },
+    session: safeSession,
     user_registration_id: registration?.id ?? null,
   })
 }
