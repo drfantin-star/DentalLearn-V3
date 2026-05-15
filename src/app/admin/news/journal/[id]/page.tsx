@@ -2,21 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
 
-// Détail d'un journal hebdo (T11) :
-//   - affiche les synthèses sélectionnées dans l'ordre
-//   - Formulaire de génération aligné sur T7-bis (CaseAParametrage de
-//     src/components/admin/news/AudioPodcastBlock.tsx) : format, narrator
-//     (si monologue), target_duration_min (3/5/8/12), editorial_tone,
-//     editorial_notes
-//   - Bouton "Générer le script" → POST generate-script
-//   - Textarea script éditable (modifs envoyées au prochain generate-audio
-//     via UPDATE indirect — pour l'instant la régénération seule est exposée,
-//     l'édition manuelle est réservée à un futur ticket)
-//   - Bouton "Générer l'audio" → POST generate-audio (publie automatiquement)
-//   - Bouton "Publier" / "Archiver" → PATCH status
+// Détail d'un journal hebdo (T11) — workflow T13 :
+//   draft → [Générer l'audio] → ready → [Publier] → published → [Archiver] → archived
 
 type ScriptFormat = 'dialogue' | 'monologue'
 type ScriptNarrator = 'sophie' | 'martin'
@@ -52,7 +42,7 @@ interface JournalEpisodeAdmin {
   type: string
   title: string
   week_iso: string | null
-  status: 'draft' | 'published' | 'archived' | string
+  status: 'draft' | 'ready' | 'published' | 'archived' | string
   audio_url: string | null
   duration_s: number | null
   script_md: string | null
@@ -72,6 +62,8 @@ function statusBadge(status: string) {
   switch (status) {
     case 'draft':
       return { label: 'Brouillon', className: 'bg-gray-200 text-gray-700' }
+    case 'ready':
+      return { label: 'Prêt à publier', className: 'bg-amber-100 text-amber-700' }
     case 'published':
       return { label: 'Publié', className: 'bg-green-100 text-green-700' }
     case 'archived':
@@ -89,7 +81,6 @@ function formatDuration(s: number | null): string {
 
 export default function AdminJournalDetailPage() {
   const params = useParams<{ id: string }>()
-  const router = useRouter()
   const id = params?.id
 
   const [data, setData] = useState<JournalDetailResponse | null>(null)
@@ -99,9 +90,7 @@ export default function AdminJournalDetailPage() {
   // Notes éditoriales (non persistées en BDD).
   const [editorialNotes, setEditorialNotes] = useState('')
 
-  // Paramètres de génération T7-bis (alignés sur AudioPodcastBlock).
-  // Default : dialogue Sophie/Martin, 12 min, ton standard — cohérent avec
-  // l'INSERT du draft côté /api/admin/news/journal POST.
+  // Paramètres de génération T7-bis.
   const [scriptParams, setScriptParams] = useState<{
     format: ScriptFormat
     narrator: ScriptNarrator | null
@@ -117,7 +106,9 @@ export default function AdminJournalDetailPage() {
   // Script affiché — initialisé depuis episode.script_md, éditable visuel seulement.
   const [scriptDraft, setScriptDraft] = useState('')
 
-  const [busy, setBusy] = useState<null | 'script' | 'audio' | 'publish' | 'archive'>(null)
+  const [busy, setBusy] = useState<
+    null | 'script' | 'audio' | 'regen-audio' | 'publish' | 'archive'
+  >(null)
   const [opError, setOpError] = useState<string | null>(null)
 
   const reload = useCallback(async () => {
@@ -184,7 +175,7 @@ export default function AdminJournalDetailPage() {
 
   const handleGenerateAudio = async () => {
     if (!data) return
-    if (!confirm('Générer le MP3 via ElevenLabs et publier le journal ? L\'opération peut prendre plusieurs minutes.')) return
+    if (!confirm('Générer le MP3 via ElevenLabs ? L\'opération peut prendre plusieurs minutes.')) return
     setBusy('audio')
     setOpError(null)
     try {
@@ -201,16 +192,34 @@ export default function AdminJournalDetailPage() {
     }
   }
 
+  const handleRegenerateAudio = async () => {
+    if (!data) return
+    if (!confirm('Régénérer l\'audio via ElevenLabs ? Le statut du journal sera préservé.')) return
+    setBusy('regen-audio')
+    setOpError(null)
+    try {
+      const res = await fetch(
+        `/api/admin/news/journal/${id}/generate-audio?regenerate=true`,
+        { method: 'POST' },
+      )
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`)
+      await reload()
+    } catch (err) {
+      setOpError(err instanceof Error ? err.message : 'Erreur régénération audio')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   const handlePublish = async () => {
     if (!data) return
     if (!confirm(`Publier le journal ${data.episode.week_iso} ?`)) return
     setBusy('publish')
     setOpError(null)
     try {
-      const res = await fetch(`/api/admin/news/journal/${id}`, {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ status: 'published' }),
+      const res = await fetch(`/api/admin/news/episodes/${id}/publish`, {
+        method: 'POST',
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`)
@@ -225,6 +234,25 @@ export default function AdminJournalDetailPage() {
   const handleArchive = async () => {
     if (!data) return
     if (!confirm('Archiver ce journal ? Cette action est irréversible.')) return
+    setBusy('archive')
+    setOpError(null)
+    try {
+      const res = await fetch(`/api/admin/news/episodes/${id}/archive`, {
+        method: 'POST',
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`)
+      await reload()
+    } catch (err) {
+      setOpError(err instanceof Error ? err.message : 'Erreur archivage')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handleArchiveDraft = async () => {
+    if (!data) return
+    if (!confirm('Archiver ce brouillon ? Cette action est irréversible.')) return
     setBusy('archive')
     setOpError(null)
     try {
@@ -271,6 +299,7 @@ export default function AdminJournalDetailPage() {
   const { episode, syntheses } = data
   const badge = statusBadge(episode.status)
   const isDraft = episode.status === 'draft'
+  const isReady = episode.status === 'ready'
   const isPublished = episode.status === 'published'
 
   return (
@@ -298,7 +327,7 @@ export default function AdminJournalDetailPage() {
         </div>
       )}
 
-      {/* Synthèses sélectionnées */}
+      {/* Synthèses sélectionnées — fix D-T11-NAV-01 : items cliquables vers /admin/news/[id]/edit */}
       <section className="bg-white rounded-2xl shadow-sm p-6">
         <h2 className="font-semibold text-gray-900 mb-3">Au sommaire</h2>
         <ol className="space-y-2">
@@ -311,7 +340,12 @@ export default function AdminJournalDetailPage() {
                     {NEWS_SPECIALITE_LABELS[s.specialite] ?? s.specialite}
                   </span>
                 )}
-                <span className="text-sm text-gray-800">{s.display_title ?? '(sans titre)'}</span>
+                <Link
+                  href={`/admin/news/${s.id}/edit`}
+                  className="text-sm text-gray-800 hover:underline hover:text-violet-700"
+                >
+                  {s.display_title ?? '(sans titre)'}
+                </Link>
                 {s.journal_name && (
                   <span className="text-xs text-gray-500 ml-2">— {s.journal_name}</span>
                 )}
@@ -321,9 +355,7 @@ export default function AdminJournalDetailPage() {
         </ol>
       </section>
 
-      {/* Génération du script — formulaire aligné sur T7-bis (CaseAParametrage
-          de src/components/admin/news/AudioPodcastBlock.tsx). JSX dupliqué ici
-          en additif pour ne pas toucher le composant T7-bis stable. */}
+      {/* Génération du script — visible uniquement pour les brouillons */}
       {isDraft && (
         <section className="bg-white rounded-2xl shadow-sm p-6">
           <h2 className="font-semibold text-gray-900 mb-4">🎙️ Générer un podcast</h2>
@@ -475,42 +507,89 @@ export default function AdminJournalDetailPage() {
         </section>
       )}
 
-      {/* Script + génération audio */}
-      {(scriptDraft.trim().length > 0 || isPublished) && (
+      {/* Script + bouton générer audio — visible pour les brouillons avec script */}
+      {isDraft && scriptDraft.trim().length > 0 && (
         <section className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="font-semibold text-gray-900 mb-3">
-            {isPublished ? 'Script du journal publié' : '2. Script généré'}
-          </h2>
+          <h2 className="font-semibold text-gray-900 mb-3">Script généré</h2>
           <textarea
             value={scriptDraft}
             onChange={(e) => setScriptDraft(e.target.value)}
-            readOnly={!isDraft}
             rows={14}
             className="w-full font-mono text-xs rounded-xl border border-gray-300 p-3 bg-gray-50"
           />
-          {isDraft && (
-            <p className="mt-2 text-xs text-gray-500">
-              Édition locale uniquement — les modifications ne sont pas persistées
-              (utiliser « Régénérer le script » pour relancer Claude).
-            </p>
-          )}
-          {isDraft && (
-            <button
-              type="button"
-              onClick={handleGenerateAudio}
-              disabled={busy !== null || scriptDraft.trim().length === 0}
-              className="mt-3 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-            >
-              {busy === 'audio'
-                ? 'Génération MP3 + publication…'
-                : 'Générer l\'audio (publie le journal)'}
-            </button>
-          )}
+          <p className="mt-2 text-xs text-gray-500">
+            Édition locale uniquement — les modifications ne sont pas persistées
+            (utiliser « Régénérer le script » pour relancer Claude).
+          </p>
+          <button
+            type="button"
+            onClick={handleGenerateAudio}
+            disabled={busy !== null || scriptDraft.trim().length === 0}
+            className="mt-3 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+          >
+            {busy === 'audio'
+              ? 'Génération MP3 en cours…'
+              : 'Générer l\'audio'}
+          </button>
         </section>
       )}
 
-      {/* Player audio (toujours visible quand audio_url existe) */}
-      {episode.audio_url && (
+      {/* Statut ready : audio prêt, actions publier / régénérer */}
+      {isReady && (
+        <section className="bg-white rounded-2xl shadow-sm p-6 space-y-4">
+          <h2 className="font-semibold text-gray-900">✓ Audio prêt — en attente de publication</h2>
+
+          {episode.audio_url && (
+            <audio
+              controls
+              src={episode.audio_url}
+              className="w-full"
+              style={{ height: '40px' }}
+            />
+          )}
+          <p className="text-xs text-gray-500">
+            Durée estimée : {formatDuration(episode.duration_s)}
+          </p>
+
+          {scriptDraft.trim().length > 0 && (
+            <>
+              <details className="mt-2">
+                <summary className="text-sm text-gray-600 cursor-pointer hover:text-gray-800">
+                  Voir le script
+                </summary>
+                <textarea
+                  value={scriptDraft}
+                  readOnly
+                  rows={10}
+                  className="mt-2 w-full font-mono text-xs rounded-xl border border-gray-300 p-3 bg-gray-50"
+                />
+              </details>
+            </>
+          )}
+
+          <div className="flex items-center gap-3 flex-wrap pt-2">
+            <button
+              type="button"
+              onClick={handlePublish}
+              disabled={busy !== null}
+              className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-colors"
+            >
+              {busy === 'publish' ? 'Publication…' : 'Publier le journal'}
+            </button>
+            <button
+              type="button"
+              onClick={handleRegenerateAudio}
+              disabled={busy !== null}
+              className="bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            >
+              {busy === 'regen-audio' ? 'Régénération…' : 'Régénérer l\'audio'}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Player audio pour les journaux publiés / archivés */}
+      {(isPublished || episode.status === 'archived') && episode.audio_url && (
         <section className="bg-white rounded-2xl shadow-sm p-6">
           <h2 className="font-semibold text-gray-900 mb-3">Aperçu audio</h2>
           <audio
@@ -520,9 +599,21 @@ export default function AdminJournalDetailPage() {
             style={{ height: '40px' }}
           />
           <p className="mt-2 text-xs text-gray-500">
-            Durée estimée : {formatDuration(episode.duration_s)} — pas de contrôle
-            de vitesse (contrainte produit).
+            Durée estimée : {formatDuration(episode.duration_s)}
           </p>
+        </section>
+      )}
+
+      {/* Script en lecture seule pour les journaux publiés */}
+      {isPublished && scriptDraft.trim().length > 0 && (
+        <section className="bg-white rounded-2xl shadow-sm p-6">
+          <h2 className="font-semibold text-gray-900 mb-3">Script du journal publié</h2>
+          <textarea
+            value={scriptDraft}
+            readOnly
+            rows={14}
+            className="w-full font-mono text-xs rounded-xl border border-gray-300 p-3 bg-gray-50"
+          />
         </section>
       )}
 
@@ -540,25 +631,23 @@ export default function AdminJournalDetailPage() {
               {busy === 'archive' ? 'Archivage…' : 'Archiver'}
             </button>
           )}
-          {isDraft && episode.audio_url && (
-            <button
-              type="button"
-              onClick={handlePublish}
-              disabled={busy !== null}
-              className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-            >
-              {busy === 'publish' ? 'Publication…' : 'Publier sans regénérer'}
-            </button>
-          )}
           {isDraft && (
             <button
               type="button"
-              onClick={handleArchive}
+              onClick={handleArchiveDraft}
               disabled={busy !== null}
               className="bg-gray-200 hover:bg-gray-300 disabled:opacity-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
             >
               {busy === 'archive' ? 'Archivage…' : 'Archiver le brouillon'}
             </button>
+          )}
+          {episode.status === 'archived' && (
+            <span className="text-sm text-gray-500">Archivé — aucune action disponible</span>
+          )}
+          {isReady && (
+            <span className="text-xs text-gray-500">
+              Pour archiver, publiez d&apos;abord le journal puis archivez-le.
+            </span>
           )}
         </div>
       </section>
