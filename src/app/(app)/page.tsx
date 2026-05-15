@@ -322,6 +322,16 @@ export default function HomePage() {
               variant="square"
             />
             <JournalWeekCard journal={journal} />
+            <Link
+              href="/evenements"
+              className="flex-1 rounded-2xl bg-gray-800/60 border border-gray-700/50 flex flex-col items-center justify-center gap-2 p-3 text-center min-h-[160px]"
+            >
+              <span className="text-3xl">📅</span>
+              <p className="text-xs font-bold text-neutral-200 leading-tight">Événements</p>
+              <p className="text-[10px] text-gray-500">
+                {evenements.length > 0 ? `${evenements.length} à venir` : 'Aucun programmé'}
+              </p>
+            </Link>
           </div>
         </section>
 
@@ -401,24 +411,6 @@ export default function HomePage() {
             </div>
           )}
         </section>
-
-        {/* Événements */}
-        <Link href="/evenements" className="block">
-          <div className="rounded-2xl bg-gray-800/60 border border-gray-700/50 p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">📅</span>
-              <div>
-                <p className="text-sm font-bold text-neutral-200">Événements</p>
-                <p className="text-xs text-gray-500">
-                  {evenements.length > 0
-                    ? `${evenements.length} à venir`
-                    : 'Aucun événement programmé'}
-                </p>
-              </div>
-            </div>
-            <ChevronRight size={18} className="text-gray-500" />
-          </div>
-        </Link>
 
         {/* Explorer */}
         <section>
