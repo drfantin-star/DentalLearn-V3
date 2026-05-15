@@ -19,6 +19,7 @@ import {
   NEWS_CATEGORIES_EDITORIALES,
 } from '@/lib/constants/news'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { Button } from '@/components/ui/Button'
 
 const TITLE_MIN = 5
 const TITLE_MAX = 300
@@ -413,14 +414,15 @@ function AutoModeForm() {
           passera dans le pipeline de scoring automatique.
         </p>
 
-        <button
+        <Button
+          variant="primary"
+          size="lg"
           type="submit"
-          disabled={submitting}
-          className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+          loading={submitting}
+          className="w-full"
         >
-          {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-          {submitting ? 'Ingestion en cours…' : "Ingérer l'article"}
-        </button>
+          Ingérer l'article
+        </Button>
       </form>
     </>
   )

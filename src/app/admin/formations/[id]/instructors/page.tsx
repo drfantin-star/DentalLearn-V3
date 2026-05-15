@@ -12,6 +12,7 @@ import {
   Star,
   Users as UsersIcon,
 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 
 interface FormationHeader {
   id: string
@@ -427,15 +428,15 @@ export default function FormationInstructorsPage() {
                 </span>
               )}
             </label>
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="lg"
               onClick={handleAdd}
               disabled={!selectedUserId || adding}
-              className="flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] transition-colors disabled:opacity-50"
             >
               <UserPlus className="w-4 h-4" />
               {adding ? 'Rattachement…' : 'Rattacher'}
-            </button>
+            </Button>
           </div>
         )}
       </div>

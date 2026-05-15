@@ -15,6 +15,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { useCsMembers } from '@/lib/hooks/useEditorialValidations'
 import type { CsMember } from '@/types/editorialValidations'
+import { Button } from '@/components/ui/Button'
 
 interface MemberFormState {
   display_name: string
@@ -240,14 +241,14 @@ export default function AdminCsMembersPage() {
             </p>
           </div>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="md"
           onClick={openCreate}
-          className="inline-flex items-center gap-2 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
         >
           <Plus size={16} />
           Ajouter un membre
-        </button>
+        </Button>
       </header>
 
       {error && (

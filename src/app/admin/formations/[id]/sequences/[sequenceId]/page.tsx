@@ -22,6 +22,7 @@ import {
   Loader2
 } from 'lucide-react';
 import MediaUpload from '@/components/admin/MediaUpload';
+import { Button } from '@/components/ui/Button';
 
 interface Question {
   id: string;
@@ -486,18 +487,15 @@ export default function SequenceDetailPage() {
               </p>
             </div>
           </div>
-          <button
+          <Button
+            variant="primary"
+            size="md"
             onClick={handleSaveMedia}
-            disabled={savingMedia}
-            className="px-4 py-2 bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] transition-colors flex items-center gap-2 disabled:opacity-50"
+            loading={savingMedia}
           >
-            {savingMedia ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
+            <Save className="w-4 h-4" />
             Enregistrer
-          </button>
+          </Button>
         </div>
 
         <div className="p-6 space-y-4">
@@ -602,18 +600,15 @@ export default function SequenceDetailPage() {
               </p>
             </div>
           </div>
-          <button
+          <Button
+            variant="primary"
+            size="md"
             onClick={handleSaveInfographic}
-            disabled={savingInfographic}
-            className="px-4 py-2 bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] transition-colors flex items-center gap-2 disabled:opacity-50"
+            loading={savingInfographic}
           >
-            {savingInfographic ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
+            <Save className="w-4 h-4" />
             Enregistrer
-          </button>
+          </Button>
         </div>
 
         <div className="p-6">

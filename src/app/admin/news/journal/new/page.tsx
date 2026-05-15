@@ -8,6 +8,7 @@ import {
   JOURNAL_MIN_SYNTHESES,
   NEWS_SPECIALITE_LABELS,
 } from '@/lib/constants/news'
+import { Button } from '@/components/ui/Button'
 
 // Création d'un journal hebdo (T11) — stepper 1 page :
 //   1. Sélectionner 3 à 6 synthèses dans la liste des synthèses actives
@@ -344,14 +345,14 @@ export default function AdminJournalNewPage() {
       )}
 
       <div className="flex justify-end mt-6">
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="lg"
           onClick={handleSubmit}
           disabled={!canSubmit}
-          className="bg-[#2D1B96] hover:bg-[#231575] disabled:opacity-50 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors"
         >
           {submitting ? 'Création…' : 'Créer le journal (draft)'}
-        </button>
+        </Button>
       </div>
     </div>
   )

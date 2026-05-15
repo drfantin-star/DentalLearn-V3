@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import ImageUpload from '@/components/admin/ImageUpload';
 import { ArrowLeft, Save, Plus, X, GripVertical } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 
 type QuestionType = 'mcq' | 'true_false' | 'mcq_image' | 'checkbox' | 'highlight' | 'matching' | 'ordering' | 'fill_blank' | 'case_study';
 
@@ -794,23 +795,16 @@ export default function NewQuestionPage() {
           >
             Annuler
           </Link>
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             type="submit"
-            disabled={saving}
-            className="flex-1 px-6 py-3 bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            loading={saving}
+            className="flex-1"
           >
-            {saving ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Création...
-              </>
-            ) : (
-              <>
-                <Save className="w-5 h-5" />
-                Créer la question
-              </>
-            )}
-          </button>
+            <Save className="w-5 h-5" />
+            Créer la question
+          </Button>
         </div>
       </form>
     </div>

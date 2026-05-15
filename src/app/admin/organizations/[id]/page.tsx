@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Shield, UserPlus, Save, Ban } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 import { INTRA_ROLE_LABELS } from '@/lib/auth/intra-role-matrix'
 import type { IntraRole } from '@/lib/auth/rbac'
 
@@ -268,14 +269,15 @@ export default function OrganizationDetailPage() {
             {savedFlash && (
               <span className="text-sm text-green-600">Modifications sauvegardées</span>
             )}
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="submit"
-              disabled={savingInfo}
-              className="flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] transition-colors disabled:opacity-50"
+              loading={savingInfo}
             >
               <Save className="w-4 h-4" />
-              {savingInfo ? 'Sauvegarde…' : 'Sauvegarder'}
-            </button>
+              Sauvegarder
+            </Button>
           </div>
         </Card>
         </form>

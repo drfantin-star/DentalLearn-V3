@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Shield, UserPlus } from 'lucide-react'
 import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 import {
   INTRA_ROLES_BY_ORG_TYPE,
   INTRA_ROLE_LABELS,
@@ -191,13 +192,14 @@ export default function InviteMemberPage() {
           >
             Annuler
           </Link>
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             type="submit"
-            disabled={submitting}
-            className="bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] transition-colors disabled:opacity-50"
+            loading={submitting}
           >
-            {submitting ? 'Envoi…' : 'Inviter'}
-          </button>
+            Inviter
+          </Button>
         </div>
       </Card>
       </form>

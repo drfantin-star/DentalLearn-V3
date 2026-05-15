@@ -14,6 +14,7 @@ import {
   Save,
   X,
 } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
 
 interface EppAudit {
   id: string;
@@ -456,13 +457,14 @@ export default function EppAuditDetailPage() {
               {criteria.length} critere{criteria.length > 1 ? 's' : ''}
             </p>
           </div>
-          <button
+          <Button
+            variant="primary"
+            size="md"
             onClick={() => openCriterionForm()}
-            className="px-4 py-2 bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] transition-colors flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Ajouter un critere
-          </button>
+          </Button>
         </div>
 
         {criteria.length === 0 && !showCriterionForm ? (

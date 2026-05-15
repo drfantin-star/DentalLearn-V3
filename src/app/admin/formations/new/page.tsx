@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Save } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 
 export default function NewFormationPage() {
   const [loading, setLoading] = useState(false);
@@ -18,7 +19,6 @@ export default function NewFormationPage() {
     category: 'esthetique',
     level: 'intermediate',
     total_sequences: 16,
-    duration_weeks: 8,
   });
   const router = useRouter();
 
@@ -134,41 +134,30 @@ export default function NewFormationPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nombre de séquences</label>
-              <input
-                type="number"
-                min="1"
-                value={formData.total_sequences}
-                onChange={(e) => setFormData({ ...formData, total_sequences: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Durée (semaines)</label>
-              <input
-                type="number"
-                min="1"
-                value={formData.duration_weeks}
-                onChange={(e) => setFormData({ ...formData, duration_weeks: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Nombre de séquences</label>
+            <input
+              type="number"
+              min="1"
+              value={formData.total_sequences}
+              onChange={(e) => setFormData({ ...formData, total_sequences: parseInt(e.target.value) })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+            />
           </div>
 
           <div className="flex justify-end gap-4 pt-4">
             <Link href="/admin/formations" className="px-6 py-3 border border-gray-300 rounded-xl font-medium text-gray-700 hover:bg-gray-50">
               Annuler
             </Link>
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="submit"
-              disabled={loading}
-              className="flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] disabled:opacity-50"
+              loading={loading}
             >
               <Save className="w-5 h-5" />
-              {loading ? 'Création...' : 'Créer'}
-            </button>
+              Créer
+            </Button>
           </div>
         </Card>
       </form>

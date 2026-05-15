@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Save, Upload } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { createClient } from '@/lib/supabase/client';
+import { Button } from '@/components/ui/Button';
 
 interface FormData {
   title: string;
@@ -322,14 +323,15 @@ export default function EditFormationPage() {
             <Link href={`/admin/formations/${formationId}`} className="px-6 py-3 border border-gray-300 rounded-xl font-medium text-gray-700 hover:bg-gray-50">
               Annuler
             </Link>
-            <button
+            <Button
+              variant="primary"
+              size="lg"
               type="submit"
-              disabled={loading}
-              className="flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] disabled:opacity-50"
+              loading={loading}
             >
               <Save className="w-5 h-5" />
-              {loading ? 'Enregistrement...' : 'Enregistrer'}
-            </button>
+              Enregistrer
+            </Button>
           </div>
         </div>
       </form>

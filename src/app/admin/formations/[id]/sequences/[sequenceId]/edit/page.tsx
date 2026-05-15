@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { ArrowLeft, Save, Plus, X } from 'lucide-react';
 import MediaUpload from '@/components/admin/MediaUpload';
+import { Button } from '@/components/ui/Button';
 
 interface Formation {
   id: string;
@@ -388,23 +389,16 @@ export default function EditSequencePage() {
           >
             Annuler
           </Link>
-          <button
+          <Button
+            variant="primary"
+            size="lg"
             type="submit"
-            disabled={saving}
-            className="flex-1 px-6 py-3 bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            loading={saving}
+            className="flex-1"
           >
-            {saving ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Enregistrement...
-              </>
-            ) : (
-              <>
-                <Save className="w-5 h-5" />
-                Enregistrer
-              </>
-            )}
-          </button>
+            <Save className="w-5 h-5" />
+            Enregistrer
+          </Button>
         </div>
       </form>
     </div>
