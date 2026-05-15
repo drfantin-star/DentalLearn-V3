@@ -221,7 +221,7 @@ export default function AdminJournalNewPage() {
           </div>
           {loading ? (
             <div className="p-6 flex justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#2D1B96]" />
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
             </div>
           ) : (
             <div className="max-h-[60vh] overflow-y-auto divide-y divide-gray-100">
@@ -248,7 +248,7 @@ export default function AdminJournalNewPage() {
                       type="checkbox"
                       checked={checked}
                       readOnly
-                      className="mt-1 accent-[#2D1B96]"
+                      className="mt-1 accent-primary"
                     />
                     <div className="flex-1 min-w-0">
                       {s.specialite && (

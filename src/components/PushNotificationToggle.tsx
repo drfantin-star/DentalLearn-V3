@@ -56,7 +56,7 @@ export function PushNotificationToggle({ className, showLabel = true }: PushNoti
         disabled={isDisabled}
         className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium ${
           isSubscribed
-            ? 'bg-[#00D1C1]/10 text-[#00D1C1] border border-[#00D1C1]/20'
+            ? 'bg-accent/10 text-accent border border-accent/20'
             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
         } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >

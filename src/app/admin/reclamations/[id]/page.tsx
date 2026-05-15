@@ -144,7 +144,7 @@ export default function ComplaintDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -157,7 +157,7 @@ export default function ComplaintDetailPage() {
         </div>
         <Link
           href="/admin/reclamations"
-          className="inline-flex items-center gap-1 mt-4 text-sm text-[#2D1B96] hover:underline"
+          className="inline-flex items-center gap-1 mt-4 text-sm text-primary hover:underline"
         >
           <ArrowLeft className="w-4 h-4" />
           Retour à la liste
@@ -188,7 +188,7 @@ export default function ComplaintDetailPage() {
           <MetaRow icon={<Mail className="w-4 h-4" />} label="Email">
             <a
               href={`mailto:${complaint.email_contact}`}
-              className="text-[#2D1B96] hover:underline"
+              className="text-primary hover:underline"
             >
               {complaint.email_contact}
             </a>
@@ -231,7 +231,7 @@ export default function ComplaintDetailPage() {
           <select
             value={status}
             onChange={e => setStatus(e.target.value as ComplaintStatus)}
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 focus:outline-none focus:border-[#2D1B96] focus:ring-1 focus:ring-[#2D1B96]"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
           >
             {STATUS_OPTIONS.map(s => (
               <option key={s.value} value={s.value}>
@@ -252,7 +252,7 @@ export default function ComplaintDetailPage() {
             value={adminResponse}
             onChange={e => setAdminResponse(e.target.value)}
             placeholder="Bonjour,&#10;&#10;Suite à votre réclamation..."
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#2D1B96] focus:ring-1 focus:ring-[#2D1B96] resize-none"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
           />
         </div>
 
@@ -266,7 +266,7 @@ export default function ComplaintDetailPage() {
             value={adminNote}
             onChange={e => setAdminNote(e.target.value)}
             placeholder="Notes pour suivi interne..."
-            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#2D1B96] focus:ring-1 focus:ring-[#2D1B96] resize-none"
+            className="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
           />
         </div>
 
@@ -277,7 +277,7 @@ export default function ComplaintDetailPage() {
           className={`w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50 ${
             saved
               ? 'bg-green-500 text-white'
-              : 'bg-[#2D1B96] text-white hover:bg-[#231575]'
+              : 'bg-primary text-white hover:bg-primary-hover'
           }`}
         >
           {saving ? (

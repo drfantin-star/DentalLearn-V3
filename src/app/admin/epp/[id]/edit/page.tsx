@@ -114,7 +114,7 @@ export default function EditEppAuditPage() {
   if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -132,7 +132,7 @@ export default function EditEppAuditPage() {
               required
               value={formData.title}
               onChange={handleTitleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="Ex: Audit Traitement Endodontique"
             />
           </div>
@@ -143,7 +143,7 @@ export default function EditEppAuditPage() {
               type="text"
               value={formData.slug}
               onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="auto-genere-depuis-le-titre"
             />
           </div>
@@ -153,7 +153,7 @@ export default function EditEppAuditPage() {
             <select
               value={formData.theme_slug}
               onChange={(e) => setFormData({ ...formData, theme_slug: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
             >
               {themeOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -167,7 +167,7 @@ export default function EditEppAuditPage() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               rows={4}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="Description de l'audit EPP..."
             />
           </div>
@@ -180,7 +180,7 @@ export default function EditEppAuditPage() {
                 min="1"
                 value={formData.nb_dossiers_min}
                 onChange={(e) => setFormData({ ...formData, nb_dossiers_min: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
             <div>
@@ -190,7 +190,7 @@ export default function EditEppAuditPage() {
                 min="1"
                 value={formData.nb_dossiers_max}
                 onChange={(e) => setFormData({ ...formData, nb_dossiers_max: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
           </div>
@@ -203,7 +203,7 @@ export default function EditEppAuditPage() {
                 min="1"
                 value={formData.delai_t2_mois_min}
                 onChange={(e) => setFormData({ ...formData, delai_t2_mois_min: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
             <div>
@@ -213,7 +213,7 @@ export default function EditEppAuditPage() {
                 min="1"
                 value={formData.delai_t2_mois_max}
                 onChange={(e) => setFormData({ ...formData, delai_t2_mois_max: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               />
             </div>
           </div>
@@ -224,7 +224,7 @@ export default function EditEppAuditPage() {
               id="is_published"
               checked={formData.is_published}
               onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
-              className="w-4 h-4 text-[#2D1B96] border-gray-300 rounded focus:ring-[#2D1B96]"
+              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
             />
             <label htmlFor="is_published" className="text-sm font-medium text-gray-700">Publie</label>
           </div>

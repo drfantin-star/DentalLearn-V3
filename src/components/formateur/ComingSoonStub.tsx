@@ -17,8 +17,8 @@ export default function ComingSoonStub({ title, ticketRef }: ComingSoonStubProps
       <h1 className="text-3xl font-bold text-gray-900 mb-8">{title}</h1>
 
       <Card className="p-12 text-center">
-        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#2D1B96]/10 flex items-center justify-center">
-          <Clock className="w-8 h-8 text-[#2D1B96]" />
+        <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+          <Clock className="w-8 h-8 text-primary" />
         </div>
         <h2 className="text-xl font-semibold text-gray-900 mb-2">Bientôt disponible</h2>
         <p className="text-gray-600 mb-6 max-w-md mx-auto">

@@ -348,7 +348,7 @@ export default function NewQuestionPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -383,7 +383,7 @@ export default function NewQuestionPage() {
                 onClick={() => setQuestionType(type.value)}
                 className={`p-3 rounded-lg border-2 text-left transition-all ${
                   questionType === type.value
-                    ? 'border-[#2D1B96] bg-[#2D1B96]/5'
+                    ? 'border-primary bg-primary/5'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -405,7 +405,7 @@ export default function NewQuestionPage() {
               onChange={(e) => setQuestionText(e.target.value)}
               rows={3}
               placeholder="Ex: Quel est le pourcentage de peroxyde d'hydrogène recommandé pour un éclaircissement en cabinet ?"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
               required
             />
           </div>
@@ -430,7 +430,7 @@ export default function NewQuestionPage() {
               <select
                 value={points}
                 onChange={(e) => setPoints(parseInt(e.target.value))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value={5}>5 pts</option>
                 <option value={10}>10 pts</option>
@@ -459,14 +459,14 @@ export default function NewQuestionPage() {
                     name="correct"
                     checked={option.correct}
                     onChange={() => updateMcqOption(index, 'correct', !option.correct)}
-                    className="w-5 h-5 text-[#2D1B96]"
+                    className="w-5 h-5 text-primary"
                   />
                   <input
                     type="text"
                     value={option.text}
                     onChange={(e) => updateMcqOption(index, 'text', e.target.value)}
                     placeholder={`Option ${index + 1}`}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                   {mcqOptions.length > 2 && (
                     <button
@@ -482,7 +482,7 @@ export default function NewQuestionPage() {
               <button
                 type="button"
                 onClick={addMcqOption}
-                className="flex items-center gap-2 text-sm text-[#2D1B96] hover:text-[#231575]"
+                className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover"
               >
                 <Plus className="w-4 h-4" />
                 Ajouter une option
@@ -509,7 +509,7 @@ export default function NewQuestionPage() {
                     { id: '1', text: 'Vrai', correct: true },
                     { id: '2', text: 'Faux', correct: false }
                   ])}
-                  className="w-5 h-5 text-[#2D1B96]"
+                  className="w-5 h-5 text-primary"
                 />
                 <span className="text-gray-700">Vrai</span>
               </div>
@@ -522,7 +522,7 @@ export default function NewQuestionPage() {
                     { id: '1', text: 'Vrai', correct: false },
                     { id: '2', text: 'Faux', correct: true }
                   ])}
-                  className="w-5 h-5 text-[#2D1B96]"
+                  className="w-5 h-5 text-primary"
                 />
                 <span className="text-gray-700">Faux</span>
               </div>
@@ -540,7 +540,7 @@ export default function NewQuestionPage() {
                     value={pair.left}
                     onChange={(e) => updateMatchingPair(index, 'left', e.target.value)}
                     placeholder="Élément gauche"
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                   <span className="text-gray-400">→</span>
                   <input
@@ -548,7 +548,7 @@ export default function NewQuestionPage() {
                     value={pair.right}
                     onChange={(e) => updateMatchingPair(index, 'right', e.target.value)}
                     placeholder="Élément droit"
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                   {matchingPairs.length > 2 && (
                     <button
@@ -564,7 +564,7 @@ export default function NewQuestionPage() {
               <button
                 type="button"
                 onClick={addMatchingPair}
-                className="flex items-center gap-2 text-sm text-[#2D1B96] hover:text-[#231575]"
+                className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover"
               >
                 <Plus className="w-4 h-4" />
                 Ajouter une paire
@@ -580,7 +580,7 @@ export default function NewQuestionPage() {
               </p>
               {orderingItems.map((item, index) => (
                 <div key={item.id} className="flex items-center gap-3">
-                  <span className="w-8 h-8 bg-[#2D1B96] text-white rounded-full flex items-center justify-center text-sm font-medium">
+                  <span className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-medium">
                     {index + 1}
                   </span>
                   <input
@@ -588,7 +588,7 @@ export default function NewQuestionPage() {
                     value={item.text}
                     onChange={(e) => updateOrderingItem(index, e.target.value)}
                     placeholder={`Étape ${index + 1}`}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                   {orderingItems.length > 2 && (
                     <button
@@ -604,7 +604,7 @@ export default function NewQuestionPage() {
               <button
                 type="button"
                 onClick={addOrderingItem}
-                className="flex items-center gap-2 text-sm text-[#2D1B96] hover:text-[#231575]"
+                className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover"
               >
                 <Plus className="w-4 h-4" />
                 Ajouter une étape
@@ -627,7 +627,7 @@ export default function NewQuestionPage() {
                       value={blank.correctAnswer}
                       onChange={(e) => updateFillBlank(index, e.target.value)}
                       placeholder="Réponse correcte"
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                     />
                     {fillBlanks.length > 1 && (
                       <button
@@ -643,7 +643,7 @@ export default function NewQuestionPage() {
                 <button
                   type="button"
                   onClick={addFillBlank}
-                  className="flex items-center gap-2 text-sm text-[#2D1B96] hover:text-[#231575]"
+                  className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover"
                 >
                   <Plus className="w-4 h-4" />
                   Ajouter un trou
@@ -658,7 +658,7 @@ export default function NewQuestionPage() {
                   value={wordBank.join(', ')}
                   onChange={(e) => setWordBank(e.target.value.split(',').map(w => w.trim()).filter(w => w))}
                   placeholder="mot1, mot2, mot3 (séparés par des virgules)"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Si vide, l'utilisateur devra saisir la réponse
@@ -749,7 +749,7 @@ export default function NewQuestionPage() {
               <button
                 type="button"
                 onClick={addCaseStudyQuestion}
-                className="flex items-center gap-2 text-sm text-[#2D1B96] hover:text-[#231575]"
+                className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover"
               >
                 <Plus className="w-4 h-4" />
                 Ajouter une sous-question
@@ -769,7 +769,7 @@ export default function NewQuestionPage() {
               onChange={(e) => setFeedbackCorrect(e.target.value)}
               rows={3}
               placeholder="Explication pédagogique affichée quand l'utilisateur répond correctement"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
               required
             />
           </div>
@@ -782,7 +782,7 @@ export default function NewQuestionPage() {
               onChange={(e) => setFeedbackIncorrect(e.target.value)}
               rows={3}
               placeholder="Explication pédagogique affichée quand l'utilisateur se trompe (optionnel)"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
             />
           </div>
         </div>

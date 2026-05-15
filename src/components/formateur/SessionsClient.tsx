@@ -125,7 +125,7 @@ function SessionCard({
     <Card variant="flat" className="p-5 flex flex-col gap-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-1.5 text-[#2D1B96] text-sm font-semibold mb-0.5">
+          <div className="flex items-center gap-1.5 text-primary text-sm font-semibold mb-0.5">
             <Video size={14} />
             <span className="capitalize">{formatSessionDate(session.starts_at)}</span>
             <span className="font-normal text-gray-500">{formatSessionTime(session.starts_at)}</span>
@@ -151,7 +151,7 @@ function SessionCard({
       </div>
 
       {formation && (
-        <span className="self-start text-xs bg-[#EDE9FF] text-[#2D1B96] font-medium px-2.5 py-1 rounded-full">
+        <span className="self-start text-xs bg-[#EDE9FF] text-primary font-medium px-2.5 py-1 rounded-full">
           {formation.title}
         </span>
       )}
@@ -168,7 +168,7 @@ function SessionCard({
               className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
                 session.is_published
                   ? 'text-orange-600 hover:bg-orange-50'
-                  : 'text-[#2D1B96] hover:bg-[#EDE9FF]'
+                  : 'text-primary hover:bg-[#EDE9FF]'
               }`}
             >
               {session.is_published ? 'Dépublier' : 'Publier'}
@@ -197,7 +197,7 @@ function EmptyState({ tab }: { tab: 'upcoming' | 'past' }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="w-16 h-16 rounded-full bg-[#EDE9FF] flex items-center justify-center mb-4">
-        <Video size={28} className="text-[#2D1B96]" />
+        <Video size={28} className="text-primary" />
       </div>
       <p className="text-gray-900 font-semibold mb-1">
         {tab === 'upcoming' ? 'Aucune masterclass à venir' : 'Aucune masterclass passée'}
@@ -319,7 +319,7 @@ function SessionModal({
               onChange={(e) => setField('title', e.target.value)}
               maxLength={200}
               placeholder="Ex : Implantologie avancée — cas complexes"
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 ${
+              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                 fieldErrors.title ? 'border-red-400' : 'border-gray-300'
               }`}
             />
@@ -334,7 +334,7 @@ function SessionModal({
               onChange={(e) => setField('description', e.target.value)}
               rows={3}
               placeholder="Programme, objectifs pédagogiques…"
-              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 resize-none"
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
 
@@ -348,7 +348,7 @@ function SessionModal({
                 type="datetime-local"
                 value={form.starts_at}
                 onChange={(e) => setField('starts_at', e.target.value)}
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.starts_at ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -364,7 +364,7 @@ function SessionModal({
                 onChange={(e) => setField('duration_min', e.target.value)}
                 min={1}
                 placeholder="60"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -378,7 +378,7 @@ function SessionModal({
                 value={form.zoom_url}
                 onChange={(e) => setField('zoom_url', e.target.value)}
                 placeholder="https://zoom.us/j/..."
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.zoom_url ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -392,7 +392,7 @@ function SessionModal({
                 onChange={(e) => setField('zoom_password', e.target.value)}
                 maxLength={100}
                 placeholder="Optionnel"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -407,7 +407,7 @@ function SessionModal({
                 onChange={(e) => setField('capacity', e.target.value)}
                 min={1}
                 placeholder="Ex : 30"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
             <div>
@@ -415,7 +415,7 @@ function SessionModal({
               <select
                 value={form.formation_id}
                 onChange={(e) => setField('formation_id', e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 bg-white"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
               >
                 <option value="">Aucune formation liée</option>
                 {formations.map((f) => (
@@ -439,7 +439,7 @@ function SessionModal({
           <button
             onClick={() => handleSubmit(false)}
             disabled={submitting}
-            className="flex-1 py-2.5 rounded-xl border border-[#2D1B96] text-sm font-semibold text-[#2D1B96] hover:bg-[#EDE9FF] transition-colors disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-xl border border-primary text-sm font-semibold text-primary hover:bg-[#EDE9FF] transition-colors disabled:opacity-50"
           >
             {submitting ? 'Enregistrement…' : 'Enregistrer en brouillon'}
           </button>
@@ -617,7 +617,7 @@ export default function SessionsClient() {
             onClick={() => setTab(t)}
             className={`pb-3 px-1 mr-5 text-sm font-semibold border-b-2 transition-colors ${
               tab === t
-                ? 'border-[#2D1B96] text-[#2D1B96]'
+                ? 'border-primary text-primary'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -630,7 +630,7 @@ export default function SessionsClient() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-3 border-[#2D1B96] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : error ? (
         <p className="text-red-500 text-sm text-center py-8">{error}</p>

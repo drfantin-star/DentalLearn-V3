@@ -112,7 +112,7 @@ export default function AdminFormateursPage() {
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#2D1B96]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
       </div>
     )
   }
@@ -134,7 +134,7 @@ export default function AdminFormateursPage() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <UserCheck className="w-8 h-8 text-[#2D1B96]" />
+            <UserCheck className="w-8 h-8 text-primary" />
             Formateurs
           </h1>
           <p className="text-gray-600 mt-1">
@@ -143,7 +143,7 @@ export default function AdminFormateursPage() {
         </div>
         <Link
           href="/admin/formateurs/promote"
-          className="flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] transition-colors"
+          className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary-hover transition-colors"
         >
           <UserPlus className="w-5 h-5" />
           Promouvoir un utilisateur
@@ -164,7 +164,7 @@ export default function AdminFormateursPage() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
         </div>
       ) : formateurs.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
@@ -172,7 +172,7 @@ export default function AdminFormateursPage() {
           <p className="text-gray-500 mb-4">Aucun formateur pour le moment.</p>
           <Link
             href="/admin/formateurs/promote"
-            className="inline-flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl"
+            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl"
           >
             <UserPlus className="w-5 h-5" />
             Promouvoir le premier formateur
@@ -201,11 +201,11 @@ export default function AdminFormateursPage() {
                         href={`/admin/formateurs/${f.user_id}`}
                         className="flex items-center gap-3 group"
                       >
-                        <div className="w-10 h-10 rounded-full bg-[#2D1B96] text-white flex items-center justify-center font-semibold text-sm">
+                        <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-sm">
                           {initials}
                         </div>
                         <div>
-                          <div className="font-medium text-gray-900 group-hover:text-[#2D1B96]">
+                          <div className="font-medium text-gray-900 group-hover:text-primary">
                             {fullName}
                           </div>
                         </div>
@@ -231,7 +231,7 @@ export default function AdminFormateursPage() {
                         </button>
                         <Link
                           href={`/admin/formateurs/${f.user_id}`}
-                          className="p-2 text-[#2D1B96] hover:bg-[#2D1B96]/10 rounded-lg"
+                          className="p-2 text-primary hover:bg-primary/10 rounded-lg"
                           title="Voir détails"
                         >
                           <ChevronRight className="w-5 h-5" />

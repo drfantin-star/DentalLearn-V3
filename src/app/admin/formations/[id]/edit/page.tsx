@@ -184,7 +184,7 @@ export default function EditFormationPage() {
   if (initialLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -202,7 +202,7 @@ export default function EditFormationPage() {
               required
               value={formData.title}
               onChange={handleTitleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="Ex: Éclaircissements & Taches Blanches"
             />
           </div>
@@ -214,7 +214,7 @@ export default function EditFormationPage() {
               required
               value={formData.instructor_name}
               onChange={(e) => setFormData({ ...formData, instructor_name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="Ex: Dr Laurent Elbeze"
             />
           </div>
@@ -225,7 +225,7 @@ export default function EditFormationPage() {
               type="text"
               value={formData.description_short}
               onChange={(e) => setFormData({ ...formData, description_short: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="Résumé en 1-2 phrases"
             />
           </div>
@@ -252,10 +252,10 @@ export default function EditFormationPage() {
                 </button>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-[#2D1B96] hover:bg-gray-50 transition-colors">
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-primary hover:bg-gray-50 transition-colors">
                 {uploading ? (
                   <>
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#2D1B96] mb-2" />
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-2" />
                     <span className="text-sm text-gray-500">Upload en cours...</span>
                   </>
                 ) : (
@@ -282,7 +282,7 @@ export default function EditFormationPage() {
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="esthetique">Esthétique</option>
                 <option value="restauratrice">Restauratrice</option>
@@ -299,7 +299,7 @@ export default function EditFormationPage() {
               <select
                 value={formData.level}
                 onChange={(e) => setFormData({ ...formData, level: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="beginner">Débutant</option>
                 <option value="intermediate">Intermédiaire</option>
@@ -315,7 +315,7 @@ export default function EditFormationPage() {
               min="1"
               value={formData.total_sequences}
               onChange={(e) => setFormData({ ...formData, total_sequences: parseInt(e.target.value) })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
 

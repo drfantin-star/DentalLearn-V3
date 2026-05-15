@@ -382,7 +382,7 @@ export default function EditQuestionPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -416,7 +416,7 @@ export default function EditQuestionPage() {
                 onClick={() => setQuestionType(type.value)}
                 className={`p-3 rounded-lg border-2 text-left transition-all ${
                   questionType === type.value
-                    ? 'border-[#2D1B96] bg-[#2D1B96]/5'
+                    ? 'border-primary bg-primary/5'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -437,7 +437,7 @@ export default function EditQuestionPage() {
               value={questionText}
               onChange={(e) => setQuestionText(e.target.value)}
               rows={3}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent resize-none"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
               required
             />
           </div>
@@ -488,7 +488,7 @@ export default function EditQuestionPage() {
                     name="correct"
                     checked={option.correct}
                     onChange={() => updateMcqOption(index, 'correct', !option.correct)}
-                    className="w-5 h-5 text-[#2D1B96]"
+                    className="w-5 h-5 text-primary"
                   />
                   <input
                     type="text"
@@ -512,7 +512,7 @@ export default function EditQuestionPage() {
                 <button
                   type="button"
                   onClick={addMcqOption}
-                  className="flex items-center gap-2 text-sm text-[#2D1B96]"
+                  className="flex items-center gap-2 text-sm text-primary"
                 >
                   <Plus className="w-4 h-4" />
                   Ajouter une option
@@ -549,7 +549,7 @@ export default function EditQuestionPage() {
                   )}
                 </div>
               ))}
-              <button type="button" onClick={addMatchingPair} className="flex items-center gap-2 text-sm text-[#2D1B96]">
+              <button type="button" onClick={addMatchingPair} className="flex items-center gap-2 text-sm text-primary">
                 <Plus className="w-4 h-4" />
                 Ajouter une paire
               </button>
@@ -561,7 +561,7 @@ export default function EditQuestionPage() {
             <div className="space-y-3">
               {orderingItems.map((item, index) => (
                 <div key={item.id} className="flex items-center gap-3">
-                  <span className="w-8 h-8 bg-[#2D1B96] text-white rounded-full flex items-center justify-center text-sm font-medium">
+                  <span className="w-8 h-8 bg-primary text-white rounded-full flex items-center justify-center text-sm font-medium">
                     {index + 1}
                   </span>
                   <input
@@ -578,7 +578,7 @@ export default function EditQuestionPage() {
                   )}
                 </div>
               ))}
-              <button type="button" onClick={addOrderingItem} className="flex items-center gap-2 text-sm text-[#2D1B96]">
+              <button type="button" onClick={addOrderingItem} className="flex items-center gap-2 text-sm text-primary">
                 <Plus className="w-4 h-4" />
                 Ajouter une étape
               </button>
@@ -606,7 +606,7 @@ export default function EditQuestionPage() {
                     )}
                   </div>
                 ))}
-                <button type="button" onClick={addFillBlank} className="flex items-center gap-2 text-sm text-[#2D1B96]">
+                <button type="button" onClick={addFillBlank} className="flex items-center gap-2 text-sm text-primary">
                   <Plus className="w-4 h-4" />
                   Ajouter un trou
                 </button>
@@ -691,7 +691,7 @@ export default function EditQuestionPage() {
                   />
                 </div>
               ))}
-              <button type="button" onClick={addCaseStudyQuestion} className="flex items-center gap-2 text-sm text-[#2D1B96]">
+              <button type="button" onClick={addCaseStudyQuestion} className="flex items-center gap-2 text-sm text-primary">
                 <Plus className="w-4 h-4" />
                 Ajouter une sous-question
               </button>

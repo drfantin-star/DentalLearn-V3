@@ -95,7 +95,7 @@ export default function AdminDashboard() {
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -136,10 +136,10 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Link
             href="/admin/formations/new"
-            className="flex items-center gap-3 p-4 bg-[#2D1B96]/10 rounded-xl hover:bg-[#2D1B96]/20 transition-colors"
+            className="flex items-center gap-3 p-4 bg-primary/10 rounded-xl hover:bg-primary/20 transition-colors"
           >
-            <BookOpen className="w-5 h-5 text-[#2D1B96]" />
-            <span className="font-medium text-[#2D1B96]">Créer une formation</span>
+            <BookOpen className="w-5 h-5 text-primary" />
+            <span className="font-medium text-primary">Créer une formation</span>
           </Link>
           <Link
             href="/admin/formations"
@@ -164,10 +164,10 @@ export default function AdminDashboard() {
           </Link>
           <Link
             href="/admin/satisfaction"
-            className="flex items-center gap-3 p-4 bg-[#2D1B96]/10 rounded-xl hover:bg-[#2D1B96]/20 transition-colors"
+            className="flex items-center gap-3 p-4 bg-primary/10 rounded-xl hover:bg-primary/20 transition-colors"
           >
-            <Star className="w-5 h-5 text-[#2D1B96]" />
-            <span className="font-medium text-[#2D1B96]">Satisfaction (Qualiopi #30)</span>
+            <Star className="w-5 h-5 text-primary" />
+            <span className="font-medium text-primary">Satisfaction (Qualiopi #30)</span>
           </Link>
           <Link
             href="/admin/editorial-validations"

@@ -109,7 +109,7 @@ export default function OrganizationsPage() {
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#2D1B96]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
       </div>
     )
   }
@@ -131,14 +131,14 @@ export default function OrganizationsPage() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <Building2 className="w-8 h-8 text-[#2D1B96]" />
+            <Building2 className="w-8 h-8 text-primary" />
             Organisations
           </h1>
           <p className="text-gray-600 mt-1">Cabinets, entités RH et organismes de formation</p>
         </div>
         <Link
           href="/admin/organizations/new"
-          className="flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] transition-colors"
+          className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary-hover transition-colors"
         >
           <Plus className="w-5 h-5" />
           Nouvelle organisation
@@ -181,14 +181,14 @@ export default function OrganizationsPage() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
         </div>
       ) : organizations.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
           <p className="text-gray-500 mb-4">Aucune organisation</p>
           <Link
             href="/admin/organizations/new"
-            className="inline-flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl"
+            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl"
           >
             <Plus className="w-5 h-5" />
             Créer une première organisation
@@ -227,7 +227,7 @@ export default function OrganizationsPage() {
                     <div className="flex items-center justify-end">
                       <Link
                         href={`/admin/organizations/${org.id}`}
-                        className="p-2 text-[#2D1B96] hover:bg-[#2D1B96]/10 rounded-lg"
+                        className="p-2 text-primary hover:bg-primary/10 rounded-lg"
                         title="Voir détails"
                       >
                         <ChevronRight className="w-5 h-5" />

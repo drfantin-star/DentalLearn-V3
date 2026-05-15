@@ -161,15 +161,15 @@ export function SourcesPageClient({ initialSources }: { initialSources: SourceRo
       <header className="mb-6">
         <Link
           href="/admin/news"
-          className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-[#2D1B96] mb-4"
+          className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-primary mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
           Retour aux synthèses
         </Link>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#2D1B96]/10 flex items-center justify-center">
-              <Database className="w-5 h-5 text-[#2D1B96]" />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Database className="w-5 h-5 text-primary" />
             </div>
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Sources d'ingestion</h1>
@@ -503,7 +503,7 @@ function CreateSourceModal({
               type="text"
               value={form.name}
               onChange={(e) => update('name', e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               placeholder="Ex : PubMed — Implantologie"
             />
           </div>
@@ -519,7 +519,7 @@ function CreateSourceModal({
                 update('type', e.target.value as 'rss' | 'pubmed')
                 setForceCreate(false)
               }}
-              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+              className="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="rss">RSS</option>
               <option value="pubmed">PubMed</option>
@@ -540,7 +540,7 @@ function CreateSourceModal({
                 type="url"
                 value={form.url}
                 onChange={(e) => update('url', e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                 placeholder="https://example.com/feed.xml"
               />
             </div>
@@ -554,7 +554,7 @@ function CreateSourceModal({
                   value={form.term}
                   onChange={(e) => update('term', e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96] font-mono"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono"
                   placeholder='("dental implants"[MeSH] OR "implantology"[Title])'
                 />
               </div>
@@ -565,7 +565,7 @@ function CreateSourceModal({
                   min={1}
                   value={form.reldate}
                   onChange={(e) => update('reldate', e.target.value)}
-                  className="w-32 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+                  className="w-32 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   Fenêtre temporelle envoyée à NCBI à chaque fetch (défaut : 14).
@@ -581,7 +581,7 @@ function CreateSourceModal({
               value={form.notes}
               onChange={(e) => update('notes', e.target.value)}
               rows={2}
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               placeholder="Optionnel : provenance, dépendance tierce, etc."
             />
           </div>

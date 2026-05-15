@@ -105,7 +105,7 @@ function EventCard({
       {/* Date + ville */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="flex items-center gap-1.5 text-[#2D1B96] text-sm font-semibold mb-0.5">
+          <div className="flex items-center gap-1.5 text-primary text-sm font-semibold mb-0.5">
             <Calendar size={14} />
             <span className="capitalize">{formatEventDate(event.starts_at)}</span>
             <span className="font-normal text-gray-500">
@@ -133,7 +133,7 @@ function EventCard({
 
       {/* Badge formation */}
       {formation && (
-        <span className="self-start text-xs bg-[#EDE9FF] text-[#2D1B96] font-medium px-2.5 py-1 rounded-full">
+        <span className="self-start text-xs bg-[#EDE9FF] text-primary font-medium px-2.5 py-1 rounded-full">
           {formation.title}
         </span>
       )}
@@ -149,7 +149,7 @@ function EventCard({
           className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
             event.is_published
               ? 'text-orange-600 hover:bg-orange-50'
-              : 'text-[#2D1B96] hover:bg-[#EDE9FF]'
+              : 'text-primary hover:bg-[#EDE9FF]'
           }`}
         >
           {event.is_published ? 'Dépublier' : 'Publier'}
@@ -170,7 +170,7 @@ function EmptyState({ tab }: { tab: 'upcoming' | 'past' }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="w-16 h-16 rounded-full bg-[#EDE9FF] flex items-center justify-center mb-4">
-        <Calendar size={28} className="text-[#2D1B96]" />
+        <Calendar size={28} className="text-primary" />
       </div>
       <p className="text-gray-900 font-semibold mb-1">
         {tab === 'upcoming' ? 'Aucun événement à venir' : 'Aucun événement passé'}
@@ -308,7 +308,7 @@ function EventModal({
               onChange={(e) => setField('title', e.target.value)}
               maxLength={200}
               placeholder="Ex : Formation parodontologie avancée"
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 ${
+              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                 fieldErrors.title ? 'border-red-400' : 'border-gray-300'
               }`}
             />
@@ -327,7 +327,7 @@ function EventModal({
               onChange={(e) => setField('description', e.target.value)}
               rows={3}
               placeholder="Programme, objectifs pédagogiques…"
-              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 resize-none"
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
 
@@ -343,7 +343,7 @@ function EventModal({
                 onChange={(e) => setField('location_city', e.target.value)}
                 maxLength={120}
                 placeholder="Paris"
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.location_city ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -361,7 +361,7 @@ function EventModal({
                 onChange={(e) => setField('location_venue', e.target.value)}
                 maxLength={200}
                 placeholder="Hôtel Marriott, salle A"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -376,7 +376,7 @@ function EventModal({
                 type="datetime-local"
                 value={form.starts_at}
                 onChange={(e) => setField('starts_at', e.target.value)}
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.starts_at ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -392,7 +392,7 @@ function EventModal({
                 type="datetime-local"
                 value={form.ends_at}
                 onChange={(e) => setField('ends_at', e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -405,7 +405,7 @@ function EventModal({
             <select
               value={form.formation_id}
               onChange={(e) => setField('formation_id', e.target.value)}
-              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 bg-white"
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
             >
               <option value="">Aucune formation liée</option>
               {formations.map((f) => (
@@ -427,7 +427,7 @@ function EventModal({
                 value={form.external_registration_url}
                 onChange={(e) => setField('external_registration_url', e.target.value)}
                 placeholder="https://..."
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.external_registration_url ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -447,7 +447,7 @@ function EventModal({
                 onChange={(e) => setField('capacity', e.target.value)}
                 min={1}
                 placeholder="Ex : 20"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -468,7 +468,7 @@ function EventModal({
           <button
             onClick={() => handleSubmit(false)}
             disabled={submitting}
-            className="flex-1 py-2.5 rounded-xl border border-[#2D1B96] text-sm font-semibold text-[#2D1B96] hover:bg-[#EDE9FF] transition-colors disabled:opacity-50"
+            className="flex-1 py-2.5 rounded-xl border border-primary text-sm font-semibold text-primary hover:bg-[#EDE9FF] transition-colors disabled:opacity-50"
           >
             {submitting ? 'Enregistrement…' : 'Enregistrer en brouillon'}
           </button>
@@ -619,7 +619,7 @@ export default function AgendaClient() {
             onClick={() => setTab(t)}
             className={`pb-3 px-1 mr-5 text-sm font-semibold border-b-2 transition-colors ${
               tab === t
-                ? 'border-[#2D1B96] text-[#2D1B96]'
+                ? 'border-primary text-primary'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -633,7 +633,7 @@ export default function AgendaClient() {
       {/* Contenu */}
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-3 border-[#2D1B96] border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
       ) : error ? (
         <p className="text-red-500 text-sm text-center py-8">{error}</p>

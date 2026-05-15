@@ -275,7 +275,7 @@ export default function AdminJournalDetailPage() {
     return (
       <div className="p-6 max-w-5xl mx-auto">
         <div className="bg-white rounded-2xl shadow-sm p-12 flex justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2D1B96]" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       </div>
     )
@@ -374,7 +374,7 @@ export default function AdminJournalDetailPage() {
                     setScriptParams({ ...scriptParams, format: 'dialogue', narrator: null })
                   }
                   disabled={busy !== null}
-                  className="text-[#2D1B96] focus:ring-[#2D1B96]"
+                  className="text-primary focus:ring-primary"
                 />
                 Dialogue Sophie &amp; Martin
               </label>
@@ -388,7 +388,7 @@ export default function AdminJournalDetailPage() {
                     setScriptParams({ ...scriptParams, format: 'monologue' })
                   }
                   disabled={busy !== null}
-                  className="text-[#2D1B96] focus:ring-[#2D1B96]"
+                  className="text-primary focus:ring-primary"
                 />
                 Monologue
               </label>
@@ -411,7 +411,7 @@ export default function AdminJournalDetailPage() {
                   })
                 }
                 disabled={busy !== null}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
               >
                 <option value="">— Choisir —</option>
                 <option value="sophie">Dr Sophie</option>
@@ -435,7 +435,7 @@ export default function AdminJournalDetailPage() {
                 })
               }
               disabled={busy !== null}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
             >
               <option value={3}>3 min</option>
               <option value={5}>5 min</option>
@@ -459,7 +459,7 @@ export default function AdminJournalDetailPage() {
                 })
               }
               disabled={busy !== null}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
             >
               {(Object.keys(TONE_LABELS) as EditorialTone[]).map((tone) => (
                 <option key={tone} value={tone}>
@@ -485,7 +485,7 @@ export default function AdminJournalDetailPage() {
               disabled={busy !== null}
               rows={4}
               placeholder="Points à développer, angle éditorial, données à mettre en avant…"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50 placeholder:text-gray-400"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 placeholder:text-gray-400"
             />
           </div>
 
@@ -496,7 +496,7 @@ export default function AdminJournalDetailPage() {
               busy !== null ||
               (scriptParams.format === 'monologue' && scriptParams.narrator == null)
             }
-            className="bg-[#2D1B96] hover:bg-[#231575] disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            className="bg-primary hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
           >
             {busy === 'script'
               ? 'Génération en cours…'

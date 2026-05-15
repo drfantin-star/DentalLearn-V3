@@ -58,14 +58,14 @@ const NARRATOR_LABELS: Record<string, string> = {
 const CARD = 'bg-white rounded-2xl shadow-sm border border-gray-200 p-6'
 const CARD_TITLE = 'text-lg font-semibold text-gray-900 mb-4'
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed'
+  'inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed'
 const BTN_SECONDARY =
   'inline-flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed'
 const BTN_LINK =
-  'inline-flex items-center gap-1 text-sm text-[#2D1B96] hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline'
+  'inline-flex items-center gap-1 text-sm text-primary hover:underline disabled:opacity-50 disabled:cursor-not-allowed disabled:no-underline'
 const LABEL = 'block text-sm font-medium text-gray-700 mb-1'
 const SELECT =
-  'w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50'
+  'w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50'
 
 // ---------- Helpers ----------
 
@@ -539,7 +539,7 @@ function CaseAParametrage({
                 setParams({ ...params, format: 'dialogue', narrator: null })
               }
               disabled={loading}
-              className="text-[#2D1B96] focus:ring-[#2D1B96]"
+              className="text-primary focus:ring-primary"
             />
             Dialogue Sophie &amp; Martin
           </label>
@@ -553,7 +553,7 @@ function CaseAParametrage({
                 setParams({ ...params, format: 'monologue' })
               }
               disabled={loading}
-              className="text-[#2D1B96] focus:ring-[#2D1B96]"
+              className="text-primary focus:ring-primary"
             />
             Monologue
           </label>
@@ -650,7 +650,7 @@ function CaseAParametrage({
           disabled={loading}
           rows={4}
           placeholder="Points à développer, angle éditorial, données à mettre en avant…"
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50 placeholder:text-gray-400"
+          className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 placeholder:text-gray-400"
         />
       </div>
 
@@ -735,7 +735,7 @@ function CaseBReview({
         onChange={(e) => setScriptDraft(e.target.value)}
         disabled={busy}
         rows={20}
-        className="w-full font-mono text-sm border border-gray-300 rounded-lg p-3 bg-white text-gray-900 focus:ring-2 focus:ring-[#2D1B96] focus:outline-none disabled:opacity-50"
+        className="w-full font-mono text-sm border border-gray-300 rounded-lg p-3 bg-white text-gray-900 focus:ring-2 focus:ring-primary focus:outline-none disabled:opacity-50"
       />
       <p className="text-xs text-gray-500 mt-1.5">
         {wordCount} mots • ~{estimatedMin} min estimées

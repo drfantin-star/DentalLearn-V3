@@ -78,7 +78,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
     <div style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px', overflow: 'hidden' }}>
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] px-4 py-3">
+      <div className="bg-gradient-to-r from-primary to-accent px-4 py-3">
         <h3 className="text-white font-bold text-sm">Certification Périodique</h3>
         <p className="text-white/70 text-xs">
           {periode.isDerogation ? 'Premier cycle (dérogation 9 ans)' : 'Cycle standard (6 ans)'}
@@ -100,7 +100,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
           </div>
           <div className="h-1.5 bg-[#333] rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] rounded-full transition-all duration-500"
+              className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
               style={{ width: `${tempsRestant.pourcentageEcoule}%` }}
             />
           </div>

@@ -95,18 +95,18 @@ export default function BottomNav({
               href={tab.href}
               className={`flex flex-col items-center justify-center px-2 py-1.5 rounded-xl transition-all ${
                 active
-                  ? 'bg-gradient-to-b from-[#2D1B96]/10 to-[#00D1C1]/10'
+                  ? 'bg-gradient-to-b from-primary/10 to-accent/10'
                   : 'hover:bg-gray-50'
               }`}
             >
               <Icon
                 size={22}
-                className={active ? 'text-[#2D1B96]' : 'text-[#6b7280]'}
+                className={active ? 'text-primary' : 'text-[#6b7280]'}
                 strokeWidth={active ? 2.5 : 2}
               />
               <span
                 className={`text-[10px] mt-1 font-medium ${
-                  active ? 'text-[#2D1B96]' : 'text-[#6b7280]'
+                  active ? 'text-primary' : 'text-[#6b7280]'
                 }`}
               >
                 {tab.label}

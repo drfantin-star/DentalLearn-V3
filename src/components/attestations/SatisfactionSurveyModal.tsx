@@ -283,7 +283,7 @@ export function SatisfactionSurveyModal({
                 onChange={(e) => setStrongPoints(e.target.value)}
                 placeholder="Ce qui vous a plu dans cette formation…"
                 rows={3}
-                className="w-full px-3 py-2 rounded-xl text-sm resize-y outline-none focus:ring-2 focus:ring-[#2D1B96]"
+                className="w-full px-3 py-2 rounded-xl text-sm resize-y outline-none focus:ring-2 focus:ring-primary"
                 style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#e5e5e5' }}
               />
             </div>
@@ -298,7 +298,7 @@ export function SatisfactionSurveyModal({
                 onChange={(e) => setImprovementPoints(e.target.value)}
                 placeholder="Ce qui pourrait être amélioré…"
                 rows={3}
-                className="w-full px-3 py-2 rounded-xl text-sm resize-y outline-none focus:ring-2 focus:ring-[#2D1B96]"
+                className="w-full px-3 py-2 rounded-xl text-sm resize-y outline-none focus:ring-2 focus:ring-primary"
                 style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#e5e5e5' }}
               />
             </div>
@@ -313,7 +313,7 @@ export function SatisfactionSurveyModal({
                 onChange={(e) => setFreeComment(e.target.value)}
                 placeholder="Tout autre retour que vous souhaitez partager…"
                 rows={3}
-                className="w-full px-3 py-2 rounded-xl text-sm resize-y outline-none focus:ring-2 focus:ring-[#2D1B96]"
+                className="w-full px-3 py-2 rounded-xl text-sm resize-y outline-none focus:ring-2 focus:ring-primary"
                 style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#e5e5e5' }}
               />
             </div>

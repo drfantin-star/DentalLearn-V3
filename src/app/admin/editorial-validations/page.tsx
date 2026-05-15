@@ -91,7 +91,7 @@ function StatusBadge({ candidate }: { candidate: ValidationCandidate }) {
 function TypeBadge({ type }: { type: EditorialContentType }) {
   if (type === 'formation') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-[#2D1B96]/10 text-[#2D1B96]">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-primary/10 text-primary">
         <BookOpen size={11} />
         Formation
       </span>
@@ -240,7 +240,7 @@ export default function AdminEditorialValidationsPage() {
           <button
             type="button"
             onClick={() => setBulkConfirmOpen(true)}
-            className="inline-flex items-center gap-2 border-2 border-[#2D1B96] text-[#2D1B96] hover:bg-[#2D1B96]/5 text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
+            className="inline-flex items-center gap-2 border-2 border-primary text-primary hover:bg-primary/5 text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
           >
             <ListChecks size={16} />
             Tout valider en bloc
@@ -268,7 +268,7 @@ export default function AdminEditorialValidationsPage() {
               onClick={() => setTab(t.key)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                 tab === t.key
-                  ? 'bg-[#2D1B96] text-white'
+                  ? 'bg-primary text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -334,7 +334,7 @@ export default function AdminEditorialValidationsPage() {
       {/* Candidates list */}
       {loading ? (
         <div className="bg-white rounded-2xl shadow-xl p-12 flex items-center justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-[#2D1B96]" />
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       ) : candidates.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-xl p-12 text-center">
@@ -344,7 +344,7 @@ export default function AdminEditorialValidationsPage() {
           </p>
           <Link
             href="/admin"
-            className="inline-block mt-4 text-sm text-[#2D1B96] hover:underline"
+            className="inline-block mt-4 text-sm text-primary hover:underline"
           >
             Retour au dashboard admin
           </Link>
@@ -701,7 +701,7 @@ function ValidateModal({
             <select
               value={leadId}
               onChange={(e) => setLeadId(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#2D1B96]"
+              className="w-full px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary"
               style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#e5e5e5' }}
             >
               {leads.length === 0 && <option value="">— aucun lead actif —</option>}
@@ -721,7 +721,7 @@ function ValidateModal({
             <select
               value={secondaryId}
               onChange={(e) => setSecondaryId(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#2D1B96]"
+              className="w-full px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary"
               style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#e5e5e5' }}
             >
               <option value="">Aucun</option>
@@ -744,7 +744,7 @@ function ValidateModal({
               value={comments}
               onChange={(e) => setComments(e.target.value)}
               placeholder="Notes éditoriales ou justification scientifique…"
-              className="w-full px-3 py-2 rounded-xl text-sm resize-y outline-none focus:ring-2 focus:ring-[#2D1B96]"
+              className="w-full px-3 py-2 rounded-xl text-sm resize-y outline-none focus:ring-2 focus:ring-primary"
               style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#e5e5e5' }}
             />
             <p className="text-[11px] mt-1 text-right" style={{ color: '#737373' }}>
@@ -1177,7 +1177,7 @@ function ConfirmBulkModal({
             type="button"
             onClick={onConfirm}
             disabled={submitting}
-            className="flex-1 inline-flex items-center justify-center gap-2 bg-[#2D1B96] hover:bg-[#231575] text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
+            className="flex-1 inline-flex items-center justify-center gap-2 bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
           >
             {submitting ? (
               <>

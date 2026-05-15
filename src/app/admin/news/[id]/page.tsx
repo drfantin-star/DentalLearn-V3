@@ -178,7 +178,7 @@ export default function NewsDetailPage() {
   if (loading) {
     return (
       <div className="p-8 max-w-7xl mx-auto flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -379,7 +379,7 @@ function RawSourceCard({ raw }: { raw: RawArticle | null }) {
                   href={raw.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-[#2D1B96] hover:underline"
+                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   Lire sur PubMed
@@ -390,7 +390,7 @@ function RawSourceCard({ raw }: { raw: RawArticle | null }) {
                   href={`https://doi.org/${raw.doi}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-[#2D1B96] hover:underline"
+                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                 >
                   DOI : {raw.doi}
                 </a>
@@ -625,7 +625,7 @@ function MatchFormationCard({
         {!editing && !toast && (
           <button
             onClick={startEditing}
-            className="text-xs text-[#2D1B96] hover:underline font-medium"
+            className="text-xs text-primary hover:underline font-medium"
           >
             Modifier
           </button>
@@ -650,7 +650,7 @@ function MatchFormationCard({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             disabled={saving}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-[#2D1B96] disabled:opacity-50"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
           >
             <option value="" className="bg-white text-gray-900">
               — Aucune correspondance —
@@ -672,7 +672,7 @@ function MatchFormationCard({
             <button
               onClick={saveMatch}
               disabled={saving}
-              className="flex-1 px-3 py-2 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-medium rounded-lg disabled:opacity-50"
+              className="flex-1 px-3 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-lg disabled:opacity-50"
             >
               {saving ? 'Enregistrement…' : 'Enregistrer'}
             </button>

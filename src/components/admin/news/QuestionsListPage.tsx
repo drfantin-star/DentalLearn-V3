@@ -234,13 +234,13 @@ export function QuestionsListPage(props: QuestionsListPageProps) {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Rechercher dans le texte de la question…"
-              className="w-full pl-10 pr-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
+              className="w-full pl-10 pr-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
             />
           </div>
           <select
             value={specialite}
             onChange={(e) => updateParams({ specialite: e.target.value || null, page: '1' })}
-            className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+            className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
             <option value="" className="bg-white text-gray-900">Spécialité — Toutes</option>
             {SPECIALITES.map((s) => (
@@ -252,7 +252,7 @@ export function QuestionsListPage(props: QuestionsListPageProps) {
           <select
             value={sort}
             onChange={(e) => updateParams({ sort: e.target.value, page: '1' })}
-            className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+            className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
             {SORTS.map((s) => (
               <option key={s.value} value={s.value} className="bg-white text-gray-900">
@@ -282,7 +282,7 @@ export function QuestionsListPage(props: QuestionsListPageProps) {
         </div>
       ) : loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       ) : !data || data.total === 0 ? (
         <EmptyState
@@ -446,7 +446,7 @@ function EmptyState({
       {showReset && (
         <button
           onClick={onReset}
-          className="inline-flex items-center gap-2 bg-[#2D1B96] hover:bg-[#231575] text-white px-5 py-2.5 rounded-xl font-medium transition-colors"
+          className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-xl font-medium transition-colors"
         >
           <RotateCcw className="w-4 h-4" />
           Réinitialiser les filtres
@@ -501,7 +501,7 @@ function Pagination({
               onClick={() => onChange(p)}
               className={`min-w-[36px] px-2 py-1.5 rounded-lg text-sm border transition-colors ${
                 p === page
-                  ? 'bg-[#2D1B96] text-white border-[#2D1B96]'
+                  ? 'bg-primary text-white border-primary'
                   : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50'
               }`}
             >

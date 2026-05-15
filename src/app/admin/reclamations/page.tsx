@@ -110,7 +110,7 @@ export default function AdminReclamationsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -119,8 +119,8 @@ export default function AdminReclamationsPage() {
     <div className="p-8 max-w-6xl mx-auto">
       <header className="mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-[#2D1B96]/10 flex items-center justify-center">
-            <MessageSquareWarning className="w-5 h-5 text-[#2D1B96]" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <MessageSquareWarning className="w-5 h-5 text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Réclamations</h1>
@@ -246,7 +246,7 @@ function FilterChip({
       onClick={onClick}
       className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
         active
-          ? 'bg-[#2D1B96] text-white border-[#2D1B96]'
+          ? 'bg-primary text-white border-primary'
           : highlight && count > 0
             ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
             : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'

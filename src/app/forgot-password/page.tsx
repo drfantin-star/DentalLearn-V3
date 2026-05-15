@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
 
   if (sent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#2D1B96] to-[#1a1060] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
             </p>
           </div>
           
-          <Link href="/login" className="inline-flex items-center gap-2 text-[#2D1B96] hover:underline">
+          <Link href="/login" className="inline-flex items-center gap-2 text-primary hover:underline">
             <ArrowLeft className="w-4 h-4" />
             Retour à la connexion
           </Link>
@@ -64,10 +64,10 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#2D1B96] to-[#1a1060] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#2D1B96] mb-2">DentalLearn</h1>
+          <h1 className="text-3xl font-bold text-primary mb-2">DentalLearn</h1>
           <h2 className="text-xl font-semibold text-gray-900 mb-1">Mot de passe oublié ?</h2>
           <p className="text-gray-600">Entrez votre email pour recevoir un lien de réinitialisation</p>
         </div>
@@ -89,7 +89,7 @@ export default function ForgotPasswordPage() {
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="votre@email.com"
                 required
               />
@@ -99,7 +99,7 @@ export default function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={loading || !email}
-            className="w-full py-3 bg-[#2D1B96] text-white font-bold rounded-xl hover:bg-[#231470] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-[#231470] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -113,7 +113,7 @@ export default function ForgotPasswordPage() {
         </form>
 
         <div className="mt-6 text-center">
-          <Link href="/login" className="inline-flex items-center gap-2 text-gray-600 hover:text-[#2D1B96] transition-colors">
+          <Link href="/login" className="inline-flex items-center gap-2 text-gray-600 hover:text-primary transition-colors">
             <ArrowLeft className="w-4 h-4" />
             Retour à la connexion
           </Link>

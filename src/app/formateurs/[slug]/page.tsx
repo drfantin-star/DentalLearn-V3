@@ -87,7 +87,7 @@ export default async function FormateurPublicPage({
 
         {/* ── Header ───────────────────────────────────────────────────── */}
         <div className="flex items-center gap-5">
-          <div className="w-20 h-20 rounded-full overflow-hidden bg-[#2D1B96] flex items-center justify-center shrink-0">
+          <div className="w-20 h-20 rounded-full overflow-hidden bg-primary flex items-center justify-center shrink-0">
             {p.photo_pro_url ? (
               <img
                 src={p.photo_pro_url}

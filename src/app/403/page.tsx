@@ -16,7 +16,7 @@ export default function ForbiddenPage() {
         </p>
         <Link
           href="/"
-          className="inline-block bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] transition-colors"
+          className="inline-block bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary-hover transition-colors"
         >
           Retour à l'accueil
         </Link>

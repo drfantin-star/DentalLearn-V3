@@ -77,7 +77,7 @@ export function useDemarches(userId?: string) {
             title: f.title,
             subtitle: f.category || 'Formation',
             badge: 'CP',
-            badgeColor: 'bg-[#2D1B96]',
+            badgeColor: 'bg-primary',
             progress: pct,
             progressLabel: `${uf.current_sequence || 0}/${f.total_sequences || 15}`,
             ctaLabel: 'Continuer',

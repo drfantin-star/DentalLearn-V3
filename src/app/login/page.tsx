@@ -44,10 +44,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#2D1B96] to-[#1a1060] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#2D1B96] mb-2">DentalLearn</h1>
+          <h1 className="text-3xl font-bold text-primary mb-2">DentalLearn</h1>
           <p className="text-gray-600">Connectez-vous à votre compte</p>
         </div>
 
@@ -67,7 +67,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent transition-all"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                 placeholder="votre@email.com"
               />
             </div>
@@ -82,7 +82,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent transition-all"
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                 placeholder="••••••••"
               />
               <button
@@ -96,7 +96,7 @@ export default function LoginPage() {
           </div>
 
           <div className="text-center">
-            <Link href="/forgot-password" className="text-sm text-gray-600 hover:text-[#2D1B96] transition-colors">
+            <Link href="/forgot-password" className="text-sm text-gray-600 hover:text-primary transition-colors">
               Mot de passe oublié ?
             </Link>
           </div>
@@ -104,7 +104,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-[#2D1B96] text-white rounded-lg font-medium hover:bg-[#231470] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:bg-[#231470] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -123,7 +123,7 @@ export default function LoginPage() {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Pas encore de compte ?{' '}
-            <Link href="/register" className="text-[#2D1B96] font-medium hover:underline">
+            <Link href="/register" className="text-primary font-medium hover:underline">
               S&apos;inscrire
             </Link>
           </p>

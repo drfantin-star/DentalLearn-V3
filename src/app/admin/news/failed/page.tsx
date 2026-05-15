@@ -63,7 +63,7 @@ export default function FailedPage() {
 function PageLoader() {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
     </div>
   )
 }
@@ -182,7 +182,7 @@ function FailedListInner() {
                 onClick={() => updateParams({ status: s.value, page: '1' })}
                 className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
                   active
-                    ? `${s.chip} border-transparent ring-2 ring-[#2D1B96]/30`
+                    ? `${s.chip} border-transparent ring-2 ring-primary/30`
                     : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50'
                 }`}
               >
@@ -199,13 +199,13 @@ function FailedListInner() {
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Rechercher dans le titre…"
-              className="w-full pl-10 pr-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
+              className="w-full pl-10 pr-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
             />
           </div>
           <select
             value={sort}
             onChange={(e) => updateParams({ sort: e.target.value, page: '1' })}
-            className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+            className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
           >
             {SORTS.map((s) => (
               <option key={s.value} value={s.value} className="bg-white text-gray-900">
@@ -235,7 +235,7 @@ function FailedListInner() {
         </div>
       ) : loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
       ) : !data || data.total === 0 ? (
         <EmptyHealthy />
@@ -314,7 +314,7 @@ function FailedCard({ synthesis }: { synthesis: FailedSynthesis }) {
       <div className="flex items-center justify-between gap-3 flex-wrap pt-3 border-t border-gray-100">
         <Link
           href={`/admin/news/${synthesis.id}`}
-          className="inline-flex items-center gap-1 text-sm text-[#2D1B96] hover:underline"
+          className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
         >
           <ExternalLink className="w-3.5 h-3.5" />
           Voir le détail
@@ -418,7 +418,7 @@ function Pagination({
               onClick={() => onChange(p)}
               className={`min-w-[36px] px-2 py-1.5 rounded-lg text-sm border transition-colors ${
                 p === page
-                  ? 'bg-[#2D1B96] text-white border-[#2D1B96]'
+                  ? 'bg-primary text-white border-primary'
                   : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50'
               }`}
             >

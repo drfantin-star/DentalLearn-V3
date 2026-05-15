@@ -114,7 +114,7 @@ export default function PromoteFormateurPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="exemple@dentallearn.fr"
             required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         <Button
@@ -163,7 +163,7 @@ export default function PromoteFormateurPage() {
       {searched && user && user.is_formateur && (
         <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-2xl p-6">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-full bg-[#2D1B96] text-white flex items-center justify-center font-semibold">
+            <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center font-semibold">
               {initialsOf(user)}
             </div>
             <div className="flex-1">
@@ -189,7 +189,7 @@ export default function PromoteFormateurPage() {
       {searched && user && !user.is_formateur && (
         <Card className="p-6">
           <div className="flex items-start gap-4 mb-6">
-            <div className="w-12 h-12 rounded-full bg-[#2D1B96] text-white flex items-center justify-center font-semibold">
+            <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center font-semibold">
               {initialsOf(user)}
             </div>
             <div>

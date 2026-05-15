@@ -229,7 +229,7 @@ export default function EditProfilPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-24">
-      <Loader2 className="animate-spin text-[#2D1B96]" size={32} />
+      <Loader2 className="animate-spin text-primary" size={32} />
     </div>
   )
 
@@ -294,7 +294,7 @@ export default function EditProfilPage() {
           {/* Photo */}
           <div className="flex items-center gap-4">
             <div className="relative">
-              <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] flex items-center justify-center">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                 {photoUrl ? (
                   <img src={photoUrl} alt="Photo" className="w-full h-full object-cover" />
                 ) : (
@@ -307,7 +307,7 @@ export default function EditProfilPage() {
                 className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow border"
               >
                 {uploadingPhoto
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2D1B96]" />
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
                   : <Camera className="w-3.5 h-3.5 text-[#6b7280]" />}
               </button>
             </div>
@@ -324,7 +324,7 @@ export default function EditProfilPage() {
               <input
                 type="text" value={firstName}
                 onChange={e => setFirstName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                 style={{ background: '#1a1a1a', borderColor: '#333', color: '#e5e5e5' }}
                 placeholder="Prénom"
               />
@@ -334,7 +334,7 @@ export default function EditProfilPage() {
               <input
                 type="text" value={lastName}
                 onChange={e => setLastName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                 style={{ background: '#1a1a1a', borderColor: '#333', color: '#e5e5e5' }}
                 placeholder="Nom"
               />
@@ -353,7 +353,7 @@ export default function EditProfilPage() {
           <button
             onClick={handleSaveProfil}
             disabled={saving}
-            className="w-full py-2.5 bg-[#2D1B96] text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-2.5 bg-primary text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Enregistrer
@@ -381,7 +381,7 @@ export default function EditProfilPage() {
           <button
             onClick={handleSaveOrdre}
             disabled={savingOrdre}
-            className="w-full py-2.5 bg-[#2D1B96] text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-2.5 bg-primary text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
           >
             {savingOrdre ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Enregistrer
@@ -410,7 +410,7 @@ export default function EditProfilPage() {
               disabled={savingPrefs}
               className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
                 liveSessionReminders
-                  ? 'bg-[#00D1C1]/10 text-[#00D1C1] border border-[#00D1C1]/20'
+                  ? 'bg-accent/10 text-accent border border-accent/20'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
@@ -423,7 +423,7 @@ export default function EditProfilPage() {
               disabled={savingPrefs}
               className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
                 formateurPublications
-                  ? 'bg-[#00D1C1]/10 text-[#00D1C1] border border-[#00D1C1]/20'
+                  ? 'bg-accent/10 text-accent border border-accent/20'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
@@ -470,7 +470,7 @@ export default function EditProfilPage() {
               </div>
               <div className="flex gap-2">
                 <button onClick={handleChangePassword} disabled={passwordSaving || !newPassword || !confirmPassword}
-                  className="flex-1 py-2.5 bg-[#2D1B96] text-white text-sm font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
+                  className="flex-1 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
                   {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   Changer
                 </button>

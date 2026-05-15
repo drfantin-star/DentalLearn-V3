@@ -69,7 +69,7 @@ export default function NewOrganizationPage() {
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#2D1B96]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
       </div>
     )
   }
@@ -110,7 +110,7 @@ export default function NewOrganizationPage() {
             onChange={(e) => setName(e.target.value)}
             required
             maxLength={200}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="ex: Cabinet Dr. Dupont"
           />
         </div>
@@ -120,7 +120,7 @@ export default function NewOrganizationPage() {
           <select
             value={type}
             onChange={(e) => setType(e.target.value as OrgType)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="cabinet">Cabinet</option>
             <option value="hr_entity">Entité RH</option>
@@ -136,7 +136,7 @@ export default function NewOrganizationPage() {
           <select
             value={plan}
             onChange={(e) => setPlan(e.target.value as OrgPlan)}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="standard">Standard</option>
             <option value="premium">Premium</option>

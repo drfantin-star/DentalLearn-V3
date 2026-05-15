@@ -21,7 +21,7 @@ export default function ApprovedPage() {
 function PageLoader() {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
     </div>
   )
 }

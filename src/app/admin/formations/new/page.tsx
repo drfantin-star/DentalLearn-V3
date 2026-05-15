@@ -74,7 +74,7 @@ export default function NewFormationPage() {
               required
               value={formData.title}
               onChange={handleTitleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="Ex: Éclaircissements & Taches Blanches"
             />
           </div>
@@ -86,7 +86,7 @@ export default function NewFormationPage() {
               required
               value={formData.instructor_name}
               onChange={(e) => setFormData({ ...formData, instructor_name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="Ex: Dr Laurent Elbeze"
             />
           </div>
@@ -97,7 +97,7 @@ export default function NewFormationPage() {
               type="text"
               value={formData.description_short}
               onChange={(e) => setFormData({ ...formData, description_short: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="Résumé en 1-2 phrases"
             />
           </div>
@@ -108,7 +108,7 @@ export default function NewFormationPage() {
               <select
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="esthetique">Esthétique</option>
                 <option value="restauratrice">Restauratrice</option>
@@ -125,7 +125,7 @@ export default function NewFormationPage() {
               <select
                 value={formData.level}
                 onChange={(e) => setFormData({ ...formData, level: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
               >
                 <option value="beginner">Débutant</option>
                 <option value="intermediate">Intermédiaire</option>
@@ -141,7 +141,7 @@ export default function NewFormationPage() {
               min="1"
               value={formData.total_sequences}
               onChange={(e) => setFormData({ ...formData, total_sequences: parseInt(e.target.value) })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
 

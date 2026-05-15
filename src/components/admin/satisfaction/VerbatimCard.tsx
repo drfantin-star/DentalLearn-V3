@@ -265,7 +265,7 @@ export function VerbatimCard({ verbatim: v }: Props) {
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="Ex. : prise de contact pour traiter un point d'amélioration mentionné…"
                 rows={3}
-                className="w-full text-sm px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#2D1B96] resize-y"
+                className="w-full text-sm px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary resize-y"
               />
             </div>
 
@@ -288,7 +288,7 @@ export function VerbatimCard({ verbatim: v }: Props) {
                 type="button"
                 onClick={handleConfirmReveal}
                 disabled={revealing}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-[#2D1B96] text-white hover:bg-[#231575] transition-colors disabled:opacity-60"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-60"
               >
                 {revealing ? (
                   <>

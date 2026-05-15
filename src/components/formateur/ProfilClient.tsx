@@ -104,7 +104,7 @@ function TagInput({
       {tags.map((tag) => (
         <span
           key={tag}
-          className="flex items-center gap-1 bg-[#EDE9FF] text-[#2D1B96] text-xs font-medium px-2.5 py-1 rounded-full"
+          className="flex items-center gap-1 bg-[#EDE9FF] text-primary text-xs font-medium px-2.5 py-1 rounded-full"
         >
           {tag}
           <button
@@ -279,7 +279,7 @@ export default function ProfilClient() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="animate-spin text-[#2D1B96]" size={32} />
+        <Loader2 className="animate-spin text-primary" size={32} />
       </div>
     )
   }
@@ -308,7 +308,7 @@ export default function ProfilClient() {
           href={`/formateurs/${slug}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#2D1B96] hover:text-[#4C35C9] transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-[#4C35C9] transition-colors"
         >
           Voir mon profil public
           <ExternalLink size={14} />
@@ -325,7 +325,7 @@ export default function ProfilClient() {
               {avatarUrl ? (
                 <img src={avatarUrl} alt="Photo de profil" className="w-full h-full object-cover" />
               ) : (
-                <span className="text-[#2D1B96] text-xl font-bold">
+                <span className="text-primary text-xl font-bold">
                   {getInitials(displayName)}
                 </span>
               )}
@@ -336,7 +336,7 @@ export default function ProfilClient() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="inline-flex items-center gap-2 bg-[#EDE9FF] text-[#2D1B96] font-semibold text-sm px-4 py-2 rounded-lg hover:bg-[#DDD6FE] transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-2 bg-[#EDE9FF] text-primary font-semibold text-sm px-4 py-2 rounded-lg hover:bg-[#DDD6FE] transition-colors disabled:opacity-50"
               >
                 {uploading ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
                 {uploading ? 'Upload…' : 'Changer la photo'}
@@ -366,7 +366,7 @@ export default function ProfilClient() {
               onChange={(e) => setBioLong(e.target.value)}
               rows={5}
               placeholder="Présentez votre parcours, votre expertise, votre approche pédagogique…"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#2D1B96] focus:ring-1 focus:ring-[#2D1B96] resize-none"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
             />
             {errors.bio_long && <p className="text-red-500 text-xs mt-1">{errors.bio_long}</p>}
           </div>
@@ -395,7 +395,7 @@ export default function ProfilClient() {
               value={anneesExp}
               onChange={(e) => setAnneesExp(e.target.value)}
               placeholder="Ex : 12"
-              className="w-32 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-[#2D1B96] focus:ring-1 focus:ring-[#2D1B96]"
+              className="w-32 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
             {errors.annees_experience && (
               <p className="text-red-500 text-xs mt-1">{errors.annees_experience}</p>
@@ -411,7 +411,7 @@ export default function ProfilClient() {
               onChange={(e) => setVille(e.target.value)}
               placeholder="Paris"
               maxLength={120}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#2D1B96] focus:ring-1 focus:ring-[#2D1B96]"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </div>
 
@@ -426,7 +426,7 @@ export default function ProfilClient() {
               onChange={(e) => setCabinetNom(e.target.value)}
               placeholder="Cabinet dentaire du Louvre"
               maxLength={200}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#2D1B96] focus:ring-1 focus:ring-[#2D1B96]"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </div>
         </Card>
@@ -444,7 +444,7 @@ export default function ProfilClient() {
               value={linkedinUrl}
               onChange={(e) => setLinkedinUrl(e.target.value)}
               placeholder="https://linkedin.com/in/..."
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#2D1B96] focus:ring-1 focus:ring-[#2D1B96]"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
             {errors.linkedin_url && (
               <p className="text-red-500 text-xs mt-1">{errors.linkedin_url}</p>
@@ -460,7 +460,7 @@ export default function ProfilClient() {
               value={instagramUrl}
               onChange={(e) => setInstagramUrl(e.target.value)}
               placeholder="https://instagram.com/..."
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#2D1B96] focus:ring-1 focus:ring-[#2D1B96]"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
             {errors.instagram_url && (
               <p className="text-red-500 text-xs mt-1">{errors.instagram_url}</p>
@@ -484,8 +484,8 @@ export default function ProfilClient() {
               role="switch"
               aria-checked={isPublished}
               onClick={() => setIsPublished(!isPublished)}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#2D1B96] ${
-                isPublished ? 'bg-[#2D1B96]' : 'bg-gray-200'
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                isPublished ? 'bg-primary' : 'bg-gray-200'
               }`}
             >
               <span
