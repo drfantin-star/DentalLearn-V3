@@ -33,9 +33,9 @@ export default async function ExtractScenesPage() {
     .select('id, sequence_number, title, timeline_url, formation_id')
     .not('course_media_url', 'is', null)
 
-  const formationIds = [
-    ...new Set((sequences ?? []).map((s) => s.formation_id).filter(Boolean)),
-  ] as string[]
+  const formationIds = Array.from(
+    new Set((sequences ?? []).map((s) => s.formation_id).filter(Boolean)),
+  ) as string[]
 
   const { data: formations } = formationIds.length
     ? await admin.from('formations').select('id, title').in('id', formationIds)
