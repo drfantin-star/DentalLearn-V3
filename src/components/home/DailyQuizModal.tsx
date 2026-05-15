@@ -584,7 +584,7 @@ export default function DailyQuizModal({
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/70 backdrop-blur-sm">
         <div className="w-full max-w-sm rounded-3xl p-8 text-center" style={{ background: '#1a1a1a' }}>
-          <Loader2 className="w-10 h-10 animate-spin text-[#2D1B96] mx-auto mb-4" />
+          <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
           <p className="font-medium" style={{ color: '#a3a3a3' }}>Chargement du quiz...</p>
         </div>
       </div>
@@ -666,7 +666,7 @@ export default function DailyQuizModal({
                 router.push('/profil')
               }}
               disabled={saving}
-              className="w-full py-3.5 bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+              className="w-full py-3.5 bg-gradient-to-r from-primary to-[#00D1C1] text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="w-5 h-5 animate-spin mx-auto" />
@@ -707,7 +707,7 @@ export default function DailyQuizModal({
       <div className="flex-shrink-0">
         <div className="h-1.5" style={{ background: '#242424' }}>
           <div
-            className="h-full bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] transition-all duration-500"
+            className="h-full bg-gradient-to-r from-primary to-[#00D1C1] transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -733,7 +733,7 @@ export default function DailyQuizModal({
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-[#2D1B96]">
+            <span className="text-sm font-bold text-primary">
               {totalPoints} pts
             </span>
             <button
