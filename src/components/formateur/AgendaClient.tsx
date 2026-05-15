@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Calendar, MapPin, ExternalLink, Plus, Pencil, Trash2, X, AlertTriangle } from 'lucide-react'
 import { LiveEventSchema, type LiveEventPayload } from '@/lib/schemas/live-event'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import Badge from '@/components/ui/Badge'
 import type { FormateurFormation } from '@/lib/auth/rbac'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -98,7 +101,7 @@ function EventCard({
   const formation = formations.find((f) => f.id === event.formation_id)
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-3 shadow-sm">
+    <Card variant="flat" className="p-5 flex flex-col gap-3 shadow-sm">
       {/* Date + ville */}
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -120,15 +123,9 @@ function EventCard({
         </div>
 
         {/* Badge statut */}
-        <span
-          className={`shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full ${
-            event.is_published
-              ? 'bg-green-100 text-green-700'
-              : 'bg-gray-100 text-gray-500'
-          }`}
-        >
+        <Badge variant={event.is_published ? 'success' : 'neutral'}>
           {event.is_published ? 'Publié' : 'Brouillon'}
-        </span>
+        </Badge>
       </div>
 
       {/* Titre */}
@@ -143,13 +140,10 @@ function EventCard({
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
-        <button
-          onClick={() => onEdit(event)}
-          className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-        >
+        <Button variant="ghost" size="sm" onClick={() => onEdit(event)} className="flex items-center gap-1.5">
           <Pencil size={14} />
           Éditer
-        </button>
+        </Button>
         <button
           onClick={() => onTogglePublish(event)}
           className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
@@ -168,7 +162,7 @@ function EventCard({
           Supprimer
         </button>
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -468,13 +462,9 @@ function EventModal({
 
         {/* Footer boutons */}
         <div className="p-5 border-t border-gray-200 flex flex-col sm:flex-row gap-2 sticky bottom-0 bg-white">
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="flex-1 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
+          <Button variant="secondary" size="md" onClick={onClose} disabled={submitting} className="flex-1">
             Annuler
-          </button>
+          </Button>
           <button
             onClick={() => handleSubmit(false)}
             disabled={submitting}
@@ -482,13 +472,9 @@ function EventModal({
           >
             {submitting ? 'Enregistrement…' : 'Enregistrer en brouillon'}
           </button>
-          <button
-            onClick={() => handleSubmit(true)}
-            disabled={submitting}
-            className="flex-1 py-2.5 rounded-xl bg-[#2D1B96] text-sm font-semibold text-white hover:bg-[#1e1268] transition-colors disabled:opacity-50"
-          >
+          <Button variant="primary" size="md" onClick={() => handleSubmit(true)} disabled={submitting} className="flex-1">
             {submitting ? 'Publication…' : 'Publier'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -619,13 +605,10 @@ export default function AgendaClient() {
             Gérez vos dates de formations présentielles
           </p>
         </div>
-        <button
-          onClick={() => setModal({ open: true, editing: null })}
-          className="flex items-center gap-2 bg-[#2D1B96] text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-[#1e1268] transition-colors shrink-0"
-        >
+        <Button variant="primary" size="md" onClick={() => setModal({ open: true, editing: null })} className="flex items-center gap-2 shrink-0">
           <Plus size={16} />
           Nouvelle date
-        </button>
+        </Button>
       </header>
 
       {/* Tabs */}

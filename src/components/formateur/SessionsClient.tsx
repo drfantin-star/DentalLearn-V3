@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Video, Plus, Pencil, Trash2, X, AlertTriangle, Users } from 'lucide-react'
 import { LiveSessionSchema, type LiveSessionPayload } from '@/lib/schemas/live-session'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
+import Badge from '@/components/ui/Badge'
 import { computeSessionStatus, computeSessionStatusLabel, type SessionStatus } from '@/lib/utils/session-status'
 import type { FormateurFormation } from '@/lib/auth/rbac'
 
@@ -119,7 +122,7 @@ function SessionCard({
   const isCancelled = computeSessionStatus(session) === 'cancelled'
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 p-5 flex flex-col gap-3 shadow-sm">
+    <Card variant="flat" className="p-5 flex flex-col gap-3 shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-1.5 text-[#2D1B96] text-sm font-semibold mb-0.5">
@@ -142,11 +145,9 @@ function SessionCard({
           {session.registration_count}
           {session.capacity != null ? ` / ${session.capacity} places` : ' inscrits'}
         </span>
-        {session.is_published ? (
-          <span className="bg-green-100 text-green-700 font-semibold px-2 py-0.5 rounded-full">Publié</span>
-        ) : (
-          <span className="bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">Brouillon</span>
-        )}
+        <Badge variant={session.is_published ? 'success' : 'neutral'}>
+          {session.is_published ? 'Publié' : 'Brouillon'}
+        </Badge>
       </div>
 
       {formation && (
@@ -158,13 +159,10 @@ function SessionCard({
       <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
         {!isCancelled && (
           <>
-            <button
-              onClick={() => onEdit(session)}
-              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-            >
+            <Button variant="ghost" size="sm" onClick={() => onEdit(session)} className="flex items-center gap-1.5">
               <Pencil size={14} />
               Éditer
-            </button>
+            </Button>
             <button
               onClick={() => onTogglePublish(session)}
               className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
@@ -191,7 +189,7 @@ function SessionCard({
           Supprimer
         </button>
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -435,13 +433,9 @@ function SessionModal({
         </div>
 
         <div className="p-5 border-t border-gray-200 flex flex-col sm:flex-row gap-2 sticky bottom-0 bg-white">
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="flex-1 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
+          <Button variant="secondary" size="md" onClick={onClose} disabled={submitting} className="flex-1">
             Annuler
-          </button>
+          </Button>
           <button
             onClick={() => handleSubmit(false)}
             disabled={submitting}
@@ -449,13 +443,9 @@ function SessionModal({
           >
             {submitting ? 'Enregistrement…' : 'Enregistrer en brouillon'}
           </button>
-          <button
-            onClick={() => handleSubmit(true)}
-            disabled={submitting}
-            className="flex-1 py-2.5 rounded-xl bg-[#2D1B96] text-sm font-semibold text-white hover:bg-[#1e1268] transition-colors disabled:opacity-50"
-          >
+          <Button variant="primary" size="md" onClick={() => handleSubmit(true)} disabled={submitting} className="flex-1">
             {submitting ? 'Publication…' : 'Publier'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -614,13 +604,10 @@ export default function SessionsClient() {
           <h1 className="text-3xl font-bold text-gray-900">Mes masterclass</h1>
           <p className="text-gray-600 mt-1">Gérez vos sessions live et vos inscriptions</p>
         </div>
-        <button
-          onClick={() => setModal({ open: true, editing: null })}
-          className="flex items-center gap-2 bg-[#2D1B96] text-white text-sm font-semibold px-4 py-2.5 rounded-xl hover:bg-[#1e1268] transition-colors shrink-0"
-        >
+        <Button variant="primary" size="md" onClick={() => setModal({ open: true, editing: null })} className="flex items-center gap-2 shrink-0">
           <Plus size={16} />
           Nouvelle masterclass
-        </button>
+        </Button>
       </header>
 
       <div className="flex gap-1 mb-6 border-b border-gray-200">

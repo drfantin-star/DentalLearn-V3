@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Card } from '@/components/ui/Card'
 import { Award, CheckCircle, Headphones, Star, Users } from 'lucide-react'
 import type { FormateurStatsPerFormation } from '@/lib/auth/rbac'
 
@@ -8,7 +9,7 @@ interface FormationStatsCardProps {
 
 export default function FormationStatsCard({ stats }: FormationStatsCardProps) {
   return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden flex flex-col">
+    <Card className="overflow-hidden flex flex-col">
       <div className="relative h-32 w-full bg-gradient-to-br from-[#2D1B96] to-[#5B3FD9]">
         {stats.formation_cover ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -50,7 +51,7 @@ export default function FormationStatsCard({ stats }: FormationStatsCardProps) {
           />
         </div>
       </div>
-    </div>
+    </Card>
   )
 }
 

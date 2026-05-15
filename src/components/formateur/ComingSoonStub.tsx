@@ -1,4 +1,5 @@
 import { Clock } from 'lucide-react'
+import { Card } from '@/components/ui/Card'
 
 interface ComingSoonStubProps {
   title: string
@@ -15,7 +16,7 @@ export default function ComingSoonStub({ title, ticketRef }: ComingSoonStubProps
     <div className="p-8 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold text-gray-900 mb-8">{title}</h1>
 
-      <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+      <Card className="p-12 text-center">
         <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-[#2D1B96]/10 flex items-center justify-center">
           <Clock className="w-8 h-8 text-[#2D1B96]" />
         </div>
@@ -24,7 +25,7 @@ export default function ComingSoonStub({ title, ticketRef }: ComingSoonStubProps
           Cette page sera activée à la prochaine livraison.
         </p>
         <p className="text-xs text-gray-400 font-mono">{ticketRef}</p>
-      </div>
+      </Card>
     </div>
   )
 }
