@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Star, Filter, Download, Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 import { createClient } from '@/lib/supabase/client'
 import { downloadCsv } from '@/lib/utils/csvExport'
 import {
@@ -213,19 +214,16 @@ export default function AdminSatisfactionPage() {
             />
           </div>
           <div className="flex gap-2">
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="md"
               onClick={handleExportCsv}
-              disabled={exporting}
-              className="flex-1 inline-flex items-center justify-center gap-2 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-semibold px-4 py-2 rounded-xl transition-colors disabled:opacity-60"
+              loading={exporting}
+              className="flex-1"
             >
-              {exporting ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Download size={14} />
-              )}
+              <Download size={14} />
               Export CSV
-            </button>
+            </Button>
             {hasActiveFilters && (
               <button
                 type="button"

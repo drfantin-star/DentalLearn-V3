@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { ALLOWED_FORMATION_CATEGORIES } from '@/lib/constants/news'
 import { describeCardDate } from '@/lib/news-display'
+import { Button } from '@/components/ui/Button'
 
 // ---------- Constantes ----------
 
@@ -676,13 +677,14 @@ function EmptyState({ onReset }: { onReset: () => void }) {
       <p className="text-sm text-gray-500 mb-6">
         Essayez d'élargir la recherche ou de changer le statut.
       </p>
-      <button
+      <Button
+        variant="primary"
+        size="md"
         onClick={onReset}
-        className="inline-flex items-center gap-2 bg-[#2D1B96] hover:bg-[#231575] text-white px-5 py-2.5 rounded-xl font-medium transition-colors"
       >
         <RotateCcw className="w-4 h-4" />
         Réinitialiser les filtres
-      </button>
+      </Button>
     </div>
   )
 }

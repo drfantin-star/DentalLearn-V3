@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Search, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 
 interface LookupUser {
   id: string
@@ -116,14 +117,15 @@ export default function PromoteFormateurPage() {
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
           />
         </div>
-        <button
+        <Button
+          variant="primary"
+          size="lg"
           type="submit"
           disabled={!emailLooksValid || searching}
-          className="flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] transition-colors disabled:opacity-50"
         >
           <Search className="w-4 h-4" />
           {searching ? 'Recherche…' : 'Rechercher'}
-        </button>
+        </Button>
       </Card>
       </form>
 
@@ -203,15 +205,15 @@ export default function PromoteFormateurPage() {
               <code className="bg-white px-1 py-0.5 rounded text-xs">/formateur/profil</code>.
             </p>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="lg"
             onClick={handlePromote}
-            disabled={promoting}
-            className="flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] transition-colors disabled:opacity-50"
+            loading={promoting}
           >
             <UserPlus className="w-4 h-4" />
-            {promoting ? 'Promotion…' : 'Promouvoir au rôle formateur'}
-          </button>
+            Promouvoir au rôle formateur
+          </Button>
         </Card>
       )}
     </div>

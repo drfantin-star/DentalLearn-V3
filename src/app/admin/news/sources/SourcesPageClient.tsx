@@ -15,6 +15,7 @@ import {
   PowerOff,
   PlayCircle,
 } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
 
 export interface SourceRow {
   id: string
@@ -177,13 +178,14 @@ export function SourcesPageClient({ initialSources }: { initialSources: SourceRo
               </p>
             </div>
           </div>
-          <button
+          <Button
+            variant="primary"
+            size="md"
             onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-medium rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             Ajouter une source
-          </button>
+          </Button>
         </div>
       </header>
 
@@ -611,14 +613,14 @@ function CreateSourceModal({
             >
               Annuler
             </button>
-            <button
+            <Button
+              variant="primary"
+              size="md"
               type="submit"
-              disabled={submitting}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#2D1B96] hover:bg-[#231575] disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
+              loading={submitting}
             >
-              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
               {forceCreate && warning ? 'Créer quand même' : 'Créer'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
