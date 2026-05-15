@@ -114,17 +114,9 @@ export async function GET(
 }
 
 /**
- * Sprint 2 T2 — Rétrograde un formateur (retrait du rôle global uniquement).
- *
- * IMPORTANT : on NE touche PAS aux rows `formation_instructors`,
- * `formateur_profiles`, `live_events`, `live_sessions`, `live_registrations`
- * de ce user. Ces données restent en place pour permettre :
- *   - une re-promotion future sans reconstruction,
- *   - la préservation de l'historique RGPD / DPC.
- *
- * Conséquence visible (loggée D2-T2-02) : le nom du user peut rester
- * affiché sur les fiches formations où il était `is_primary` jusqu'à
- * intervention manuelle via `/admin/formations/[id]/instructors`.
+ * Sprint 2 T2 — Rétrograde un formateur.
+ * Supprime le rôle 'formateur' et nettoie les associations formation_instructors.
+ * formateur_profiles, live_sessions et live_registrations sont préservés (historique RGPD/DPC).
  */
 export async function DELETE(
   _request: Request,
@@ -166,6 +158,11 @@ export async function DELETE(
       console.error('Erreur DELETE user_roles formateur:', deleteError)
       return NextResponse.json({ error: deleteError.message }, { status: 500 })
     }
+
+    await adminSupabase
+      .from('formation_instructors')
+      .delete()
+      .eq('user_id', params.user_id)
 
     return NextResponse.json({
       success: true,

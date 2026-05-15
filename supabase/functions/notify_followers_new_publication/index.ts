@@ -48,7 +48,7 @@ async function run(opts: RunOptions): Promise<RunResult> {
 
   logger.info("run_start", { limit: opts.limit, now_utc: now.toISOString() });
 
-  // Détecter les sessions publiées dans la dernière heure
+  // Détecter les sessions dont la publication effective (published_at) est dans la dernière heure
   const { data: newSessions, error: sessErr } = await supabase
     .from("live_sessions")
     .select(`
@@ -59,7 +59,8 @@ async function run(opts: RunOptions): Promise<RunResult> {
     `)
     .eq("is_published", true)
     .is("deleted_at", null)
-    .gte("created_at", new Date(now.getTime() - 60 * 60 * 1000).toISOString())
+    .not("published_at", "is", null)
+    .gte("published_at", new Date(now.getTime() - 60 * 60 * 1000).toISOString())
     .limit(opts.limit);
 
   if (sessErr) throw new Error(`load sessions: ${sessErr.message}`);

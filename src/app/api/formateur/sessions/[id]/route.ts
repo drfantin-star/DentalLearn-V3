@@ -23,7 +23,7 @@ export async function PATCH(
 
   const { data: session } = await supabase
     .from('live_sessions')
-    .select('id, formateur_user_id, deleted_at, status')
+    .select('id, formateur_user_id, deleted_at, status, is_published')
     .eq('id', params.id)
     .single()
 
@@ -92,9 +92,15 @@ export async function PATCH(
     payload.zoom_url = null
   }
 
+  const updatePayload: Record<string, unknown> = { ...payload, updated_at: new Date().toISOString() }
+  // Première publication : horodater published_at pour la Edge Function de notifications
+  if (payload.is_published === true && session.is_published === false) {
+    updatePayload.published_at = new Date().toISOString()
+  }
+
   const { data, error } = await supabase
     .from('live_sessions')
-    .update({ ...payload, updated_at: new Date().toISOString() })
+    .update(updatePayload)
     .eq('id', params.id)
     .select()
     .single()
