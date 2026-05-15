@@ -34,21 +34,32 @@ export default async function ExtractScenesPage() {
     .not('course_media_url', 'is', null)
     .order('title', { ascending: true })
 
-  const sorted = (sequences ?? []).slice().sort((a, b) => {
-    const fa = ((a.formations as { title: string } | null)?.title ?? '').localeCompare(
-      (b.formations as { title: string } | null)?.title ?? '',
-      'fr'
-    )
-    return fa !== 0 ? fa : ((a.title as string) ?? '').localeCompare((b.title as string) ?? '', 'fr')
+  type RawSeq = {
+    id: string
+    sequence_number: number
+    title: string
+    timeline_url: string | null
+    formation_id: string | null
+    formations: { title: string }[] | null
+  }
+
+  const rows = (sequences ?? []) as RawSeq[]
+
+  const getFormationTitle = (f: { title: string }[] | null): string =>
+    f?.[0]?.title ?? ''
+
+  const sorted = rows.slice().sort((a, b) => {
+    const fa = getFormationTitle(a.formations).localeCompare(getFormationTitle(b.formations), 'fr')
+    return fa !== 0 ? fa : a.title.localeCompare(b.title, 'fr')
   })
 
   const candidates: SequenceLite[] = sorted.map((s) => ({
-    id: s.id as string,
-    sequence_number: (s.sequence_number as number) ?? 0,
-    title: (s.title as string) ?? '(sans titre)',
-    timeline_url: s.timeline_url as string | null,
-    formation_id: (s.formation_id as string | null) ?? null,
-    formation_title: ((s.formations as { title: string } | null)?.title) ?? null,
+    id: s.id,
+    sequence_number: s.sequence_number ?? 0,
+    title: s.title ?? '(sans titre)',
+    timeline_url: s.timeline_url,
+    formation_id: s.formation_id,
+    formation_title: getFormationTitle(s.formations) || null,
   }))
 
   return <ExtractScenesClient sequences={candidates} />
