@@ -1,7 +1,7 @@
 # Design System DentalLearn — Guide pour nouvelles pages
 
 > **À inclure dans chaque handoff / prompt Claude Code** dès qu'une nouvelle page admin est créée.  
-> Dernière mise à jour : 15 mai 2026 — Étape 3 terminée.
+> Dernière mise à jour : 15 mai 2026 — Étape 4 terminée (migration hex complète).
 
 ---
 
@@ -41,7 +41,7 @@ import { Button } from '@/components/ui/Button'
 
 **Règles critiques :**
 - `loading` est réservé à `variant="primary"` (spinner blanc invisible sur secondary/ghost)
-- Ne jamais écrire `<button className="bg-[#2D1B96]...">` — toujours passer par `<Button>`
+- Ne jamais écrire `<button className="bg-primary...">` — toujours passer par `<Button>`
 - Les `<Link>` stylés comme boutons ne doivent PAS utiliser `<Button>` (sémantique HTML différente)
 
 ---
@@ -158,16 +158,34 @@ import { Badge } from '@/components/ui/Badge'
 
 ## 2. Tokens et classes à utiliser
 
-### Couleurs — JAMAIS de hex en dur
+### Couleurs — JAMAIS de hex en dur dans une classe Tailwind
 
-| ❌ À ne plus écrire | ✅ À utiliser |
-|---------------------|--------------|
+Depuis l'Étape 4 (15 mai 2026), **tous les fichiers `src/` ont été migrés** (87 fichiers, 512 remplacements). Le tableau ci-dessous est la référence complète — tout nouveau fichier doit respecter ces règles dès l'écriture initiale.
+
+| ❌ À ne jamais écrire | ✅ À utiliser |
+|-----------------------|--------------|
 | `bg-[#2D1B96]` | `bg-primary` |
 | `text-[#2D1B96]` | `text-primary` |
-| `hover:bg-[#231575]` | `hover:bg-primary-hover` |
-| `bg-[#2D1B96]/10` | `bg-primary/10` |
 | `border-[#2D1B96]` | `border-primary` |
+| `ring-[#2D1B96]` | `ring-primary` |
+| `hover:bg-[#2D1B96]` | `hover:bg-primary` |
+| `hover:text-[#2D1B96]` | `hover:text-primary` |
+| `hover:bg-[#231575]` | `hover:bg-primary-hover` |
+| `bg-[#231575]` | `bg-primary-hover` |
+| `bg-[#2D1B96]/5` | `bg-primary/5` |
+| `bg-[#2D1B96]/10` | `bg-primary/10` |
+| `bg-[#2D1B96]/20` | `bg-primary/20` |
+| `bg-[#2D1B96]/30` | `bg-primary/30` |
+| `ring-[#2D1B96]/30` | `ring-primary/30` |
+| `focus:ring-[#2D1B96]/30` | `focus:ring-primary/30` |
+| `focus:border-[#2D1B96]` | `focus:border-primary` |
+| `from-[#2D1B96]` | `from-primary` |
+| `bg-[#00D1C1]` | `bg-accent` |
 | `text-[#00D1C1]` | `text-accent` |
+| `border-[#00D1C1]` | `border-accent` |
+| `hover:bg-[#00D1C1]` | `hover:bg-accent` |
+| `hover:bg-[#00B8A9]` | `hover:bg-accent-hover` |
+| `to-[#00D1C1]` | `to-accent` |
 
 ### Tokens disponibles dans `tailwind.config.ts`
 
@@ -179,6 +197,20 @@ accent.DEFAULT   = #00D1C1
 accent.hover     = #00B8A9
 accent.muted     = rgba(0,209,193,0.1)
 ```
+
+### Exceptions légitimes (hex autorisés en JS pur — jamais dans className)
+
+Ces 7 fichiers conservent des hex en valeurs JS pour des raisons fonctionnelles :
+
+| Fichier | Usage | Raison |
+|---------|-------|--------|
+| `src/app/layout.tsx` | `<meta name="theme-color" content="#2D1B96">` | Attribut HTML natif |
+| `src/app/tenant/admin/branding/page.tsx` | `DEFAULT_COLOR = '#2D1B96'` | Color picker tenant |
+| `src/components/tenant/TenantShell.tsx` | `DEFAULT_PRIMARY = '#2D1B96'` | Fallback JS |
+| `src/context/AudioContext.tsx` | `accentColor: '#2D1B96'` | Propriété objet JS |
+| `src/components/Confetti.tsx` | `colors: ['#2D1B96', ...]` | Lib canvas JS |
+| `src/components/home/DailyQuizModal.tsx` | `style={{ background: gradient }}` | Gradient inline JS |
+| `src/components/home/DailyQuizButton.tsx` | `style={{ background: gradient }}` | Gradient avec couleur tierce |
 
 ---
 
@@ -292,8 +324,8 @@ export default function MaPageAdmin() {
 
 Ces patterns n'ont pas encore de composant dédié. En attendant, utiliser le JSX natif :
 
-- **Modal** — pas de composant `<Modal>` (Étape 4 design system, juin 2026)
-- **TextField / Input / Select** — pas de composant unifié (Étape 4-bis)
+- **Modal** — pas de composant `<Modal>` (Étape 4a design system, juin 2026)
+- **TextField / Input / Select** — pas de composant unifié (Étape 4b)
 - **IconButton** — pas de composant dédié (`p-2 hover:bg-gray-100 rounded-lg` en attendant)
 - **`<Link>` stylé comme bouton** — utiliser les classes Tailwind directement avec token `primary`
 
@@ -303,7 +335,8 @@ Ces patterns n'ont pas encore de composant dédié. En attendant, utiliser le JS
 
 ```
 ❌ JAMAIS localStorage ou sessionStorage → React state uniquement
-❌ JAMAIS bg-[#2D1B96] en dur → bg-primary
+❌ JAMAIS bg-[#2D1B96] ou tout autre hex en dur dans une className → tokens primary/accent
+❌ JAMAIS from-[#2D1B96] / to-[#00D1C1] → from-primary / to-accent
 ❌ JAMAIS <button className="..."> pour les boutons standards → <Button>
 ❌ JAMAIS <div className="bg-white rounded-2xl shadow-lg p-6"> → <Card>
 ❌ JAMAIS recréer ArrowLeft + h1 → <PageHeader>
@@ -312,7 +345,8 @@ Ces patterns n'ont pas encore de composant dédié. En attendant, utiliser le JS
 ✅ TOUJOURS cn() pour les classes conditionnelles
 ✅ TOUJOURS type="button" sur les <button> non-submit (le composant Button le fait par défaut)
 ✅ TOUJOURS tsc --noEmit avant de commit
-✅ TOUJOURS vérifier l'absence de #2D1B96 dans les nouveaux fichiers
+✅ TOUJOURS vérifier l'absence de hex en dur dans les nouveaux fichiers :
+   grep "#2D1B96\|#00D1C1\|#231575" fichier_modifié → doit retourner 0 ligne dans className
 ```
 
 ---
