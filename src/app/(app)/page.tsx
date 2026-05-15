@@ -16,6 +16,8 @@ import { JournalWeekCard } from '@/components/home/JournalWeekCard'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
 import type { JournalEpisode, NewsCard } from '@/types/news'
+import EvenementsSection from '@/components/evenements/EvenementsSection'
+import type { EvenementItemData } from '@/types/evenements'
 
 export default function HomePage() {
   const [showDailyQuiz, setShowDailyQuiz] = useState(false)
@@ -31,6 +33,9 @@ export default function HomePage() {
   // Formations "Fraîchement arrivé" — 5 dernières tous axes
   const [recentFormations, setRecentFormations] = useState<Formation[]>([])
   const [recentLoading, setRecentLoading] = useState(true)
+
+  // Événements — 3 prochains (live_events + live_sessions)
+  const [evenements, setEvenements] = useState<EvenementItemData[]>([])
   const [formationProgress, setFormationProgress] = useState<
     Record<string, { isStarted: boolean; isCompleted: boolean }>
   >({})
@@ -96,6 +101,64 @@ export default function HomePage() {
     }
     fetchProgress()
   }, [user?.id, recentFormations])
+
+  useEffect(() => {
+    async function fetchEvenements() {
+      const supabase = createClient()
+      const now = new Date().toISOString()
+      const [{ data: events }, { data: sessions }] = await Promise.all([
+        supabase
+          .from('live_events')
+          .select('id, title, starts_at, formateur_user_id')
+          .eq('is_published', true)
+          .is('deleted_at', null)
+          .gte('starts_at', now)
+          .order('starts_at', { ascending: true })
+          .limit(3),
+        supabase
+          .from('live_sessions')
+          .select('id, title, starts_at, formateur_user_id')
+          .eq('is_published', true)
+          .is('deleted_at', null)
+          .gte('starts_at', now)
+          .neq('status', 'cancelled')
+          .order('starts_at', { ascending: true })
+          .limit(3),
+      ])
+      const allIds = [...new Set(
+        [...(events ?? []), ...(sessions ?? [])].map((e) => e.formateur_user_id).filter(Boolean)
+      )]
+      const profileMap: Record<string, string | null> = {}
+      if (allIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('formateur_profiles')
+          .select('user_id, display_name')
+          .in('user_id', allIds)
+        for (const p of profiles ?? []) {
+          profileMap[p.user_id] = p.display_name ?? null
+        }
+      }
+      const merged: EvenementItemData[] = [
+        ...(events ?? []).map((e) => ({
+          id: e.id,
+          type: 'presentiel' as const,
+          title: e.title,
+          starts_at: e.starts_at,
+          formateur_display_name: profileMap[e.formateur_user_id] ?? null,
+        })),
+        ...(sessions ?? []).map((s) => ({
+          id: s.id,
+          type: 'virtuel' as const,
+          title: s.title,
+          starts_at: s.starts_at,
+          formateur_display_name: profileMap[s.formateur_user_id] ?? null,
+        })),
+      ]
+      merged.sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+      setEvenements(merged.slice(0, 3))
+    }
+    void fetchEvenements()
+  }, [])
 
   const handleDailyQuizComplete = async (score: number, totalPoints: number) => {
     setShowDailyQuiz(false)
@@ -338,6 +401,12 @@ export default function HomePage() {
               </button>
             </div>
           )}
+        </section>
+
+        {/* Événements */}
+        <section>
+          <h2 className="text-base font-bold text-neutral-200 mb-3">📅 Événements</h2>
+          <EvenementsSection items={evenements} showVoirTout />
         </section>
 
         {/* Explorer */}
