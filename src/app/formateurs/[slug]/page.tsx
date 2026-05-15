@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Linkedin, Instagram } from 'lucide-react'
 import UpcomingEvents from '@/components/UpcomingEvents'
 import UpcomingSessions from '@/components/UpcomingSessions'
+import { FollowButton } from '@/components/formateur/FollowButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,6 +64,23 @@ export default async function FormateurPublicPage({
 
   const p = profil as FormateurPublicProfil
 
+  // Fetch follow state + followers count in parallel (server-side)
+  const [followRow, countRow] = await Promise.all([
+    supabase
+      .from('formateur_followers')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('formateur_user_id', p.user_id)
+      .maybeSingle(),
+    supabase
+      .from('formateur_followers')
+      .select('id', { count: 'exact', head: true })
+      .eq('formateur_user_id', p.user_id),
+  ])
+
+  const initialFollowing = !!followRow.data
+  const initialCount = countRow.count ?? 0
+
   return (
     <main className="min-h-screen" style={{ background: '#111' }}>
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
@@ -80,7 +98,7 @@ export default async function FormateurPublicPage({
               <span className="text-white text-xl font-bold">{getInitials(p.display_name)}</span>
             )}
           </div>
-          <div>
+          <div className="flex-1">
             <h1 className="text-xl font-bold text-[#e5e5e5]">{p.display_name}</h1>
             {(p.ville || p.cabinet_nom) && (
               <p className="text-sm text-[#9ca3af] mt-0.5">
@@ -93,6 +111,14 @@ export default async function FormateurPublicPage({
               </p>
             )}
           </div>
+          {/* Bouton Suivre — ne pas afficher si l'utilisateur est le formateur */}
+          {user.id !== p.user_id && (
+            <FollowButton
+              slug={p.slug}
+              initialFollowing={initialFollowing}
+              initialCount={initialCount}
+            />
+          )}
         </div>
 
         {/* ── Bio ──────────────────────────────────────────────────────── */}
