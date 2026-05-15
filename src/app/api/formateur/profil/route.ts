@@ -3,6 +3,16 @@ import { requireFormateur } from '@/middleware'
 import { createClient } from '@/lib/supabase/server'
 import { FormateurProfilSchema } from '@/lib/schemas/formateur-profil'
 
+function slugify(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 70)
+}
+
 export const dynamic = 'force-dynamic'
 
 const EMPTY_PROFILE = {
@@ -83,6 +93,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   // Récupérer le profil existant pour savoir si published_at doit être défini
+  // et détecter un premier INSERT (slug/display_name auto-génération)
   const { data: existing } = await supabase
     .from('formateur_profiles')
     .select('published_at')
@@ -97,6 +108,15 @@ export async function PATCH(request: NextRequest) {
     user_id: user.id,
     updated_at: new Date().toISOString(),
     ...(publishedAt ? { published_at: publishedAt } : {}),
+  }
+
+  // Premier INSERT : injecter slug et display_name auto-générés
+  if (!existing) {
+    const rawName = user.user_metadata?.full_name ?? user.email?.split('@')[0] ?? 'formateur'
+    const displayName = String(rawName).slice(0, 120)
+    const slug = slugify(displayName) + '-' + user.id.slice(0, 6)
+    upsertPayload.display_name = displayName
+    upsertPayload.slug = slug
   }
 
   const { data, error } = await supabase
