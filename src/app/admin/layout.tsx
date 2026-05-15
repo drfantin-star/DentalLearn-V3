@@ -17,7 +17,8 @@ import {
   MessageSquareWarning,
   Building2,
   Star,
-  UserCheck
+  UserCheck,
+  FileAudio
 } from 'lucide-react';
 
 export default function AdminLayout({
@@ -210,6 +211,33 @@ export default function AdminLayout({
               >
                 <ShieldCheck className="w-5 h-5" />
                 Validations éditoriales
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/poc"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <FileAudio className="w-5 h-5" />
+                POC Audio
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/poc/extract-scenes"
+                className="flex items-center gap-3 px-4 py-2 ml-6 rounded-xl hover:bg-white/10 transition-colors text-sm"
+              >
+                <FileAudio className="w-4 h-4 opacity-70" />
+                Extraction scènes (T5)
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/poc/karaoke"
+                className="flex items-center gap-3 px-4 py-2 ml-6 rounded-xl hover:bg-white/10 transition-colors text-sm"
+              >
+                <FileAudio className="w-4 h-4 opacity-70" />
+                Karaoké transcript (T3)
               </Link>
             </li>
             <li>
