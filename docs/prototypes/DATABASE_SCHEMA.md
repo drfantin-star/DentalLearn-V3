@@ -1149,5 +1149,83 @@ service_role) — voir migrations dédiées pour le détail.
 *Mis à jour le 3 mai 2026 — clôture Sprint 1 (T1 → T7) + ticket T8 (doc finale)*
 *Mis à jour le 4 mai 2026 — POC visualisation audio T1 (colonnes `timeline_url`/`timeline_published` sur `sequences` et `news_syntheses` + bucket `audio-timelines`)*
 *Mis à jour le 11 mai 2026 — Sprint 2 T1 Espace Formateur (5 nouvelles tables : `formation_instructors`, `formateur_profiles`, `live_events`, `live_sessions`, `live_registrations` + 3 helpers SQL + RLS 20 policies + 3 triggers `updated_at`)*
+*Mis à jour le 15 mai 2026 — Sprint 2 clôture T8 (section Espace Formateur complète : 7 tables + crons + Edge Functions)*
 *À commiter dans le repo : `drfantin-star/DentalLearn-V3`*
 *Chemin actuel : `docs/prototypes/DATABASE_SCHEMA.md`*
+
+---
+
+## Espace Formateur — Sprint 2
+
+> Section ajoutée le 15 mai 2026 — clôture Sprint 2 (T1→T8).
+> Source de vérité : MCP Supabase vérifié le 15/05/2026 (projet `dxybsuhfkwuemapqrvgz`).
+
+### Tables
+
+| Table | PK | FKs notables | Colonnes clés | RLS |
+|---|---|---|---|---|
+| `formation_instructors` | `id` uuid | `formation_id` → formations, `user_id` → auth.users | `is_primary` boolean | ✅ |
+| `formateur_profiles` | `id` uuid | `user_id` → auth.users | `slug` varchar(100) **nullable** ⚠️ (D2-T6-slug), `display_name` varchar(255) **nullable**, `bio_short`, `bio_long`, `photo_pro_url`, `ville` varchar(120), `cabinet_nom` varchar(200), `annees_experience` int, `linkedin_url`, `instagram_url`, `expertise_tags` text[], `is_published` boolean, `published_at` timestamptz | ✅ |
+| `live_events` | `id` uuid | `formateur_user_id` → auth.users, `formation_id` → formations (nullable) | `title`, `location_city`, `location_venue`, `starts_at`, `ends_at`, `capacity`, `external_registration_url`, `is_published`, `deleted_at` (soft delete) | ✅ |
+| `live_sessions` | `id` uuid | `formateur_user_id` → auth.users, `formation_id` → formations (nullable) | `title`, `starts_at`, `duration_min`, `zoom_url`, `zoom_password` (en clair V1), `capacity`, `status` enum (scheduled/live/ended/cancelled), `recording_url`, `is_published`, `deleted_at` (soft delete) | ✅ |
+| `live_registrations` | `id` uuid | `session_id` → live_sessions, `user_id` → auth.users | `registered_at`, `attended` boolean, `attended_duration_sec` int, `cancelled_at` (nullable — inutilisée V1, D2-T5-01) | ✅ |
+| `formateur_followers` | `id` uuid | `user_id` → auth.users, `formateur_user_id` → auth.users | `followed_at` — UNIQUE(user_id, formateur_user_id) | ✅ |
+| `live_session_reminders_sent` | `id` uuid | `session_id` → live_sessions, `user_id` → auth.users | `reminder_type` varchar(20) CHECK IN ('j_minus_1', 'h_minus_1'), `sent_at` — UNIQUE(session_id, user_id, reminder_type) | ✅ (activée T8) |
+
+**Conventions de nommage coexistantes (piège confirmé)** :
+- `formateur_profiles.user_id` — convention T1
+- `live_sessions.formateur_user_id` — convention T1 différente
+- Toujours vérifier avant d'écrire une requête.
+
+**Soft delete** : `live_events.deleted_at` et `live_sessions.deleted_at` — toujours filtrer `deleted_at IS NULL` dans les SELECT (sauf super_admin).
+
+**⚠️ Dette D2-T6-slug** : `slug` et `display_name` sont nullable comme garde-fou (migration PR #284). Fix propre prévu Sprint 3 : générer automatiquement depuis `auth.users.email` dans `PATCH /api/formateur/profil` si absent. Workaround actuel : hydratation SQL manuelle par super_admin.
+
+### Helpers SQL Sprint 2 (SECURITY DEFINER, SET search_path = public, pg_temp)
+
+| Fonction | Signature | Retour | Garde auth.uid() |
+|---|---|---|---|
+| `is_formateur_of` | `(p_user_id uuid, p_formation_id uuid)` | boolean | Non (boolean safe) |
+| `get_formateur_formations` | `(p_user_id uuid)` | SETOF uuid | Non |
+| `formateur_aggregated_stats` | `(p_user_id uuid, p_date_from date, p_date_to date)` | jsonb | **Oui** (fix T3 — 42501 si cross-user) |
+
+ACL pattern : `REVOKE EXECUTE FROM PUBLIC, anon, authenticated` + `GRANT EXECUTE TO authenticated, service_role`.
+
+### Colonnes ajoutées par ticket (Sprint 2)
+
+| Table | Colonne | Migration | Ticket |
+|---|---|---|---|
+| `live_events` | `deleted_at timestamptz` | 20260514_sprint2_live_events_deleted_at | T4 |
+| `live_sessions` | `deleted_at timestamptz` | 20260514_sprint2_sessions_rls_fix | T5 |
+| `formateur_profiles` | `annees_experience int` | 20260515_sprint2_formateur_profile_fields | T6 |
+| `formateur_profiles` | `ville varchar(120)` | 20260515_sprint2_formateur_profile_fields | T6 |
+| `formateur_profiles` | `cabinet_nom varchar(200)` | 20260515_sprint2_formateur_profile_fields | T6 |
+| `formateur_profiles` | `instagram_url text` | 20260515_sprint2_formateur_profile_fields | T6 |
+| `notifications` | `metadata jsonb` | 20260515_sprint2_t7_notifications_followers | T7 |
+| `user_notification_preferences` | `live_session_reminders boolean DEFAULT true` | 20260515_sprint2_t7_notifications_followers | T7 |
+| `user_notification_preferences` | `formateur_publications boolean DEFAULT true` | 20260515_sprint2_t7_notifications_followers | T7 |
+
+### Crons Sprint 2
+
+| Job pg_cron | Schedule | Edge Function déclenchée | Rôle |
+|---|---|---|---|
+| `live_session_reminders` | `0 * * * *` (toutes les heures, h:00) | `live_session_reminders` | Rappels push J-1 + H-1 aux inscrits live_sessions |
+| `notify_followers_new_publication` | `30 * * * *` (toutes les heures, h:30) | `notify_followers_new_publication` | Notif followers lors d'une nouvelle publication formateur |
+
+Migration cron : `20260515_sprint2_t7_crons.sql`. Limite par run : 50 (configurable via body POST `{"limit": N}`, max 200).
+
+### Edge Functions Sprint 2
+
+**`live_session_reminders`** (`supabase/functions/live_session_reminders/index.ts`)
+- Fenêtre J-1 : `starts_at ∈ [now()+23h, now()+25h]` → `reminder_type = 'j_minus_1'`
+- Fenêtre H-1 : `starts_at ∈ [now()+45min, now()+75min]` → `reminder_type = 'h_minus_1'`
+- Idempotence : `INSERT live_session_reminders_sent ON CONFLICT DO NOTHING`
+- Respect préférence `user_notification_preferences.live_session_reminders` (row absente = true par défaut)
+- Heure affichée `Europe/Paris` dans le corps push
+- Dépendances : `npm:web-push@3.6.7`, VAPID keys via `Deno.env.get()` (secrets Supabase — PAS Vercel)
+
+**`notify_followers_new_publication`** (`supabase/functions/notify_followers_new_publication/index.ts`)
+- Détecte `live_sessions` publiées dans la dernière heure (`created_at >= now() - interval '1h'`)
+- Debounce 24h via `notifications.metadata->>'formateur_user_id'`
+- Respect préférence `user_notification_preferences.formateur_publications`
+- ⚠️ **Dette D2-T7-02** : déclenché sur `created_at` (pas `published_at`) — session créée >1h avant publication non notifiée → Sprint 3

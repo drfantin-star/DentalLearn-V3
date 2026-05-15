@@ -107,3 +107,47 @@ Détail complet et pseudo-code dans [`SCENARIOS_PSEUDOCODE.md`](./SCENARIOS_PSEU
 ---
 
 *Document maintenu par Claude Code lors de l'implémentation T8 — 3 mai 2026.*
+
+---
+
+## Sprint 2 — Espace Formateur (T1→T8)
+
+**Statut** : squelettes fournis, runtime Playwright **NON installé** (même décision que Sprint 1).
+**Date** : 15 mai 2026 — clôture Sprint 2 (Ticket T8).
+
+Même procédure d'installation que Sprint 1 (voir section ci-dessus).
+
+### Helpers supplémentaires à créer pour Sprint 2
+
+| Helper | Rôle |
+|---|---|
+| `seedFormateur(email, password)` | Crée un user + assigne le rôle `formateur` via service_role |
+| `seedFormation()` | INSERT formation publiée (titre, slug, catégorie minimale) |
+| `assignFormateur(userId, formationId)` | INSERT `formation_instructors` |
+| `seedSession(formateurUserId, opts)` | INSERT `live_sessions` avec starts_at, capacity, zoom_url |
+| `seedRegistration(sessionId, userId)` | INSERT `live_registrations` |
+| `cleanupSession(sessionId)` | DELETE `live_sessions` CASCADE |
+| `cleanupEvent(eventId)` | DELETE `live_events` |
+| `getFormateurSlug(userId)` | SELECT slug FROM formateur_profiles WHERE user_id = userId |
+| `getJwt(email, password)` | Login Supabase → access_token (pour tests API directs) |
+| `invokeEdgeFunction(name, body)` | POST Edge Function avec service_role key |
+
+**Conventions BDD Sprint 2 à respecter dans les helpers** :
+- `formateur_profiles.user_id` (PAS `formateur_user_id`)
+- `live_sessions.formateur_user_id` (PAS `user_id`) — conventions différentes, piège confirmé
+- Soft delete : toujours filtrer `deleted_at IS NULL` dans les SELECT
+- Ne jamais toucher `course_watch_logs` (obligation réglementaire DPC)
+
+### Liste des scénarios Sprint 2
+
+Détail complet dans [`SCENARIOS_PSEUDOCODE.md`](./SCENARIOS_PSEUDOCODE.md) §S2.x (à créer).
+
+| # | Spec | Couverture |
+|---|---|---|
+| 1 | `sprint2/scenario_1_assign_formateur.spec.ts` | T1, T2, T3 — super_admin assigne formateur → formateur voit formation dans dashboard |
+| 2 | `sprint2/scenario_2_live_event_presentiel.spec.ts` | T4 — formateur crée live_event → user voit date sur fiche formation |
+| 3 | `sprint2/scenario_3_live_session_inscription.spec.ts` | T5 — formateur crée session → user s'inscrit → bouton Rejoindre H-15min |
+| 4 | `sprint2/scenario_4_profil_public_formateur.spec.ts` | T6 — formateur édite profil → /formateurs/[slug] accessible user connecté |
+| 5 | `sprint2/scenario_5_capacity_respected.spec.ts` | T5 — capacity=2, 3e inscription → 409 avec message explicite |
+| 6 | `sprint2/scenario_6_isolation_formateur.spec.ts` | T5 — formateur_B tente PATCH/DELETE session formateur_A → 403 |
+| 7 | `sprint2/scenario_7_push_reminder.spec.ts` | T7, T8 — invocation Edge Function → live_session_reminders_sent + notifications |

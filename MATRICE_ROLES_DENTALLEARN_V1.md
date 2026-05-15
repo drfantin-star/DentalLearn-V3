@@ -1,10 +1,10 @@
 # MATRICE DES RÔLES — DentalLearn V1
 ## Référentiel d'autorisation pour l'architecture multi-tenant
 
-**Date** : 2 mai 2026 — révisée le 3 mai 2026 (clôture Sprint 1)
-**Version** : V1.2 — `assistante` ajoutée dans `training_org` + statut Sprint 1 livré
+**Date** : 2 mai 2026 — révisée le 3 mai 2026 (clôture Sprint 1) — révisée le 15 mai 2026 (clôture Sprint 2)
+**Version** : V1.3 — Sprint 2 Espace Formateur clôturé (T1→T8) — F.01–F.05 implémentés
 **Auteur** : Dr Julie Fantin (avec assistance Claude)
-**Statut** : Implémentée en BDD via Sprint 1 (T1 → T7 mergés). Modèle RGPD A en attente validation avocat.
+**Statut** : Implémentée en BDD via Sprint 1 (T1 → T7 mergés) + Sprint 2 (T1 → T8 mergés). Modèle RGPD A en attente validation avocat.
 **Documents liés** : `docs/prototypes/DATABASE_SCHEMA.md`, `RECAP_SPRINT1_AUTH_RBAC_03MAI2026.md`, `handoff_claude_code_sprint1_auth_rbac_v1_0.md`
 
 ---
@@ -146,14 +146,14 @@ Avant de croiser actions × rôles, on fige le vocabulaire. Toute action absente
 
 ### 3.6 Espace formateur Dentalschool
 
-| Code | Action |
-|---|---|
-| `F.01` | Voir le dashboard stats sur SES formations assignées (vues, users actifs, taux complétion) |
-| `F.02` | Gérer son agenda de formations présentielles (CRUD events) |
-| `F.03` | Gérer ses masterclass live (CRUD sessions + visio Zoom) |
-| `F.04` | Voir la liste des inscrits à ses sessions live |
-| `F.05` | Modifier son profil public formateur (bio, photo, prochaines dates) |
-| `F.06` | Voir ses revenus calculés (V2 — pas de calcul V1, juste vues) |
+| Code | Action | Statut Sprint 2 |
+|---|---|---|
+| `F.01` | Voir le dashboard stats sur SES formations assignées (vues, users actifs, taux complétion) | ✅ Implémenté Sprint 2 (T3 dashboard) |
+| `F.02` | Gérer son agenda de formations présentielles (CRUD events) | ✅ Implémenté Sprint 2 (T4 agenda) |
+| `F.03` | Gérer ses masterclass live (CRUD sessions + visio Zoom) | ✅ Implémenté Sprint 2 (T5 sessions) |
+| `F.04` | Voir la liste des inscrits à ses sessions live | ✅ Implémenté Sprint 2 (T5 liste inscrits) |
+| `F.05` | Modifier son profil public formateur (bio, photo, prochaines dates) | ✅ Implémenté Sprint 2 (T6 profil public) |
+| `F.06` | Voir ses revenus calculés (V2 — pas de calcul V1, juste vues) | 📋 V2 — non implémenté |
 
 ---
 
@@ -566,7 +566,7 @@ Tableau synthétique : quelles actions de §3 sont livrées en BDD/code après l
 | §3.3 Conformité CP (C.01-C.04) | 4 actions | ✅ C.01-C.04 conservées + organisme dynamique T7 sur C.03 |
 | §3.4 Administration org (D.01-D.12) | 12 actions | ✅ D.01-D.04 (T5 + T6) ; ✅ D.05 + D.06 HR/OF (T6) ; ⏸ D.07 reportée ; ⏸ D.08, D.10-D.12 placeholder/V1.5 ; ✅ D.09 analytics agrégées (T6, helper SQL strict) |
 | §3.5 Ops Dentalschool (E.01-E.07) | 7 actions | ✅ E.01-E.04 (T2 RBAC) ; ✅ E.05 (T5 /admin/organizations) ; ⏸ E.06 impersonation V2 ; ⏸ E.07 logs DPC (déjà en BDD via course_watch_logs immuables) |
-| §3.6 Espace formateur (F.01-F.06) | 6 actions | ⏸ Reportées Sprint 2/3 (rôle `formateur` enum créé seulement) |
+| §3.6 Espace formateur (F.01-F.06) | 6 actions | ✅ F.01–F.05 livrés Sprint 2 (T1→T8) — F.06 revenus : 📋 V2 non implémenté |
 
 **Légende** : ✅ livré / ⏸ reporté / ❌ non prévu V1.
 
