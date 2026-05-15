@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Shield, UserPlus, Save, Ban } from 'lucide-react'
 import { PageHeader } from '@/components/ui/PageHeader'
+import { Card } from '@/components/ui/Card'
 import { INTRA_ROLE_LABELS } from '@/lib/auth/intra-role-matrix'
 import type { IntraRole } from '@/lib/auth/rbac'
 
@@ -229,7 +230,8 @@ export default function OrganizationDetailPage() {
       )}
 
       {tab === 'info' && (
-        <form onSubmit={handleSaveInfo} className="bg-white rounded-2xl shadow-lg p-6 max-w-2xl space-y-6">
+        <form onSubmit={handleSaveInfo}>
+        <Card className="p-6 max-w-2xl space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
             <input
@@ -275,6 +277,7 @@ export default function OrganizationDetailPage() {
               {savingInfo ? 'Sauvegarde…' : 'Sauvegarder'}
             </button>
           </div>
+        </Card>
         </form>
       )}
 

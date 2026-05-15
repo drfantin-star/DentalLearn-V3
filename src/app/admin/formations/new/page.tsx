@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Save } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { Card } from '@/components/ui/Card';
 
 export default function NewFormationPage() {
   const [loading, setLoading] = useState(false);
@@ -65,7 +66,7 @@ export default function NewFormationPage() {
       <PageHeader backHref="/admin/formations" backLabel="Retour aux formations" title="Nouvelle formation" />
 
       <form onSubmit={handleSubmit} className="max-w-2xl">
-        <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
+        <Card className="p-8 space-y-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Titre *</label>
             <input
@@ -169,7 +170,7 @@ export default function NewFormationPage() {
               {loading ? 'Création...' : 'Créer'}
             </button>
           </div>
-        </div>
+        </Card>
       </form>
     </div>
   );

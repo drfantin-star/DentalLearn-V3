@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { ArrowLeft, Shield, UserPlus } from 'lucide-react'
+import { Card } from '@/components/ui/Card'
 import {
   INTRA_ROLES_BY_ORG_TYPE,
   INTRA_ROLE_LABELS,
@@ -143,7 +144,8 @@ export default function InviteMemberPage() {
         Organisation : <span className="font-medium">{orgName}</span>
       </p>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-lg p-6 space-y-6">
+      <form onSubmit={handleSubmit}>
+      <Card className="p-6 space-y-6">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4">
             {error}
@@ -197,6 +199,7 @@ export default function InviteMemberPage() {
             {submitting ? 'Envoi…' : 'Inviter'}
           </button>
         </div>
+      </Card>
       </form>
     </div>
   )
