@@ -14,6 +14,7 @@ export interface SequenceLite {
   title: string
   timeline_url: string | null
   formation_id: string | null
+  formation_title: string | null
 }
 
 interface ExtractMeta {
@@ -168,9 +169,8 @@ export function ExtractScenesClient({ sequences }: Props) {
               </label>
               {sequences.length === 0 ? (
                 <p className="text-sm text-[color:var(--color-text-secondary)]">
-                  Aucune séquence avec <code>timeline_url</code> non null.
-                  Lance d&apos;abord le pipeline T2 sur une séquence
-                  (<code>scripts/audio/generate_audio_PHASE_2B.py</code>).
+                  Aucune séquence avec <code>course_media_url</code> non null.
+                  Vérifier que les séquences ont bien un audio source uploadé.
                 </p>
               ) : (
                 <select
@@ -179,10 +179,20 @@ export function ExtractScenesClient({ sequences }: Props) {
                   className="w-full rounded-lg border border-white/10 bg-[color:var(--color-bg-card)] px-3 py-2 text-sm text-white focus:border-ds-turquoise focus:outline-none"
                   disabled={loading}
                 >
-                  {sequences.map((seq) => (
-                    <option key={seq.id} value={seq.id}>
-                      #{seq.sequence_number} — {seq.title}
-                    </option>
+                  {Object.entries(
+                    sequences.reduce<Record<string, SequenceLite[]>>((acc, seq) => {
+                      const key = seq.formation_title ?? '(Formation inconnue)'
+                      ;(acc[key] ??= []).push(seq)
+                      return acc
+                    }, {})
+                  ).map(([formationTitle, seqs]) => (
+                    <optgroup key={formationTitle} label={formationTitle}>
+                      {seqs.map((seq) => (
+                        <option key={seq.id} value={seq.id}>
+                          {formationTitle} — {seq.title}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
               )}
