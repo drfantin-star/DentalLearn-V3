@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Camera, ExternalLink, Loader2, X } from 'lucide-react'
 import { FormateurProfilSchema, type FormateurProfilInput } from '@/lib/schemas/formateur-profil'
+import { Button } from '@/components/ui/Button'
+import { Card } from '@/components/ui/Card'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -315,7 +317,7 @@ export default function ProfilClient() {
 
       <form onSubmit={handleSave} className="space-y-6">
         {/* ── Photo ─────────────────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <Card variant="flat" className="p-6 shadow-sm">
           <h2 className="text-base font-bold text-gray-900 mb-4">Photo de profil</h2>
           <div className="flex items-center gap-5">
             {/* Avatar ou initiales */}
@@ -350,10 +352,10 @@ export default function ProfilClient() {
               onChange={handleFileChange}
             />
           </div>
-        </div>
+        </Card>
 
         {/* ── Informations ──────────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-5">
+        <Card variant="flat" className="p-6 shadow-sm space-y-5">
           <h2 className="text-base font-bold text-gray-900">Informations</h2>
 
           {/* Bio */}
@@ -427,10 +429,10 @@ export default function ProfilClient() {
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-[#2D1B96] focus:ring-1 focus:ring-[#2D1B96]"
             />
           </div>
-        </div>
+        </Card>
 
         {/* ── Réseaux sociaux ────────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-5">
+        <Card variant="flat" className="p-6 shadow-sm space-y-5">
           <h2 className="text-base font-bold text-gray-900">Réseaux sociaux</h2>
 
           <div>
@@ -464,10 +466,10 @@ export default function ProfilClient() {
               <p className="text-red-500 text-xs mt-1">{errors.instagram_url}</p>
             )}
           </div>
-        </div>
+        </Card>
 
         {/* ── Visibilité ────────────────────────────────────────────────── */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <Card variant="flat" className="p-6 shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-gray-900">Publier mon profil</p>
@@ -493,17 +495,19 @@ export default function ProfilClient() {
               />
             </button>
           </div>
-        </div>
+        </Card>
 
         {/* ── Bouton enregistrer ────────────────────────────────────────── */}
-        <button
+        <Button
           type="submit"
+          variant="primary"
+          size="lg"
+          className="w-full"
+          loading={saving}
           disabled={saving}
-          className="w-full flex items-center justify-center gap-2 bg-[#2D1B96] text-white font-semibold text-sm py-3 rounded-xl hover:bg-[#4C35C9] transition-colors disabled:opacity-60"
         >
-          {saving && <Loader2 size={16} className="animate-spin" />}
           {saving ? 'Enregistrement…' : 'Enregistrer'}
-        </button>
+        </Button>
       </form>
     </div>
   )

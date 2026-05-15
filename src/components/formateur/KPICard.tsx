@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
+import { Card } from '@/components/ui/Card'
 
 type ValueFormat = 'number' | 'percent' | 'duration'
 
@@ -23,7 +24,7 @@ export default function KPICard({
   const displayed = isMasked ? '—' : formatValue(value as number, valueFormat)
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 h-full">
+    <Card className="p-6 h-full">
       <div className="flex items-start gap-4">
         <div className={`${iconColor} p-3 rounded-xl shrink-0`}>
           <Icon className="w-6 h-6 text-white" />
@@ -48,7 +49,7 @@ export default function KPICard({
           <p className="text-xs text-gray-500 mt-2">{subtitle}</p>
         </div>
       </div>
-    </div>
+    </Card>
   )
 }
 
