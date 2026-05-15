@@ -1,10 +1,8 @@
 // Page POC admin — déclenchement de l'extraction Sonnet (T5.3).
 //
-// Liste les séquences ayant déjà une `timeline_url` (T2 livré). L'extraction
-// LLM (T5) lit le transcript depuis ce fichier existant pour reconstituer
-// le script_text et appeler Sonnet. Si une séquence n'a pas de timeline_url,
-// elle ne peut pas être extraite — il faut d'abord faire tourner le pipeline
-// Python T2 sur cette séquence.
+// Liste les séquences ayant un audio source (course_media_url non null).
+// Le but du POC est précisément de générer des timelines sur des séquences
+// qui n'en ont pas encore — pas de filtre sur timeline_url ou timeline_published.
 
 import { redirect } from 'next/navigation'
 
@@ -32,16 +30,36 @@ export default async function ExtractScenesPage() {
   const admin = createAdminClient()
   const { data: sequences } = await admin
     .from('sequences')
-    .select('id, sequence_number, title, timeline_url, formation_id')
-    .not('timeline_url', 'is', null)
-    .order('sequence_number', { ascending: true })
+    .select('id, sequence_number, title, timeline_url, formation_id, formations(title)')
+    .not('course_media_url', 'is', null)
+    .order('title', { ascending: true })
 
-  const candidates: SequenceLite[] = (sequences ?? []).map((s) => ({
-    id: s.id as string,
-    sequence_number: (s.sequence_number as number) ?? 0,
-    title: (s.title as string) ?? '(sans titre)',
-    timeline_url: s.timeline_url as string | null,
-    formation_id: (s.formation_id as string | null) ?? null,
+  type RawSeq = {
+    id: string
+    sequence_number: number
+    title: string
+    timeline_url: string | null
+    formation_id: string | null
+    formations: { title: string }[] | null
+  }
+
+  const rows = (sequences ?? []) as RawSeq[]
+
+  const getFormationTitle = (f: { title: string }[] | null): string =>
+    f?.[0]?.title ?? ''
+
+  const sorted = rows.slice().sort((a, b) => {
+    const fa = getFormationTitle(a.formations).localeCompare(getFormationTitle(b.formations), 'fr')
+    return fa !== 0 ? fa : a.title.localeCompare(b.title, 'fr')
+  })
+
+  const candidates: SequenceLite[] = sorted.map((s) => ({
+    id: s.id,
+    sequence_number: s.sequence_number ?? 0,
+    title: s.title ?? '(sans titre)',
+    timeline_url: s.timeline_url,
+    formation_id: s.formation_id,
+    formation_title: getFormationTitle(s.formations) || null,
   }))
 
   return <ExtractScenesClient sequences={candidates} />
