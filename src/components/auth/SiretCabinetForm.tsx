@@ -145,7 +145,7 @@ export default function SiretCabinetForm({
               onFocus={() => results.length > 0 && setShowDropdown(true)}
               disabled={disabled}
               autoComplete="off"
-              className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent disabled:opacity-60"
+              className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-60"
               placeholder="Nom du cabinet ou SIRET (14 chiffres)"
             />
             {loading && (
@@ -164,7 +164,7 @@ export default function SiretCabinetForm({
                     className="w-full text-left p-3 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <div className="flex items-start gap-2">
-                      <Building2 className="w-4 h-4 mt-1 text-[#2D1B96] flex-shrink-0" />
+                      <Building2 className="w-4 h-4 mt-1 text-primary flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">
                           {r.nom || '(nom non renseigné)'}
@@ -258,7 +258,7 @@ export default function SiretCabinetForm({
             onChange={(e) => handleManualName(e.target.value)}
             disabled={disabled}
             required
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent disabled:opacity-60"
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent disabled:opacity-60"
             placeholder="Ex : Cabinet Dupont"
           />
         </div>

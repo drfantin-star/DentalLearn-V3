@@ -207,13 +207,13 @@ export default function HomePage() {
   return (
     <>
       {/* Header */}
-      <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 py-4">
+      <header className="bg-gradient-to-br from-primary to-accent px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/30 flex-shrink-0">
             {profile?.profile_photo_url ? (
               <img src={profile.profile_photo_url} alt="avatar" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-[#00D1C1] to-[#2D1B96] flex items-center justify-center">
+              <div className="w-full h-full bg-gradient-to-br from-accent to-primary flex items-center justify-center">
                 <span className="text-white font-bold text-base">
                   {profile?.first_name?.[0] || 'U'}
                 </span>

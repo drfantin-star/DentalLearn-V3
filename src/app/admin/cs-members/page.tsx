@@ -231,8 +231,8 @@ export default function AdminCsMembersPage() {
       {/* Header */}
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#2D1B96]/10 flex items-center justify-center">
-            <Users className="w-5 h-5 text-[#2D1B96]" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Users className="w-5 h-5 text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Comité scientifique</h1>
@@ -260,7 +260,7 @@ export default function AdminCsMembersPage() {
       {/* List */}
       {loading ? (
         <div className="bg-white rounded-2xl shadow-xl p-12 flex items-center justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-[#2D1B96]" />
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
         </div>
       ) : members.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-xl p-12 text-center text-gray-500">
@@ -296,7 +296,7 @@ export default function AdminCsMembersPage() {
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1.5">
                           {m.is_lead && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-[#2D1B96] text-white">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-primary text-white">
                               <ShieldCheck size={11} />
                               Lead
                             </span>
@@ -380,7 +380,7 @@ export default function AdminCsMembersPage() {
                     )}
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {m.is_lead && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-[#2D1B96] text-white">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-primary text-white">
                           <ShieldCheck size={11} />
                           Lead
                         </span>
@@ -489,7 +489,7 @@ export default function AdminCsMembersPage() {
                   value={form.display_name}
                   onChange={(e) => setForm((f) => ({ ...f, display_name: e.target.value }))}
                   placeholder="Dr Jean Dupont"
-                  className="w-full px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#2D1B96]"
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary"
                   style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#e5e5e5' }}
                 />
               </div>
@@ -503,7 +503,7 @@ export default function AdminCsMembersPage() {
                   value={form.title}
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   placeholder="Chirurgien-dentiste, MCU-PH…"
-                  className="w-full px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#2D1B96]"
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary"
                   style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#e5e5e5' }}
                 />
               </div>
@@ -517,7 +517,7 @@ export default function AdminCsMembersPage() {
                   value={form.bio_short}
                   onChange={(e) => setForm((f) => ({ ...f, bio_short: e.target.value }))}
                   placeholder="Présentation succincte affichée publiquement…"
-                  className="w-full px-3 py-2 rounded-xl text-sm resize-y outline-none focus:ring-2 focus:ring-[#2D1B96]"
+                  className="w-full px-3 py-2 rounded-xl text-sm resize-y outline-none focus:ring-2 focus:ring-primary"
                   style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#e5e5e5' }}
                 />
               </div>
@@ -531,7 +531,7 @@ export default function AdminCsMembersPage() {
                   value={form.photo_url}
                   onChange={(e) => setForm((f) => ({ ...f, photo_url: e.target.value }))}
                   placeholder="https://…"
-                  className="w-full px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#2D1B96]"
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary"
                   style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#e5e5e5' }}
                 />
                 <p className="text-[11px] mt-1" style={{ color: '#737373' }}>
@@ -550,7 +550,7 @@ export default function AdminCsMembersPage() {
                     setForm((f) => ({ ...f, expertise_areas_text: e.target.value }))
                   }
                   placeholder="esthetique, restauratrice, parodontie"
-                  className="w-full px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#2D1B96]"
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary"
                   style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#e5e5e5' }}
                 />
               </div>
@@ -564,7 +564,7 @@ export default function AdminCsMembersPage() {
                   value={form.user_id}
                   onChange={(e) => setForm((f) => ({ ...f, user_id: e.target.value }))}
                   placeholder="00000000-0000-0000-0000-000000000000"
-                  className="w-full px-3 py-2 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-[#2D1B96]"
+                  className="w-full px-3 py-2 rounded-xl text-sm font-mono outline-none focus:ring-2 focus:ring-primary"
                   style={{ background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#e5e5e5' }}
                 />
                 <p className="text-[11px] mt-1" style={{ color: '#737373' }}>
@@ -581,7 +581,7 @@ export default function AdminCsMembersPage() {
                     type="checkbox"
                     checked={form.is_lead}
                     onChange={(e) => setForm((f) => ({ ...f, is_lead: e.target.checked }))}
-                    className="accent-[#2D1B96]"
+                    className="accent-primary"
                   />
                   <span className="text-sm" style={{ color: '#e5e5e5' }}>
                     Lead (validateur principal)
@@ -595,7 +595,7 @@ export default function AdminCsMembersPage() {
                     type="checkbox"
                     checked={form.active}
                     onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))}
-                    className="accent-[#2D1B96]"
+                    className="accent-primary"
                   />
                   <span className="text-sm" style={{ color: '#e5e5e5' }}>
                     Actif

@@ -151,7 +151,7 @@ export default function NewSequencePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -185,7 +185,7 @@ export default function NewSequencePage() {
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
               placeholder="Ex: Approche Diagnostique Fondamentale"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               required
             />
           </div>
@@ -202,7 +202,7 @@ export default function NewSequencePage() {
                 onChange={(e) => setFormData({ ...formData, sequence_number: parseInt(e.target.value) || 0 })}
                 min="0"
                 max="16"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               />
               <p className="text-xs text-gray-500 mt-1">0 = Intro gratuite, 1-15 = Premium, 16 = Conclusion</p>
               {formData.sequence_number === 0 && (
@@ -226,7 +226,7 @@ export default function NewSequencePage() {
                 onChange={(e) => setFormData({ ...formData, estimated_duration_minutes: parseInt(e.target.value) })}
                 min="1"
                 max="10"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               />
               <p className="text-xs text-gray-500 mt-1">Recommandé: 3-4 minutes pour 4 questions</p>
             </div>
@@ -245,7 +245,7 @@ export default function NewSequencePage() {
                     value={objective}
                     onChange={(e) => updateObjective(index, e.target.value)}
                     placeholder={`Objectif ${index + 1}`}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                   {formData.learning_objectives.length > 1 && (
                     <button
@@ -262,7 +262,7 @@ export default function NewSequencePage() {
             <button
               type="button"
               onClick={addObjective}
-              className="mt-3 flex items-center gap-2 text-sm text-[#2D1B96] hover:text-[#231575] transition-colors"
+              className="mt-3 flex items-center gap-2 text-sm text-primary hover:text-primary-hover transition-colors"
             >
               <Plus className="w-4 h-4" />
               Ajouter un objectif
@@ -287,7 +287,7 @@ export default function NewSequencePage() {
                 course_media_url: '',
                 course_duration_seconds: ''
               }))}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
             >
               <option value="">Aucun (quiz seulement)</option>
               <option value="audio">Audio</option>
@@ -325,7 +325,7 @@ export default function NewSequencePage() {
                   onChange={(e) => setFormData(prev => ({ ...prev, course_duration_seconds: e.target.value }))}
                   placeholder="300 = 5 minutes"
                   min="0"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
             </>

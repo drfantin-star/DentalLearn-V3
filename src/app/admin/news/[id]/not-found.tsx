@@ -12,7 +12,7 @@ export default function NotFound() {
         </p>
         <Link
           href="/admin/news"
-          className="inline-flex items-center gap-2 bg-[#2D1B96] hover:bg-[#231575] text-white px-5 py-2.5 rounded-xl font-medium transition-colors"
+          className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-xl font-medium transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Retour à la liste

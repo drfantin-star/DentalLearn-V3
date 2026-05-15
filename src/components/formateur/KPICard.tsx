@@ -18,7 +18,7 @@ export default function KPICard({
   value,
   subtitle,
   valueFormat = 'number',
-  iconColor = 'bg-[#2D1B96]',
+  iconColor = 'bg-primary',
 }: KPICardProps) {
   const isMasked = value === null || value === undefined
   const displayed = isMasked ? '—' : formatValue(value as number, valueFormat)

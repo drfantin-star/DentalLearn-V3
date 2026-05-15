@@ -96,9 +96,9 @@ function ResetPasswordContent() {
 
   if (verifying) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#2D1B96] to-[#1a1060] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96] mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-gray-600">Vérification du lien...</p>
         </div>
       </div>
@@ -107,7 +107,7 @@ function ResetPasswordContent() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#2D1B96] to-[#1a1060] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
@@ -122,14 +122,14 @@ function ResetPasswordContent() {
 
   if (error && !sessionReady) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#2D1B96] to-[#1a1060] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-8 h-8 text-red-600" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Lien invalide</h1>
           <p className="text-gray-600 mb-6">{error}</p>
-          <Link href="/forgot-password" className="inline-block px-6 py-3 bg-[#2D1B96] text-white rounded-xl hover:bg-[#231470] transition-colors">
+          <Link href="/forgot-password" className="inline-block px-6 py-3 bg-primary text-white rounded-xl hover:bg-[#231470] transition-colors">
             Demander un nouveau lien
           </Link>
         </div>
@@ -138,10 +138,10 @@ function ResetPasswordContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#2D1B96] to-[#1a1060] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#2D1B96] mb-2">DentalLearn</h1>
+          <h1 className="text-3xl font-bold text-primary mb-2">DentalLearn</h1>
           <h2 className="text-xl font-semibold text-gray-900 mb-1">Nouveau mot de passe</h2>
           <p className="text-gray-600">Choisissez un mot de passe sécurisé</p>
         </div>
@@ -162,7 +162,7 @@ function ResetPasswordContent() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Minimum 8 caractères"
                 required
                 minLength={8}
@@ -190,7 +190,7 @@ function ResetPasswordContent() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent ${
+                className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent ${
                   confirmPassword && password !== confirmPassword ? 'border-red-300 bg-red-50' :
                   confirmPassword && password === confirmPassword ? 'border-green-300 bg-green-50' : 'border-gray-300'
                 }`}
@@ -206,7 +206,7 @@ function ResetPasswordContent() {
           <button
             type="submit"
             disabled={loading || !password || !confirmPassword || password !== confirmPassword}
-            className="w-full py-3 bg-[#2D1B96] text-white font-bold rounded-xl hover:bg-[#231470] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-[#231470] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -220,7 +220,7 @@ function ResetPasswordContent() {
         </form>
 
         <div className="mt-6 text-center">
-          <Link href="/login" className="text-gray-600 hover:text-[#2D1B96] transition-colors">
+          <Link href="/login" className="text-gray-600 hover:text-primary transition-colors">
             Retour à la connexion
           </Link>
         </div>
@@ -232,9 +232,9 @@ function ResetPasswordContent() {
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-[#2D1B96] to-[#1a1060] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96] mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-gray-600">Chargement...</p>
         </div>
       </div>

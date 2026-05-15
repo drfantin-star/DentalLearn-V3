@@ -107,7 +107,7 @@ export default function ProfilPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-24">
-      <Loader2 className="animate-spin text-[#2D1B96]" size={32} />
+      <Loader2 className="animate-spin text-primary" size={32} />
     </div>
   )
 
@@ -115,7 +115,7 @@ export default function ProfilPage() {
     <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
 
       {/* Header */}
-      <header className="bg-gradient-to-br from-[#2D1B96] to-[#00D1C1] px-5 py-4">
+      <header className="bg-gradient-to-br from-primary to-accent px-5 py-4">
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-semibold text-white/80">Mon espace personnel</p>
           <div className="flex items-center gap-2">
@@ -159,11 +159,11 @@ export default function ProfilPage() {
           <button
             type="button"
             onClick={() => setShowCabinetModal(true)}
-            className="w-full p-4 text-left hover:border-[#2D1B96] transition-colors"
+            className="w-full p-4 text-left hover:border-primary transition-colors"
             style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#2D1B96]/15 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
                 <Building2 className="w-5 h-5 text-[#8B5CF6]" />
               </div>
               <div className="flex-1">
@@ -214,11 +214,11 @@ export default function ProfilPage() {
               {isFormateur && (
                 <Link
                   href="/formateur/dashboard"
-                  className="block p-4 hover:border-[#2D1B96] transition-colors"
+                  className="block p-4 hover:border-primary transition-colors"
                   style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-[#2D1B96]/15 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
                       <Presentation className="w-5 h-5 text-[#8B5CF6]" />
                     </div>
                     <div className="flex-1">

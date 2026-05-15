@@ -161,8 +161,8 @@ export default function AdminSatisfactionPage() {
       {/* Header */}
       <header>
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-[#2D1B96]/10 flex items-center justify-center">
-            <Star className="w-5 h-5 text-[#2D1B96]" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Star className="w-5 h-5 text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Satisfaction</h1>
@@ -185,7 +185,7 @@ export default function AdminSatisfactionPage() {
             <select
               value={filterFormationId ?? ''}
               onChange={(e) => setFilterFormationId(e.target.value || null)}
-              className="w-full text-sm px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
+              className="w-full text-sm px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">Toutes les formations</option>
               {formations.map((f) => (
@@ -201,7 +201,7 @@ export default function AdminSatisfactionPage() {
               type="date"
               value={filterDateFrom}
               onChange={(e) => setFilterDateFrom(e.target.value)}
-              className="w-full text-sm px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
+              className="w-full text-sm px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>
@@ -210,7 +210,7 @@ export default function AdminSatisfactionPage() {
               type="date"
               value={filterDateTo}
               onChange={(e) => setFilterDateTo(e.target.value)}
-              className="w-full text-sm px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
+              className="w-full text-sm px-3 py-2 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div className="flex gap-2">
@@ -269,7 +269,7 @@ export default function AdminSatisfactionPage() {
                 type="checkbox"
                 checked={onlyWithText}
                 onChange={(e) => setOnlyWithText(e.target.checked)}
-                className="accent-[#2D1B96]"
+                className="accent-primary"
               />
               Avec verbatim seulement
             </label>
@@ -278,7 +278,7 @@ export default function AdminSatisfactionPage() {
                 type="checkbox"
                 checked={onlyLowScore}
                 onChange={(e) => setOnlyLowScore(e.target.checked)}
-                className="accent-[#2D1B96]"
+                className="accent-primary"
               />
               Score bas / non recommandé
             </label>
@@ -287,7 +287,7 @@ export default function AdminSatisfactionPage() {
 
         {loading ? (
           <div className="bg-white rounded-2xl shadow-xl p-12 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-[#2D1B96]" />
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         ) : verbatims.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-xl p-12 text-center text-gray-500">

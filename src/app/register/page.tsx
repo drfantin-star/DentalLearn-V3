@@ -231,10 +231,10 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#2D1B96] to-[#1a1060] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#2D1B96] mb-2">DentalLearn</h1>
+          <h1 className="text-3xl font-bold text-primary mb-2">DentalLearn</h1>
           <p className="text-gray-600">Créez votre compte</p>
         </div>
 
@@ -253,7 +253,7 @@ export default function RegisterPage() {
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="Jean"
                 />
               </div>
@@ -267,7 +267,7 @@ export default function RegisterPage() {
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="Dupont"
                 />
               </div>
@@ -284,7 +284,7 @@ export default function RegisterPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="new-email"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="votre@email.com"
               />
             </div>
@@ -300,7 +300,7 @@ export default function RegisterPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="new-password"
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="••••••••"
               />
               <button
@@ -343,7 +343,7 @@ export default function RegisterPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 autoComplete="new-password"
-                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="••••••••"
               />
               <button
@@ -372,7 +372,7 @@ export default function RegisterPage() {
                 onChange={(e) => setRpps(e.target.value.replace(/\D/g, '').slice(0, 11))}
                 inputMode="numeric"
                 autoComplete="off"
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="11 chiffres"
               />
             </div>
@@ -394,7 +394,7 @@ export default function RegisterPage() {
                   name="mode"
                   checked={mode === 'praticien_solo'}
                   onChange={() => setMode('praticien_solo')}
-                  className="mt-1 w-4 h-4 text-[#2D1B96] focus:ring-[#2D1B96]"
+                  className="mt-1 w-4 h-4 text-primary focus:ring-primary"
                 />
                 <span className="text-sm text-gray-700">
                   <span className="font-semibold">Praticien individuel</span>
@@ -409,7 +409,7 @@ export default function RegisterPage() {
                   name="mode"
                   checked={mode === 'titulaire_cabinet'}
                   onChange={() => setMode('titulaire_cabinet')}
-                  className="mt-1 w-4 h-4 text-[#2D1B96] focus:ring-[#2D1B96]"
+                  className="mt-1 w-4 h-4 text-primary focus:ring-primary"
                 />
                 <span className="text-sm text-gray-700">
                   <span className="font-semibold inline-flex items-center gap-1">
@@ -443,7 +443,7 @@ export default function RegisterPage() {
                   name="healthProfessional"
                   checked={isHealthProfessional === true}
                   onChange={() => setIsHealthProfessional(true)}
-                  className="w-4 h-4 text-[#2D1B96] focus:ring-[#2D1B96]"
+                  className="w-4 h-4 text-primary focus:ring-primary"
                 />
                 <span className="text-sm text-gray-700">Oui</span>
               </label>
@@ -453,7 +453,7 @@ export default function RegisterPage() {
                   name="healthProfessional"
                   checked={isHealthProfessional === false}
                   onChange={() => setIsHealthProfessional(false)}
-                  className="w-4 h-4 text-[#2D1B96] focus:ring-[#2D1B96]"
+                  className="w-4 h-4 text-primary focus:ring-primary"
                 />
                 <span className="text-sm text-gray-700">Non</span>
               </label>
@@ -474,7 +474,7 @@ export default function RegisterPage() {
               checked={rgpdConsent}
               onChange={(e) => setRgpdConsent(e.target.checked)}
               required
-              className="mt-1 w-4 h-4 text-[#2D1B96] focus:ring-[#2D1B96] rounded"
+              className="mt-1 w-4 h-4 text-primary focus:ring-primary rounded"
             />
             <span className="text-sm text-gray-700">
               J&apos;accepte la{' '}
@@ -482,7 +482,7 @@ export default function RegisterPage() {
                 href="/privacy"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[#2D1B96] font-medium hover:underline"
+                className="text-primary font-medium hover:underline"
               >
                 politique de confidentialité
               </a>{' '}
@@ -500,7 +500,7 @@ export default function RegisterPage() {
               !rgpdConsent ||
               (mode === 'titulaire_cabinet' && !cabinet.name.trim())
             }
-            className="w-full py-3 bg-[#2D1B96] text-white rounded-lg font-medium hover:bg-[#231470] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
+            className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:bg-[#231470] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6"
           >
             {loading ? (
               <>
@@ -519,7 +519,7 @@ export default function RegisterPage() {
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600">
             Déjà un compte ?{' '}
-            <Link href="/login" className="text-[#2D1B96] font-medium hover:underline">
+            <Link href="/login" className="text-primary font-medium hover:underline">
               Se connecter
             </Link>
           </p>

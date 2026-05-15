@@ -101,7 +101,7 @@ export default function InviteMemberPage() {
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#2D1B96]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
       </div>
     )
   }
@@ -121,7 +121,7 @@ export default function InviteMemberPage() {
     return (
       <div className="p-8">
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
         </div>
       </div>
     )
@@ -138,7 +138,7 @@ export default function InviteMemberPage() {
       </Link>
 
       <h1 className="text-3xl font-bold text-gray-900 mb-2 flex items-center gap-3">
-        <UserPlus className="w-8 h-8 text-[#2D1B96]" />
+        <UserPlus className="w-8 h-8 text-primary" />
         Inviter un membre
       </h1>
       <p className="text-gray-600 mb-8">
@@ -160,7 +160,7 @@ export default function InviteMemberPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             placeholder="ex: dr.martin@example.com"
           />
           <p className="text-xs text-gray-500 mt-1">
@@ -174,7 +174,7 @@ export default function InviteMemberPage() {
             value={intraRole}
             onChange={(e) => setIntraRole(e.target.value as IntraRole | '')}
             required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">— Sélectionner —</option>
             {allowedRoles.map((role) => (

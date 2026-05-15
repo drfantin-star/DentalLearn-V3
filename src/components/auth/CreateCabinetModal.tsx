@@ -71,8 +71,8 @@ export default function CreateCabinetModal({
       >
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#2D1B96]/10 flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-[#2D1B96]" />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-primary" />
             </div>
             <h2 className="text-lg font-bold text-gray-900">Créer mon cabinet</h2>
           </div>
@@ -119,7 +119,7 @@ export default function CreateCabinetModal({
             type="button"
             onClick={submit}
             disabled={loading || !cabinet.name.trim()}
-            className="flex-1 py-3 bg-[#2D1B96] text-white rounded-lg font-medium hover:bg-[#231470] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            className="flex-1 py-3 bg-primary text-white rounded-lg font-medium hover:bg-[#231470] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

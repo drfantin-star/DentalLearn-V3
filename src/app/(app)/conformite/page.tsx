@@ -74,7 +74,7 @@ export default function ConformitePage() {
         <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center">
-              <ShieldCheck size={20} className="text-[#00D1C1]" />
+              <ShieldCheck size={20} className="text-accent" />
             </div>
             Conformité
           </h1>
@@ -102,7 +102,7 @@ export default function ConformitePage() {
           </div>
           <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#00D1C1] rounded-full transition-all duration-700"
+              className="h-full bg-accent rounded-full transition-all duration-700"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -142,7 +142,7 @@ export default function ConformitePage() {
                       <div className="flex items-center gap-2">
                         <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-[#00D1C1] rounded-full"
+                            className="h-full bg-accent rounded-full"
                             style={{ width: `${percent}%` }}
                           />
                         </div>
@@ -159,7 +159,7 @@ export default function ConformitePage() {
         </section>
 
         {/* Générateur DUERP */}
-        <div className="bg-gradient-to-br from-[#00D1C1] to-[#00b8a9] rounded-2xl p-5 text-white">
+        <div className="bg-gradient-to-br from-accent to-accent-hover rounded-2xl p-5 text-white">
           <div className="flex items-start gap-3">
             <FileText size={24} className="shrink-0 mt-0.5" />
             <div>
@@ -168,7 +168,7 @@ export default function ConformitePage() {
                 Générez votre Document Unique d&apos;Évaluation des Risques
                 Professionnels adapté à l&apos;odontologie.
               </p>
-              <button className="px-4 py-2 bg-white text-[#00D1C1] rounded-xl text-sm font-bold hover:bg-white/90 transition-colors">
+              <button className="px-4 py-2 bg-white text-accent rounded-xl text-sm font-bold hover:bg-white/90 transition-colors">
                 Bientôt disponible
               </button>
             </div>

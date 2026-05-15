@@ -144,7 +144,7 @@ export default function ManualResultPage() {
   if (!state && !error) {
     return (
       <div className="p-8 max-w-3xl mx-auto flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -260,7 +260,7 @@ function Step({
     (status === 'done' ? (
       <CheckCircle className="w-5 h-5 text-emerald-600" />
     ) : status === 'running' ? (
-      <Loader2 className="w-5 h-5 text-[#2D1B96] animate-spin" />
+      <Loader2 className="w-5 h-5 text-primary animate-spin" />
     ) : status === 'failed' ? (
       <AlertTriangle className="w-5 h-5 text-amber-600" />
     ) : status === 'not_eligible' ? (
@@ -395,7 +395,7 @@ function SynthesisStep({
         {synthesis.id && (
           <Link
             href={`/admin/news/${synthesis.id}`}
-            className="inline-flex items-center gap-1 text-sm text-[#2D1B96] hover:underline mt-2"
+            className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2"
           >
             Voir la synthèse →
           </Link>

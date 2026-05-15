@@ -127,7 +127,7 @@ export default function AdminNewsPage() {
 function PageLoader() {
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
     </div>
   )
 }
@@ -299,8 +299,8 @@ function NewsListPage() {
       {/* Header */}
       <header className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#2D1B96]/10 flex items-center justify-center">
-            <Newspaper className="w-5 h-5 text-[#2D1B96]" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Newspaper className="w-5 h-5 text-primary" />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">News</h1>
@@ -319,7 +319,7 @@ function NewsListPage() {
           </Link>
           <Link
             href="/admin/news/manual"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-medium rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-lg transition-colors"
           >
             <Plus className="w-4 h-4" />
             Ingérer un article
@@ -332,7 +332,7 @@ function NewsListPage() {
       </header>
 
       {/* Pool Quiz du jour */}
-      <div className="bg-gradient-to-r from-[#2D1B96] to-[#5D4FE0] rounded-2xl p-6 mb-6 text-white">
+      <div className="bg-gradient-to-r from-primary to-[#5D4FE0] rounded-2xl p-6 mb-6 text-white">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-lg font-semibold mb-1">Pool Quiz du jour</h2>
@@ -378,13 +378,13 @@ function NewsListPage() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Rechercher dans le titre ou la synthèse…"
-                className="w-full pl-10 pr-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
+                className="w-full pl-10 pr-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               />
             </div>
             <select
               value={sort}
               onChange={(e) => updateParams({ sort: e.target.value, page: '1' })}
-              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value} className="bg-white text-gray-900">
@@ -414,7 +414,7 @@ function NewsListPage() {
                   onClick={() => updateParams({ status: s.value, page: '1' })}
                   className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
                     active
-                      ? `${s.chip} border-transparent ring-2 ring-[#2D1B96]/30`
+                      ? `${s.chip} border-transparent ring-2 ring-primary/30`
                       : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50'
                   }`}
                 >
@@ -429,7 +429,7 @@ function NewsListPage() {
             <select
               value={specialite}
               onChange={(e) => updateParams({ specialite: e.target.value || null, page: '1' })}
-              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="" className="bg-white text-gray-900">Spécialité — Toutes</option>
               {SPECIALITES.map((s) => (
@@ -442,7 +442,7 @@ function NewsListPage() {
             <select
               value={niveauPreuve}
               onChange={(e) => updateParams({ niveau_preuve: e.target.value || null, page: '1' })}
-              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="" className="bg-white text-gray-900">Niveau de preuve — Tous</option>
               {NIVEAUX_PREUVE.map((n) => (
@@ -457,7 +457,7 @@ function NewsListPage() {
               onChange={(e) =>
                 updateParams({ category_editorial: e.target.value || null, page: '1' })
               }
-              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="" className="bg-white text-gray-900">Catégorie éditoriale — Toutes</option>
               {CATEGORIES_EDITORIALES.map((c) => (
@@ -472,7 +472,7 @@ function NewsListPage() {
               onChange={(e) =>
                 updateParams({ formation_category_match: e.target.value || null, page: '1' })
               }
-              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30"
+              className="text-sm bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="" className="bg-white text-gray-900">Match formation — Toutes</option>
               <option value={FORMATION_MATCH_NONE_SENTINEL} className="bg-white text-gray-900">
@@ -738,7 +738,7 @@ function Pagination({
               onClick={() => onChange(p)}
               className={`min-w-[36px] px-2 py-1.5 rounded-lg text-sm border transition-colors ${
                 p === page
-                  ? 'bg-[#2D1B96] text-white border-[#2D1B96]'
+                  ? 'bg-primary text-white border-primary'
                   : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50'
               }`}
             >

@@ -286,7 +286,7 @@ export default function ThemePage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#0F0F0F' }}>
-        <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }

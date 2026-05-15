@@ -192,7 +192,7 @@ export default function FormationDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -201,7 +201,7 @@ export default function FormationDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Formation non trouvée</p>
-        <Link href="/admin/formations" className="text-[#2D1B96] hover:underline mt-4 inline-block">
+        <Link href="/admin/formations" className="text-primary hover:underline mt-4 inline-block">
           Retour aux formations
         </Link>
       </div>
@@ -322,7 +322,7 @@ export default function FormationDetailPage() {
           </div>
           <Link
             href={`/admin/formations/${formation.id}/sequences/new`}
-            className="px-4 py-2 bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Ajouter une séquence
@@ -336,7 +336,7 @@ export default function FormationDetailPage() {
             <p className="text-gray-500 mb-4">Commencez par créer votre première séquence</p>
             <Link
               href={`/admin/formations/${formation.id}/sequences/new`}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
             >
               <Plus className="w-4 h-4" />
               Créer une séquence
@@ -353,14 +353,14 @@ export default function FormationDetailPage() {
                   <GripVertical className="w-5 h-5" />
                 </div>
                 
-                <div className="w-10 h-10 bg-[#2D1B96] text-white rounded-lg flex items-center justify-center font-bold">
+                <div className="w-10 h-10 bg-primary text-white rounded-lg flex items-center justify-center font-bold">
                   {sequence.sequence_number}
                 </div>
                 
                 <div className="flex-1 min-w-0">
                   <Link 
                     href={`/admin/formations/${formation.id}/sequences/${sequence.id}`}
-                    className="font-medium text-gray-900 hover:text-[#2D1B96] transition-colors"
+                    className="font-medium text-gray-900 hover:text-primary transition-colors"
                   >
                     {sequence.title}
                   </Link>
@@ -383,7 +383,7 @@ export default function FormationDetailPage() {
                 <div className="flex items-center gap-2">
                   <Link
                     href={`/admin/formations/${formation.id}/sequences/${sequence.id}`}
-                    className="p-2 text-gray-400 hover:text-[#2D1B96] hover:bg-gray-100 rounded-lg transition-colors"
+                    className="p-2 text-gray-400 hover:text-primary hover:bg-gray-100 rounded-lg transition-colors"
                     title="Voir les questions"
                   >
                     <Eye className="w-5 h-5" />
@@ -425,7 +425,7 @@ export default function FormationDetailPage() {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-[#2D1B96] h-2 rounded-full transition-all"
+                className="bg-primary h-2 rounded-full transition-all"
                 style={{ width: `${(sequences.length / 16) * 100}%` }}
               />
             </div>
@@ -437,7 +437,7 @@ export default function FormationDetailPage() {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-[#00D1C1] h-2 rounded-full transition-all"
+                className="bg-accent h-2 rounded-full transition-all"
                 style={{ width: `${(totalQuestions / 60) * 100}%` }}
               />
             </div>

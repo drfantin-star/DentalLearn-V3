@@ -89,7 +89,7 @@ function ModeTab({
       onClick={onClick}
       className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
         active
-          ? 'bg-white text-[#2D1B96] shadow-sm'
+          ? 'bg-white text-primary shadow-sm'
           : 'text-gray-600 hover:text-gray-900'
       }`}
     >
@@ -685,7 +685,7 @@ function EnrichedStepper() {
             disabled={
               (step === 1 && !step1Valid) || (step === 2 && !step2Valid)
             }
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Suivant →
           </button>
@@ -694,7 +694,7 @@ function EnrichedStepper() {
             type="button"
             onClick={handleSubmit}
             disabled={submitting || questions.length < QUESTIONS_MIN}
-            className="inline-flex items-center gap-2 px-5 py-2 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
             {submitting ? 'Enregistrement…' : 'Enregistrer'}
@@ -721,7 +721,7 @@ function StepperHeader({ step }: { step: 1 | 2 | 3 }) {
             <span
               className={`w-7 h-7 rounded-full inline-flex items-center justify-center text-xs font-semibold ${
                 active
-                  ? 'bg-[#2D1B96] text-white'
+                  ? 'bg-primary text-white'
                   : done
                     ? 'bg-emerald-100 text-emerald-700'
                     : 'bg-gray-100 text-gray-500'
@@ -839,7 +839,7 @@ function Step2Synthesis({
           className={`w-full px-3 py-2 text-sm bg-white text-gray-900 border rounded-lg focus:outline-none focus:ring-2 ${
             titleOver
               ? 'border-red-400 focus:ring-red-200'
-              : 'border-gray-200 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]'
+              : 'border-gray-200 focus:ring-primary/30 focus:border-primary'
           }`}
           placeholder="Titre court accrocheur (vu sur la liste News)"
         />
@@ -859,7 +859,7 @@ function Step2Synthesis({
           rows={8}
           value={synthesis.summary_fr}
           onChange={(e) => setField('summary_fr', e.target.value)}
-          className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96] resize-y"
+          className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-y"
           placeholder="Résumé synthétique en français (≥100 caractères)…"
         />
         <p
@@ -966,13 +966,13 @@ function KeyFiguresEditor({
             }
           }}
           placeholder="ex : 73 % de succès à 5 ans"
-          className="flex-1 min-w-0 px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
+          className="flex-1 min-w-0 px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
         />
         <button
           type="button"
           onClick={add}
           disabled={!draft.trim()}
-          className="inline-flex items-center gap-1 px-3 py-2 bg-[#2D1B96] hover:bg-[#231575] text-white text-sm font-medium rounded-lg disabled:opacity-50"
+          className="inline-flex items-center gap-1 px-3 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-lg disabled:opacity-50"
         >
           <Plus className="w-4 h-4" />
           Ajouter
@@ -1107,7 +1107,7 @@ function Step3Questions({
                   updateQuestion(q.id, { text: e.target.value })
                 }
                 placeholder="Énoncé de la question…"
-                className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
+                className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               />
             </div>
 
@@ -1127,7 +1127,7 @@ function Step3Questions({
                   updateQuestion(q.id, { feedback: e.target.value })
                 }
                 placeholder="Explication / référence pédagogique…"
-                className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
+                className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
               />
             </div>
           </li>
@@ -1173,7 +1173,7 @@ function QuestionOptionsEditor({
                 name={`correct-${question.id}`}
                 checked={o.correct}
                 onChange={() => setCorrect(o.id)}
-                className="text-[#2D1B96] focus:ring-[#2D1B96]"
+                className="text-primary focus:ring-primary"
                 aria-label={`Marquer ${o.id} comme correcte`}
               />
               <span className="text-xs font-mono text-gray-500 w-5">{o.id}</span>
@@ -1187,7 +1187,7 @@ function QuestionOptionsEditor({
                     ? 'Texte de l\'option'
                     : undefined
                 }
-                className={`flex-1 px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96] ${
+                className={`flex-1 px-2 py-1.5 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary ${
                   readOnlyText ? 'bg-gray-50 text-gray-700' : 'bg-white text-gray-900'
                 }`}
               />
@@ -1230,7 +1230,7 @@ function FieldText({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
+        className="w-full px-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
       />
     </div>
   )
@@ -1263,7 +1263,7 @@ function FieldTextarea({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96] resize-y"
+        className="w-full px-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-y"
       />
     </div>
   )
@@ -1290,7 +1290,7 @@ function FieldSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2D1B96]/30 focus:border-[#2D1B96]"
+        className="w-full px-3 py-2 text-sm bg-white text-gray-900 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
       >
         <option value="">{placeholder ?? '— Choisir —'}</option>
         {options.map((o) => (
@@ -1330,7 +1330,7 @@ function SpeTagPicker({
               onClick={() => onToggle(s.value)}
               className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
                 active
-                  ? 'bg-[#2D1B96] text-white border-[#2D1B96]'
+                  ? 'bg-primary text-white border-primary'
                   : 'bg-white text-gray-900 border-gray-200 hover:bg-gray-50'
               }`}
             >

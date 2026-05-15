@@ -376,7 +376,7 @@ export default function EppAuditDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -385,7 +385,7 @@ export default function EppAuditDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Audit non trouve</p>
-        <Link href="/admin/epp" className="text-[#2D1B96] hover:underline mt-4 inline-block">
+        <Link href="/admin/epp" className="text-primary hover:underline mt-4 inline-block">
           Retour aux audits EPP
         </Link>
       </div>
@@ -472,7 +472,7 @@ export default function EppAuditDetailPage() {
             <p className="text-gray-500 mb-4">Aucun critere</p>
             <button
               onClick={() => openCriterionForm()}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors"
             >
               <Plus className="w-4 h-4" />
               Creer le premier critere
@@ -544,7 +544,7 @@ export default function EppAuditDetailPage() {
                           <div className="flex gap-2 pt-1">
                             <button
                               onClick={() => saveEditCriterion(criterion.id)}
-                              className="px-3 py-1.5 bg-[#2D1B96] text-white text-sm font-medium rounded-lg hover:bg-[#231575]"
+                              className="px-3 py-1.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary-hover"
                             >
                               Enregistrer
                             </button>
@@ -638,7 +638,7 @@ export default function EppAuditDetailPage() {
                                 rows={2}
                                 value={suggestionForm.text}
                                 onChange={(e) => setSuggestionForm({ ...suggestionForm, text: e.target.value })}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                                 placeholder="Texte de la suggestion..."
                               />
                             </div>
@@ -649,7 +649,7 @@ export default function EppAuditDetailPage() {
                                   type="text"
                                   value={suggestionForm.sequence_ref}
                                   onChange={(e) => setSuggestionForm({ ...suggestionForm, sequence_ref: e.target.value })}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                                   placeholder="Ex: Sequence 2 - La Triade Diagnostique"
                                 />
                               </div>
@@ -659,7 +659,7 @@ export default function EppAuditDetailPage() {
                                   type="number"
                                   value={suggestionForm.sort_order}
                                   onChange={(e) => setSuggestionForm({ ...suggestionForm, sort_order: parseInt(e.target.value) || 0 })}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
                                 />
                               </div>
                             </div>
@@ -674,7 +674,7 @@ export default function EppAuditDetailPage() {
                               <button
                                 type="submit"
                                 disabled={savingSuggestion}
-                                className="px-3 py-1.5 text-sm bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] disabled:opacity-50 flex items-center gap-1"
+                                className="px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-50 flex items-center gap-1"
                               >
                                 <Save className="w-3 h-3" />
                                 {savingSuggestion ? 'Ajout...' : 'Ajouter'}
@@ -684,7 +684,7 @@ export default function EppAuditDetailPage() {
                         ) : (
                           <button
                             onClick={() => openSuggestionForm(criterion.id)}
-                            className="text-sm text-[#2D1B96] hover:underline flex items-center gap-1"
+                            className="text-sm text-primary hover:underline flex items-center gap-1"
                           >
                             <Plus className="w-3 h-3" />
                             Ajouter une suggestion
@@ -719,7 +719,7 @@ export default function EppAuditDetailPage() {
                     required
                     value={criterionForm.code}
                     onChange={(e) => setCriterionForm({ ...criterionForm, code: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                     placeholder="C1"
                   />
                 </div>
@@ -728,7 +728,7 @@ export default function EppAuditDetailPage() {
                   <select
                     value={criterionForm.type}
                     onChange={(e) => setCriterionForm({ ...criterionForm, type: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   >
                     <option value="R">R - Recommandation</option>
                     <option value="P">P - Pratique</option>
@@ -741,7 +741,7 @@ export default function EppAuditDetailPage() {
                     type="number"
                     value={criterionForm.sort_order}
                     onChange={(e) => setCriterionForm({ ...criterionForm, sort_order: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
               </div>
@@ -752,7 +752,7 @@ export default function EppAuditDetailPage() {
                   rows={2}
                   value={criterionForm.label}
                   onChange={(e) => setCriterionForm({ ...criterionForm, label: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="Libelle du critere..."
                 />
               </div>
@@ -762,7 +762,7 @@ export default function EppAuditDetailPage() {
                   type="text"
                   value={criterionForm.source}
                   onChange={(e) => setCriterionForm({ ...criterionForm, source: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                   placeholder="Ref. bibliographique"
                 />
               </div>
@@ -777,7 +777,7 @@ export default function EppAuditDetailPage() {
                 <button
                   type="submit"
                   disabled={savingCriterion}
-                  className="px-4 py-2 text-sm bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] disabled:opacity-50 flex items-center gap-2"
+                  className="px-4 py-2 text-sm bg-primary text-white rounded-lg hover:bg-primary-hover disabled:opacity-50 flex items-center gap-2"
                 >
                   <Save className="w-4 h-4" />
                   {savingCriterion ? 'Enregistrement...' : editingCriterion ? 'Enregistrer' : 'Ajouter'}

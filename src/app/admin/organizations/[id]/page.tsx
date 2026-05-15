@@ -165,7 +165,7 @@ export default function OrganizationDetailPage() {
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#2D1B96]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
       </div>
     )
   }
@@ -185,7 +185,7 @@ export default function OrganizationDetailPage() {
     return (
       <div className="p-8">
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
         </div>
       </div>
     )
@@ -214,7 +214,7 @@ export default function OrganizationDetailPage() {
               onClick={() => setTab(t.id)}
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 tab === t.id
-                  ? 'border-[#2D1B96] text-[#2D1B96]'
+                  ? 'border-primary text-primary'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -241,7 +241,7 @@ export default function OrganizationDetailPage() {
               onChange={(e) => setEditName(e.target.value)}
               required
               maxLength={200}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
           <div>
@@ -259,7 +259,7 @@ export default function OrganizationDetailPage() {
             <select
               value={editPlan}
               onChange={(e) => setEditPlan(e.target.value as OrgPlan)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="standard">Standard</option>
               <option value="premium">Premium</option>
@@ -288,7 +288,7 @@ export default function OrganizationDetailPage() {
           <div className="flex justify-end mb-4">
             <Link
               href={`/admin/organizations/${orgId}/invite`}
-              className="flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] transition-colors"
+              className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary-hover transition-colors"
             >
               <UserPlus className="w-5 h-5" />
               Inviter un membre

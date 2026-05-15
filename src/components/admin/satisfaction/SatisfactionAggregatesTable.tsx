@@ -65,7 +65,7 @@ export function SatisfactionAggregatesTable({ rows, loading }: Props) {
   if (loading) {
     return (
       <div className="bg-white rounded-2xl shadow-xl p-12 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-[#2D1B96]" />
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
       </div>
     )
   }

@@ -109,7 +109,7 @@ export default function FormateurDetailPage() {
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#2D1B96]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
       </div>
     )
   }
@@ -134,7 +134,7 @@ export default function FormateurDetailPage() {
           </div>
         ) : (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]" />
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
           </div>
         )}
       </div>
@@ -163,7 +163,7 @@ export default function FormateurDetailPage() {
               className="w-20 h-20 rounded-full object-cover"
             />
           ) : (
-            <div className="w-20 h-20 rounded-full bg-[#2D1B96] text-white flex items-center justify-center font-bold text-2xl flex-shrink-0">
+            <div className="w-20 h-20 rounded-full bg-primary text-white flex items-center justify-center font-bold text-2xl flex-shrink-0">
               {initialsOf(formateur)}
             </div>
           )}
@@ -280,7 +280,7 @@ export default function FormateurDetailPage() {
                     <div className="flex items-center justify-end">
                       <Link
                         href={`/admin/formations/${f.formation_id}/instructors`}
-                        className="inline-flex items-center gap-1 text-sm text-[#2D1B96] hover:underline"
+                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
                       >
                         Intervenants
                         <ExternalLink className="w-3 h-3" />

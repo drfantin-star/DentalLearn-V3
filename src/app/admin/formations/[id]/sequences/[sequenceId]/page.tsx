@@ -291,7 +291,7 @@ export default function SequenceDetailPage() {
             <ol className="space-y-2">
               {options.map((opt: any, idx: number) => (
                 <li key={idx} className="flex items-center gap-3 bg-gray-50 p-2 rounded">
-                  <span className="w-6 h-6 bg-[#2D1B96] text-white rounded-full flex items-center justify-center text-sm font-medium">
+                  <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-sm font-medium">
                     {idx + 1}
                   </span>
                   <span className="text-gray-700">{opt.text}</span>
@@ -370,7 +370,7 @@ export default function SequenceDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -467,11 +467,11 @@ export default function SequenceDetailPage() {
           <div className="flex items-center gap-3">
             {mediaType === 'audio' ? (
               <div className="p-2 bg-purple-100 rounded-lg">
-                <FileAudio className="w-5 h-5 text-[#2D1B96]" />
+                <FileAudio className="w-5 h-5 text-primary" />
               </div>
             ) : mediaType === 'video' ? (
               <div className="p-2 bg-purple-100 rounded-lg">
-                <Film className="w-5 h-5 text-[#2D1B96]" />
+                <Film className="w-5 h-5 text-primary" />
               </div>
             ) : (
               <div className="p-2 bg-gray-100 rounded-lg">
@@ -514,7 +514,7 @@ export default function SequenceDetailPage() {
                   setMediaDuration('');
                 }
               }}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
             >
               <option value="">Aucun (quiz seulement)</option>
               <option value="audio">Audio</option>
@@ -572,7 +572,7 @@ export default function SequenceDetailPage() {
                   onChange={(e) => setMediaDuration(e.target.value)}
                   placeholder="300 = 5 minutes"
                   min="0"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
             </>
@@ -640,7 +640,7 @@ export default function SequenceDetailPage() {
           </div>
           <Link
             href={`/admin/formations/${formationId}/sequences/${sequenceId}/questions/new`}
-            className="px-4 py-2 bg-[#2D1B96] text-white rounded-lg hover:bg-[#231575] transition-colors flex items-center gap-2"
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
             Ajouter
@@ -652,7 +652,7 @@ export default function SequenceDetailPage() {
             <p className="text-gray-500 mb-4">Aucune question dans cette séquence</p>
             <Link
               href={`/admin/formations/${formationId}/sequences/${sequenceId}/questions/new`}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#2D1B96] text-white rounded-lg"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg"
             >
               <Plus className="w-4 h-4" />
               Créer la première question
@@ -671,7 +671,7 @@ export default function SequenceDetailPage() {
                     <GripVertical className="w-5 h-5" />
                   </div>
 
-                  <div className="w-8 h-8 bg-[#2D1B96] text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                  <div className="w-8 h-8 bg-primary text-white rounded-lg flex items-center justify-center font-bold text-sm">
                     {question.question_order}
                   </div>
 

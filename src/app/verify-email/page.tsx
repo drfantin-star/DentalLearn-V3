@@ -60,13 +60,13 @@ function VerifyEmailContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#2D1B96] to-[#1a1060] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-[#2D1B96]/10 flex items-center justify-center">
-            <Mail className="w-8 h-8 text-[#2D1B96]" />
+          <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <Mail className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-[#2D1B96] mb-2">Vérifiez votre boîte mail</h1>
+          <h1 className="text-2xl font-bold text-primary mb-2">Vérifiez votre boîte mail</h1>
           <p className="text-gray-600 text-sm">
             Nous avons envoyé un lien de confirmation à&nbsp;:
           </p>
@@ -101,7 +101,7 @@ function VerifyEmailContent() {
             type="button"
             onClick={handleResend}
             disabled={!email || cooldown > 0 || resending}
-            className="w-full py-3 bg-[#2D1B96] text-white rounded-lg font-medium hover:bg-[#231470] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:bg-[#231470] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {resending ? (
               <>
@@ -123,7 +123,7 @@ function VerifyEmailContent() {
         </div>
 
         <div className="mt-6 text-center">
-          <Link href="/login" className="text-sm text-[#2D1B96] font-medium hover:underline">
+          <Link href="/login" className="text-sm text-primary font-medium hover:underline">
             Retour à la connexion
           </Link>
         </div>
@@ -136,9 +136,9 @@ export default function VerifyEmailPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-[#2D1B96] to-[#1a1060] flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96] mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
             <p className="text-gray-600">Chargement...</p>
           </div>
         </div>

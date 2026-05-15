@@ -85,7 +85,7 @@ export default function PWAInstallBanner() {
     >
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         {/* Header gradient */}
-        <div className="bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] px-4 py-3 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-primary to-accent px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
               <span className="text-lg">📱</span>
@@ -104,7 +104,7 @@ export default function PWAInstallBanner() {
         <div className="px-4 py-4">
           {/* Avantage principal */}
           <div className="flex items-center gap-2 mb-3 text-sm">
-            <Bell className="w-4 h-4 text-[#00D1C1]" />
+            <Bell className="w-4 h-4 text-accent" />
             <span className="text-gray-700">
               <strong>Recevez les notifications</strong> de rappel quotidien
             </span>
@@ -139,8 +139,8 @@ export default function PWAInstallBanner() {
               <p className="text-xs text-gray-500 font-medium mb-2">Comment installer :</p>
 
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-[#2D1B96]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Share className="w-4 h-4 text-[#2D1B96]" />
+                <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Share className="w-4 h-4 text-primary" />
                 </div>
                 <p className="text-sm text-gray-700">
                   Appuyez sur <strong>Partager</strong> <span className="text-xs">(icône en bas)</span>
@@ -148,8 +148,8 @@ export default function PWAInstallBanner() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-[#00D1C1]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <PlusSquare className="w-4 h-4 text-[#00D1C1]" />
+                <div className="w-8 h-8 bg-accent/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <PlusSquare className="w-4 h-4 text-accent" />
                 </div>
                 <p className="text-sm text-gray-700">
                   Puis <strong>&quot;Sur l&apos;écran d&apos;accueil&quot;</strong>

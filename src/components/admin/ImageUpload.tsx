@@ -109,7 +109,7 @@ export default function ImageUpload({
           <button
             type="button"
             onClick={() => setShowUrlInput(!showUrlInput)}
-            className="text-xs text-[#2D1B96] hover:underline"
+            className="text-xs text-primary hover:underline"
           >
             {showUrlInput ? 'Annuler' : 'Ou coller une URL'}
           </button>
@@ -124,13 +124,13 @@ export default function ImageUpload({
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             placeholder="https://exemple.com/image.jpg"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#2D1B96] focus:border-transparent"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
           />
           <button
             type="button"
             onClick={handleUrlSubmit}
             disabled={!urlInput.trim()}
-            className="px-4 py-2 bg-[#2D1B96] text-white rounded-lg text-sm hover:bg-[#231575] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-primary text-white rounded-lg text-sm hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Valider
           </button>
@@ -168,8 +168,8 @@ export default function ImageUpload({
           className={`
             relative rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-all
             ${isDragging
-              ? 'border-[#2D1B96] bg-[#2D1B96]/5'
-              : 'border-gray-300 hover:border-[#2D1B96] hover:bg-gray-50'
+              ? 'border-primary bg-primary/5'
+              : 'border-gray-300 hover:border-primary hover:bg-gray-50'
             }
             ${isUploading ? 'pointer-events-none opacity-60' : ''}
           `}
@@ -184,14 +184,14 @@ export default function ImageUpload({
 
           {isUploading ? (
             <div className="flex flex-col items-center gap-3">
-              <Loader2 className="w-10 h-10 text-[#2D1B96] animate-spin" />
+              <Loader2 className="w-10 h-10 text-primary animate-spin" />
               <span className="text-sm text-gray-600">Upload en cours...</span>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3">
-              <div className={`p-3 rounded-full ${isDragging ? 'bg-[#2D1B96]/10' : 'bg-gray-100'}`}>
+              <div className={`p-3 rounded-full ${isDragging ? 'bg-primary/10' : 'bg-gray-100'}`}>
                 {isDragging ? (
-                  <ImageIcon className="w-8 h-8 text-[#2D1B96]" />
+                  <ImageIcon className="w-8 h-8 text-primary" />
                 ) : (
                   <Upload className="w-8 h-8 text-gray-400" />
                 )}

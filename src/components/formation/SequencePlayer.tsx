@@ -535,7 +535,7 @@ export default function SequencePlayer({
   if (loadingQuestions) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#0F0F0F' }}>
-        <Loader2 className="w-8 h-8 animate-spin text-[#2D1B96]" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -769,7 +769,7 @@ export default function SequencePlayer({
                   <button
                     onClick={() => setPlayerStep('quiz')}
                     className="flex-1 flex items-center justify-center gap-2 py-3
-                               bg-[#2D1B96] text-white font-semibold rounded-2xl"
+                               bg-primary text-white font-semibold rounded-2xl"
                   >
                     Passer au Quiz →
                   </button>
@@ -779,7 +779,7 @@ export default function SequencePlayer({
                 <div className="hidden md:block mt-4">
                   <button
                     onClick={() => setPlayerStep('quiz')}
-                    className="w-full max-w-xs py-4 rounded-2xl font-bold text-white bg-[#2D1B96] transition-transform active:scale-95"
+                    className="w-full max-w-xs py-4 rounded-2xl font-bold text-white bg-primary transition-transform active:scale-95"
                   >
                     Passer au Quiz →
                   </button>

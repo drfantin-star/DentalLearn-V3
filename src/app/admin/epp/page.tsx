@@ -106,7 +106,7 @@ export default function EppListPage() {
         </div>
         <Link
           href="/admin/epp/new"
-          className="flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] transition-colors"
+          className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary-hover transition-colors"
         >
           <Plus className="w-5 h-5" />
           Nouvel audit EPP
@@ -115,14 +115,14 @@ export default function EppListPage() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       ) : audits.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
           <p className="text-gray-500 mb-4">Aucun audit EPP</p>
           <Link
             href="/admin/epp/new"
-            className="inline-flex items-center gap-2 bg-[#2D1B96] text-white px-6 py-3 rounded-xl"
+            className="inline-flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl"
           >
             <Plus className="w-5 h-5" />
             Créer votre premier audit EPP

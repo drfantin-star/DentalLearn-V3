@@ -68,7 +68,7 @@ export default function AdminLayout({
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -84,7 +84,7 @@ export default function AdminLayout({
           </p>
           <Link
             href="/"
-            className="inline-block bg-[#2D1B96] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#231575] transition-colors"
+            className="inline-block bg-primary text-white px-6 py-3 rounded-xl font-medium hover:bg-primary-hover transition-colors"
           >
             Retour à l'accueil
           </Link>
@@ -96,7 +96,7 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-gray-100 flex">
       {/* Sidebar */}
-      <aside className="w-64 bg-[#2D1B96] text-white flex flex-col">
+      <aside className="w-64 bg-primary text-white flex flex-col">
         <div className="p-6 border-b border-white/10">
           <h1 className="text-xl font-bold">DentalLearn</h1>
           <p className="text-sm text-white/70">Administration</p>

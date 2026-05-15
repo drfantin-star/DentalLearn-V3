@@ -10,7 +10,7 @@ interface FormationStatsCardProps {
 export default function FormationStatsCard({ stats }: FormationStatsCardProps) {
   return (
     <Card className="overflow-hidden flex flex-col">
-      <div className="relative h-32 w-full bg-gradient-to-br from-[#2D1B96] to-[#5B3FD9]">
+      <div className="relative h-32 w-full bg-gradient-to-br from-primary to-[#5B3FD9]">
         {stats.formation_cover ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -20,7 +20,7 @@ export default function FormationStatsCard({ stats }: FormationStatsCardProps) {
           />
         ) : null}
         {stats.is_primary && (
-          <span className="absolute top-3 right-3 inline-flex items-center gap-1 bg-white/95 backdrop-blur text-[#2D1B96] text-xs font-semibold rounded-full px-3 py-1 shadow">
+          <span className="absolute top-3 right-3 inline-flex items-center gap-1 bg-white/95 backdrop-blur text-primary text-xs font-semibold rounded-full px-3 py-1 shadow">
             <Star className="w-3.5 h-3.5" />
             Intervenant principal
           </span>
@@ -30,7 +30,7 @@ export default function FormationStatsCard({ stats }: FormationStatsCardProps) {
       <div className="p-5 flex-1 flex flex-col">
         <Link
           href={`/formation/${stats.formation_category ?? ''}?formation=${stats.formation_slug}`}
-          className="text-lg font-bold text-gray-900 hover:text-[#2D1B96] transition-colors line-clamp-2"
+          className="text-lg font-bold text-gray-900 hover:text-primary transition-colors line-clamp-2"
         >
           {stats.formation_title}
         </Link>
@@ -75,8 +75,8 @@ function MiniKPI({
 
   return (
     <div className="flex items-center gap-2">
-      <div className="bg-[#2D1B96]/10 p-1.5 rounded-lg shrink-0">
-        <Icon className="w-4 h-4 text-[#2D1B96]" />
+      <div className="bg-primary/10 p-1.5 rounded-lg shrink-0">
+        <Icon className="w-4 h-4 text-primary" />
       </div>
       <div className="min-w-0">
         <p className="text-xs text-gray-500">{label}</p>

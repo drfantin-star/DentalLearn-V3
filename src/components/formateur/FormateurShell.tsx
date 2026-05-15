@@ -103,7 +103,7 @@ export default function FormateurShell({ children }: { children: React.ReactNode
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Mobile top bar */}
-      <header className="lg:hidden sticky top-0 z-30 bg-[#2D1B96] text-white flex items-center justify-between px-4 py-3 shadow-md">
+      <header className="lg:hidden sticky top-0 z-30 bg-primary text-white flex items-center justify-between px-4 py-3 shadow-md">
         <button
           type="button"
           onClick={() => setMobileOpen(true)}
@@ -124,7 +124,7 @@ export default function FormateurShell({ children }: { children: React.ReactNode
 
       <div className="flex">
         {/* Desktop sidebar */}
-        <aside className="hidden lg:flex w-64 bg-[#2D1B96] text-white flex-col min-h-screen sticky top-0">
+        <aside className="hidden lg:flex w-64 bg-primary text-white flex-col min-h-screen sticky top-0">
           {sidebarContent}
         </aside>
 
@@ -136,7 +136,7 @@ export default function FormateurShell({ children }: { children: React.ReactNode
               onClick={() => setMobileOpen(false)}
               aria-hidden="true"
             />
-            <aside className="lg:hidden fixed top-0 left-0 bottom-0 w-72 bg-[#2D1B96] text-white flex flex-col z-50 shadow-2xl">
+            <aside className="lg:hidden fixed top-0 left-0 bottom-0 w-72 bg-primary text-white flex flex-col z-50 shadow-2xl">
               {sidebarContent}
             </aside>
           </>

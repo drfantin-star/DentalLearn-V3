@@ -114,7 +114,7 @@ export default function TreasureChest({ pdfUrl, onOpen }: TreasureChestProps) {
           {pdfUrl && (
             <button
               onClick={handleDownload}
-              className="px-6 py-3 bg-gradient-to-r from-[#2D1B96] to-[#00D1C1] text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-2 mx-auto"
+              className="px-6 py-3 bg-gradient-to-r from-primary to-accent text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex items-center gap-2 mx-auto"
             >
               <span>&#128196;</span>
               <span>Télécharger ma fiche</span>

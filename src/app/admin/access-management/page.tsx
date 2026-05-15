@@ -189,7 +189,7 @@ export default function AccessManagementPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -199,8 +199,8 @@ export default function AccessManagementPage() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-[#2D1B96]/10 rounded-xl">
-            <Users className="w-8 h-8 text-[#2D1B96]" />
+          <div className="p-3 bg-primary/10 rounded-xl">
+            <Users className="w-8 h-8 text-primary" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Gestion des accès</h1>
@@ -275,7 +275,7 @@ export default function AccessManagementPage() {
               placeholder="Rechercher par nom ou formation..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2D1B96]/50 focus:border-[#2D1B96]"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary"
             />
           </div>
 
@@ -285,7 +285,7 @@ export default function AccessManagementPage() {
               onClick={() => setFilterAccess('all')}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 filterAccess === 'all'
-                  ? 'bg-[#2D1B96] text-white'
+                  ? 'bg-primary text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -359,8 +359,8 @@ export default function AccessManagementPage() {
                   <tr key={enrollment.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#2D1B96]/10 flex items-center justify-center">
-                          <span className="font-medium text-[#2D1B96]">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <span className="font-medium text-primary">
                             {enrollment.user_profile?.first_name?.[0]?.toUpperCase() || enrollment.user_email?.[0]?.toUpperCase() || 'U'}
                           </span>
                         </div>

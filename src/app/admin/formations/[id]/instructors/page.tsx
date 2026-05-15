@@ -217,7 +217,7 @@ export default function FormationInstructorsPage() {
   if (!authChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#2D1B96]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
       </div>
     )
   }
@@ -242,7 +242,7 @@ export default function FormationInstructorsPage() {
           </div>
         ) : (
           <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]" />
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
           </div>
         )}
       </div>
@@ -273,7 +273,7 @@ export default function FormationInstructorsPage() {
 
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-          <UsersIcon className="w-7 h-7 text-[#2D1B96]" />
+          <UsersIcon className="w-7 h-7 text-primary" />
           Intervenants
         </h1>
         <p className="text-gray-600 mt-2">
@@ -328,12 +328,12 @@ export default function FormationInstructorsPage() {
                 <tr key={row.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[#2D1B96] text-white flex items-center justify-center font-semibold text-sm">
+                      <div className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-sm">
                         {initialsOf(row)}
                       </div>
                       <Link
                         href={`/admin/formateurs/${row.user_id}`}
-                        className="font-medium text-gray-900 hover:text-[#2D1B96]"
+                        className="font-medium text-gray-900 hover:text-primary"
                       >
                         {nameOf(row)}
                       </Link>
@@ -382,7 +382,7 @@ export default function FormationInstructorsPage() {
 
       <div className="bg-white rounded-2xl shadow-lg p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <UserPlus className="w-5 h-5 text-[#2D1B96]" />
+          <UserPlus className="w-5 h-5 text-primary" />
           Ajouter un intervenant
         </h2>
 
@@ -390,7 +390,7 @@ export default function FormationInstructorsPage() {
           <div className="text-sm text-gray-600">
             Aucun formateur disponible n'est non rattaché à cette formation. Pour ajouter un
             nouveau formateur,{' '}
-            <Link href="/admin/formateurs/promote" className="text-[#2D1B96] underline">
+            <Link href="/admin/formateurs/promote" className="text-primary underline">
               promouvez d'abord un utilisateur
             </Link>
             .
@@ -404,7 +404,7 @@ export default function FormationInstructorsPage() {
               <select
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#2D1B96]"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="">— Choisir un formateur —</option>
                 {available.map((f) => (
@@ -419,7 +419,7 @@ export default function FormationInstructorsPage() {
                 type="checkbox"
                 checked={newIsPrimary}
                 onChange={(e) => setNewIsPrimary(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-300 text-[#2D1B96] focus:ring-[#2D1B96]"
+                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
               />
               Marquer comme intervenant principal
               {currentPrimary && newIsPrimary && (

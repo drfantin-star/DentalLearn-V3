@@ -83,7 +83,7 @@ export default function AdminJournalListPage() {
         </div>
         <Link
           href="/admin/news/journal/new"
-          className="bg-[#2D1B96] hover:bg-[#231575] text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+          className="bg-primary hover:bg-primary-hover text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
         >
           + Créer le journal de la semaine
         </Link>
@@ -91,7 +91,7 @@ export default function AdminJournalListPage() {
 
       {loading && (
         <div className="bg-white rounded-2xl shadow-sm p-8 flex justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2D1B96]" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
         </div>
       )}
 
@@ -142,7 +142,7 @@ export default function AdminJournalListPage() {
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/admin/news/journal/${j.id}`}
-                        className="text-[#2D1B96] hover:underline font-medium"
+                        className="text-primary hover:underline font-medium"
                       >
                         Ouvrir →
                       </Link>

@@ -147,7 +147,7 @@ export default function SessionDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-8 h-8 border-3 border-[#2D1B96] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -176,7 +176,7 @@ export default function SessionDetailPage() {
         {/* Header card */}
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <div className="flex items-start justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2 text-[#2D1B96]">
+            <div className="flex items-center gap-2 text-primary">
               <Video size={20} />
               <span className="text-sm font-semibold">Masterclass live</span>
             </div>
@@ -266,7 +266,7 @@ export default function SessionDetailPage() {
                 <button
                   onClick={handleRegister}
                   disabled={actionLoading}
-                  className="w-full py-3 rounded-xl bg-[#2D1B96] text-sm font-semibold text-white hover:bg-[#1e1268] transition-colors disabled:opacity-50"
+                  className="w-full py-3 rounded-xl bg-primary text-sm font-semibold text-white hover:bg-[#1e1268] transition-colors disabled:opacity-50"
                 >
                   {actionLoading ? 'Traitement…' : "S'inscrire"}
                 </button>

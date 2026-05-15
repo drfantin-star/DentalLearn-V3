@@ -207,7 +207,7 @@ export default function TestModePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2D1B96]"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -278,8 +278,8 @@ export default function TestModePage() {
                 )}
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-[#2D1B96]/10 rounded-xl flex items-center justify-center">
-                    <BookOpen className="w-6 h-6 text-[#2D1B96]" />
+                  <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <BookOpen className="w-6 h-6 text-primary" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">
@@ -350,7 +350,7 @@ export default function TestModePage() {
                           disabled={processing === uf.id}
                           className={`w-10 h-10 rounded-lg font-medium text-sm transition-colors ${
                             num <= uf.current_sequence
-                              ? 'bg-[#2D1B96] text-white'
+                              ? 'bg-primary text-white'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                           } ${processing === uf.id ? 'opacity-50' : ''}`}
                         >

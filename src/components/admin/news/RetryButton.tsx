@@ -60,7 +60,7 @@ export function RetryButton({ synthesisId, onSuccess }: RetryButtonProps) {
       <button
         onClick={handleRetry}
         disabled={loading}
-        className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#2D1B96] hover:bg-[#231575] text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
+        className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-medium disabled:opacity-50 transition-colors"
       >
         {loading ? (
           <Loader2 className="w-4 h-4 animate-spin" />
