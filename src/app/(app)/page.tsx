@@ -125,9 +125,9 @@ export default function HomePage() {
           .order('starts_at', { ascending: true })
           .limit(3),
       ])
-      const allIds = [...new Set(
+      const allIds = Array.from(new Set(
         [...(events ?? []), ...(sessions ?? [])].map((e) => e.formateur_user_id).filter(Boolean)
-      )]
+      ))
       const profileMap: Record<string, string | null> = {}
       if (allIds.length > 0) {
         const { data: profiles } = await supabase

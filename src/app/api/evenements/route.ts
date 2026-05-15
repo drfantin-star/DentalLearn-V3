@@ -51,9 +51,9 @@ export async function GET(request: NextRequest) {
   const events: EventRow[] = (eventsResult.data ?? []) as EventRow[]
   const sessions: EventRow[] = (sessionsResult.data ?? []) as EventRow[]
 
-  const allUserIds = [...new Set(
+  const allUserIds = Array.from(new Set(
     [...events, ...sessions].map((e) => e.formateur_user_id).filter(Boolean)
-  )]
+  ))
 
   const profileMap: Record<string, string | null> = {}
   if (allUserIds.length > 0) {
