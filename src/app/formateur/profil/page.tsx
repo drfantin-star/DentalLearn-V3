@@ -1,9 +1,11 @@
-import ComingSoonStub from '@/components/formateur/ComingSoonStub'
+import ProfilClient from '@/components/formateur/ProfilClient'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata = {
   title: 'Mon profil public · Espace Formateur',
 }
 
 export default function FormateurProfilPage() {
-  return <ComingSoonStub title="Mon profil public" ticketRef="T6 — Profil public" />
+  return <ProfilClient />
 }
