@@ -16,7 +16,6 @@ import { JournalWeekCard } from '@/components/home/JournalWeekCard'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
 import type { JournalEpisode, NewsCard } from '@/types/news'
-import EvenementsSection from '@/components/evenements/EvenementsSection'
 import type { EvenementItemData } from '@/types/evenements'
 
 export default function HomePage() {
@@ -404,10 +403,22 @@ export default function HomePage() {
         </section>
 
         {/* Événements */}
-        <section>
-          <h2 className="text-base font-bold text-neutral-200 mb-3">📅 Événements</h2>
-          <EvenementsSection items={evenements} showVoirTout />
-        </section>
+        <Link href="/evenements" className="block">
+          <div className="rounded-2xl bg-gray-800/60 border border-gray-700/50 p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📅</span>
+              <div>
+                <p className="text-sm font-bold text-neutral-200">Événements</p>
+                <p className="text-xs text-gray-500">
+                  {evenements.length > 0
+                    ? `${evenements.length} à venir`
+                    : 'Aucun événement programmé'}
+                </p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-gray-500" />
+          </div>
+        </Link>
 
         {/* Explorer */}
         <section>
