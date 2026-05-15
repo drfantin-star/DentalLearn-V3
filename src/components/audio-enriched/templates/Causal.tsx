@@ -174,6 +174,7 @@ function GraphDesktop({
   const edgesEndDelay = nodesEndDelay + EDGE_DURATION
 
   return (
+    <div className="w-full max-h-[calc(100vh-37rem)] overflow-y-auto">
     <div className="relative w-full min-h-[320px] aspect-[4/3]">
       {/* Couche SVG des edges (en dessous des cards visuellement) */}
       <svg
@@ -284,6 +285,7 @@ function GraphDesktop({
           </motion.div>
         )
       })}
+    </div>
     </div>
   )
 }
