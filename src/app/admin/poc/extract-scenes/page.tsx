@@ -30,27 +30,25 @@ export default async function ExtractScenesPage() {
   const admin = createAdminClient()
   const { data: sequences } = await admin
     .from('sequences')
-    .select('id, sequence_number, title, timeline_url, formation_id, formations(title)')
+    .select('id, sequence_number, title, timeline_url, formation_id')
     .not('course_media_url', 'is', null)
-    .order('title', { ascending: true })
 
-  type RawSeq = {
-    id: string
-    sequence_number: number
-    title: string
-    timeline_url: string | null
-    formation_id: string | null
-    formations: { title: string }[] | null
-  }
+  const formationIds = [
+    ...new Set((sequences ?? []).map((s) => s.formation_id).filter(Boolean)),
+  ] as string[]
 
-  const rows = (sequences ?? []) as RawSeq[]
+  const { data: formations } = formationIds.length
+    ? await admin.from('formations').select('id, title').in('id', formationIds)
+    : { data: [] }
 
-  const getFormationTitle = (f: { title: string }[] | null): string =>
-    f?.[0]?.title ?? ''
+  const formationMap = new Map((formations ?? []).map((f) => [f.id, f.title]))
 
-  const sorted = rows.slice().sort((a, b) => {
-    const fa = getFormationTitle(a.formations).localeCompare(getFormationTitle(b.formations), 'fr')
-    return fa !== 0 ? fa : a.title.localeCompare(b.title, 'fr')
+  const sorted = (sequences ?? []).slice().sort((a, b) => {
+    const fa = (formationMap.get(a.formation_id ?? '') ?? '').localeCompare(
+      formationMap.get(b.formation_id ?? '') ?? '',
+      'fr',
+    )
+    return fa !== 0 ? fa : (a.title ?? '').localeCompare(b.title ?? '', 'fr')
   })
 
   const candidates: SequenceLite[] = sorted.map((s) => ({
@@ -59,7 +57,7 @@ export default async function ExtractScenesPage() {
     title: s.title ?? '(sans titre)',
     timeline_url: s.timeline_url,
     formation_id: s.formation_id,
-    formation_title: getFormationTitle(s.formations) || null,
+    formation_title: formationMap.get(s.formation_id ?? '') ?? null,
   }))
 
   return <ExtractScenesClient sequences={candidates} />
