@@ -38,6 +38,11 @@ export default function EditProfilPage() {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [passwordSaving, setPasswordSaving] = useState(false)
 
+  // Préférences notifications
+  const [liveSessionReminders, setLiveSessionReminders] = useState(true)
+  const [formateurPublications, setFormateurPublications] = useState(true)
+  const [savingPrefs, setSavingPrefs] = useState(false)
+
   // Suppression compte
   const [deletionRequestedAt, setDeletionRequestedAt] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -63,6 +68,18 @@ export default function EditProfilPage() {
         setOrdreDate(data.ordre_inscription_date || '')
         setDeletionRequestedAt(data.deletion_requested_at)
       }
+
+      const { data: prefs } = await supabase
+        .from('user_notification_preferences')
+        .select('live_session_reminders, formateur_publications')
+        .eq('user_id', session.user.id)
+        .maybeSingle()
+
+      if (prefs) {
+        if (prefs.live_session_reminders != null) setLiveSessionReminders(prefs.live_session_reminders)
+        if (prefs.formateur_publications != null) setFormateurPublications(prefs.formateur_publications)
+      }
+
       setLoading(false)
     }
     load()
@@ -165,6 +182,26 @@ export default function EditProfilPage() {
       showMessage('error', err.message || 'Erreur')
     } finally {
       setDeletionLoading(false)
+    }
+  }
+
+  const handleTogglePref = async (
+    key: 'live_session_reminders' | 'formateur_publications',
+    value: boolean,
+  ) => {
+    if (!user) return
+    if (key === 'live_session_reminders') setLiveSessionReminders(value)
+    else setFormateurPublications(value)
+    setSavingPrefs(true)
+    try {
+      await supabase
+        .from('user_notification_preferences')
+        .upsert(
+          { user_id: user.id, [key]: value },
+          { onConflict: 'user_id' },
+        )
+    } finally {
+      setSavingPrefs(false)
     }
   }
 
@@ -363,6 +400,37 @@ export default function EditProfilPage() {
             </div>
           </div>
           <PushNotificationToggle />
+
+          {/* Préférences de contenu */}
+          <div className="mt-4 space-y-3 pt-4" style={{ borderTop: '0.5px solid #333' }}>
+            <p className="text-xs font-medium text-[#6b7280]">Préférences de contenu</p>
+
+            <button
+              onClick={() => { void handleTogglePref('live_session_reminders', !liveSessionReminders) }}
+              disabled={savingPrefs}
+              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                liveSessionReminders
+                  ? 'bg-[#00D1C1]/10 text-[#00D1C1] border border-[#00D1C1]/20'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Bell className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Rappels sessions live</span>
+            </button>
+
+            <button
+              onClick={() => { void handleTogglePref('formateur_publications', !formateurPublications) }}
+              disabled={savingPrefs}
+              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                formateurPublications
+                  ? 'bg-[#00D1C1]/10 text-[#00D1C1] border border-[#00D1C1]/20'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Bell className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Nouvelles publications formateurs</span>
+            </button>
+          </div>
         </div>
 
         {/* Mot de passe */}
