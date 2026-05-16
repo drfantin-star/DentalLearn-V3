@@ -42,6 +42,10 @@ interface RequestBody {
   sequence_id: string;
   script_text: string;
   with_timestamps: boolean;
+  // Sprint 4 T6 — fallback durée quand /v1/text-to-dialogue n'expose pas
+  // d'alignment (result.durationSec === 0). Calculé côté Next.js via
+  // computeScriptStats(chars / 750 chars-per-min × 60).
+  estimated_duration_sec?: number;
 }
 
 interface AudioHistoryEntry {
@@ -54,6 +58,7 @@ interface AudioHistoryEntry {
 
 async function runWorker(body: RequestBody): Promise<void> {
   const { job_id, sequence_id, script_text, with_timestamps } = body;
+  const estimatedDurationSec = body.estimated_duration_sec;
 
   await markJobRunning(job_id);
 
@@ -175,10 +180,18 @@ async function runWorker(body: RequestBody): Promise<void> {
       : existingHistory;
 
   // 5. UPDATE sequence
+  // Dette D-S4-T5dette-02 : /v1/text-to-dialogue ne retourne pas d'alignment,
+  // donc result.durationSec vaut toujours 0. Fallback sur la durée estimée
+  // côté Next.js (computeScriptStats) si fournie dans le RequestBody.
+  const durationSec = result.durationSec > 0
+    ? Math.round(result.durationSec)
+    : (typeof estimatedDurationSec === "number" && estimatedDurationSec > 0
+      ? Math.round(estimatedDurationSec)
+      : 0);
   const updatePayload: Record<string, unknown> = {
     course_media_url: audioUrl,
     course_media_type: "audio",
-    course_duration_seconds: Math.round(result.durationSec),
+    course_duration_seconds: durationSec,
     audio_generated_at: nowIso,
     audio_chars_consumed: charsConsumed,
     audio_cost_eur: costEur,
@@ -202,7 +215,7 @@ async function runWorker(body: RequestBody): Promise<void> {
   await markJobCompleted(job_id, {
     audio_url: audioUrl,
     timeline_url: timelineUrl ?? undefined,
-    duration_sec: Math.round(result.durationSec),
+    duration_sec: durationSec,
     chars_consumed: charsConsumed,
     cost_eur: costEur,
   });
@@ -210,10 +223,110 @@ async function runWorker(body: RequestBody): Promise<void> {
   logger.info("generation_succeeded", {
     job_id,
     sequence_id,
-    duration_sec: Math.round(result.durationSec),
+    duration_sec: durationSec,
     chars_consumed: charsConsumed,
     total_chunks: result.totalChunks,
     has_timeline: timelineUrl !== null,
+  });
+}
+
+// Sprint 4 T6 — Chaining batch. À la complétion (succès OU échec) d'un job,
+// si batch_id est non-null, fire-and-forget le prochain job pending du même
+// batch. Une séquence qui échoue n'arrête donc pas la suite du batch.
+// Le sweep stale 10 min reste filet de sécurité si même ce chaining manque.
+async function chainNextBatchJob(currentJobId: string): Promise<void> {
+  const supabase = getServiceClient();
+
+  const { data: current, error: currentErr } = await supabase
+    .from("audio_generation_jobs")
+    .select("batch_id, batch_index")
+    .eq("id", currentJobId)
+    .maybeSingle();
+
+  if (currentErr) {
+    logger.error("chain_next_batch_job: current read failed", {
+      job_id: currentJobId,
+      error: currentErr.message,
+    });
+    return;
+  }
+  if (!current || !current.batch_id || current.batch_index === null) {
+    return; // Mono-séquence : rien à chaîner.
+  }
+
+  const { data: next, error: nextErr } = await supabase
+    .from("audio_generation_jobs")
+    .select("id, sequence_id, script_text, with_timestamps")
+    .eq("batch_id", current.batch_id)
+    .eq("status", "pending")
+    .gt("batch_index", current.batch_index)
+    .order("batch_index", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (nextErr) {
+    logger.error("chain_next_batch_job: next read failed", {
+      batch_id: current.batch_id,
+      error: nextErr.message,
+    });
+    return;
+  }
+  if (!next) {
+    logger.info("chain_next_batch_job: batch_complete", {
+      batch_id: current.batch_id,
+      last_index: current.batch_index,
+    });
+    return;
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !serviceKey) {
+    logger.error("chain_next_batch_job: missing env", {
+      batch_id: current.batch_id,
+    });
+    return;
+  }
+
+  // Récupère estimated_duration_sec stocké côté Next.js dans script_text ?
+  // Non : on n'a pas persisté la durée estimée par job. Le worker recalcule
+  // localement via computeScriptStats(parseDialogueScript(script_text)).
+  // Plutôt que dupliquer ici, on passe undefined : le UPDATE retombera sur
+  // result.durationSec ou 0 si pas d'alignment. Acceptable car la route
+  // batch-generate, contrairement à la mono-séquence, est la seule à
+  // pousser estimated_duration_sec → on le calcule ici aussi côté worker.
+  const localInputs = parseDialogueScript(next.script_text);
+  const localStats = computeScriptStats(localInputs);
+  const nextEstimatedDurationSec = Math.round(
+    localStats.estimatedDurationMin * 60,
+  );
+
+  const url = `${supabaseUrl}/functions/v1/audio-generation-worker`;
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${serviceKey}`,
+    },
+    body: JSON.stringify({
+      job_id: next.id,
+      sequence_id: next.sequence_id,
+      script_text: next.script_text,
+      with_timestamps: next.with_timestamps,
+      estimated_duration_sec: nextEstimatedDurationSec,
+    }),
+  }).catch((err) => {
+    logger.error("chain_next_batch_job: fetch failed", {
+      batch_id: current.batch_id,
+      next_job_id: next.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  });
+
+  logger.info("chain_next_batch_job: chained", {
+    batch_id: current.batch_id,
+    next_job_id: next.id,
+    next_index: current.batch_index + 1,
   });
 }
 
@@ -254,6 +367,9 @@ Deno.serve(async (req) => {
   }
 
   // Fire-and-forget : on enregistre l'erreur dans le job, on ne propage rien.
+  // En fin de vie (succès OU échec), tente le chaining du batch suivant. Si
+  // chainNextBatchJob échoue, on log mais on ne propage pas — le filet de
+  // sécurité reste sweep-stale-audio-jobs (cron 10 min).
   const work = (async () => {
     try {
       await runWorker(body);
@@ -265,6 +381,14 @@ Deno.serve(async (req) => {
         error: msg,
       });
       await markJobFailed(body.job_id, msg);
+    }
+    try {
+      await chainNextBatchJob(body.job_id);
+    } catch (e) {
+      logger.error("chain_next_batch_job: unexpected", {
+        job_id: body.job_id,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   })();
 

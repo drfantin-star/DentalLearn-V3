@@ -29,6 +29,8 @@ export async function createJob(options: CreateJobOptions): Promise<string> {
       with_timestamps: options.withTimestamps,
       status: 'pending',
       retry_count: 0,
+      batch_id: options.batchId ?? null,
+      batch_index: options.batchIndex ?? null,
     })
     .select('id')
     .single()

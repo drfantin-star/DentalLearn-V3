@@ -15,7 +15,8 @@ import {
   GripVertical,
   Eye,
   Play,
-  Users
+  Users,
+  Mic
 } from 'lucide-react';
 
 interface Formation {
@@ -320,13 +321,22 @@ export default function FormationDetailPage() {
               {sequences.length} séquence{sequences.length > 1 ? 's' : ''} • Objectif: 16 séquences
             </p>
           </div>
-          <Link
-            href={`/admin/formations/${formation.id}/sequences/new`}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Ajouter une séquence
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/admin/formations/${formation.id}/audio-batch`}
+              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
+            >
+              <Mic className="w-4 h-4" />
+              Génération audio batch
+            </Link>
+            <Link
+              href={`/admin/formations/${formation.id}/sequences/new`}
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              Ajouter une séquence
+            </Link>
+          </div>
         </div>
 
         {sequences.length === 0 ? (

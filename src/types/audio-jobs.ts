@@ -19,8 +19,39 @@ export interface AudioGenerationJob {
   cost_eur: number | null
   error_log: AudioJobErrorLog | null
   retry_count: number
+  batch_id: string | null
+  batch_index: number | null
   created_at: string
   updated_at: string
+}
+
+// Sprint 4 T6 — Retour de la route GET batch-status (polling UI batch)
+export interface BatchStatusJobItem {
+  jobId: string
+  sequenceId: string
+  sequenceNumber: number
+  sequenceTitle: string
+  batchIndex: number
+  status: AudioJobStatus
+  audioUrl?: string
+  durationSec?: number
+  charsConsumed?: number
+  costEur?: number
+  error?: AudioJobErrorLog
+}
+
+export interface BatchStatusResponse {
+  batchId: string
+  formationId: string
+  totalJobs: number
+  counts: {
+    pending: number
+    running: number
+    completed: number
+    failed: number
+    cancelled: number
+  }
+  jobs: BatchStatusJobItem[]
 }
 
 export interface AudioJobErrorLog {

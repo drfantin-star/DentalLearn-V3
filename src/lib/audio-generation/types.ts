@@ -55,6 +55,10 @@ export interface CreateJobOptions {
   scriptText: string
   triggeredBy: string
   withTimestamps: boolean
+  // Sprint 4 T6 — Batch multi-séquences. UUID partagé par les jobs du même
+  // batch + index d'ordonnancement (0..N-1). batch_id NULL = mono-séquence.
+  batchId?: string
+  batchIndex?: number
 }
 
 export interface UpdateJobOptions {

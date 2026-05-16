@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { isSuperAdmin } from '@/lib/auth/rbac'
 import {
+  computeScriptStats,
   createJob,
   parseDialogueScript,
   validateDialogue,
@@ -146,6 +147,12 @@ export async function POST(
       withTimestamps,
     })
 
+    // Dette D-S4-T5dette-02 : passe la durée estimée au worker pour qu'il
+    // l'utilise en fallback quand result.durationSec === 0 (cas systématique
+    // avec /v1/text-to-dialogue qui ne retourne pas d'alignment).
+    const stats = computeScriptStats(inputs)
+    const estimatedDurationSec = Math.round(stats.estimatedDurationMin * 60)
+
     // Fire-and-forget vers la Supabase Edge Function. Si l'appel échoue avant
     // d'atteindre la fonction, le job reste en `pending` et sera marqué
     // `failed` par le sweep stale (10 min).
@@ -162,6 +169,7 @@ export async function POST(
         sequence_id: sequenceId,
         script_text: scriptText,
         with_timestamps: withTimestamps,
+        estimated_duration_sec: estimatedDurationSec,
       }),
     }).catch((err) => {
       console.error('[audio/generate] edge function call failed:', err)
