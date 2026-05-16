@@ -8,6 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { waitUntil } from '@vercel/functions'
 
 import { isSuperAdmin } from '@/lib/auth/rbac'
 import {
@@ -149,7 +150,7 @@ export async function POST(
       withTimestamps,
     })
 
-    void runGenerationJob(jobId, sequenceId, inputs, withTimestamps, scriptText)
+    waitUntil(runGenerationJob(jobId, sequenceId, inputs, withTimestamps, scriptText))
 
     return NextResponse.json({ jobId }, { status: 202 })
   } catch (error) {
