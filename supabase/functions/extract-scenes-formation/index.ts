@@ -771,7 +771,10 @@ async function runExtraction(jobId: string, sequenceId: string): Promise<void> {
   const durationMs = Math.round(performance.now() - startedAt);
   await markJobCompleted(jobId, {
     timeline_url: publicUrl,
-    duration_sec: tlJson.duration_sec,
+    // audio_generation_jobs.duration_sec est de type SQL `int` : on arrondit
+    // explicitement la valeur (float dans le timeline JSON) au boundary
+    // float→int pour éviter un cast implicite ambigu côté Postgres.
+    duration_sec: Math.round(tlJson.duration_sec),
     scenes_count: built.scenes_count,
     concepts_count: built.concepts_count,
     duration_ms: durationMs,
