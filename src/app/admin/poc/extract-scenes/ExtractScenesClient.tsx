@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   SONNET_INPUT_PRICE_USD_PER_MTOK,
@@ -27,20 +27,23 @@ interface ExtractMeta {
   attempts: number
 }
 
-interface PersistenceMeta {
-  storage_path: string
-  storage_url: string | null
-  sequence_updated: boolean
-  warnings: string[]
-}
-
-interface SuccessResponse {
+// Voie DRY-RUN — réponse synchrone historique
+interface DryRunSuccess {
   success: true
   timeline: unknown
   llm_meta: ExtractMeta
   warnings: string[]
-  dry_run: boolean
-  persistence: PersistenceMeta | null
+  dry_run: true
+  persistence: null
+}
+
+// Voie PROD — ACK fire-and-forget
+interface AsyncAck {
+  success: true
+  async: true
+  jobId: string
+  status: 'running'
+  message: string
 }
 
 interface FailureResponse {
@@ -54,7 +57,36 @@ interface FailureResponse {
   llm_meta?: ExtractMeta
 }
 
-type ExtractResponse = SuccessResponse | FailureResponse | { error: string; message?: string }
+type PostResponse =
+  | DryRunSuccess
+  | AsyncAck
+  | FailureResponse
+  | { error: string; message?: string; jobId?: string }
+
+// Réponse polling /status
+interface StatusResponse {
+  jobId: string
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+  job_type: string | null
+  sequence_id: string | null
+  timeline_url: string | null
+  error_log: {
+    message?: string
+    scenes_count?: number
+    concepts_count?: number
+    duration_ms?: number
+    tokens_input?: number
+    tokens_output?: number
+    warnings?: string[]
+  } | null
+  started_at: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+const POLL_INTERVAL_MS = 3000
+const POLL_MAX_DURATION_MS = 5 * 60 * 1000 // garde-fou 5 min
 
 interface Props {
   sequences: SequenceLite[]
@@ -66,26 +98,146 @@ export function ExtractScenesClient({ sequences }: Props) {
   )
   const [dryRun, setDryRun] = useState<boolean>(true)
   const [loading, setLoading] = useState<boolean>(false)
-  const [result, setResult] = useState<ExtractResponse | null>(null)
+  const [result, setResult] = useState<PostResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // T5-bis-B — état polling pour la voie async (dry_run=false)
+  const [jobStatus, setJobStatus] = useState<StatusResponse | null>(null)
+  const [pollStartedAt, setPollStartedAt] = useState<number | null>(null)
+  const [elapsedSec, setElapsedSec] = useState<number>(0)
+  const [generatedTimeline, setGeneratedTimeline] = useState<unknown | null>(null)
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
+      if (elapsedTimerRef.current) clearInterval(elapsedTimerRef.current)
+    }
+  }, [])
+
   const costEstimate = useMemo(() => {
-    if (!result || !('llm_meta' in result) || !result.llm_meta) return null
-    const meta = result.llm_meta
-    const usd =
-      (meta.input_tokens / 1_000_000) * SONNET_INPUT_PRICE_USD_PER_MTOK +
-      (meta.output_tokens / 1_000_000) * SONNET_OUTPUT_PRICE_USD_PER_MTOK
-    return usd
-  }, [result])
+    // Dry-run path : llm_meta dans la réponse synchrone
+    if (
+      result &&
+      'success' in result &&
+      result.success === true &&
+      'llm_meta' in result &&
+      result.llm_meta
+    ) {
+      const meta = result.llm_meta
+      return (
+        (meta.input_tokens / 1_000_000) * SONNET_INPUT_PRICE_USD_PER_MTOK +
+        (meta.output_tokens / 1_000_000) * SONNET_OUTPUT_PRICE_USD_PER_MTOK
+      )
+    }
+    // Async path : tokens dans jobStatus.error_log (la Edge Function les
+    // loggue là — pas idéal sémantiquement mais évite une colonne dédiée).
+    if (
+      jobStatus?.status === 'completed' &&
+      jobStatus.error_log?.tokens_input !== undefined &&
+      jobStatus.error_log?.tokens_output !== undefined
+    ) {
+      return (
+        ((jobStatus.error_log.tokens_input ?? 0) / 1_000_000) *
+          SONNET_INPUT_PRICE_USD_PER_MTOK +
+        ((jobStatus.error_log.tokens_output ?? 0) / 1_000_000) *
+          SONNET_OUTPUT_PRICE_USD_PER_MTOK
+      )
+    }
+    return null
+  }, [result, jobStatus])
+
+  function stopPolling() {
+    if (pollTimerRef.current) {
+      clearTimeout(pollTimerRef.current)
+      pollTimerRef.current = null
+    }
+    if (elapsedTimerRef.current) {
+      clearInterval(elapsedTimerRef.current)
+      elapsedTimerRef.current = null
+    }
+  }
+
+  async function pollOnce(jobId: string, startedAt: number) {
+    if (Date.now() - startedAt > POLL_MAX_DURATION_MS) {
+      stopPolling()
+      setError(
+        `Polling abandonné : aucun résultat après ${Math.round(POLL_MAX_DURATION_MS / 60000)} min. Vérifier le job ${jobId} côté Supabase.`
+      )
+      setLoading(false)
+      return
+    }
+    try {
+      const res = await fetch(
+        `/api/admin/timeline/extract-scenes/status?jobId=${encodeURIComponent(jobId)}`,
+        { cache: 'no-store' }
+      )
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '')
+        throw new Error(`status HTTP ${res.status}: ${txt.slice(0, 200)}`)
+      }
+      const status = (await res.json()) as StatusResponse
+      setJobStatus(status)
+
+      if (status.status === 'completed') {
+        stopPolling()
+        setLoading(false)
+        // Fetch la Timeline JSON pour affichage
+        if (status.timeline_url) {
+          try {
+            const tlRes = await fetch(status.timeline_url, { cache: 'no-store' })
+            if (tlRes.ok) {
+              const tl = await tlRes.json()
+              setGeneratedTimeline(tl)
+            }
+          } catch {
+            // Non bloquant : on a déjà status + timeline_url
+          }
+        }
+        return
+      }
+      if (status.status === 'failed' || status.status === 'cancelled') {
+        stopPolling()
+        setLoading(false)
+        setError(
+          status.error_log?.message ??
+            `Job terminé en status=${status.status} sans message d'erreur.`
+        )
+        return
+      }
+      // pending | running → re-poll
+      pollTimerRef.current = setTimeout(
+        () => void pollOnce(jobId, startedAt),
+        POLL_INTERVAL_MS
+      )
+    } catch (e) {
+      // Erreur réseau isolée — on retente quand même au prochain tick au
+      // lieu d'avorter, mais on remonte le message à l'écran.
+      const msg = e instanceof Error ? e.message : String(e)
+      setError(`Polling: ${msg} (retry…)`)
+      pollTimerRef.current = setTimeout(
+        () => void pollOnce(jobId, startedAt),
+        POLL_INTERVAL_MS
+      )
+    }
+  }
 
   async function handleExtract() {
     if (!selectedId) {
       setError('Aucune séquence sélectionnée.')
       return
     }
+    stopPolling()
     setLoading(true)
     setError(null)
     setResult(null)
+    setJobStatus(null)
+    setGeneratedTimeline(null)
+    setPollStartedAt(null)
+    setElapsedSec(0)
+
     try {
       const url = `/api/admin/timeline/extract-scenes?dry_run=${dryRun ? 'true' : 'false'}`
       const res = await fetch(url, {
@@ -96,32 +248,55 @@ export function ExtractScenesClient({ sequences }: Props) {
           source_id: selectedId,
         }),
       })
-      const data: ExtractResponse = await res.json()
+      const data = (await res.json()) as PostResponse
+      setResult(data)
+
       if (!res.ok) {
-        const failure = data as FailureResponse | { error: string; message?: string }
-        if ('errors' in failure && Array.isArray(failure.errors)) {
-          setError(`${failure.stage ?? 'error'}: ${failure.errors.join(', ')}`)
-        } else if ('error' in failure) {
-          setError(`${failure.error}${failure.message ? `: ${failure.message}` : ''}`)
+        if ('errors' in data && Array.isArray(data.errors)) {
+          setError(`${data.stage ?? 'error'}: ${data.errors.join(', ')}`)
+        } else if ('error' in data) {
+          setError(
+            `${data.error}${data.message ? `: ${data.message}` : ''}${
+              'jobId' in data && data.jobId ? ` (jobId=${data.jobId})` : ''
+            }`
+          )
         } else {
           setError('Réponse serveur inattendue.')
         }
-        setResult(data)
-      } else {
-        setResult(data)
+        setLoading(false)
+        return
       }
+
+      // ----- Voie async (PROD fire-and-forget) -----
+      if ('async' in data && data.async === true) {
+        const startedAt = Date.now()
+        setPollStartedAt(startedAt)
+        elapsedTimerRef.current = setInterval(() => {
+          setElapsedSec(Math.round((Date.now() - startedAt) / 1000))
+        }, 1000)
+        void pollOnce(data.jobId, startedAt)
+        return
+      }
+
+      // ----- Voie dry_run synchrone -----
+      setLoading(false)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
-    } finally {
       setLoading(false)
     }
   }
 
-  const success = result && 'success' in result && result.success === true
-  const successResult = success ? (result as SuccessResponse) : null
-  const warnings =
-    successResult?.warnings ??
-    (result && 'warnings' in result ? result.warnings ?? [] : [])
+  // Synthèse pour le rendu — préfère les meta async si dispo, sinon dry-run.
+  const dryRunResult: DryRunSuccess | null =
+    result && 'success' in result && result.success === true && 'dry_run' in result
+      ? (result as DryRunSuccess)
+      : null
+  const warnings: string[] = useMemo(() => {
+    if (dryRunResult?.warnings) return dryRunResult.warnings
+    if (jobStatus?.status === 'completed' && jobStatus.error_log?.warnings)
+      return jobStatus.error_log.warnings
+    return []
+  }, [dryRunResult, jobStatus])
 
   return (
     <main className="min-h-screen bg-[color:var(--color-bg)] text-[color:var(--color-text-primary)] p-6">
@@ -231,7 +406,11 @@ export function ExtractScenesClient({ sequences }: Props) {
               className="rounded-lg bg-ds-turquoise px-4 py-2 text-sm font-semibold text-axe3 disabled:opacity-50"
             >
               {loading
-                ? 'Extraction en cours (20-30s)…'
+                ? dryRun
+                  ? 'Extraction en cours (20-30s)…'
+                  : jobStatus?.status === 'running'
+                  ? `Extraction asynchrone… ${elapsedSec}s`
+                  : 'Démarrage du job…'
                 : 'Extraire les scènes via LLM'}
             </button>
           </div>
@@ -245,29 +424,117 @@ export function ExtractScenesClient({ sequences }: Props) {
           </section>
         )}
 
-        {/* ─── Métadonnées LLM ─────────────────────────────────────────── */}
-        {result && 'llm_meta' in result && result.llm_meta && (
-          <section className="mb-6 rounded-xl bg-[color:var(--color-bg-card)]/40 p-6">
-            <h2 className="mb-3 text-lg font-semibold text-white">
-              Métadonnées LLM
+        {/* ─── État du job async (T5-bis-B) ───────────────────────────── */}
+        {pollStartedAt !== null && jobStatus !== null && (
+          <section
+            className={`mb-6 rounded-xl p-6 ${
+              jobStatus.status === 'completed'
+                ? 'border border-emerald-500/30 bg-emerald-500/10'
+                : jobStatus.status === 'failed'
+                ? 'border border-red-500/30 bg-red-500/15'
+                : 'border border-sky-500/30 bg-sky-500/10'
+            }`}
+          >
+            <h2 className="mb-2 text-lg font-semibold text-white">
+              Job async — {jobStatus.status}
             </h2>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm md:grid-cols-3">
-              <Meta label="Modèle" value={result.llm_meta.model} />
+              <Meta label="Job ID" value={jobStatus.jobId} mono />
+              <Meta label="Durée écoulée" value={`${elapsedSec}s`} />
+              {jobStatus.started_at && (
+                <Meta
+                  label="Started at"
+                  value={new Date(jobStatus.started_at).toLocaleTimeString(
+                    'fr-FR'
+                  )}
+                />
+              )}
+              {jobStatus.completed_at && (
+                <Meta
+                  label="Completed at"
+                  value={new Date(jobStatus.completed_at).toLocaleTimeString(
+                    'fr-FR'
+                  )}
+                />
+              )}
+              {jobStatus.error_log?.scenes_count !== undefined && (
+                <Meta
+                  label="Scènes"
+                  value={String(jobStatus.error_log.scenes_count)}
+                />
+              )}
+              {jobStatus.error_log?.concepts_count !== undefined && (
+                <Meta
+                  label="Concepts"
+                  value={String(jobStatus.error_log.concepts_count)}
+                />
+              )}
+              {jobStatus.error_log?.duration_ms !== undefined && (
+                <Meta
+                  label="Durée extraction"
+                  value={`${(jobStatus.error_log.duration_ms / 1000).toFixed(1)}s`}
+                />
+              )}
+              {jobStatus.error_log?.tokens_input !== undefined && (
+                <Meta
+                  label="Tokens input"
+                  value={jobStatus.error_log.tokens_input.toLocaleString(
+                    'fr-FR'
+                  )}
+                />
+              )}
+              {jobStatus.error_log?.tokens_output !== undefined && (
+                <Meta
+                  label="Tokens output"
+                  value={jobStatus.error_log.tokens_output.toLocaleString(
+                    'fr-FR'
+                  )}
+                />
+              )}
+              {costEstimate !== null && (
+                <Meta
+                  label="Coût indicatif"
+                  value={`${costEstimate.toFixed(4)} USD`}
+                />
+              )}
+              {jobStatus.timeline_url && (
+                <Meta
+                  label="timeline_url"
+                  value={jobStatus.timeline_url}
+                  mono
+                />
+              )}
+            </dl>
+          </section>
+        )}
+
+        {/* ─── Métadonnées LLM (dry-run uniquement) ───────────────────── */}
+        {dryRunResult?.llm_meta && (
+          <section className="mb-6 rounded-xl bg-[color:var(--color-bg-card)]/40 p-6">
+            <h2 className="mb-3 text-lg font-semibold text-white">
+              Métadonnées LLM (dry-run)
+            </h2>
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm md:grid-cols-3">
+              <Meta label="Modèle" value={dryRunResult.llm_meta.model} />
               <Meta
                 label="Tentatives"
-                value={String(result.llm_meta.attempts)}
+                value={String(dryRunResult.llm_meta.attempts)}
               />
               <Meta
                 label="Durée"
-                value={`${(result.llm_meta.duration_ms / 1000).toFixed(1)}s`}
+                value={`${(dryRunResult.llm_meta.duration_ms / 1000).toFixed(1)}s`}
               />
               <Meta
                 label="Tokens input"
-                value={result.llm_meta.input_tokens.toLocaleString('fr-FR')}
+                value={dryRunResult.llm_meta.input_tokens.toLocaleString(
+                  'fr-FR'
+                )}
               />
               <Meta
                 label="Tokens output"
-                value={result.llm_meta.output_tokens.toLocaleString('fr-FR')}
+                value={dryRunResult.llm_meta.output_tokens.toLocaleString(
+                  'fr-FR'
+                )}
               />
               {costEstimate !== null && (
                 <Meta
@@ -275,16 +542,16 @@ export function ExtractScenesClient({ sequences }: Props) {
                   value={`${costEstimate.toFixed(4)} USD`}
                 />
               )}
-              {result.llm_meta.scenes_count !== undefined && (
+              {dryRunResult.llm_meta.scenes_count !== undefined && (
                 <Meta
                   label="Scènes"
-                  value={String(result.llm_meta.scenes_count)}
+                  value={String(dryRunResult.llm_meta.scenes_count)}
                 />
               )}
-              {result.llm_meta.concepts_count !== undefined && (
+              {dryRunResult.llm_meta.concepts_count !== undefined && (
                 <Meta
                   label="Concepts"
-                  value={String(result.llm_meta.concepts_count)}
+                  value={String(dryRunResult.llm_meta.concepts_count)}
                 />
               )}
             </dl>
@@ -307,50 +574,20 @@ export function ExtractScenesClient({ sequences }: Props) {
           </section>
         )}
 
-        {/* ─── Persistance ────────────────────────────────────────────── */}
-        {successResult?.persistence && (
-          <section className="mb-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6">
-            <h2 className="mb-2 text-lg font-semibold text-emerald-300">
-              Persistance
-            </h2>
-            <dl className="grid gap-2 text-sm text-emerald-100">
-              <Meta
-                label="Storage path"
-                value={successResult.persistence.storage_path}
-                mono
-              />
-              <Meta
-                label="Storage URL"
-                value={successResult.persistence.storage_url ?? '—'}
-                mono
-              />
-              <Meta
-                label="sequences.timeline_url updated"
-                value={
-                  successResult.persistence.sequence_updated ? 'oui' : 'non'
-                }
-              />
-            </dl>
-            {successResult.persistence.warnings.length > 0 && (
-              <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-amber-200">
-                {successResult.persistence.warnings.map((w, i) => (
-                  <li key={i}>
-                    <code>{w}</code>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        )}
-
         {/* ─── Timeline JSON ──────────────────────────────────────────── */}
-        {result && (
+        {(dryRunResult?.timeline || generatedTimeline || result) && (
           <section className="mb-6 rounded-xl bg-[color:var(--color-bg-card)]/40 p-6">
             <h2 className="mb-3 text-lg font-semibold text-white">
-              {success ? 'Timeline générée' : 'Sortie partielle'}
+              {generatedTimeline || dryRunResult?.timeline
+                ? 'Timeline générée'
+                : 'Réponse serveur'}
             </h2>
             <pre className="max-h-[600px] overflow-auto rounded-lg bg-black/40 p-4 text-xs leading-relaxed text-emerald-100">
-              {JSON.stringify(result, null, 2)}
+              {JSON.stringify(
+                generatedTimeline ?? dryRunResult?.timeline ?? result,
+                null,
+                2
+              )}
             </pre>
           </section>
         )}
