@@ -34,7 +34,9 @@ import { makeWordIndexLookup, countWordsFlat } from './word-index-lookup'
  *  À ne JAMAIS modifier sans alignement avec le module Edge. */
 export const SONNET_MODEL_T5 = 'claude-sonnet-4-6'
 
-/** max_tokens output Sonnet — 4096 suffit pour 5 scènes + 12 concepts dense. */
+/** max_tokens output Sonnet — 4096 suffit pour 8-12 scènes JSON (T5-bis :
+ *  une scène dense fait ~250-350 tokens output, soit ~3500 max pour 10 scènes
+ *  + 12 concepts). Revenu de 8192 à 4096 — l'over-provisioning était inutile. */
 export const SONNET_MAX_TOKENS_T5 = 4096
 
 /** Boucle retry sur stages json_parse / structure_check (1 essai + 2 retries).
@@ -42,7 +44,12 @@ export const SONNET_MAX_TOKENS_T5 = 4096
 export const MAX_EXTRACTION_RETRIES = 3
 
 /** Timeout AbortController par appel Anthropic. La route a maxDuration=60s,
- *  on coupe à 45s pour laisser 15s de marge sur la conversion + Storage. */
+ *  on coupe à 45s pour laisser 15s de marge sur la conversion + Storage.
+ *
+ *  Note T5-bis-B : ce timeout n'est appliqué que dans le chemin DRY-RUN
+ *  synchrone de la route Next.js. La voie de production (non-dry_run) passe
+ *  par la Supabase Edge Function extract-scenes-formation qui a son propre
+ *  timeout interne (90s) et ne dépend pas de cette constante. */
 export const SONNET_CALL_TIMEOUT_MS = 45_000
 
 /** Clés top-level requises dans la sortie LLM brute. */
@@ -52,14 +59,16 @@ const REQUIRED_TOP_LEVEL_KEYS = ['scenes', 'concepts'] as const
 // T5.2 — Constantes de garde pour la conversion raw → Timeline finale
 // ---------------------------------------------------------------------------
 
-/** Cap dur sur le nombre de scènes — spec POC §6 (max 5). Sonnet est instruit
- *  via le prompt mais le serveur tronque défensivement si la consigne dérive. */
-export const MAX_SCENES = 5
+/** Cap dur sur le nombre de scènes — T5-bis : cible 8-12, plafond défensif 15
+ *  (le prompt instruit Sonnet à 8-12, le serveur tronque uniquement si la
+ *  consigne dérive franchement). */
+export const MAX_SCENES = 15
 
-/** Bornes display_duration_sec — spec POC §6 (20-45s). Clamping côté serveur
- *  pour éviter un end_sec qui dépasse l'audio ou une scène trop courte. */
-export const MIN_DURATION_SEC = 20
-export const MAX_DURATION_SEC = 45
+/** Bornes display_duration_sec — T5-bis : fenêtre resserrée 15-35s pour
+ *  densifier la timeline. Clamping côté serveur pour éviter un end_sec qui
+ *  dépasse l'audio ou une scène trop courte. */
+export const MIN_DURATION_SEC = 15
+export const MAX_DURATION_SEC = 35
 
 /** Durée par défaut affichée pour un concept (en secondes). Le concept reste
  *  highlightable pendant 4s autour de son `at_sec` — choix arbitraire pour

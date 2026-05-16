@@ -1,33 +1,38 @@
-// Route POST /api/admin/timeline/extract-scenes — POC visualisation audio T5.1.
+// Route POST /api/admin/timeline/extract-scenes — POC visualisation audio.
 //
-// Déclenche l'extraction structurelle Sonnet pour une formation. Sortie en T5.1
-// volontairement minimale (raw_output LLM brut) — la conversion vers une
-// `Timeline` Zod-validée + persistance Storage seront branchées en T5.2/T5.3
-// dans la même route (ce fichier sera étendu).
+// T5-bis-B (pattern fire-and-forget) :
+//   - Voie de PROD (dry_run=false) : la route crée un job en BDD,
+//     fire la Supabase Edge Function `extract-scenes-formation` SANS
+//     attendre, retourne 202 { jobId } en <1s. La page admin polle
+//     /api/admin/timeline/extract-scenes/status?jobId=… pour récupérer le
+//     résultat. Compatible Vercel Hobby (la route répond bien sous 10 s).
+//   - Voie DRY-RUN (dry_run=true) : conserve le flow synchrone historique
+//     (extractScenesFromScript + buildTimelineFromRaw côté Vercel, pas de
+//     persistance). RÉSERVÉ AU TEST LOCAL — `maxDuration = 60` n'est suffisant
+//     que sur Vercel Pro ; le dry_run en prod Hobby sera coupé à 10 s.
 //
-// Contraintes (cf. handoff §10 Ticket 5 + décisions session) :
-//   - Runtime Node.js explicite (PAS Edge — l'extraction prend 20-30s)
-//   - maxDuration = 60 (Vercel Hobby/Pro), AbortController côté SDK = 45s
+// Autres contraintes :
 //   - Refus 400 explicite si source_type='news_synthesis' (T8 délègue à
 //     buildNewsTimeline déterministe, pas à un LLM)
 //   - RBAC super_admin server-side via isSuperAdmin()
-//   - Body Zod strict ; query param ?dry_run=true (utilisé en T5.3)
+//   - Body Zod strict ; query param ?dry_run=true active la voie synchrone
 
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 import { isSuperAdmin } from '@/lib/auth/rbac'
+import { createJob } from '@/lib/audio-generation/job-tracker'
 import {
   SONNET_MODEL_T5,
   buildTimelineFromRaw,
   extractScenesFromScript,
 } from '@/lib/timeline/llm-extraction'
-import type { Timeline } from '@/lib/timeline/schema'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
-const TIMELINE_STORAGE_BUCKET = 'audio-timelines'
-const TIMELINE_STORAGE_PREFIX = 'poc'
+// Note T5-bis-B : les constantes TIMELINE_STORAGE_BUCKET / TIMELINE_STORAGE_PREFIX
+// et le type Timeline ont été supprimés de cette route : la persistance
+// Storage est déplacée dans la Supabase Edge Function extract-scenes-formation.
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -124,11 +129,131 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ----- 4. Récupération contexte (script + transcript + audio + duration) -----
-    // Si le caller fournit tout dans le body, on utilise tel quel. Sinon, on
-    // lit le timeline_url existant de la séquence côté serveur (Option A spec
-    // T5.3). En T5.2, garder les deux chemins ouverts pour permettre les
-    // tests curl/Postman avant la page admin.
+    // ----- 4. Dry-run flag -----
+    const dryRun = req.nextUrl.searchParams.get('dry_run') === 'true'
+
+    // ===================================================================
+    // VOIE PROD — fire-and-forget vers Supabase Edge Function (T5-bis-B)
+    // ===================================================================
+    if (!dryRun) {
+      // 4a. Crée un job en BDD AVANT de fire la fonction (l'Edge Function
+      // a besoin du job_id pour suivre le statut). `script_text` est un
+      // placeholder ici — l'Edge Function reconstitue le vrai depuis le
+      // transcript Storage. La colonne reste obligatoire (NOT NULL) sur
+      // la table audio_generation_jobs, partagée avec Sprint 4.
+      let jobId: string
+      try {
+        jobId = await createJob({
+          sequenceId: body.source_id,
+          scriptText:
+            '(scene_extraction job — script_text reconstituté côté Edge Function)',
+          triggeredBy: user.id,
+          withTimestamps: true,
+        })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        console.error(
+          JSON.stringify({ event: 'extract_scenes_createjob_failed', error: msg })
+        )
+        return NextResponse.json(
+          { error: 'job_create_failed', message: msg },
+          { status: 500 }
+        )
+      }
+
+      // 4b. Tag du job avec job_type='scene_extraction' (colonne ajoutée par
+      // 20260516b_audio_jobs_type.sql). UPDATE séparé pour ne pas modifier
+      // createJob (signature partagée avec Sprint 4).
+      const admin = createAdminClient()
+      const { error: tagErr } = await admin
+        .from('audio_generation_jobs')
+        .update({ job_type: 'scene_extraction' })
+        .eq('id', jobId)
+      if (tagErr) {
+        // Non bloquant : le job est créé, on continue avec le default
+        // 'elevenlabs_generation' qui sera filtré côté admin par UPDATE.
+        console.warn(
+          JSON.stringify({
+            event: 'extract_scenes_jobtype_tag_failed',
+            job_id: jobId,
+            error: tagErr.message,
+          })
+        )
+      }
+
+      // 4c. Fire-and-forget : on attend la 202 de l'Edge Function (~100ms)
+      // puis on retourne immédiatement. L'Edge Function continue son
+      // travail via EdgeRuntime.waitUntil() même après cette réponse.
+      const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const supaServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+      if (!supaUrl || !supaServiceKey) {
+        return NextResponse.json(
+          {
+            error: 'missing_env',
+            message:
+              'NEXT_PUBLIC_SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY manquant',
+          },
+          { status: 500 }
+        )
+      }
+
+      try {
+        const ack = await fetch(
+          `${supaUrl}/functions/v1/extract-scenes-formation`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${supaServiceKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              job_id: jobId,
+              sequence_id: body.source_id,
+            }),
+            // Garde-fou : si l'Edge Function ne renvoie pas son ACK 202
+            // sous 8s, on coupe et on remonte une erreur claire (mais le
+            // job en BDD reste — le worker peut tout de même progresser).
+            signal: AbortSignal.timeout(8_000),
+          }
+        )
+        if (!ack.ok && ack.status !== 202) {
+          const text = await ack.text().catch(() => '')
+          return NextResponse.json(
+            {
+              error: 'edge_function_rejected',
+              status: ack.status,
+              message: text.slice(0, 500),
+              jobId,
+            },
+            { status: 502 }
+          )
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        return NextResponse.json(
+          { error: 'edge_function_unreachable', message: msg, jobId },
+          { status: 502 }
+        )
+      }
+
+      return NextResponse.json(
+        {
+          success: true,
+          async: true,
+          jobId,
+          status: 'running',
+          message:
+            'Extraction démarrée en arrière-plan. Polling /api/admin/timeline/extract-scenes/status?jobId=…',
+        },
+        { status: 202 }
+      )
+    }
+
+    // ===================================================================
+    // VOIE DRY-RUN — flow synchrone historique (test local uniquement,
+    // PAS compatible Vercel Hobby — risque de timeout 10s en prod)
+    // ===================================================================
+
     let scriptText = body.script_text
     let transcript = body.transcript
     let audioUrl = body.audio_url
@@ -138,10 +263,7 @@ export async function POST(req: NextRequest) {
       const ctx = await loadFormationContextFromTimeline(body.source_id)
       if (!ctx.ok) {
         return NextResponse.json(
-          {
-            error: 'missing_context',
-            message: ctx.message,
-          },
+          { error: 'missing_context', message: ctx.message },
           { status: 400 }
         )
       }
@@ -151,10 +273,6 @@ export async function POST(req: NextRequest) {
       durationSec = durationSec ?? ctx.duration_sec
     }
 
-    // ----- 5. Dry-run flag (utilisé en T5.3 pour persister ou non) -----
-    const dryRun = req.nextUrl.searchParams.get('dry_run') === 'true'
-
-    // ----- 6. Délégation extraction Sonnet -----
     const result = await extractScenesFromScript({
       script_text: scriptText,
       transcript,
@@ -181,7 +299,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ----- 7. Conversion raw → Timeline Zod-validée (T5.2) -----
     const builtTimeline = buildTimelineFromRaw({
       raw: result.raw_output,
       transcript,
@@ -212,15 +329,6 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // ----- 8. Persistance Storage (mode normal — T5.3) -----
-    let persistence: PersistenceReport | null = null
-    if (!dryRun) {
-      persistence = await persistTimelineToStorage(
-        builtTimeline.timeline,
-        body.source_id
-      )
-    }
-
     return NextResponse.json({
       success: true,
       timeline: builtTimeline.timeline,
@@ -234,8 +342,8 @@ export async function POST(req: NextRequest) {
         attempts: result.attempts,
       },
       warnings: [...result.warnings, ...builtTimeline.warnings],
-      dry_run: dryRun,
-      persistence,
+      dry_run: true,
+      persistence: null,
     })
   } catch (e) {
     // Catch top-level — anonymise vers le client mais loggue côté serveur.
@@ -376,88 +484,8 @@ async function loadFormationContextFromTimeline(
   }
 }
 
-// ---------------------------------------------------------------------------
-// Helper — persistance Storage + UPDATE sequences.timeline_url (T5.3)
-// ---------------------------------------------------------------------------
-
-interface PersistenceReport {
-  storage_path: string
-  storage_url: string | null
-  sequence_updated: boolean
-  warnings: string[]
-}
-
-/**
- * Persiste la Timeline finale au format JSON dans le bucket `audio-timelines`,
- * sous-dossier `poc/`, fichier `${source_id}-${ISO timestamp}.json`. Pattern
- * cohérent avec les timelines T2 actuelles (cf. structure existante du bucket).
- *
- * Met à jour `sequences.timeline_url` avec l'URL publique du nouveau fichier
- * (le bucket est déclaré public en lecture par la migration T1). Le
- * `timeline_published` n'est PAS modifié — seul l'admin via T6 décidera de
- * publier la timeline générée par LLM.
- *
- * Le path est construit avec un timestamp pour ne PAS écraser les versions
- * précédentes (utile pour comparaison admin entre deux runs T5).
- */
-async function persistTimelineToStorage(
-  timeline: Timeline,
-  sourceId: string
-): Promise<PersistenceReport> {
-  const warnings: string[] = []
-  const admin = createAdminClient()
-  const isoStamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const path = `${TIMELINE_STORAGE_PREFIX}/${sourceId}-${isoStamp}.json`
-
-  const json = JSON.stringify(timeline, null, 2)
-  const bytes = new TextEncoder().encode(json)
-
-  const { error: uploadError } = await admin.storage
-    .from(TIMELINE_STORAGE_BUCKET)
-    .upload(path, bytes, {
-      contentType: 'application/json',
-      cacheControl: '0',
-      upsert: false,
-    })
-
-  if (uploadError) {
-    warnings.push(`storage_upload_failed:${uploadError.message}`)
-    return {
-      storage_path: path,
-      storage_url: null,
-      sequence_updated: false,
-      warnings,
-    }
-  }
-
-  // URL publique — bucket déclaré public par la migration T1 ; getPublicUrl
-  // retourne toujours une string même si le bucket est privé (le caller
-  // doit faire confiance à la config Storage).
-  const { data: publicData } = admin.storage
-    .from(TIMELINE_STORAGE_BUCKET)
-    .getPublicUrl(path)
-  const publicUrl = publicData?.publicUrl ?? null
-
-  // UPDATE sequences.timeline_url (colonne créée par migration T1 —
-  // 20260504a_poc_timelines.sql)
-  let sequenceUpdated = false
-  if (publicUrl) {
-    const { error: updateError, data: updateData } = await admin
-      .from('sequences')
-      .update({ timeline_url: publicUrl })
-      .eq('id', sourceId)
-      .select('id')
-    if (updateError) {
-      warnings.push(`sequence_update_failed:${updateError.message}`)
-    } else {
-      sequenceUpdated = (updateData ?? []).length > 0
-    }
-  }
-
-  return {
-    storage_path: path,
-    storage_url: publicUrl,
-    sequence_updated: sequenceUpdated,
-    warnings,
-  }
-}
+// T5-bis-B : persistTimelineToStorage / PersistenceReport supprimés.
+// La persistance (upload Storage + UPDATE sequences.timeline_url) est
+// désormais effectuée par la Supabase Edge Function extract-scenes-formation
+// dans la voie de production (fire-and-forget). Le dry_run n'écrit rien par
+// définition.

@@ -1,10 +1,13 @@
-import type { AudioJobStatus } from '@/types/audio-jobs'
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { AudioJobStatus } from '@/types/audio-jobs'
 import type { CreateJobOptions, UpdateJobOptions } from './types'
 
 /**
  * Crée un nouveau job en BDD avec status 'pending'.
  * Retourne l'UUID du job créé.
+ *
+ * Valide la contrainte XOR `exactly_one_target` côté applicatif AVANT l'INSERT
+ * pour retourner une erreur plus parlante que le CHECK SQL générique.
  */
 export async function createJob(options: CreateJobOptions): Promise<string> {
   const hasSequence = Boolean(options.sequenceId)
@@ -41,6 +44,14 @@ export async function createJob(options: CreateJobOptions): Promise<string> {
 
 /**
  * Met à jour le statut et les métadonnées d'un job.
+ *
+ * - status='running'   → set started_at = now UNIQUEMENT si NULL (préserve
+ *                        le premier started_at en cas de re-transition)
+ * - status terminal    → set completed_at = now (completed | failed | cancelled)
+ * - Les fields optionnels (UpdateJobOptions) sont mappés vers les colonnes
+ *   correspondantes ; chunksProcessed/totalChunks sont ignorés (pas en BDD).
+ *
+ * Throw `Job ${jobId} not found` si aucune ligne n'a été affectée.
  */
 export async function updateJobStatus(
   jobId: string,
