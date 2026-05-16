@@ -10,19 +10,16 @@ import type { CreateJobOptions, UpdateJobOptions } from './types'
  * pour retourner une erreur plus parlante que le CHECK SQL générique.
  */
 export async function createJob(options: CreateJobOptions): Promise<string> {
-  const hasSeq =
-    typeof options.sequenceId === 'string' && options.sequenceId.length > 0
-  const hasNews =
-    typeof options.newsEpisodeId === 'string' &&
-    options.newsEpisodeId.length > 0
-  if (hasSeq === hasNews) {
+  const hasSequence = Boolean(options.sequenceId)
+  const hasEpisode = Boolean(options.newsEpisodeId)
+  if (hasSequence === hasEpisode) {
     throw new Error(
       'createJob: exactly one of sequenceId or newsEpisodeId required'
     )
   }
 
-  const admin = createAdminClient()
-  const { data, error } = await admin
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
     .from('audio_generation_jobs')
     .insert({
       sequence_id: options.sequenceId ?? null,
@@ -30,26 +27,26 @@ export async function createJob(options: CreateJobOptions): Promise<string> {
       triggered_by: options.triggeredBy,
       script_text: options.scriptText,
       with_timestamps: options.withTimestamps,
-      status: 'pending' as AudioJobStatus,
+      status: 'pending',
       retry_count: 0,
     })
     .select('id')
+    .single()
 
   if (error) {
     throw new Error(`createJob: insert failed: ${error.message}`)
   }
-  const row = data?.[0]
-  if (!row?.id) {
-    throw new Error('createJob: insert returned no row')
+  if (!data?.id) {
+    throw new Error('createJob: insert returned no id')
   }
-  return row.id as string
+  return data.id
 }
 
 /**
  * Met à jour le statut et les métadonnées d'un job.
  *
- * - status='running'   → set started_at = now (toujours réécrit ; le trigger
- *                        updated_at gère le timestamp)
+ * - status='running'   → set started_at = now UNIQUEMENT si NULL (préserve
+ *                        le premier started_at en cas de re-transition)
  * - status terminal    → set completed_at = now (completed | failed | cancelled)
  * - Les fields optionnels (UpdateJobOptions) sont mappés vers les colonnes
  *   correspondantes ; chunksProcessed/totalChunks sont ignorés (pas en BDD).
@@ -61,36 +58,45 @@ export async function updateJobStatus(
   status: AudioJobStatus,
   fields?: UpdateJobOptions
 ): Promise<void> {
-  const nowIso = new Date().toISOString()
-  const update: Record<string, unknown> = {
+  const supabase = createAdminClient()
+  const now = new Date().toISOString()
+
+  const updates: Record<string, unknown> = {
     status,
-    updated_at: nowIso,
-  }
-  if (status === 'running') {
-    update.started_at = nowIso
-  }
-  if (status === 'completed' || status === 'failed' || status === 'cancelled') {
-    update.completed_at = nowIso
-  }
-  if (fields) {
-    if (fields.audioUrl !== undefined) update.audio_url = fields.audioUrl
-    if (fields.timelineUrl !== undefined)
-      update.timeline_url = fields.timelineUrl
-    if (fields.durationSec !== undefined)
-      update.duration_sec = fields.durationSec
-    if (fields.charsConsumed !== undefined)
-      update.chars_consumed = fields.charsConsumed
-    if (fields.costEur !== undefined) update.cost_eur = fields.costEur
-    if (fields.errorLog !== undefined) update.error_log = fields.errorLog
-    // chunksProcessed / totalChunks volontairement ignorés — pas de colonnes
-    // dédiées sur audio_generation_jobs (la progression est suivie autrement
-    // côté worker, cf. Sprint 4 T4).
+    updated_at: now,
   }
 
-  const admin = createAdminClient()
-  const { data, error } = await admin
+  if (fields?.audioUrl !== undefined) updates.audio_url = fields.audioUrl
+  if (fields?.timelineUrl !== undefined) updates.timeline_url = fields.timelineUrl
+  if (fields?.durationSec !== undefined) updates.duration_sec = fields.durationSec
+  if (fields?.charsConsumed !== undefined) updates.chars_consumed = fields.charsConsumed
+  if (fields?.costEur !== undefined) updates.cost_eur = fields.costEur
+  if (fields?.errorLog !== undefined) updates.error_log = fields.errorLog
+
+  if (status === 'running') {
+    const { data: existing, error: fetchErr } = await supabase
+      .from('audio_generation_jobs')
+      .select('started_at')
+      .eq('id', jobId)
+      .maybeSingle()
+    if (fetchErr) {
+      throw new Error(`updateJobStatus: fetch failed: ${fetchErr.message}`)
+    }
+    if (!existing) {
+      throw new Error(`Job ${jobId} not found`)
+    }
+    if (!existing.started_at) {
+      updates.started_at = now
+    }
+  }
+
+  if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+    updates.completed_at = now
+  }
+
+  const { data, error } = await supabase
     .from('audio_generation_jobs')
-    .update(update)
+    .update(updates)
     .eq('id', jobId)
     .select('id')
 
@@ -108,23 +114,23 @@ export async function updateJobStatus(
  * Retourne le nombre de jobs marqués.
  */
 export async function sweepStaleJobs(): Promise<number> {
-  const nowIso = new Date().toISOString()
-  const tenMinAgoIso = new Date(Date.now() - 10 * 60 * 1000).toISOString()
+  const supabase = createAdminClient()
+  const now = new Date().toISOString()
+  const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
 
-  const admin = createAdminClient()
-  const { data, error } = await admin
+  const { data, error } = await supabase
     .from('audio_generation_jobs')
     .update({
-      status: 'failed' as AudioJobStatus,
-      completed_at: nowIso,
-      updated_at: nowIso,
+      status: 'failed',
+      completed_at: now,
+      updated_at: now,
       error_log: {
         message: 'Job marked as failed by stale sweep (running > 10 min)',
-        timestamp: nowIso,
+        timestamp: now,
       },
     })
     .eq('status', 'running')
-    .lt('started_at', tenMinAgoIso)
+    .lt('started_at', tenMinAgo)
     .select('id')
 
   if (error) {
