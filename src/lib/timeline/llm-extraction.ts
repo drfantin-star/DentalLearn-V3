@@ -43,9 +43,15 @@ export const SONNET_MAX_TOKENS_T5 = 4096
  *  Pas de retry sur stage='anthropic_call' (le SDK retry déjà 429/5xx). */
 export const MAX_EXTRACTION_RETRIES = 3
 
-/** Timeout AbortController par appel Anthropic. La route a maxDuration=60s,
- *  on coupe à 45s pour laisser 15s de marge sur la conversion + Storage. */
-export const SONNET_CALL_TIMEOUT_MS = 45_000
+/** Timeout AbortController par appel Anthropic.
+ *
+ *  ⚠️ Valeur DEV temporaire (120 s) — bumpée pour tester localement
+ *  l'extraction T5-bis dense (~10 scènes) sans coupure pendant les itérations
+ *  prompt. À redescendre à 45 s avant prod : la route Vercel a
+ *  `maxDuration = 60`, ce timeout doit rester sous cette borne pour laisser
+ *  une marge sur la conversion + Storage (sinon le 504 Vercel mange le 408
+ *  AbortController). */
+export const SONNET_CALL_TIMEOUT_MS = 120_000
 
 /** Clés top-level requises dans la sortie LLM brute. */
 const REQUIRED_TOP_LEVEL_KEYS = ['scenes', 'concepts'] as const
