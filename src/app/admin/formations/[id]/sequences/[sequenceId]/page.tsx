@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import MediaUpload from '@/components/admin/MediaUpload';
 import { Button } from '@/components/ui/Button';
+import { FormationAudioBlock } from '@/components/admin/sequences/FormationAudioBlock';
 
 interface Question {
   id: string;
@@ -776,6 +777,12 @@ export default function SequenceDetailPage() {
           </p>
         </div>
       )}
+
+      {/* Audio du cours — pipeline T5 */}
+      <FormationAudioBlock
+        sequenceId={sequenceId}
+        currentAudioUrl={mediaType === 'audio' ? mediaUrl : null}
+      />
     </div>
   );
 }
