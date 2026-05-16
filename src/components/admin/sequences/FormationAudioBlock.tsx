@@ -256,7 +256,7 @@ export function FormationAudioBlock({
             <div className="rounded-lg border border-gray-200 p-4">
               <p className="text-xs text-gray-500 uppercase tracking-wide">Durée estimée</p>
               <p className="text-2xl font-semibold text-gray-900 mt-1">
-                {stats.estimatedDurationMin} min
+               {Math.round(stats.estimatedDurationMin * 10) / 10} min
               </p>
             </div>
             <div className="rounded-lg border border-gray-200 p-4">
@@ -275,7 +275,7 @@ export function FormationAudioBlock({
               value={editedScript}
               onChange={(e) => setEditedScript(e.target.value)}
               rows={12}
-              className="w-full rounded-lg border border-gray-300 p-3 text-sm font-mono text-gray-800 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
+              className="w-full rounded-lg border border-gray-300 p-3 text-sm font-mono bg-white text-gray-800 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
               placeholder="Sophie: ...\nMartin: ..."
             />
             <p className="text-xs text-gray-400">
