@@ -19,6 +19,7 @@ import {
   Play,
 } from 'lucide-react'
 import {
+  createClient,
   useSequenceQuestions,
   useSubmitSequenceResult,
   type Sequence,
@@ -44,7 +45,7 @@ interface SequencePlayerProps {
   shouldSubmitResult?: () => Promise<boolean>
 }
 
-type PlayerStep = 'video' | 'quiz' | 'pdf' | 'results'
+type PlayerStep = 'video' | 'quiz' | 'pdf' | 'results' | 'review'
 
 interface StandardOption {
   id: string
@@ -323,6 +324,17 @@ export default function SequencePlayer({
     sequence.id,
   ])
 
+  // SM-2 spaced repetition (T-SM2)
+  const supabase = useMemo(() => createClient(), [])
+  const [userId, setUserId] = useState<string | null>(null)
+  const [reviewQuestions, setReviewQuestions] = useState<Question[]>([])
+  const [reviewIdx, setReviewIdx] = useState(0)
+  const [reviewLoading, setReviewLoading] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null))
+  }, [supabase])
+
   const steps: PlayerStep[] = useMemo(() => {
     const s: PlayerStep[] = []
     if (showVideo) s.push('video')
@@ -330,8 +342,11 @@ export default function SequencePlayer({
     return s
   }, [showVideo])
 
-  const currentStepIdx = steps.indexOf(playerStep === 'results' ? 'quiz' : playerStep)
-  const currentQuestion = questions[currentQ]
+  const currentStepIdx = steps.indexOf(
+    playerStep === 'results' || playerStep === 'review' ? 'quiz' : playerStep
+  )
+  const currentQuestion =
+    playerStep === 'review' ? reviewQuestions[reviewIdx] : questions[currentQ]
 
   // Fisher-Yates shuffle - mélange aléatoire fiable
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -409,17 +424,58 @@ export default function SequencePlayer({
   // ============================================
 
   const evaluateAndShowFeedback = (isCorrect: boolean, points: number, feedback: string) => {
-    if (isCorrect) setCorrectCount(c => c + 1)
-    setTotalPoints(p => p + points)
+    const isReview = playerStep === 'review'
+    if (!isReview) {
+      if (isCorrect) setCorrectCount(c => c + 1)
+      setTotalPoints(p => p + points)
+    }
     setShowFeedback(true)
-    setOverlayData({ isCorrect, points, feedback, isLast: currentQ === questions.length - 1 })
+    const isLast = isReview
+      ? reviewIdx === reviewQuestions.length - 1
+      : currentQ === questions.length - 1
+    setOverlayData({ isCorrect, points: isReview ? 0 : points, feedback, isLast })
     setShowOverlay(true)
   }
 
+  // SM-2 : enregistrement non-bloquant. INSERT only on failure (quality=1) en
+  // phase quiz ; en phase review, on enregistre toujours (quality=5|1) pour
+  // faire progresser le compteur de réussites consécutives vers mastered_at.
+  const recordSm2 = useCallback(async (questionId: string, isCorrect: boolean) => {
+    if (!userId) return
+    try {
+      await supabase.rpc('update_sm2_state', {
+        p_user_id: userId,
+        p_question_id: questionId,
+        p_sequence_id: sequence.id,
+        p_quality: isCorrect ? 5 : 1,
+      })
+    } catch (err) {
+      console.error('SM-2 record error:', err)
+    }
+  }, [supabase, userId, sequence.id])
+
+  // Wrapper : en phase 'review', on n'écrit PAS dans answersLog (isolation
+  // stricte, cf. décision Dr Fantin 16/05/2026). On déclenche recordSm2 :
+  // toujours en review, uniquement sur échec en quiz.
+  const logAnswer = useCallback(
+    (q: Question, selectedOption: string, isCorrect: boolean, pointsEarned: number) => {
+      const isReview = playerStep === 'review'
+      if (!isReview) {
+        setAnswersLog(prev => [
+          ...prev,
+          { question_id: q.id, selected_option: selectedOption, is_correct: isCorrect, points_earned: pointsEarned },
+        ])
+      }
+      if (isReview || !isCorrect) {
+        void recordSm2(q.id, isCorrect)
+      }
+    },
+    [playerStep, recordSm2]
+  )
+
   // Case study — le composant <CaseStudyQuestion> remonte le choix ; le scoring
-  // et l'avance de sous-question restent ici (write path inchangé).
-  // useCallback stable (deps = état métier, pas de fonction recréée) pour ne pas
-  // dégeler/recréer le listener du composant mémoïsé.
+  // et l'avance de sous-question restent ici. L'écriture answersLog passe par
+  // logAnswer (isolation review SM-2 + recordSm2).
   const handleCaseStudySelect = useCallback((choiceId: string) => {
     const q = currentQuestion
     if (!q) return
@@ -445,13 +501,13 @@ export default function SequencePlayer({
     const allCorrect = totalCorrect === parsed.questions.length
     const earnedPoints = Math.round((totalCorrect / parsed.questions.length) * q.points)
 
-    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: choiceId, is_correct: allCorrect, points_earned: earnedPoints }])
+    logAnswer(q, choiceId, allCorrect, earnedPoints)
     if (allCorrect) setCorrectCount(c => c + 1)
     setTotalPoints(p => p + earnedPoints)
     setShowFeedback(true)
     setOverlayData({ isCorrect: allCorrect, points: earnedPoints, feedback: allCorrect ? q.feedback_correct : q.feedback_incorrect, isLast: currentQ === questions.length - 1 })
     setShowOverlay(true)
-  }, [currentQuestion, caseStudyCurrentQ, caseStudyAnswers, showFeedback, currentQ, questions.length])
+  }, [currentQuestion, caseStudyCurrentQ, caseStudyAnswers, showFeedback, currentQ, questions.length, logAnswer])
 
   // MCQ / True-False / MCQ Image
   const handleSingleAnswer = (answerId: string) => {
@@ -464,7 +520,7 @@ export default function SequencePlayer({
     const isCorrect = selected?.correct || false
     const points = isCorrect ? q.points : 0
 
-    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: answerId, is_correct: isCorrect, points_earned: points }])
+    logAnswer(q, answerId, isCorrect, points)
     evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
   }
 
@@ -481,7 +537,7 @@ export default function SequencePlayer({
     const isCorrect = score === 1
     const points = Math.round(score * q.points)
 
-    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: selectedAnswers.join(','), is_correct: isCorrect, points_earned: points }])
+    logAnswer(q, selectedAnswers.join(','), isCorrect, points)
     evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
   }
 
@@ -498,7 +554,7 @@ export default function SequencePlayer({
     const isCorrect = score === 1
     const points = Math.round(score * q.points)
 
-    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: selectedAnswers.join(','), is_correct: isCorrect, points_earned: points }])
+    logAnswer(q, selectedAnswers.join(','), isCorrect, points)
     evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
   }
 
@@ -524,7 +580,7 @@ export default function SequencePlayer({
     const isCorrect = score === 1
     const points = Math.round(score * q.points)
 
-    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: JSON.stringify(fillBlankAnswers), is_correct: isCorrect, points_earned: points }])
+    logAnswer(q, JSON.stringify(fillBlankAnswers), isCorrect, points)
     evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
   }
 
@@ -543,7 +599,7 @@ export default function SequencePlayer({
     const isCorrect = score === 1
     const points = Math.round(score * q.points)
 
-    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: orderingOrder.join(','), is_correct: isCorrect, points_earned: points }])
+    logAnswer(q, orderingOrder.join(','), isCorrect, points)
     evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
   }
 
@@ -563,24 +619,67 @@ export default function SequencePlayer({
     const isCorrect = score === 1
     const points = Math.round(score * q.points)
 
-    setAnswersLog(prev => [...prev, { question_id: q.id, selected_option: JSON.stringify(matchingMatches), is_correct: isCorrect, points_earned: points }])
+    logAnswer(q, JSON.stringify(matchingMatches), isCorrect, points)
     evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
   }
 
-  const nextQuestion = () => {
+  const nextQuestion = async () => {
     setShowOverlay(false)
     resetQuestionState()
 
+    if (playerStep === 'review') {
+      if (reviewIdx < reviewQuestions.length - 1) {
+        setReviewIdx(i => i + 1)
+      } else {
+        setPlayerStep('results')
+      }
+      return
+    }
+
     if (currentQ < questions.length - 1) {
       setCurrentQ(c => c + 1)
-    } else {
+      return
+    }
+
+    // Fin du quiz : on tente d'ouvrir une phase de révision SM-2 sur le thème
+    // de la formation. Pool vide ou erreur -> on saute directement aux résultats.
+    if (!userId) {
       setPlayerStep('results')
+      return
+    }
+    setReviewLoading(true)
+    try {
+      const { data, error } = await supabase.rpc('get_sm2_review_questions', {
+        p_user_id: userId,
+        p_sequence_id: sequence.id,
+        p_limit: 3,
+      })
+      if (!error && data && data.length > 0) {
+        setReviewQuestions(data as Question[])
+        setReviewIdx(0)
+        setPlayerStep('review')
+      } else {
+        setPlayerStep('results')
+      }
+    } catch (err) {
+      console.error('SM-2 review fetch error:', err)
+      setPlayerStep('results')
+    } finally {
+      setReviewLoading(false)
     }
   }
 
   const skipQuestion = () => {
-    setAnswersLog(prev => [...prev, { question_id: currentQuestion.id, selected_option: 'skipped', is_correct: false, points_earned: 0 }])
+    logAnswer(currentQuestion, 'skipped', false, 0)
     resetQuestionState()
+    if (playerStep === 'review') {
+      if (reviewIdx < reviewQuestions.length - 1) {
+        setReviewIdx(i => i + 1)
+      } else {
+        setPlayerStep('results')
+      }
+      return
+    }
     if (currentQ < questions.length - 1) {
       setCurrentQ(c => c + 1)
     } else {
@@ -915,10 +1014,19 @@ export default function SequencePlayer({
           </div>
         )}
 
-        {/* QUIZ */}
-        {playerStep === 'quiz' && currentQuestion && (() => {
+        {/* Spinner pendant le fetch du pool SM-2 entre quiz et review */}
+        {reviewLoading && (
+          <div className="text-center py-10">
+            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
+            <p className="text-sm" style={{ color: '#a3a3a3' }}>Préparation de la révision...</p>
+          </div>
+        )}
+
+        {/* QUIZ + REVIEW : même rendu, currentQuestion pivote selon playerStep */}
+        {(playerStep === 'quiz' || playerStep === 'review') && currentQuestion && (() => {
           const q = currentQuestion
           const qType = q.question_type
+          const isReview = playerStep === 'review'
 
           // case_study : choix sélectionné de la sous-question courante (les deux
           // formats — STRUCTURED et LEGACY_ARRAY — sont gérés par le composant).
@@ -926,16 +1034,31 @@ export default function SequencePlayer({
           const caseStudySubQId = caseStudyParsed?.questions[caseStudyCurrentQ]?.id ?? ''
           const caseStudySelectedId = caseStudyAnswers[caseStudySubQId] ?? null
 
+          const stepIndex = isReview ? reviewIdx + 1 : currentQ + 1
+          const stepTotal = isReview ? reviewQuestions.length : questions.length
+
           return (
             <div>
+              {/* Bandeau Révision SM-2 */}
+              {isReview && (
+                <div className="mb-3 rounded-2xl px-4 py-2.5" style={{ background: 'rgba(45,27,150,0.18)', border: '1px solid #2D1B96' }}>
+                  <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#a5b4fc' }}>Révision</p>
+                  <p className="text-xs" style={{ color: '#e5e5e5' }}>
+                    {reviewQuestions.length} question{reviewQuestions.length > 1 ? 's' : ''} du thème à consolider
+                  </p>
+                </div>
+              )}
+
               {/* Progress */}
               <div className="mb-4">
                 <div className="flex justify-between mb-1.5">
-                  <span className="text-xs" style={{ color: '#a3a3a3' }}>Question {currentQ + 1}/{questions.length}</span>
+                  <span className="text-xs" style={{ color: '#a3a3a3' }}>
+                    {isReview ? 'Révision' : 'Question'} {stepIndex}/{stepTotal}
+                  </span>
                   <span className="text-xs" style={{ color: '#a3a3a3' }}>⭐ {totalPoints} pts</span>
                 </div>
                 <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#242424' }}>
-                  <div className="h-full rounded-full transition-all duration-500" style={{ background: `linear-gradient(90deg, ${categoryGradient.from}, ${categoryGradient.to})`, width: `${((currentQ + 1) / questions.length) * 100}%` }} />
+                  <div className="h-full rounded-full transition-all duration-500" style={{ background: `linear-gradient(90deg, ${categoryGradient.from}, ${categoryGradient.to})`, width: `${(stepIndex / stepTotal) * 100}%` }} />
                 </div>
               </div>
 
