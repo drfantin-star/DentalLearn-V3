@@ -62,6 +62,7 @@ export function FormationAudioBlock({
   const [state, setState] = useState<AudioBlockState>(initial)
   const [errorBanner, setErrorBanner] = useState<string | null>(null)
   const [submittingGenerate, setSubmittingGenerate] = useState(false)
+  const [editedScript, setEditedScript] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // Polling effect for "generating" phase
@@ -137,6 +138,7 @@ export function FormationAudioBlock({
       }
       const stats = (await res.json()) as UploadScriptResponse
       setState({ phase: 'ready', scriptText: text, stats })
+      setEditedScript(text)
     } catch (err) {
       setErrorBanner(err instanceof Error ? err.message : 'Erreur de lecture du fichier')
       setState({ phase: 'idle' })
@@ -239,7 +241,7 @@ export function FormationAudioBlock({
   }
 
   if (state.phase === 'ready') {
-    const { stats, scriptText } = state
+    const { stats } = state
     return (
       <Card variant="flat">
         {header(<Badge variant="info">Script prêt</Badge>)}
@@ -265,16 +267,20 @@ export function FormationAudioBlock({
             </div>
           </div>
 
-          <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">Aperçu du script</p>
-            <div className="space-y-2">
-              {stats.preview.map((line, idx) => (
-                <p key={idx} className="text-sm">
-                  <span className="font-bold text-primary">{line.speaker}</span>
-                  <span className="text-gray-600"> : {line.text}</span>
-                </p>
-              ))}
-            </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-gray-700">
+              Script dialogue (éditable avant génération)
+            </label>
+            <textarea
+              value={editedScript}
+              onChange={(e) => setEditedScript(e.target.value)}
+              rows={12}
+              className="w-full rounded-lg border border-gray-300 p-3 text-sm font-mono text-gray-800 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
+              placeholder="Sophie: ...\nMartin: ..."
+            />
+            <p className="text-xs text-gray-400">
+              Modifiez le script si nécessaire. Les stats seront recalculées à la génération.
+            </p>
           </div>
 
           {errorBanner && (
@@ -289,7 +295,7 @@ export function FormationAudioBlock({
               variant="primary"
               size="md"
               loading={submittingGenerate}
-              onClick={() => void startGeneration(scriptText)}
+              onClick={() => void startGeneration(editedScript)}
             >
               Générer l'audio
             </Button>
@@ -371,8 +377,12 @@ export function FormationAudioBlock({
             size="md"
             loading={submittingGenerate}
             onClick={() => {
-              if (scriptText) void startGeneration(scriptText)
-              else resetToIdle()
+              if (scriptText) {
+                setEditedScript(scriptText)
+                void startGeneration(scriptText)
+              } else {
+                resetToIdle()
+              }
             }}
           >
             Réessayer
