@@ -17,8 +17,11 @@ import type { CardContent, CardVariant } from '@/lib/timeline/schema'
  *  - Sinon : render `null`.
  *
  * Responsive (T4.3 §6) :
- *  - Desktop (≥md) en mode graphe : container `aspect-[4/3]`, cards
- *    positionnées en absolute, edges SVG superposées.
+ *  - Desktop (≥md) en mode graphe : container à hauteur dérivée du viewport
+ *    (`calc(100vh-37rem)`, bornée 240–400px) pour tenir dans une page sans
+ *    scroll en modes Combiné et Whiteboard. Cards positionnées en absolute
+ *    (% relatifs au conteneur), edges SVG superposées en `preserveAspectRatio
+ *    ="none"` qui adapte lignes et labels au ratio réel du conteneur.
  *  - Mobile (<md) en mode graphe : chaîne verticale empilée — l'ordre suit
  *    `nodes[]` (simplification POC). Si une edge relie deux nodes
  *    consécutifs, son label éventuel est affiché entre les deux cards.
@@ -68,9 +71,10 @@ const EDGE_LABEL_DURATION = 0.25
 
 // ─── Layouts déterministes (positions en % du container 0-100) ──────────────
 //
-// `x` = 0 (gauche) → 100 (droite). `y` = 0 (haut) → 100 (bas). Le container
-// a `aspect-[4/3]` côté CSS — la SVG superposée utilise viewBox 0 0 100 75
-// donc on convertit `y * 0.75` pour les coords SVG (cf. `toSvgY`).
+// `x` = 0 (gauche) → 100 (droite). `y` = 0 (haut) → 100 (bas). La SVG
+// superposée utilise viewBox 0 0 100 75 (ratio 4:3 nominal) avec
+// `preserveAspectRatio="none"` qui la stretche au ratio réel du conteneur.
+// On convertit `y * 0.75` pour les coords SVG (cf. `toSvgY`).
 type Position = { x: number; y: number }
 
 function getNodePosition(index: number, total: number): Position {
@@ -174,8 +178,7 @@ function GraphDesktop({
   const edgesEndDelay = nodesEndDelay + EDGE_DURATION
 
   return (
-    <div className="w-full max-h-[calc(100vh-37rem)] overflow-y-auto">
-    <div className="relative w-full min-h-[320px] aspect-[4/3]">
+    <div className="relative w-full h-[calc(100vh-37rem)] min-h-[240px] max-h-[400px]">
       {/* Couche SVG des edges (en dessous des cards visuellement) */}
       <svg
         className="absolute inset-0 w-full h-full pointer-events-none"
@@ -285,7 +288,6 @@ function GraphDesktop({
           </motion.div>
         )
       })}
-    </div>
     </div>
   )
 }
