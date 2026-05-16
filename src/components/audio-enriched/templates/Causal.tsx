@@ -329,7 +329,6 @@ function EdgeLabel({
         y={midY + 1.2}
         fontSize="3.5"
         fill="#a8a59f"
-        fontStyle="italic"
         textAnchor="middle"
         style={{ paintOrder: 'stroke' }}
       >
@@ -393,7 +392,7 @@ function GraphMobile({
               >
                 <div className="bg-white/20 w-px h-3" />
                 {linkingEdge?.label && (
-                  <span className="text-[color:var(--color-text-secondary)] text-xs italic px-2">
+                  <span className="text-[color:var(--color-text-secondary)] text-xs px-2">
                     {linkingEdge.label}
                   </span>
                 )}
