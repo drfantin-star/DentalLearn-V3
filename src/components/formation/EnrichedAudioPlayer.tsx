@@ -3,11 +3,17 @@
 import { useMemo } from 'react'
 import { Play } from 'lucide-react'
 
+import { ConceptCard } from '@/components/audio-enriched/ConceptCard'
 import { KaraokeTranscript } from '@/components/audio-enriched/KaraokeTranscript'
 import { StructuredWhiteboard } from '@/components/audio-enriched/StructuredWhiteboard'
 import { useAudio } from '@/context/AudioContext'
 import { useEnrichedTimeline } from '@/hooks/useEnrichedTimeline'
-import { getActiveOrLastScene } from '@/lib/timeline/getActiveScene'
+import {
+  getActiveConcept,
+  getActiveOrLastScene,
+  getActiveScene,
+  type DisplayableConcept,
+} from '@/lib/timeline/getActiveScene'
 import type { Scene } from '@/lib/timeline/schema'
 
 import AudioPlayer from './AudioPlayer'
@@ -125,11 +131,36 @@ export default function EnrichedAudioPlayer({
   // Seul le gap initial avant la première scène déclenche l'affichage de
   // la cover (Q6 cas 5). Cf. `getActiveOrLastScene` dans
   // `src/lib/timeline/getActiveScene.ts`. Throttle 2 Hz inchangé.
-  const displayedScene = useMemo(
-    () => (timeline ? getActiveOrLastScene(state.currentTime, timeline.scenes) : null),
+  //
+  // T7-bis (mode hybride) : priorité concept sur extension de scène. Quand
+  // on n'est pas dans une fenêtre [start_sec, end_sec] stricte d'une scène
+  // mais qu'un concept "passé" (at_sec ≤ currentTime) est disponible,
+  // on affiche `<ConceptCard>` plutôt que d'étendre la dernière scène.
+  // L'extension `getActiveOrLastScene` ne s'applique que si aucun concept
+  // n'est disponible — préserve le fallback T7.2 pour timelines T2 sans
+  // concepts (`concepts[]` vide ou tous incomplets).
+  const strictActiveScene = useMemo(
+    () => (timeline ? getActiveScene(state.currentTime, timeline.scenes) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [Math.floor(state.currentTime * 2), timeline]
   )
+
+  const activeConcept: DisplayableConcept | null = useMemo(
+    () =>
+      timeline && !strictActiveScene
+        ? getActiveConcept(state.currentTime, timeline.concepts)
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [Math.floor(state.currentTime * 2), timeline, strictActiveScene]
+  )
+
+  const displayedScene = useMemo(() => {
+    if (!timeline) return null
+    if (strictActiveScene) return strictActiveScene
+    if (activeConcept) return null
+    return getActiveOrLastScene(state.currentTime, timeline.scenes)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Math.floor(state.currentTime * 2), timeline, strictActiveScene, activeConcept])
 
   // Décision finale d'affichage du panneau enrichi (Q6 + Q7.4 + Q7.7).
   const showEnrichedPanel =
@@ -214,6 +245,7 @@ export default function EnrichedAudioPlayer({
             <div className="w-full">
               <WhiteboardOrCover
                 displayedScene={displayedScene}
+                activeConcept={activeConcept}
                 timeline={timeline}
               />
             </div>
@@ -246,6 +278,7 @@ export default function EnrichedAudioPlayer({
               <div className="order-1 md:order-2 flex-1 md:min-h-0 md:overflow-hidden">
                 <WhiteboardOrCover
                   displayedScene={displayedScene}
+                  activeConcept={activeConcept}
                   timeline={timeline}
                 />
               </div>
@@ -275,11 +308,13 @@ export default function EnrichedAudioPlayer({
 
 interface WhiteboardOrCoverProps {
   displayedScene: Scene | null
+  activeConcept: DisplayableConcept | null
   timeline: NonNullable<ReturnType<typeof useEnrichedTimeline>['timeline']>
 }
 
 function WhiteboardOrCover({
   displayedScene,
+  activeConcept,
   timeline,
 }: WhiteboardOrCoverProps) {
   if (displayedScene) {
@@ -298,7 +333,20 @@ function WhiteboardOrCover({
       />
     )
   }
-  // POC-T7.4a-E — gap initial : 3 dots pulsants staggered (validation Dr Fantin).
+  // T7-bis : flow continu — quand aucune scène n'est strictement active et
+  // qu'un concept "passé" est disponible, on affiche sa carte définitionnelle
+  // dans le whiteboard plutôt que le placeholder.
+  if (activeConcept) {
+    return (
+      <ConceptCard
+        term={activeConcept.term}
+        definition={activeConcept.definition}
+      />
+    )
+  }
+  // POC-T7.4a-E — gap initial sans concept disponible : 3 dots pulsants
+  // staggered (validation Dr Fantin). Couvre le cas où la timeline n'a pas
+  // de concepts T5 (T2 pur) ou aucun n'est encore passé à `currentTime`.
   return (
     <div className="bg-[color:var(--color-bg-card)]/30 rounded-xl p-6 flex items-center justify-center min-h-[240px]">
       <div className="flex items-center gap-2 text-[color:var(--color-text-muted)]" role="status" aria-label="Visualisation à venir">
