@@ -1229,3 +1229,66 @@ Migration cron : `20260515_sprint2_t7_crons.sql`. Limite par run : 50 (configura
 - Debounce 24h via `notifications.metadata->>'formateur_user_id'`
 - Respect préférence `user_notification_preferences.formateur_publications`
 - ⚠️ **Dette D2-T7-02** : déclenché sur `created_at` (pas `published_at`) — session créée >1h avant publication non notifiée → Sprint 3
+
+---
+
+## Pipeline Audio Unifié — Sprint 4 T1 (16 mai 2026)
+
+Migration : `supabase/migrations/20260516_sprint4_audio_jobs.sql` (+ `_down.sql`
+symétrique). Fondations BDD pour le portage en backend Next.js de la
+génération audio ElevenLabs (formations + news), précédemment exécutée via
+le script Python `generate_audio_PHASE_2B.py`.
+
+### Enum `audio_job_status`
+
+`'pending' | 'running' | 'completed' | 'failed' | 'cancelled'`
+
+### audio_generation_jobs — suivi des jobs de génération audio
+
+| Colonne | Type | Notes |
+|---|---|---|
+| id | uuid PK | `gen_random_uuid()` |
+| sequence_id | uuid | FK `sequences(id)` ON DELETE CASCADE — nullable (XOR avec `news_episode_id`) |
+| news_episode_id | uuid | FK `news_episodes(id)` ON DELETE CASCADE — nullable (XOR avec `sequence_id`) |
+| triggered_by | uuid NOT NULL | FK `auth.users(id)` — qui a lancé le job |
+| status | audio_job_status NOT NULL | default `'pending'` |
+| started_at | timestamptz | rempli au passage en `'running'` |
+| completed_at | timestamptz | rempli au passage en `'completed'` / `'failed'` / `'cancelled'` |
+| script_text | text NOT NULL | snapshot du script dialogue Sophie/Martin (post-validation) |
+| with_timestamps | boolean NOT NULL | default `true` ; détermine `text_to_dialogue` vs `convert_with_timestamps` |
+| audio_url | text | URL publique MP3 sur Supabase Storage (`formations` ou `news-audio`) |
+| timeline_url | text | URL publique JSON timeline (bucket `audio-timelines`) |
+| duration_sec | int | durée totale (somme des chunks) |
+| chars_consumed | int | total caractères facturés ElevenLabs |
+| cost_eur | numeric(10,4) | coût estimé EUR (chars / 1000 × tarif) |
+| error_log | jsonb | `{ message, chunk_index?, api_status?, stack?, timestamp }` |
+| retry_count | int NOT NULL | default 0 |
+| created_at | timestamptz NOT NULL | default `now()` |
+| updated_at | timestamptz NOT NULL | default `now()` ; maintenu par trigger `audio_jobs_updated_at` |
+
+**Contraintes** :
+- `CHECK exactly_one_target` : exactement un de `sequence_id` / `news_episode_id` est non-NULL (XOR strict).
+
+**Indexes** :
+- `audio_jobs_sequence_idx (sequence_id) WHERE sequence_id IS NOT NULL` — partiel
+- `audio_jobs_news_episode_idx (news_episode_id) WHERE news_episode_id IS NOT NULL` — partiel
+- `audio_jobs_status_idx (status) WHERE status IN ('pending','running')` — partiel, optimisé pour le sweep des jobs actifs et le polling UI
+- `audio_jobs_triggered_by_idx (triggered_by)`
+- `audio_jobs_created_at_idx (created_at DESC)`
+
+**RLS** : 3 policies `audio_jobs_{select,insert,update}_super_admin` (rôle `authenticated`, `USING/WITH CHECK is_super_admin(auth.uid())`). Aucun DELETE exposé : un job échoué reste en historique. Les workers backend qui écrivent contournent RLS via service_role (clé serveur).
+
+**Trigger** : `audio_jobs_updated_at BEFORE UPDATE` → fonction `update_audio_jobs_updated_at()` (met à jour `NEW.updated_at = now()`).
+
+### Colonnes ajoutées sur `sequences` (additives)
+
+| Colonne | Type | Notes |
+|---|---|---|
+| audio_generated_at | timestamptz | horodatage de la dernière génération réussie |
+| audio_chars_consumed | int | caractères facturés sur la version courante |
+| audio_cost_eur | numeric(10,4) | coût EUR de la version courante |
+| audio_history | jsonb NOT NULL | default `'[]'::jsonb` ; array de `{ audio_url, generated_at, replaced_at, chars, cost_eur }` — conservation indéfinie (faible volume, traçabilité des régénérations) |
+
+### Smoke test
+
+`scripts/smoke_test_sprint4_t1.sql` vérifie : présence enum, table, contrainte XOR, RLS activée, 4 colonnes `sequences`, index status.
