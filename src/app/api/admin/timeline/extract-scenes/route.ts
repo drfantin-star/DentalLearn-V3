@@ -6,8 +6,10 @@
 // dans la même route (ce fichier sera étendu).
 //
 // Contraintes (cf. handoff §10 Ticket 5 + décisions session) :
-//   - Runtime Node.js explicite (PAS Edge — l'extraction prend 20-30s)
-//   - maxDuration = 60 (Vercel Hobby/Pro), AbortController côté SDK = 45s
+//   - Runtime Edge Vercel (T5-bis-fix2 — bascule depuis nodejs/maxDuration=60) :
+//     le plan Vercel Hobby plafonne les routes Serverless Node à 10s, alors que
+//     l'appel Sonnet prend 30-45s. Edge Functions n'ont pas cette limite sur
+//     Hobby. AbortController côté SDK reste à 45s (cf. SONNET_CALL_TIMEOUT_MS).
 //   - Refus 400 explicite si source_type='news_synthesis' (T8 délègue à
 //     buildNewsTimeline déterministe, pas à un LLM)
 //   - RBAC super_admin server-side via isSuperAdmin()
@@ -29,8 +31,7 @@ import { createClient } from '@/lib/supabase/server'
 const TIMELINE_STORAGE_BUCKET = 'audio-timelines'
 const TIMELINE_STORAGE_PREFIX = 'poc'
 
-export const runtime = 'nodejs'
-export const maxDuration = 60
+export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
 
 // ---------------------------------------------------------------------------

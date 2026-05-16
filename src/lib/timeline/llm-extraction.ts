@@ -34,10 +34,10 @@ import { makeWordIndexLookup, countWordsFlat } from './word-index-lookup'
  *  À ne JAMAIS modifier sans alignement avec le module Edge. */
 export const SONNET_MODEL_T5 = 'claude-sonnet-4-6'
 
-/** max_tokens output Sonnet — 8192 nécessaire pour 8-12 scènes denses (T5-bis)
- *  + 12 concepts ; l'ancienne valeur 4096 calibrée pour 5 scènes pouvait être
- *  tronquée avec une cible plus dense. */
-export const SONNET_MAX_TOKENS_T5 = 8192
+/** max_tokens output Sonnet — 4096 suffit pour 8-12 scènes JSON (T5-bis :
+ *  une scène dense fait ~250-350 tokens output, soit ~3500 max pour 10 scènes
+ *  + 12 concepts). Revenu de 8192 à 4096 — l'over-provisioning était inutile. */
+export const SONNET_MAX_TOKENS_T5 = 4096
 
 /** Boucle retry sur stages json_parse / structure_check (1 essai + 2 retries).
  *  Pas de retry sur stage='anthropic_call' (le SDK retry déjà 429/5xx). */
