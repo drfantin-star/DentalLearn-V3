@@ -2,36 +2,32 @@
  * POST /api/admin/sequences/[id]/audio/generate
  *
  * Phase 1 (synchrone) : valide le script, vérifie l'idempotence, crée un job
- *   en BDD, retourne 202 + jobId immédiatement.
- * Phase 2 (background) : génère l'audio ElevenLabs, upload Storage, archive
- *   l'ancienne entrée dans audio_history, met à jour la sequence.
+ *   en BDD, fire la Supabase Edge Function audio-generation-worker en
+ *   fire-and-forget, retourne 202 + jobId immédiatement.
+ * Phase 2 (background, Edge Function) : génère l'audio ElevenLabs, upload
+ *   Storage, archive l'ancienne entrée dans audio_history, met à jour la
+ *   sequence, marque le job completed/failed.
+ *
+ * Avant T5-dette : runGenerationJob tournait via waitUntil dans cette route.
+ *   En production Vercel Hobby le timeout 60 s coupait l'appel ElevenLabs et
+ *   laissait le job stuck en `running` jusqu'au sweep 10 min.
+ * Après T5-dette : la route ne fait que valider + créer le job + fire la
+ *   Edge Function. Aucune dépendance Vercel Pro requise pour cette route.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { waitUntil } from '@vercel/functions'
 
 import { isSuperAdmin } from '@/lib/auth/rbac'
 import {
-  buildTimelineFromAlignment,
-  computeScriptStats,
   createJob,
-  generateDialogueAudio,
   parseDialogueScript,
-  updateJobStatus,
-  uploadAudioMp3,
-  uploadTimelineJson,
   validateDialogue,
-  type DialogueInput,
 } from '@/lib/audio-generation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import type { AudioHistoryEntry } from '@/types/audio-jobs'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300
-
-const COST_PER_1000_CHARS_EUR = 0.05
 
 async function requireSuperAdmin(): Promise<
   { ok: true; userId: string } | { ok: false; response: NextResponse }
@@ -150,7 +146,26 @@ export async function POST(
       withTimestamps,
     })
 
-    waitUntil(runGenerationJob(jobId, sequenceId, inputs, withTimestamps, scriptText))
+    // Fire-and-forget vers la Supabase Edge Function. Si l'appel échoue avant
+    // d'atteindre la fonction, le job reste en `pending` et sera marqué
+    // `failed` par le sweep stale (10 min).
+    const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/audio-generation-worker`
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({
+        job_id: jobId,
+        sequence_id: sequenceId,
+        script_text: scriptText,
+        with_timestamps: withTimestamps,
+      }),
+    }).catch((err) => {
+      console.error('[audio/generate] edge function call failed:', err)
+    })
 
     return NextResponse.json({ jobId }, { status: 202 })
   } catch (error) {
@@ -161,128 +176,5 @@ export async function POST(
       },
       { status: 500 },
     )
-  }
-}
-
-async function runGenerationJob(
-  jobId: string,
-  sequenceId: string,
-  inputs: DialogueInput[],
-  withTimestamps: boolean,
-  scriptText: string,
-): Promise<void> {
-  try {
-    await updateJobStatus(jobId, 'running')
-
-    const result = await generateDialogueAudio({
-      inputs,
-      withTimestamps,
-      speed: 1.1,
-    })
-
-    const stamp = Date.now()
-    const audioPath = `sequences/${sequenceId}/sequence-${stamp}.mp3`
-    const { url: audioUrl } = await uploadAudioMp3(result.audio, 'formations', audioPath)
-
-    let timelineUrl: string | null = null
-    if (withTimestamps && result.alignment) {
-      const timeline = buildTimelineFromAlignment(
-        scriptText,
-        result,
-        audioUrl,
-        'formation_sequence',
-        sequenceId,
-      )
-      const timelinePath = `formations/${sequenceId}/timeline-${stamp}.json`
-      const uploaded = await uploadTimelineJson(timeline, timelinePath)
-      timelineUrl = uploaded.url
-    }
-
-    const stats = computeScriptStats(inputs)
-    const charsConsumed = result.totalChars > 0 ? result.totalChars : stats.chars
-    const costEur = (charsConsumed / 1000) * COST_PER_1000_CHARS_EUR
-
-    const admin = createAdminClient()
-
-    const { data: current, error: readErr } = await admin
-      .from('sequences')
-      .select(
-        'course_media_url, audio_generated_at, audio_chars_consumed, audio_cost_eur, audio_history, timeline_url',
-      )
-      .eq('id', sequenceId)
-      .maybeSingle()
-
-    if (readErr) {
-      throw new Error(`sequence read failed: ${readErr.message}`)
-    }
-    if (!current) {
-      throw new Error(`sequence ${sequenceId} disparue avant UPDATE`)
-    }
-
-    const existingHistory: AudioHistoryEntry[] = Array.isArray(current.audio_history)
-      ? (current.audio_history as AudioHistoryEntry[])
-      : []
-
-    const nowIso = new Date().toISOString()
-    const newHistory: AudioHistoryEntry[] =
-      typeof current.course_media_url === 'string' && current.course_media_url.length > 0
-        ? [
-            ...existingHistory,
-            {
-              audio_url: current.course_media_url,
-              generated_at:
-                typeof current.audio_generated_at === 'string'
-                  ? current.audio_generated_at
-                  : nowIso,
-              replaced_at: nowIso,
-              chars:
-                typeof current.audio_chars_consumed === 'number'
-                  ? current.audio_chars_consumed
-                  : 0,
-              cost_eur:
-                typeof current.audio_cost_eur === 'number'
-                  ? current.audio_cost_eur
-                  : 0,
-            },
-          ]
-        : existingHistory
-
-    const updatePayload: Record<string, unknown> = {
-      course_media_url: audioUrl,
-      course_media_type: 'audio',
-      course_duration_seconds: Math.round(result.durationSec),
-      audio_generated_at: nowIso,
-      audio_chars_consumed: charsConsumed,
-      audio_cost_eur: costEur,
-      audio_history: newHistory,
-      updated_at: nowIso,
-    }
-    if (timelineUrl) {
-      updatePayload.timeline_url = timelineUrl
-    }
-
-    const { error: updateErr } = await admin
-      .from('sequences')
-      .update(updatePayload)
-      .eq('id', sequenceId)
-
-    if (updateErr) {
-      throw new Error(`sequence update failed: ${updateErr.message}`)
-    }
-
-    await updateJobStatus(jobId, 'completed', {
-      audioUrl,
-      timelineUrl: timelineUrl ?? undefined,
-      durationSec: Math.round(result.durationSec),
-      charsConsumed,
-      costEur,
-    })
-  } catch (error) {
-    await updateJobStatus(jobId, 'failed', {
-      errorLog: {
-        message: error instanceof Error ? error.message : String(error),
-        timestamp: new Date().toISOString(),
-      },
-    }).catch(() => {})
   }
 }
