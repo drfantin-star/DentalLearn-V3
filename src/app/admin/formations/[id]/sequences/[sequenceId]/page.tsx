@@ -586,6 +586,11 @@ export default function SequenceDetailPage() {
           )}
         </div>
       </div>
+  {/* Audio du cours — pipeline T5 */}
+      <FormationAudioBlock
+        sequenceId={sequenceId}
+        currentAudioUrl={mediaType === 'audio' ? mediaUrl : null}
+      />
 
       {/* Fiche mémo (Coffre) */}
       <div className="bg-white rounded-xl border border-gray-200">
@@ -778,11 +783,6 @@ export default function SequenceDetailPage() {
         </div>
       )}
 
-      {/* Audio du cours — pipeline T5 */}
-      <FormationAudioBlock
-        sequenceId={sequenceId}
-        currentAudioUrl={mediaType === 'audio' ? mediaUrl : null}
-      />
     </div>
   );
 }
