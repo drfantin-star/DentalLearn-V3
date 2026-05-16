@@ -189,7 +189,7 @@ export function ExtractScenesClient({ sequences }: Props) {
                     <optgroup key={formationTitle} label={formationTitle}>
                       {seqs.map((seq) => (
                         <option key={seq.id} value={seq.id}>
-                          {formationTitle} — {seq.title}
+                          {formationTitle} — {seq.sequence_number ? `#${seq.sequence_number} ` : ''}{seq.title}
                         </option>
                       ))}
                     </optgroup>
