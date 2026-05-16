@@ -1,4 +1,15 @@
-import type { Scene } from './schema'
+import type { Scene, TimelineConcept } from './schema'
+
+/**
+ * Type étroit d'un concept "affichable" : on a la garantie que les champs
+ * optionnels du schéma (`term`, `definition`, `at_sec`) sont définis.
+ * `getActiveConcept` filtre les concepts incomplets avant de retourner.
+ */
+export type DisplayableConcept = TimelineConcept & {
+  term: string
+  definition: string
+  at_sec: number
+}
 
 /**
  * Retourne la scène active selon le timestamp courant.
@@ -131,4 +142,46 @@ export function getActiveOrLastScene(
   }
   // Inatteignable : on a déjà testé `currentTime >= sorted[0].start_sec`.
   return null
+}
+
+/**
+ * Retourne le concept "affichable" (term + definition + at_sec présents,
+ * non masqué) dont `at_sec` est le plus grand parmi ceux ≤ `currentTime`.
+ *
+ * Utilisé par `<EnrichedAudioPlayer>` (T7-bis) pour combler les gaps du
+ * whiteboard quand aucune scène n'est strictement active. Préfère un
+ * concept récemment "passé" à la mention d'une scène expirée (priorité
+ * concept sur extension de scène — mode hybride T7-bis).
+ *
+ * Filtres appliqués :
+ *  - `at_sec` numérique défini (T2 ne remplit pas ce champ ; T5/Sonnet oui)
+ *  - `term` non vide
+ *  - `definition` non vide
+ *  - `hidden !== true` (admin masquage T6.5.b)
+ *  - `at_sec <= currentTime`
+ *
+ * Tri défensif par `at_sec` ascending (le pipeline T5 livre dans l'ordre,
+ * mais on ne dépend pas de cette garantie côté client).
+ */
+export function getActiveConcept(
+  currentTime: number,
+  concepts: TimelineConcept[]
+): DisplayableConcept | null {
+  if (!concepts.length) return null
+  if (currentTime < 0) return null
+
+  const passed = concepts.filter(
+    (c): c is DisplayableConcept =>
+      typeof c.at_sec === 'number' &&
+      typeof c.term === 'string' &&
+      c.term.length > 0 &&
+      typeof c.definition === 'string' &&
+      c.definition.length > 0 &&
+      c.hidden !== true &&
+      c.at_sec <= currentTime
+  )
+  if (passed.length === 0) return null
+
+  const sorted = [...passed].sort((a, b) => a.at_sec - b.at_sec)
+  return sorted[sorted.length - 1]
 }
