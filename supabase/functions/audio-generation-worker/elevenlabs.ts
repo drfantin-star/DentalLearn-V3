@@ -162,30 +162,11 @@ async function callChunk(
     }
 
     if (res.ok) {
-      if (withTimestamps) {
-        const json = (await res.json()) as ElevenLabsTimestampsResponse;
-        const audio = base64ToBytes(json.audio_base_64);
-        const alignment: AlignmentData = {
-          characters: json.normalized_alignment.characters.slice(),
-          character_start_times_seconds: json.normalized_alignment
-            .character_start_times_seconds.map(Number),
-          character_end_times_seconds: json.normalized_alignment
-            .character_end_times_seconds.map(Number),
-        };
-        const voice_segments: VoiceSegment[] = (json.voice_segments ?? []).map(
-          (seg, idx) => ({
-            voice_id: seg.voice_id,
-            start_time_seconds: Number(seg.start_time_seconds),
-            end_time_seconds: Number(seg.end_time_seconds),
-            character_start_index: Number(seg.character_start_index),
-            character_end_index: Number(seg.character_end_index),
-            dialogue_input_index: typeof seg.dialogue_input_index === "number"
-              ? seg.dialogue_input_index
-              : idx,
-          }),
-        );
-        return { audio, alignment, voice_segments, chars };
-      }
+      // ElevenLabs /v1/text-to-dialogue retourne TOUJOURS du MP3 binaire
+      // (header "ID3..."), même quand `with_timestamps: true` est envoyé dans
+      // le body — le flag est silencieusement ignoré côté API. Lire en JSON
+      // crash sur "Unexpected token 'I'". Pas d'alignment disponible par
+      // cette route ; le timeline JSON n'est donc pas généré.
       const arr = await res.arrayBuffer();
       return { audio: new Uint8Array(arr), chars };
     }
