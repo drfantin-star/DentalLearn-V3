@@ -34,8 +34,10 @@ import { makeWordIndexLookup, countWordsFlat } from './word-index-lookup'
  *  À ne JAMAIS modifier sans alignement avec le module Edge. */
 export const SONNET_MODEL_T5 = 'claude-sonnet-4-6'
 
-/** max_tokens output Sonnet — 4096 suffit pour 5 scènes + 12 concepts dense. */
-export const SONNET_MAX_TOKENS_T5 = 4096
+/** max_tokens output Sonnet — 8192 nécessaire pour 8-12 scènes denses (T5-bis)
+ *  + 12 concepts ; l'ancienne valeur 4096 calibrée pour 5 scènes pouvait être
+ *  tronquée avec une cible plus dense. */
+export const SONNET_MAX_TOKENS_T5 = 8192
 
 /** Boucle retry sur stages json_parse / structure_check (1 essai + 2 retries).
  *  Pas de retry sur stage='anthropic_call' (le SDK retry déjà 429/5xx). */
@@ -52,14 +54,16 @@ const REQUIRED_TOP_LEVEL_KEYS = ['scenes', 'concepts'] as const
 // T5.2 — Constantes de garde pour la conversion raw → Timeline finale
 // ---------------------------------------------------------------------------
 
-/** Cap dur sur le nombre de scènes — spec POC §6 (max 5). Sonnet est instruit
- *  via le prompt mais le serveur tronque défensivement si la consigne dérive. */
-export const MAX_SCENES = 5
+/** Cap dur sur le nombre de scènes — T5-bis : cible 8-12, plafond défensif 15
+ *  (le prompt instruit Sonnet à 8-12, le serveur tronque uniquement si la
+ *  consigne dérive franchement). */
+export const MAX_SCENES = 15
 
-/** Bornes display_duration_sec — spec POC §6 (20-45s). Clamping côté serveur
- *  pour éviter un end_sec qui dépasse l'audio ou une scène trop courte. */
-export const MIN_DURATION_SEC = 20
-export const MAX_DURATION_SEC = 45
+/** Bornes display_duration_sec — T5-bis : fenêtre resserrée 15-35s pour
+ *  densifier la timeline. Clamping côté serveur pour éviter un end_sec qui
+ *  dépasse l'audio ou une scène trop courte. */
+export const MIN_DURATION_SEC = 15
+export const MAX_DURATION_SEC = 35
 
 /** Durée par défaut affichée pour un concept (en secondes). Le concept reste
  *  highlightable pendant 4s autour de son `at_sec` — choix arbitraire pour

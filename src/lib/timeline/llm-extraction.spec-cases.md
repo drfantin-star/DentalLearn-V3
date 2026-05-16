@@ -59,9 +59,11 @@ revue manuelle.
   - `warnings === []`
   - chaque `scene.start_sec` correspond au `start_sec` du mot d'index `trigger_at_word_index`
 
-### Cas 11 — Plus de 5 scènes
-- **Input** : 7 scènes.
-- **Attendu** : `timeline.scenes.length === 5`, warning `scenes_truncated:7->5`.
+### Cas 11 — Plus de 15 scènes (T5-bis)
+- **Input** : 18 scènes.
+- **Attendu** : `timeline.scenes.length === 15`, warning `scenes_truncated:18->15`.
+- **Note** : seuil relevé de 5 → 15 en T5-bis (cible prompt 8-12 ; plafond
+  défensif uniquement si dérive franche de Sonnet).
 
 ### Cas 12 — Card text de 80 caractères
 - **Input** : une `flowchart.cards[0].text` de 80 chars.
@@ -76,9 +78,10 @@ revue manuelle.
 - **Attendu** : fallback `start_sec = sceneIndex * (duration / count)`, warning
   `word_index_out_of_bounds:scene-N`.
 
-### Cas 15 — `display_duration_sec` hors range
-- **Input** : `display_duration_sec: 10` (< 20) ou `60` (> 45).
-- **Attendu** : clamp à 20 / 45, warning `duration_clamped:scene-N`.
+### Cas 15 — `display_duration_sec` hors range (T5-bis)
+- **Input** : `display_duration_sec: 10` (< 15) ou `45` (> 35).
+- **Attendu** : clamp à 15 / 35, warning `duration_clamped:scene-N`.
+- **Note** : fenêtre resserrée 20-45 → 15-35 en T5-bis pour densifier la timeline.
 
 ### Cas 16 — `id` scène absent ou doublon
 - **Input** : 2 scènes avec `id` non fourni, ou 2 scènes avec `id: 'scene-1'`.
