@@ -69,6 +69,7 @@ const CONCEPT_HIGHLIGHT_DURATION_SEC = 4;
 interface RequestBody {
   job_id: string;
   sequence_id: string;
+  script_text?: string;
 }
 
 interface TranscriptWord {
@@ -641,7 +642,11 @@ async function markJobFailed(jobId: string, message: string): Promise<void> {
 // Run principal
 // ---------------------------------------------------------------------------
 
-async function runExtraction(jobId: string, sequenceId: string): Promise<void> {
+async function runExtraction(
+  jobId: string,
+  sequenceId: string,
+  scriptTextOverride?: string,
+): Promise<void> {
   const startedAt = performance.now();
   await markJobRunning(jobId);
 
@@ -681,12 +686,19 @@ async function runExtraction(jobId: string, sequenceId: string): Promise<void> {
   }
 
   // 3. Reconstitue script_text
-  const scriptText = tlJson.transcript.segments
-    .map((s) => `${s.speaker.toUpperCase()}: ${s.text}`)
-    .join("\n\n")
-    .trim();
+  // Priorité 1 : script_text fourni dans le body (chaining T7 depuis le
+  // worker audio — court-circuite la reconstruction quand la timeline
+  // ElevenLabs n'a pas de segments).
+  // Priorité 2 : reconstruction depuis transcript.segments (pipeline Python).
+  const scriptText = scriptTextOverride?.trim() ||
+    tlJson.transcript.segments
+      .map((s) => `${s.speaker.toUpperCase()}: ${s.text}`)
+      .join("\n\n")
+      .trim();
   if (scriptText.length < 50) {
-    throw new Error("reconstructed script_text too short (< 50 chars)");
+    throw new Error(
+      "script_text too short (< 50 chars) — ni body.script_text ni transcript.segments utilisables",
+    );
   }
 
   // 4. Appel Anthropic
@@ -837,7 +849,7 @@ Deno.serve(async (req) => {
   // cf. https://supabase.com/docs/guides/functions/background-tasks
   const work = (async () => {
     try {
-      await runExtraction(body.job_id, body.sequence_id);
+      await runExtraction(body.job_id, body.sequence_id, body.script_text);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       logger.error("extraction_failed", {
