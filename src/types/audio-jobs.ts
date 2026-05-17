@@ -87,6 +87,37 @@ export interface AudioJobStatusResponse {
   error?: AudioJobErrorLog
 }
 
+// Sprint 4 T7 — Dashboard /admin/audio-jobs
+
+export type AudioJobType = 'elevenlabs_generation' | 'scene_extraction'
+
+export interface AudioJobListItem extends AudioGenerationJob {
+  job_type: AudioJobType
+  sequence_title: string | null
+  news_episode_title: string | null
+}
+
+export interface AudioJobsListResponse {
+  jobs: AudioJobListItem[]
+  total: number
+  page: number
+  limit: number
+  total_pages: number
+}
+
+export interface CostSummaryBucket {
+  job_type: AudioJobType
+  chars: number
+  cost_eur: number
+  cnt: number
+}
+
+export interface CostSummaryResponse {
+  month: string
+  by_type: Partial<Record<AudioJobType, CostSummaryBucket>> | null
+  total: { chars: number; cost_eur: number; count: number } | null
+}
+
 // Stats retournées par upload-script (validation côté serveur)
 export interface ScriptValidationResult {
   valid: boolean
