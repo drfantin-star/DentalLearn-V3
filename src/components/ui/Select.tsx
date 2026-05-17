@@ -67,7 +67,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${selectId}-error` : hint ? `${selectId}-hint` : undefined}
         className={cn(
-          'w-full rounded-lg border border-gray-300 bg-white focus:ring-2 focus:ring-primary focus:border-transparent transition-colors',
+          'w-full rounded-lg border border-gray-300 bg-white text-gray-900 focus:ring-2 focus:ring-primary focus:border-transparent transition-colors',
           sizeClasses[size],
           error && 'border-red-500 focus:ring-red-500',
           disabled && 'opacity-50 cursor-not-allowed',
