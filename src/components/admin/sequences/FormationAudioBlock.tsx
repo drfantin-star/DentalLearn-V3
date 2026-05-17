@@ -65,6 +65,11 @@ export function FormationAudioBlock({
   const [errorBanner, setErrorBanner] = useState<string | null>(null)
   const [submittingGenerate, setSubmittingGenerate] = useState(false)
   const [editedScript, setEditedScript] = useState<string>('')
+  // Flag défensif : quand l'admin clique « Régénérer » depuis le Cas D, on doit
+  // forcer le rendu Cas A même si `currentAudioUrl` est encore renseigné côté
+  // parent (le scriptText original n'est pas conservé après le Cas D, donc on
+  // ne peut pas relancer directement — il faut un nouvel upload).
+  const [userRequestedRegeneration, setUserRequestedRegeneration] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // Polling effect for "generating" phase
@@ -141,6 +146,7 @@ export function FormationAudioBlock({
       const stats = (await res.json()) as UploadScriptResponse
       setState({ phase: 'ready', scriptText: text, stats })
       setEditedScript(text)
+      setUserRequestedRegeneration(false)
     } catch (err) {
       setErrorBanner(err instanceof Error ? err.message : 'Erreur de lecture du fichier')
       setState({ phase: 'idle' })
@@ -203,7 +209,7 @@ export function FormationAudioBlock({
     </CardHeader>
   )
 
-  if (state.phase === 'idle' || state.phase === 'uploading') {
+  if (userRequestedRegeneration || state.phase === 'idle' || state.phase === 'uploading') {
     const uploading = state.phase === 'uploading'
     return (
       <Card variant="flat">
@@ -356,7 +362,14 @@ export function FormationAudioBlock({
             </div>
           )}
           <div>
-            <Button variant="secondary" size="md" onClick={resetToIdle}>
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={() => {
+                setUserRequestedRegeneration(true)
+                resetToIdle()
+              }}
+            >
               Régénérer l'audio
             </Button>
           </div>
