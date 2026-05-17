@@ -14,7 +14,16 @@ import { ExtractScenesClient, type SequenceLite } from './ExtractScenesClient'
 
 export const dynamic = 'force-dynamic'
 
-export default async function ExtractScenesPage() {
+interface PageProps {
+  searchParams?: { sequence_id?: string | string[] }
+}
+
+export default async function ExtractScenesPage({ searchParams }: PageProps) {
+  const rawSequenceId = searchParams?.sequence_id
+  const initialSequenceId = Array.isArray(rawSequenceId)
+    ? rawSequenceId[0]
+    : rawSequenceId
+
   const supabase = createClient()
   const {
     data: { session },
@@ -60,5 +69,15 @@ export default async function ExtractScenesPage() {
     formation_title: formationMap.get(s.formation_id ?? '') ?? null,
   }))
 
-  return <ExtractScenesClient sequences={candidates} />
+  const initialId =
+    initialSequenceId && candidates.some((c) => c.id === initialSequenceId)
+      ? initialSequenceId
+      : null
+
+  return (
+    <ExtractScenesClient
+      sequences={candidates}
+      initialSequenceId={initialId}
+    />
+  )
 }
