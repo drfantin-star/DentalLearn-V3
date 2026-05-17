@@ -11,6 +11,7 @@ import type { AudioJobStatusResponse } from '@/types/audio-jobs'
 interface FormationAudioBlockProps {
   sequenceId: string
   currentAudioUrl?: string | null
+  timelineUrl?: string | null
 }
 
 interface UploadScriptResponse {
@@ -54,6 +55,7 @@ async function extractErrorMessage(res: Response): Promise<string> {
 export function FormationAudioBlock({
   sequenceId,
   currentAudioUrl,
+  timelineUrl,
 }: FormationAudioBlockProps) {
   const initial: AudioBlockState = currentAudioUrl
     ? { phase: 'done', audioUrl: currentAudioUrl }
@@ -334,6 +336,24 @@ export function FormationAudioBlock({
           <audio controls src={audioUrl} className="w-full" />
           {durationLabel && (
             <p className="text-sm text-gray-500">Durée : {durationLabel}</p>
+          )}
+          {timelineUrl && (
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="info"
+                className="bg-white text-ds-turquoise border-ds-turquoise"
+              >
+                Timeline disponible
+              </Badge>
+              <a
+                href={`/admin/poc/extract-scenes?sequence_id=${sequenceId}`}
+                className="text-sm text-primary underline underline-offset-2"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Voir dans le POC →
+              </a>
+            </div>
           )}
           <div>
             <Button variant="secondary" size="md" onClick={resetToIdle}>
