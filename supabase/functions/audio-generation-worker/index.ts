@@ -98,8 +98,18 @@ async function runWorker(body: RequestBody): Promise<void> {
   }
 
   // 2. Upload timeline JSON si timestamps disponibles
+  // Dette D-S4-T5dette-02 : /v1/text-to-dialogue ignore `with_timestamps` côté
+  // ElevenLabs. `mergeChunkResults` retourne quand même un objet `alignment`
+  // (avec characters/start/end arrays VIDES) — donc `result.alignment` est
+  // truthy même sans timestamps réels. Sans le check `.length > 0`, on upload
+  // une timeline avec `transcript.segments = []` qui écrase ensuite la
+  // timeline Python (T2) déjà présente dans `sequences.timeline_url`.
   let timelineUrl: string | null = null;
-  if (with_timestamps && result.alignment) {
+  if (
+    with_timestamps &&
+    result.alignment &&
+    result.alignment.characters.length > 0
+  ) {
     const timeline = buildTimelineFromAlignment(
       result,
       audioUrl,
@@ -270,6 +280,7 @@ async function runWorker(body: RequestBody): Promise<void> {
           body: JSON.stringify({
             job_id: extractJob.id,
             sequence_id,
+            script_text,
           }),
           signal: AbortSignal.timeout(5_000),
         }).catch((err: unknown) => {
