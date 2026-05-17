@@ -6,10 +6,11 @@
 // pas besoin de transmettre user_id).
 
 import { useState } from 'react'
-import { X, Building2, Loader2 } from 'lucide-react'
+import { Building2, Loader2 } from 'lucide-react'
 import SiretCabinetForm, {
   CabinetData,
 } from '@/components/auth/SiretCabinetForm'
+import { Modal } from '@/components/ui/Modal'
 
 interface CreateCabinetModalProps {
   onClose: () => void
@@ -61,77 +62,64 @@ export default function CreateCabinetModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-      onClick={onClose}
+    <Modal
+      open
+      onClose={onClose}
+      variant="dark"
+      size="md"
+      closeOnEsc={!loading}
+      closeOnBackdrop={!loading}
     >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-auto"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-primary" />
-            </div>
-            <h2 className="text-lg font-bold text-gray-900">Créer mon cabinet</h2>
+      <Modal.Header title="Créer mon cabinet" onClose={loading ? undefined : onClose}>
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <Building2 className="w-5 h-5 text-primary" />
+        </div>
+      </Modal.Header>
+
+      <Modal.Body className="space-y-4" scrollable={false}>
+        <p className="text-sm text-gray-600">
+          En créant votre cabinet, vous deviendrez titulaire et pourrez
+          ensuite inviter vos collaborateurs et assistant·e·s.
+        </p>
+
+        <SiretCabinetForm
+          value={cabinet}
+          onChange={setCabinet}
+          disabled={loading}
+        />
+
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {error}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-            aria-label="Fermer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+        )}
+      </Modal.Body>
 
-        <div className="p-6 space-y-4">
-          <p className="text-sm text-gray-600">
-            En créant votre cabinet, vous deviendrez titulaire et pourrez
-            ensuite inviter vos collaborateurs et assistant·e·s.
-          </p>
-
-          <SiretCabinetForm
-            value={cabinet}
-            onChange={setCabinet}
-            disabled={loading}
-          />
-
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-              {error}
-            </div>
+      <Modal.Footer>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={loading}
+          className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+        >
+          Annuler
+        </button>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={loading || !cabinet.name.trim()}
+          className="flex-1 py-3 bg-primary text-white rounded-lg font-medium hover:bg-[#231470] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Création...
+            </>
+          ) : (
+            <>Créer mon cabinet</>
           )}
-        </div>
-
-        <div className="p-6 border-t border-gray-100 flex gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={loading}
-            className="flex-1 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Annuler
-          </button>
-          <button
-            type="button"
-            onClick={submit}
-            disabled={loading || !cabinet.name.trim()}
-            className="flex-1 py-3 bg-primary text-white rounded-lg font-medium hover:bg-[#231470] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Création...
-              </>
-            ) : (
-              <>Créer mon cabinet</>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+        </button>
+      </Modal.Footer>
+    </Modal>
   )
 }

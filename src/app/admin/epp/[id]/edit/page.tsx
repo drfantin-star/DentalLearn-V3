@@ -8,6 +8,9 @@ import { Save } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { TextField } from '@/components/ui/TextField';
+import { Select } from '@/components/ui/Select';
+import { Textarea } from '@/components/ui/Textarea';
 
 const themeOptions = [
   { value: 'esthetique', label: 'Esthetique Dentaire' },
@@ -125,97 +128,85 @@ export default function EditEppAuditPage() {
 
       <form onSubmit={handleSubmit} className="max-w-2xl">
         <Card className="p-8 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Titre *</label>
-            <input
-              type="text"
-              required
-              value={formData.title}
-              onChange={handleTitleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="Ex: Audit Traitement Endodontique"
+          <TextField
+            label="Titre"
+            required
+            size="lg"
+            type="text"
+            value={formData.title}
+            onChange={handleTitleChange}
+            placeholder="Ex: Audit Traitement Endodontique"
+            className="rounded-xl"
+          />
+
+          <TextField
+            label="Slug"
+            size="lg"
+            type="text"
+            value={formData.slug}
+            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+            placeholder="auto-genere-depuis-le-titre"
+            className="rounded-xl"
+          />
+
+          <Select
+            label="Thematique"
+            size="lg"
+            value={formData.theme_slug}
+            onChange={(e) => setFormData({ ...formData, theme_slug: e.target.value })}
+            options={themeOptions}
+            className="rounded-xl"
+          />
+
+          <Textarea
+            label="Description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            rows={4}
+            placeholder="Description de l'audit EPP..."
+            className="px-4 py-3 rounded-xl text-base"
+          />
+
+          <div className="grid grid-cols-2 gap-4">
+            <TextField
+              label="Dossiers min"
+              size="lg"
+              type="number"
+              min={1}
+              value={formData.nb_dossiers_min}
+              onChange={(e) => setFormData({ ...formData, nb_dossiers_min: parseInt(e.target.value) })}
+              className="rounded-xl"
             />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Slug</label>
-            <input
-              type="text"
-              value={formData.slug}
-              onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="auto-genere-depuis-le-titre"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Thematique</label>
-            <select
-              value={formData.theme_slug}
-              onChange={(e) => setFormData({ ...formData, theme_slug: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-            >
-              {themeOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
-            <textarea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={4}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="Description de l'audit EPP..."
+            <TextField
+              label="Dossiers max"
+              size="lg"
+              type="number"
+              min={1}
+              value={formData.nb_dossiers_max}
+              onChange={(e) => setFormData({ ...formData, nb_dossiers_max: parseInt(e.target.value) })}
+              className="rounded-xl"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Dossiers min</label>
-              <input
-                type="number"
-                min="1"
-                value={formData.nb_dossiers_min}
-                onChange={(e) => setFormData({ ...formData, nb_dossiers_min: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Dossiers max</label>
-              <input
-                type="number"
-                min="1"
-                value={formData.nb_dossiers_max}
-                onChange={(e) => setFormData({ ...formData, nb_dossiers_max: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Delai T2 min (mois)</label>
-              <input
-                type="number"
-                min="1"
-                value={formData.delai_t2_mois_min}
-                onChange={(e) => setFormData({ ...formData, delai_t2_mois_min: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Delai T2 max (mois)</label>
-              <input
-                type="number"
-                min="1"
-                value={formData.delai_t2_mois_max}
-                onChange={(e) => setFormData({ ...formData, delai_t2_mois_max: parseInt(e.target.value) })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              />
-            </div>
+            <TextField
+              label="Delai T2 min (mois)"
+              size="lg"
+              type="number"
+              min={1}
+              value={formData.delai_t2_mois_min}
+              onChange={(e) => setFormData({ ...formData, delai_t2_mois_min: parseInt(e.target.value) })}
+              className="rounded-xl"
+            />
+            <TextField
+              label="Delai T2 max (mois)"
+              size="lg"
+              type="number"
+              min={1}
+              value={formData.delai_t2_mois_max}
+              onChange={(e) => setFormData({ ...formData, delai_t2_mois_max: parseInt(e.target.value) })}
+              className="rounded-xl"
+            />
           </div>
 
           <div className="flex items-center gap-3">
