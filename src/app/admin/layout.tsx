@@ -233,6 +233,15 @@ export default function AdminLayout({
             </li>
             <li>
               <Link
+                href="/admin/audio-jobs"
+                className="flex items-center gap-3 px-4 py-2 ml-6 rounded-xl hover:bg-white/10 transition-colors text-sm"
+              >
+                <FileAudio className="w-4 h-4 opacity-70" />
+                Audio Jobs
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/admin/poc/karaoke"
                 className="flex items-center gap-3 px-4 py-2 ml-6 rounded-xl hover:bg-white/10 transition-colors text-sm"
               >
