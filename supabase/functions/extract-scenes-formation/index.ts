@@ -62,6 +62,19 @@ const MAX_SCENES = 15;
 // Durée d'affichage par défaut d'un concept (alignée llm-extraction.ts:67).
 const CONCEPT_HIGHLIGHT_DURATION_SEC = 4;
 
+// Tarification claude-sonnet-4-6 (USD / 1M tokens) — D-S4-09.
+// Doit rester aligné avec src/lib/llm/pricing.ts si modifié.
+const SONNET_INPUT_USD_PER_MTOK = 3;
+const SONNET_OUTPUT_USD_PER_MTOK = 15;
+const USD_TO_EUR = 0.92;
+
+function computeCostEur(inputTokens: number, outputTokens: number): number {
+  const costUsd =
+    (inputTokens / 1_000_000) * SONNET_INPUT_USD_PER_MTOK +
+    (outputTokens / 1_000_000) * SONNET_OUTPUT_USD_PER_MTOK;
+  return Math.round(costUsd * USD_TO_EUR * 10_000) / 10_000;
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -508,7 +521,9 @@ function buildTimelineFromRaw(
   const convertedConcepts = sourceConcepts.map((c, index) => {
     let atSec = lookup(c.at_word_index);
     if (atSec === null) {
-      atSec = 0;
+      atSec = sourceConcepts.length > 0
+        ? (index * durationSec) / sourceConcepts.length
+        : 0;
       warnings.push(
         `concept_word_index_out_of_bounds:${c.term ?? `idx-${index}`}`,
       );
@@ -588,6 +603,8 @@ async function markJobCompleted(
     duration_ms: number;
     tokens_input: number;
     tokens_output: number;
+    cost_eur: number;
+    chars_consumed: number;
     warnings: string[];
   },
 ): Promise<void> {
@@ -601,6 +618,8 @@ async function markJobCompleted(
       updated_at: nowIso,
       timeline_url: meta.timeline_url,
       duration_sec: meta.duration_sec,
+      cost_eur: meta.cost_eur,
+      chars_consumed: meta.chars_consumed,
       error_log: {
         // On loggue les warnings + meta dans error_log (champ jsonb existant) :
         // pas idéal sémantiquement mais évite d'ajouter une colonne juste pour
@@ -781,6 +800,9 @@ async function runExtraction(
 
   // 9. UPDATE job → completed
   const durationMs = Math.round(performance.now() - startedAt);
+  const tokensInput = response.usage?.input_tokens ?? 0;
+  const tokensOutput = response.usage?.output_tokens ?? 0;
+  const costEur = computeCostEur(tokensInput, tokensOutput);
   await markJobCompleted(jobId, {
     timeline_url: publicUrl,
     // audio_generation_jobs.duration_sec est de type SQL `int` : on arrondit
@@ -790,8 +812,10 @@ async function runExtraction(
     scenes_count: built.scenes_count,
     concepts_count: built.concepts_count,
     duration_ms: durationMs,
-    tokens_input: response.usage?.input_tokens ?? 0,
-    tokens_output: response.usage?.output_tokens ?? 0,
+    tokens_input: tokensInput,
+    tokens_output: tokensOutput,
+    cost_eur: costEur,
+    chars_consumed: scriptText.length,
     warnings: built.warnings,
   });
 
@@ -801,8 +825,10 @@ async function runExtraction(
     duration_ms: durationMs,
     scenes_count: built.scenes_count,
     concepts_count: built.concepts_count,
-    tokens_input: response.usage?.input_tokens ?? 0,
-    tokens_output: response.usage?.output_tokens ?? 0,
+    tokens_input: tokensInput,
+    tokens_output: tokensOutput,
+    cost_eur: costEur,
+    chars_consumed: scriptText.length,
   });
 }
 
