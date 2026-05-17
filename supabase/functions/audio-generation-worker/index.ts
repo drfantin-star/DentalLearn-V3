@@ -36,6 +36,12 @@ const logger = new Logger("audio-generation-worker");
 const AUDIO_STORAGE_BUCKET = "formations";
 const TIMELINE_STORAGE_BUCKET = "audio-timelines";
 const COST_PER_1000_CHARS_EUR = 0.05;
+// ElevenLabs /v1/text-to-dialogue sert par défaut du mp3_44100_128 (CBR 128
+// kbps). On en déduit la durée audio à partir de la taille du buffer concaténé
+// (durée = octets × 8 ÷ bitrate). Précision ~1 frame MP3 (~26 ms), largement
+// plus exact que l'estimation chars/min côté Next.js qui ignore speed=1.1 et
+// surestime de ~38% (cf. D-S4-05).
+const MP3_BITRATE_BPS = 128_000;
 
 interface RequestBody {
   job_id: string;
@@ -190,14 +196,22 @@ async function runWorker(body: RequestBody): Promise<void> {
       : existingHistory;
 
   // 5. UPDATE sequence
-  // Dette D-S4-T5dette-02 : /v1/text-to-dialogue ne retourne pas d'alignment,
-  // donc result.durationSec vaut toujours 0. Fallback sur la durée estimée
-  // côté Next.js (computeScriptStats) si fournie dans le RequestBody.
+  // Dette D-S4-T5dette-02 / D-S4-05 : /v1/text-to-dialogue ne retourne pas
+  // d'alignment, donc result.durationSec vaut toujours 0. Cascade de fallback :
+  //   1. result.durationSec (alignment réel — n'arrive jamais en pratique)
+  //   2. taille du MP3 ÷ bitrate (mesure exacte de l'audio généré)
+  //   3. estimated_duration_sec passé par la route (estimation chars/min)
+  //   4. 0 (dernier recours)
+  const durationFromBytes = result.audio.byteLength > 0
+    ? Math.round((result.audio.byteLength * 8) / MP3_BITRATE_BPS)
+    : 0;
   const durationSec = result.durationSec > 0
     ? Math.round(result.durationSec)
-    : (typeof estimatedDurationSec === "number" && estimatedDurationSec > 0
-      ? Math.round(estimatedDurationSec)
-      : 0);
+    : durationFromBytes > 0
+    ? durationFromBytes
+    : typeof estimatedDurationSec === "number" && estimatedDurationSec > 0
+    ? Math.round(estimatedDurationSec)
+    : 0;
   const updatePayload: Record<string, unknown> = {
     course_media_url: audioUrl,
     course_media_type: "audio",
