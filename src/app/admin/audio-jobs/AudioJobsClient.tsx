@@ -644,14 +644,30 @@ function JobDetailPanel({
             </Field>
           ) : null}
           {job.error_log ? (
-            <div>
-              <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">
-                error_log
-              </div>
-              <pre className="bg-red-50 border border-red-200 text-red-900 text-xs p-3 rounded-lg overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(job.error_log, null, 2)}
-              </pre>
-            </div>
+            (() => {
+              const isWarning = job.status === 'completed'
+              const isSceneExtractionWarning =
+                isWarning &&
+                job.error_log.message === 'scene_extraction_completed'
+              const blockClasses = isWarning
+                ? 'bg-yellow-50 border border-yellow-200 text-yellow-900 text-xs p-3 rounded-lg overflow-x-auto whitespace-pre-wrap'
+                : 'bg-red-50 border border-red-200 text-red-900 text-xs p-3 rounded-lg overflow-x-auto whitespace-pre-wrap'
+              return (
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-gray-500 mb-1">
+                    error_log
+                  </div>
+                  {isSceneExtractionWarning ? (
+                    <div className="text-xs text-yellow-700 mb-1">
+                      Extraction réussie — warnings non bloquants
+                    </div>
+                  ) : null}
+                  <pre className={blockClasses}>
+                    {JSON.stringify(job.error_log, null, 2)}
+                  </pre>
+                </div>
+              )
+            })()
           ) : null}
           {retryError ? (
             <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
