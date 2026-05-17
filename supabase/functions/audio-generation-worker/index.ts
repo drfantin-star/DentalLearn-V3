@@ -228,6 +228,69 @@ async function runWorker(body: RequestBody): Promise<void> {
     total_chunks: result.totalChunks,
     has_timeline: timelineUrl !== null,
   });
+
+  // 7. T7 — Chaining vers extract-scenes-formation. On crée un job dédié
+  // `scene_extraction` puis on POST fire-and-forget vers l'Edge Function
+  // qui transforme la timeline karaoké brute en timeline structurée
+  // (scènes + concepts via Sonnet). Le worker audio est déjà completed :
+  // aucune erreur de chaining ne doit faire revenir le job en failed.
+  // Pas de await sur le fetch — seul le SYN/handshake TCP est borné à 5 s
+  // via AbortSignal, l'exécution Sonnet (~30-45 s) court côté Edge Function.
+  if (with_timestamps) {
+    try {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+      const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+      const ADMIN_USER_ID = "af506ec2-a281-4485-a504-b0633c8d2362";
+
+      const { data: extractJob, error: insertErr } = await supabase
+        .from("audio_generation_jobs")
+        .insert({
+          sequence_id,
+          triggered_by: ADMIN_USER_ID,
+          script_text,
+          with_timestamps: false,
+          job_type: "scene_extraction",
+          status: "pending",
+        })
+        .select("id")
+        .single();
+
+      if (insertErr || !extractJob) {
+        logger.warn("scene_extraction_job_insert_failed", {
+          error: insertErr?.message,
+          sequence_id,
+        });
+      } else {
+        fetch(`${supabaseUrl}/functions/v1/extract-scenes-formation`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${serviceKey}`,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            job_id: extractJob.id,
+            sequence_id,
+          }),
+          signal: AbortSignal.timeout(5_000),
+        }).catch((err: unknown) => {
+          logger.warn("scene_extraction_fire_failed", {
+            error: err instanceof Error ? err.message : String(err),
+            sequence_id,
+          });
+        });
+
+        logger.info("scene_extraction_fired", {
+          extract_job_id: extractJob.id,
+          sequence_id,
+        });
+      }
+    } catch (err: unknown) {
+      logger.warn("scene_extraction_chaining_error", {
+        error: err instanceof Error ? err.message : String(err),
+        sequence_id,
+      });
+    }
+  }
 }
 
 // Sprint 4 T6 — Chaining batch. À la complétion (succès OU échec) d'un job,
