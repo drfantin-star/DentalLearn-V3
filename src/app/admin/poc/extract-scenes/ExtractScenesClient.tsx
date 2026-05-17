@@ -90,11 +90,12 @@ const POLL_MAX_DURATION_MS = 5 * 60 * 1000 // garde-fou 5 min
 
 interface Props {
   sequences: SequenceLite[]
+  initialSequenceId?: string | null
 }
 
-export function ExtractScenesClient({ sequences }: Props) {
+export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
   const [selectedId, setSelectedId] = useState<string>(
-    sequences[0]?.id ?? ''
+    initialSequenceId ?? sequences[0]?.id ?? ''
   )
   const [dryRun, setDryRun] = useState<boolean>(true)
   const [loading, setLoading] = useState<boolean>(false)
