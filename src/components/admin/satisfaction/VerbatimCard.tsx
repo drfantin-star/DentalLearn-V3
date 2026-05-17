@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   Star,
   CheckCircle2,
@@ -11,6 +11,7 @@ import {
   ShieldAlert,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { Modal } from '@/components/ui/Modal'
 
 export interface Verbatim {
   survey_id: string
@@ -82,15 +83,6 @@ export function VerbatimCard({ verbatim: v }: Props) {
   const [revealing, setRevealing] = useState(false)
   const [revealError, setRevealError] = useState<string | null>(null)
   const [identity, setIdentity] = useState<RevealedIdentity | null>(null)
-
-  useEffect(() => {
-    if (!showConfirm) return
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !revealing) setShowConfirm(false)
-    }
-    document.addEventListener('keydown', handleKey)
-    return () => document.removeEventListener('keydown', handleKey)
-  }, [showConfirm, revealing])
 
   const hasAnyText =
     !!(v.strong_points && v.strong_points.trim()) ||
@@ -237,72 +229,74 @@ export function VerbatimCard({ verbatim: v }: Props) {
       )}
 
       {/* Confirm modal */}
-      {showConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-                <ShieldAlert className="w-5 h-5 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Révéler l'identité du répondant</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Cette action sera enregistrée dans le journal d'audit RGPD. Le répondant pourra savoir que son identité a été consultée s'il en fait la demande (Art. 15 RGPD).
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-semibold text-gray-700 block mb-1">
-                Raison de la consultation <span className="text-gray-400 font-normal">(recommandé)</span>
-              </label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Ex. : prise de contact pour traiter un point d'amélioration mentionné…"
-                rows={3}
-                className="w-full text-sm px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary resize-y"
-              />
-            </div>
-
-            {revealError && (
-              <p className="text-sm text-red-600">{revealError}</p>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!revealing) setShowConfirm(false)
-                }}
-                disabled={revealing}
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-60"
-              >
-                Annuler
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmReveal}
-                disabled={revealing}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-60"
-              >
-                {revealing ? (
-                  <>
-                    <Loader2 size={14} className="animate-spin" />
-                    Révélation…
-                  </>
-                ) : (
-                  'Confirmer la révélation'
-                )}
-              </button>
-            </div>
+      <Modal
+        open={showConfirm}
+        onClose={() => {
+          if (!revealing) setShowConfirm(false)
+        }}
+        variant="dark"
+        size="md"
+        closeOnEsc={!revealing}
+        closeOnBackdrop={!revealing}
+        className="p-6 space-y-4"
+      >
+        <div className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <ShieldAlert className="w-5 h-5 text-amber-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">Révéler l'identité du répondant</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Cette action sera enregistrée dans le journal d'audit RGPD. Le répondant pourra savoir que son identité a été consultée s'il en fait la demande (Art. 15 RGPD).
+            </p>
           </div>
         </div>
-      )}
+
+        <div>
+          <label className="text-sm font-semibold text-gray-700 block mb-1">
+            Raison de la consultation <span className="text-gray-400 font-normal">(recommandé)</span>
+          </label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Ex. : prise de contact pour traiter un point d'amélioration mentionné…"
+            rows={3}
+            className="w-full text-sm px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary resize-y"
+          />
+        </div>
+
+        {revealError && (
+          <p className="text-sm text-red-600">{revealError}</p>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (!revealing) setShowConfirm(false)
+            }}
+            disabled={revealing}
+            className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-60"
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirmReveal}
+            disabled={revealing}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-60"
+          >
+            {revealing ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Révélation…
+              </>
+            ) : (
+              'Confirmer la révélation'
+            )}
+          </button>
+        </div>
+      </Modal>
     </div>
   )
 }

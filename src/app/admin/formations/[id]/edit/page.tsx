@@ -7,6 +7,8 @@ import { Save, Upload } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
+import { TextField } from '@/components/ui/TextField';
+import { Select } from '@/components/ui/Select';
 
 interface FormData {
   title: string;
@@ -195,40 +197,37 @@ export default function EditFormationPage() {
 
       <form onSubmit={handleSubmit} className="max-w-2xl">
         <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Titre *</label>
-            <input
-              type="text"
-              required
-              value={formData.title}
-              onChange={handleTitleChange}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="Ex: Éclaircissements & Taches Blanches"
-            />
-          </div>
+          <TextField
+            label="Titre"
+            required
+            size="lg"
+            type="text"
+            value={formData.title}
+            onChange={handleTitleChange}
+            placeholder="Ex: Éclaircissements & Taches Blanches"
+            className="rounded-xl"
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Formateur *</label>
-            <input
-              type="text"
-              required
-              value={formData.instructor_name}
-              onChange={(e) => setFormData({ ...formData, instructor_name: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="Ex: Dr Laurent Elbeze"
-            />
-          </div>
+          <TextField
+            label="Formateur"
+            required
+            size="lg"
+            type="text"
+            value={formData.instructor_name}
+            onChange={(e) => setFormData({ ...formData, instructor_name: e.target.value })}
+            placeholder="Ex: Dr Laurent Elbeze"
+            className="rounded-xl"
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Description courte</label>
-            <input
-              type="text"
-              value={formData.description_short}
-              onChange={(e) => setFormData({ ...formData, description_short: e.target.value })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="Résumé en 1-2 phrases"
-            />
-          </div>
+          <TextField
+            label="Description courte"
+            size="lg"
+            type="text"
+            value={formData.description_short}
+            onChange={(e) => setFormData({ ...formData, description_short: e.target.value })}
+            placeholder="Résumé en 1-2 phrases"
+            className="rounded-xl"
+          />
 
           {/* Cover Image */}
           <div>
@@ -277,47 +276,46 @@ export default function EditFormationPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Catégorie</label>
-              <select
-                value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              >
-                <option value="esthetique">Esthétique</option>
-                <option value="restauratrice">Restauratrice</option>
-                <option value="chirurgie">Chirurgie</option>
-                <option value="implant">Implantologie</option>
-                <option value="prothese">Prothèse</option>
-                <option value="parodontologie">Parodontologie</option>
-                <option value="endodontie">Endodontie</option>
-                <option value="soft-skills">Soft Skills</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Niveau</label>
-              <select
-                value={formData.level}
-                onChange={(e) => setFormData({ ...formData, level: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
-              >
-                <option value="beginner">Débutant</option>
-                <option value="intermediate">Intermédiaire</option>
-                <option value="advanced">Avancé</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Nombre de séquences</label>
-            <input
-              type="number"
-              min="1"
-              value={formData.total_sequences}
-              onChange={(e) => setFormData({ ...formData, total_sequences: parseInt(e.target.value) })}
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+            <Select
+              label="Catégorie"
+              size="lg"
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              options={[
+                { value: 'esthetique', label: 'Esthétique' },
+                { value: 'restauratrice', label: 'Restauratrice' },
+                { value: 'chirurgie', label: 'Chirurgie' },
+                { value: 'implant', label: 'Implantologie' },
+                { value: 'prothese', label: 'Prothèse' },
+                { value: 'parodontologie', label: 'Parodontologie' },
+                { value: 'endodontie', label: 'Endodontie' },
+                { value: 'soft-skills', label: 'Soft Skills' },
+              ]}
+              className="rounded-xl"
+            />
+            <Select
+              label="Niveau"
+              size="lg"
+              value={formData.level}
+              onChange={(e) => setFormData({ ...formData, level: e.target.value })}
+              options={[
+                { value: 'beginner', label: 'Débutant' },
+                { value: 'intermediate', label: 'Intermédiaire' },
+                { value: 'advanced', label: 'Avancé' },
+              ]}
+              className="rounded-xl"
             />
           </div>
+
+          <TextField
+            label="Nombre de séquences"
+            size="lg"
+            type="number"
+            min={1}
+            value={formData.total_sequences}
+            onChange={(e) => setFormData({ ...formData, total_sequences: parseInt(e.target.value) })}
+            className="rounded-xl"
+          />
 
           <div className="flex justify-end gap-4 pt-4">
             <Link href={`/admin/formations/${formationId}`} className="px-6 py-3 border border-gray-300 rounded-xl font-medium text-gray-700 hover:bg-gray-50">
