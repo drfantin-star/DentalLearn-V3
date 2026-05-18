@@ -113,7 +113,7 @@ export default async function FormationTimelineEditorPage({
       initialPublished={published}
       initialVersions={initialVersions}
       sourceTitle={sourceTitle}
-      noTimelineMessage="Aucune timeline pour cette séquence. Lance d'abord le pipeline T2 (script Python), puis l'extraction LLM via /admin/poc/extract-scenes (T5)."
+      noTimelineMessage="Aucune timeline pour cette séquence. Génère d'abord l'audio depuis la page séquence (bloc Audio du cours) — l'extraction des scènes se déclenche ensuite automatiquement."
     />
   )
 }

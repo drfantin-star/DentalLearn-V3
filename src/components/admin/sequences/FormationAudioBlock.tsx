@@ -352,12 +352,12 @@ export function FormationAudioBlock({
                 Timeline disponible
               </Badge>
               <a
-                href={`/admin/poc/extract-scenes?sequence_id=${sequenceId}`}
+                href={`/admin/timelines/formation/${sequenceId}`}
                 className="text-sm text-primary underline underline-offset-2"
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Voir dans le POC →
+                Éditer la timeline →
               </a>
             </div>
           )}
