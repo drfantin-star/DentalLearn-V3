@@ -48,15 +48,12 @@ async function run(opts: RunOptions): Promise<RunResult> {
 
   logger.info("run_start", { limit: opts.limit, now_utc: now.toISOString() });
 
-  // Détecter les sessions dont la publication effective (published_at) est dans la dernière heure
+  // FIX : pas d'embed imbriqué — PostgREST ne peut pas résoudre la relation
+  // live_sessions.formateur_user_id → formateur_profiles.user_id (pas de FK déclarée entre ces 2 tables)
+  // On charge les sessions seules, puis on fetch le display_name séparément par session.
   const { data: newSessions, error: sessErr } = await supabase
     .from("live_sessions")
-    .select(`
-      id,
-      title,
-      formateur_user_id,
-      formateur_profiles!inner ( display_name, user_id )
-    `)
+    .select("id, title, formateur_user_id")
     .eq("is_published", true)
     .is("deleted_at", null)
     .not("published_at", "is", null)
@@ -74,10 +71,14 @@ async function run(opts: RunOptions): Promise<RunResult> {
 
   for (const session of newSessions ?? []) {
     const formateurUserId = session.formateur_user_id;
-    // formateur_profiles is joined as an object (one-to-one)
-    const fp = Array.isArray(session.formateur_profiles)
-      ? session.formateur_profiles[0]
-      : session.formateur_profiles;
+
+    // FIX : fetch display_name séparément (requête indépendante, pas d'embed)
+    const { data: fp } = await supabase
+      .from("formateur_profiles")
+      .select("display_name")
+      .eq("user_id", formateurUserId)
+      .maybeSingle();
+
     const displayName = fp?.display_name ?? "Formateur";
 
     // Récupérer les followers de ce formateur
