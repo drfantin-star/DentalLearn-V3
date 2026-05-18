@@ -16,6 +16,7 @@ import {
   Check,
 } from 'lucide-react'
 import { QuestionApprovalButton } from './QuestionApprovalButton'
+import { QuestionRejectButton } from './QuestionRejectButton'
 
 const SPECIALITES = [
   { value: 'actu-pro', label: 'Actualité professionnelle' },
@@ -197,6 +198,24 @@ export function QuestionsListPage(props: QuestionsListPageProps) {
     })
   }
 
+  const handleQuestionDeleted = (questionId: string) => {
+    setData((prev) => {
+      if (!prev) return prev
+      const question = prev.questions.find((q) => q.id === questionId)
+      if (!question) return prev
+      const wasApproved = question.is_daily_quiz_eligible
+      return {
+        ...prev,
+        questions: prev.questions.filter((q) => q.id !== questionId),
+        total: Math.max(0, prev.total - 1),
+        counts: {
+          pending: wasApproved ? prev.counts.pending : prev.counts.pending - 1,
+          approved: wasApproved ? prev.counts.approved - 1 : prev.counts.approved,
+        },
+      }
+    })
+  }
+
   const totalLabel = data ? data.total : 0
   const isApproved = props.status === 'approved'
 
@@ -295,7 +314,12 @@ export function QuestionsListPage(props: QuestionsListPageProps) {
         <>
           <div className="space-y-4">
             {data.questions.map((q) => (
-              <QuestionCard key={q.id} question={q} onApprovalChange={handleApprovalChange} />
+              <QuestionCard
+                key={q.id}
+                question={q}
+                onApprovalChange={handleApprovalChange}
+                onDelete={props.status === 'pending' ? handleQuestionDeleted : undefined}
+              />
             ))}
           </div>
           <Pagination
@@ -313,9 +337,11 @@ export function QuestionsListPage(props: QuestionsListPageProps) {
 function QuestionCard({
   question,
   onApprovalChange,
+  onDelete,
 }: {
   question: NewsQuestion
   onApprovalChange: (questionId: string, newValue: boolean) => void
+  onDelete?: (questionId: string) => void
 }) {
   const typeLabel = QUESTION_TYPE_LABEL[question.question_type] ?? question.question_type
   const difficultyLabel =
@@ -400,12 +426,21 @@ function QuestionCard({
         ) : (
           <span className="text-xs text-gray-400 italic">Synthèse inconnue</span>
         )}
-        <QuestionApprovalButton
-          questionId={question.id}
-          initialApproved={question.is_daily_quiz_eligible}
-          onChange={(newValue) => onApprovalChange(question.id, newValue)}
-          size="sm"
-        />
+        <div className="flex items-center gap-2">
+          <QuestionApprovalButton
+            questionId={question.id}
+            initialApproved={question.is_daily_quiz_eligible}
+            onChange={(newValue) => onApprovalChange(question.id, newValue)}
+            size="sm"
+          />
+          {onDelete && (
+            <QuestionRejectButton
+              questionId={question.id}
+              onDeleted={() => onDelete(question.id)}
+              size="sm"
+            />
+          )}
+        </div>
       </div>
     </div>
   )

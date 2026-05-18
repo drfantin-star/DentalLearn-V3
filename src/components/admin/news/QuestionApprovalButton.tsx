@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Check, X, Loader2 } from 'lucide-react'
+import { Check, Loader2 } from 'lucide-react'
 
 interface QuestionApprovalButtonProps {
   questionId: string
@@ -51,7 +51,7 @@ export function QuestionApprovalButton({
 
   const stateClasses = approved
     ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+    : 'bg-emerald-500 text-white hover:bg-emerald-600'
 
   return (
     <div className="flex items-center gap-2">
@@ -63,12 +63,10 @@ export function QuestionApprovalButton({
       >
         {loading ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : approved ? (
-          <Check className="w-3.5 h-3.5" />
         ) : (
-          <X className="w-3.5 h-3.5" />
+          <Check className="w-3.5 h-3.5" />
         )}
-        {approved ? 'Approuvée' : 'En attente'}
+        {approved ? 'Approuvée' : 'Valider'}
       </button>
       {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
