@@ -4,11 +4,20 @@
 // chaque source active de type='pubmed' dans news_sources.
 //
 // Déclenchement :
-//   - cron Supabase (pg_cron + pg_net) → lundi 06h00 Europe/Paris
-//   - manuel via HTTP POST (pour re-run ad hoc, réservé service_role)
+//   - cron Supabase (pg_cron + pg_net) → 10 crons individuels, un par source
+//     active, décalés de 2 min à partir de lundi 04h00 UTC (split CPU pour
+//     rester sous le quota 2000 ms/invocation Edge Function).
+//   - manuel via HTTP POST (pour re-run ad hoc, réservé service_role).
+//
+// Body POST (optionnel) :
+//   {} ou vide → ingère toutes les sources actives (legacy, conservé pour
+//                rétrocompat ; non utilisé par les crons).
+//   { "source_id": "<uuid>" } → ingère cette source uniquement
+//     (mode utilisé par les crons split, post fix CPU).
 //
 // Comportement :
-//   1. SELECT des sources actives type='pubmed' + query MeSH.
+//   1. SELECT des sources actives type='pubmed' + query MeSH (filtré sur
+//      source_id si fourni).
 //   2. Pour chaque source : ESearch (PMIDs) → EFetch (XML) → parse.
 //   3. UPSERT dans news_raw avec dedup strict sur (source_id, external_id)
 //      via la contrainte news_raw_source_external_uniq (ON CONFLICT DO NOTHING).
@@ -40,7 +49,7 @@ interface SourceRunResult {
   error: string | null;
 }
 
-async function runIngestion(): Promise<{
+async function runIngestion(sourceId?: string): Promise<{
   ok: boolean;
   sources: SourceRunResult[];
   total_inserted: number;
@@ -54,15 +63,26 @@ async function runIngestion(): Promise<{
 
   const ncbi = new NcbiClient({ email, apiKey });
 
-  const { data: sources, error: srcErr } = await supabase
+  let query = supabase
     .from("news_sources")
     .select("id, name, query")
     .eq("type", "pubmed")
     .eq("active", true);
+  if (sourceId) query = query.eq("id", sourceId);
+
+  const { data: sources, error: srcErr } = await query;
 
   if (srcErr) throw new Error(`news_sources query failed: ${srcErr.message}`);
 
-  logger.info("ingestion_start", { sources_count: sources?.length ?? 0 });
+  if (sourceId && (!sources || sources.length === 0)) {
+    throw new Error(`source not found or inactive: ${sourceId}`);
+  }
+
+  logger.info("ingestion_start", {
+    sources_count: sources?.length ?? 0,
+    mode: sourceId ? "single" : "all",
+    source_id: sourceId ?? null,
+  });
 
   const results: SourceRunResult[] = [];
   let totalInserted = 0;
@@ -219,6 +239,9 @@ function chunk<T>(arr: T[], size: number): T[][] {
 // HTTP handler
 // ---------------------------------------------------------------------------
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 Deno.serve(async (req) => {
   // Auth : seul le service_role peut déclencher manuellement. Le cron pg_net
   // envoie l'Authorization avec la service_role key (cf. migration cron).
@@ -231,17 +254,41 @@ Deno.serve(async (req) => {
     });
   }
 
+  let sourceId: string | undefined;
   try {
-    const result = await runIngestion();
+    const bodyText = await req.text();
+    if (bodyText.trim().length > 0) {
+      const parsed = JSON.parse(bodyText);
+      if (parsed && typeof parsed === "object" && "source_id" in parsed) {
+        const raw = (parsed as { source_id: unknown }).source_id;
+        if (typeof raw !== "string" || !UUID_RE.test(raw)) {
+          return new Response(
+            JSON.stringify({ ok: false, error: "invalid source_id (uuid expected)" }),
+            { status: 400, headers: { "content-type": "application/json" } },
+          );
+        }
+        sourceId = raw;
+      }
+    }
+  } catch (_e) {
+    return new Response(
+      JSON.stringify({ ok: false, error: "invalid JSON body" }),
+      { status: 400, headers: { "content-type": "application/json" } },
+    );
+  }
+
+  try {
+    const result = await runIngestion(sourceId);
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    logger.error("ingestion_failed", { error: message });
+    logger.error("ingestion_failed", { error: message, source_id: sourceId ?? null });
+    const status = message.startsWith("source not found") ? 404 : 500;
     return new Response(JSON.stringify({ ok: false, error: message }), {
-      status: 500,
+      status,
       headers: { "content-type": "application/json" },
     });
   }
