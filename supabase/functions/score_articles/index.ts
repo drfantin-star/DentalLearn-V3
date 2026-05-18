@@ -41,21 +41,20 @@
 // (CLI manuel pour backfill, cron pour la suite).
 //
 // Comportement :
-//   1. Charger l'ensemble des hash dedupe_hash déjà présents en news_scored
-//      (status != 'duplicate') — sert au cross-source dedup.
-//   2. Charger l'ensemble des raw_id déjà scorés (idempotence : un re-run
-//      ne re-scorera aucun article).
-//   3. SELECT news_raw avec embed news_sources(type), exclure les articles
-//      déjà rétractés à l'ingestion (raw_payload->>retracted_at_ingestion=true,
-//      cf. Ticket 2). Économie d'appels Haiku — ils seraient écartés en aval.
-//   4. Tri : published_at DESC NULLS LAST → source.type='pubmed' first →
-//      ingested_at ASC. Pour un dedupe_hash donné, le 1er rencontré gagne
-//      (PubMed a la priorité sur RSS pour le même article : DOI fiable +
-//      abstract complet). Suivants → INSERT status='duplicate' sans appel LLM.
-//   5. Slice à `limit` articles → fenêtre de travail de l'invocation. Le tri
-//      étant global (déterministe), les articles non traités ce tour seront
-//      simplement traités au tour suivant (cohérence cross-source préservée
-//      via existing_hashes BDD rechargé à chaque invocation).
+//   1. RPC count_unscored_articles() — total restant (sans charger les
+//      lignes), sert à total_remaining_estimate / has_more.
+//   2. HEAD count news_scored — already_scored (monitoring).
+//   3. RPC get_unscored_articles(limit) — fenêtre triée + filtrée côté DB :
+//      NOT EXISTS news_scored, exclude raw_payload->>retracted_at_ingestion
+//      = 'true', tri (published_at DESC NULLS LAST → source.type='pubmed'
+//      first → ingested_at ASC), LIMIT limit_count. Cf. migration
+//      20260518_rpc_get_unscored_articles.sql.
+//   4. SELECT ciblé news_scored WHERE dedupe_hash IN (hashes du tour) AND
+//      status != 'duplicate' — existing_hashes pour cross-run dedup.
+//   5. Cross-source dedup dans la fenêtre : pour un dedupe_hash donné, le
+//      1er rencontré gagne (PubMed a la priorité sur RSS pour le même
+//      article : DOI fiable + abstract complet). Suivants → INSERT
+//      status='duplicate' sans appel LLM.
 //   6. Articles uniques regroupés en batches de 10 → appel Haiku par batch.
 //   7. Parsing JSON tolérant (3 retries via re-call si malformé). Si échec
 //      final, INSERT en status='candidate' score=NULL pour ne pas bloquer
@@ -63,9 +62,9 @@
 //   8. INSERT news_scored une ligne par article traité.
 //
 // Logs structurés : run_start, inputs_loaded (avec limit_applied +
-// total_remaining_estimate), article_skipped_retracted, parse_retry,
-// anthropic_call_failed, batch_scored, article_failed, run_complete (avec
-// has_more + tokens cumulés + estimation coût USD/EUR).
+// total_remaining_estimate), parse_retry, anthropic_call_failed,
+// batch_scored, article_failed, run_complete (avec has_more + tokens cumulés
+// + estimation coût USD/EUR).
 
 import { getServiceClient } from "../_shared/supabase.ts";
 import { Logger } from "../_shared/logger.ts";
@@ -209,68 +208,59 @@ interface LoadResult {
   retracted_skipped: number;
   already_scored: number;
   existing_hashes: Set<string>;
+  /** Total d'articles non scorés AU MOMENT du SELECT (avant slice). */
+  total_remaining: number;
 }
 
+/**
+ * Charge la fenêtre de travail de l'invocation (au plus `limit` articles
+ * non scorés) + les hashes de dédup pertinents.
+ *
+ * Optimisation T6-fix (mai 2026) : les anciens `SELECT * FROM news_raw` et
+ * `SELECT * FROM news_scored` sans filtre (jusqu'à 50 000 lignes chacun)
+ * faisaient dépasser IDLE_TIMEOUT 150s avant même le 1er appel Haiku. La
+ * version actuelle pousse le NOT EXISTS, le tri et le LIMIT côté Postgres
+ * via la RPC get_unscored_articles, et ne charge les existing_hashes que
+ * pour les dedupe_hash effectivement présents dans la fenêtre (≤ limit).
+ *
+ * Cf. migration 20260518_rpc_get_unscored_articles.sql.
+ */
 async function loadInputs(
   // deno-lint-ignore no-explicit-any
   supabase: any,
+  limit: number,
 ): Promise<LoadResult> {
-  // 1. Hash déjà présents en news_scored (status != 'duplicate') — utilisés
-  //    pour basculer en duplicate les nouveaux articles cross-source.
-  const { data: existingScored, error: exErr } = await supabase
-    .from("news_scored")
-    .select("raw_id, dedupe_hash, status")
-    .limit(50_000);
-  if (exErr) throw new Error(`news_scored fetch failed: ${exErr.message}`);
-
-  const alreadyScoredIds = new Set<string>();
-  const existingHashes = new Set<string>();
-  // deno-lint-ignore no-explicit-any
-  for (const r of (existingScored ?? []) as any[]) {
-    if (r.raw_id) alreadyScoredIds.add(r.raw_id);
-    if (r.dedupe_hash && r.status !== "duplicate") {
-      existingHashes.add(r.dedupe_hash);
-    }
+  // 1. Count rapide des articles non scorés (sert à total_remaining_estimate
+  //    / has_more). RPC dédiée — évite de scanner la table côté JS.
+  const { data: totalRemaining, error: countErr } = await supabase.rpc(
+    "count_unscored_articles",
+  );
+  if (countErr) {
+    throw new Error(`count_unscored_articles failed: ${countErr.message}`);
   }
 
-  // 2. Articles bruts à considérer.
-  const { data: raws, error: rawErr } = await supabase
-    .from("news_raw")
-    .select(
-      "id, title, abstract, doi, journal, published_at, ingested_at, raw_payload, source:news_sources(type)",
-    )
-    .limit(50_000);
-  if (rawErr) throw new Error(`news_raw fetch failed: ${rawErr.message}`);
+  // 2. Compte already_scored pour les logs de monitoring. HEAD-only count
+  //    (pas de transfert de lignes), résolu via l'index PK news_scored.
+  const { count: alreadyScoredCount, error: scoredCountErr } = await supabase
+    .from("news_scored")
+    .select("id", { head: true, count: "exact" });
+  if (scoredCountErr) {
+    throw new Error(
+      `news_scored count failed: ${scoredCountErr.message}`,
+    );
+  }
 
-  let retractedSkipped = 0;
+  // 3. Fenêtre d'articles non scorés (déjà triée + filtre retracted côté DB).
+  const { data: raws, error: rawErr } = await supabase.rpc(
+    "get_unscored_articles",
+    { limit_count: limit },
+  );
+  if (rawErr) throw new Error(`get_unscored_articles failed: ${rawErr.message}`);
+
   const candidates: RawCandidate[] = [];
-
   // deno-lint-ignore no-explicit-any
   for (const r of (raws ?? []) as any[]) {
-    if (alreadyScoredIds.has(r.id)) continue;
-
-    const isRetracted = Boolean(
-      r.raw_payload &&
-        typeof r.raw_payload === "object" &&
-        r.raw_payload.retracted_at_ingestion === true,
-    );
-    if (isRetracted) {
-      retractedSkipped++;
-      logger.info("article_skipped_retracted", {
-        raw_id: r.id,
-        external_id: r.raw_payload?.pmid ?? null,
-      });
-      continue;
-    }
-
     const dedupeHash = await computeDedupeHash(r.title ?? "", r.doi);
-    // PostgREST embed FK to-one : selon la version, retourne objet ou array.
-    // On normalise défensivement pour éviter de manquer la priorité PubMed
-    // au tri de dédoublonnage.
-    const srcRaw = r.source;
-    const sourceType = Array.isArray(srcRaw)
-      ? (srcRaw[0]?.type ?? null)
-      : (srcRaw?.type ?? null);
     candidates.push({
       id: r.id,
       title: r.title ?? "",
@@ -279,35 +269,39 @@ async function loadInputs(
       journal: r.journal,
       published_at: r.published_at,
       ingested_at: r.ingested_at,
-      source_type: sourceType,
+      source_type: r.source_type ?? null,
       is_retracted: false,
       dedupe_hash: dedupeHash,
     });
   }
 
-  // 3. Tri imposé par Dr Fantin (cross-source dedup déterministe) :
-  //    a. published_at DESC NULLS LAST  (les plus récents d'abord)
-  //    b. source.type = 'pubmed' avant les autres (DOI fiable, abstract complet)
-  //    c. ingested_at ASC               (égalité résolue par le 1er ingéré)
-  candidates.sort((a, b) => {
-    const ap = a.published_at ?? "";
-    const bp = b.published_at ?? "";
-    if (ap !== bp) {
-      if (!ap) return 1;
-      if (!bp) return -1;
-      return ap < bp ? 1 : -1;
+  // 4. existing_hashes : chargé UNIQUEMENT sur les hashes calculés depuis la
+  //    fenêtre (≤ limit lignes). C'est suffisant pour la détection cross-run
+  //    car on cherche uniquement à savoir si l'un des candidats du tour a
+  //    déjà un dedupe_hash en BDD (status != 'duplicate').
+  const existingHashes = new Set<string>();
+  if (candidates.length > 0) {
+    const hashes = Array.from(new Set(candidates.map((c) => c.dedupe_hash)));
+    const { data: existing, error: exErr } = await supabase
+      .from("news_scored")
+      .select("dedupe_hash")
+      .neq("status", "duplicate")
+      .in("dedupe_hash", hashes);
+    if (exErr) throw new Error(`news_scored hashes fetch failed: ${exErr.message}`);
+    // deno-lint-ignore no-explicit-any
+    for (const r of (existing ?? []) as any[]) {
+      if (r.dedupe_hash) existingHashes.add(r.dedupe_hash);
     }
-    const aIsPubmed = a.source_type === "pubmed" ? 1 : 0;
-    const bIsPubmed = b.source_type === "pubmed" ? 1 : 0;
-    if (aIsPubmed !== bIsPubmed) return bIsPubmed - aIsPubmed;
-    return a.ingested_at < b.ingested_at ? -1 : a.ingested_at > b.ingested_at ? 1 : 0;
-  });
+  }
 
   return {
     candidates,
-    retracted_skipped: retractedSkipped,
-    already_scored: alreadyScoredIds.size,
+    // Retracted est désormais filtré côté DB par la RPC : on garde la clé
+    // à 0 pour compat caller (summary non breaking).
+    retracted_skipped: 0,
+    already_scored: alreadyScoredCount ?? 0,
     existing_hashes: existingHashes,
+    total_remaining: Number(totalRemaining ?? 0),
   };
 }
 
@@ -580,18 +574,19 @@ async function run(opts: { limit: number }): Promise<RunSummary> {
 
   logger.info("run_start", { model, threshold, limit: opts.limit });
 
-  const loaded = await loadInputs(supabase);
-  // total_remaining_estimate = nombre d'articles non scorés AU MOMENT du
-  // SELECT (avant slice). Reflète ce qu'il reste à traiter pour piloter la
-  // boucle côté caller.
-  summary.total_remaining_estimate = loaded.candidates.length;
-  summary.has_more = loaded.candidates.length > opts.limit;
+  const loaded = await loadInputs(supabase, opts.limit);
+  // total_remaining_estimate vient désormais du count Postgres (RPC) — la
+  // RPC get_unscored_articles a déjà LIMITé côté DB, donc loaded.candidates
+  // est ≤ opts.limit et ne peut plus servir d'estimation totale.
+  summary.total_remaining_estimate = loaded.total_remaining;
+  summary.has_more = loaded.total_remaining > opts.limit;
 
-  // Slice à la fenêtre de l'invocation. Le tri étant global (cf. loadInputs),
-  // les articles non traités ce tour seront traités au tour suivant — la
-  // cohérence cross-source est préservée par existing_hashes BDD rechargé à
-  // chaque invocation (cf. header).
-  const window = loaded.candidates.slice(0, opts.limit);
+  // Plus de slice côté JS : la RPC a déjà appliqué le LIMIT. Le tri étant
+  // global (cf. RPC get_unscored_articles), les articles non traités ce
+  // tour seront traités au tour suivant — la cohérence cross-source est
+  // préservée par existing_hashes BDD rechargé à chaque invocation
+  // (cf. header).
+  const window = loaded.candidates;
   summary.candidates_loaded = window.length;
   summary.retracted_skipped = loaded.retracted_skipped;
   summary.already_scored = loaded.already_scored;
