@@ -81,20 +81,7 @@ export function FormationAudioBlock({
   const [timelineUploadError, setTimelineUploadError] = useState<string | null>(
     null,
   )
-  // §10 handoff — feedback copier pour le bloc "Infos techniques".
-  const [copiedField, setCopiedField] = useState<'id' | 'url' | null>(null)
   const router = useRouter()
-
-  async function handleCopy(value: string, field: 'id' | 'url') {
-    try {
-      await navigator.clipboard.writeText(value)
-      setCopiedField(field)
-      setTimeout(() => setCopiedField(null), 1500)
-    } catch {
-      // navigator.clipboard peut être indisponible (http, vieux navigateur).
-      // Pas de feedback dans ce cas — l'admin verra simplement que rien ne se passe.
-    }
-  }
 
   // Polling effect for "generating" phase
   useEffect(() => {
@@ -431,39 +418,6 @@ export function FormationAudioBlock({
           {durationLabel && (
             <p className="text-sm text-gray-500">Durée : {durationLabel}</p>
           )}
-          {/* §10 handoff — infos techniques admin (UUID + URL MP3) pour
-              compléter manuellement un .timeline.json côté pipeline Python. */}
-          <div className="mt-3 p-3 bg-gray-50 border border-gray-100 rounded text-xs">
-            <p className="text-gray-400 font-medium mb-2">🔧 Infos techniques</p>
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <span className="text-gray-400 shrink-0">Sequence ID</span>
-              <span className="font-mono text-gray-600 truncate max-w-[200px]">
-                {sequenceId}
-              </span>
-              <button
-                type="button"
-                onClick={() => void handleCopy(sequenceId, 'id')}
-                className="text-gray-400 hover:text-gray-600 shrink-0"
-              >
-                {copiedField === 'id' ? '✓ copié' : 'copier'}
-              </button>
-            </div>
-            {audioUrl && (
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-gray-400 shrink-0">Audio URL</span>
-                <span className="font-mono text-gray-600 truncate max-w-[200px]">
-                  {audioUrl}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => void handleCopy(audioUrl, 'url')}
-                  className="text-gray-400 hover:text-gray-600 shrink-0"
-                >
-                  {copiedField === 'url' ? '✓ copié' : 'copier'}
-                </button>
-              </div>
-            )}
-          </div>
           {timelineUrl ? (
             <div className="flex items-center gap-2">
               <Badge
