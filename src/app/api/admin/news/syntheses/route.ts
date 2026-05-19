@@ -77,7 +77,7 @@ export async function GET(request: Request) {
     const includeFailedDiagnostics =
       status === 'failed' || status === 'failed_permanent'
     const baseColumns =
-      'id, display_title, summary_fr, specialite, themes, niveau_preuve, category_editorial, formation_category_match, status, failed_attempts, manual_added, created_at, published_at'
+      'id, display_title, summary_fr, specialite, themes, niveau_preuve, category_editorial, formation_category_match, status, failed_attempts, manual_added, created_at, published_at, raw:raw_id(ingested_at)'
     const selectColumns = includeFailedDiagnostics
       ? `${baseColumns}, validation_errors, validation_warnings`
       : baseColumns
@@ -145,6 +145,7 @@ export async function GET(request: Request) {
         manual_added: row.manual_added,
         created_at: row.created_at,
         published_at: row.published_at,
+        ingested_at: row.raw?.ingested_at ?? null,
       }
       if (includeFailedDiagnostics) {
         return {

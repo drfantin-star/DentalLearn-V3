@@ -18,9 +18,10 @@ import {
   Sparkles,
   Plus,
   Database,
+  Inbox,
 } from 'lucide-react'
 import { ALLOWED_FORMATION_CATEGORIES } from '@/lib/constants/news'
-import { describeCardDate } from '@/lib/news-display'
+import { describeCardDate, formatDate } from '@/lib/news-display'
 import { Button } from '@/components/ui/Button'
 
 // ---------- Constantes ----------
@@ -104,6 +105,7 @@ interface Synthesis {
   manual_added: boolean
   created_at: string
   published_at: string | null
+  ingested_at: string | null
 }
 
 interface ListResponse {
@@ -571,18 +573,29 @@ function SynthesisCard({ synthesis }: { synthesis: Synthesis }) {
         <p className="text-sm text-gray-600 line-clamp-3 mb-4">{synthesis.summary_fr}</p>
       )}
 
-      <div className="text-xs text-gray-500 flex items-center justify-between gap-2 flex-wrap">
-        <span
-          className="inline-flex items-center gap-1"
-          title={dateInfo.fromPublication ? 'Date de publication scientifique' : 'Date de génération de la synthèse'}
-        >
-          {dateInfo.fromPublication ? (
-            <Calendar className="w-3 h-3" />
-          ) : (
-            <Sparkles className="w-3 h-3" />
+      <div className="text-xs text-gray-500 flex items-start justify-between gap-2 flex-wrap">
+        <div className="flex flex-col gap-1">
+          <span
+            className="inline-flex items-center gap-1"
+            title={dateInfo.fromPublication ? 'Date de publication scientifique' : 'Date de génération de la synthèse'}
+          >
+            {dateInfo.fromPublication ? (
+              <Calendar className="w-3 h-3" />
+            ) : (
+              <Sparkles className="w-3 h-3" />
+            )}
+            {dateInfo.label}
+          </span>
+          {synthesis.ingested_at && (
+            <span
+              className="inline-flex items-center gap-1"
+              title="Date d'ingestion dans DentalLearn"
+            >
+              <Inbox className="w-3 h-3" />
+              Ingéré le {formatDate(synthesis.ingested_at)}
+            </span>
           )}
-          {dateInfo.label}
-        </span>
+        </div>
         <div className="flex items-center gap-1.5">
           {synthesis.manual_added && (
             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
