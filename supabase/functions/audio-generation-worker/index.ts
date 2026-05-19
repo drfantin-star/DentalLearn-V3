@@ -260,7 +260,12 @@ async function runWorker(body: RequestBody): Promise<void> {
   // aucune erreur de chaining ne doit faire revenir le job en failed.
   // Pas de await sur le fetch — seul le SYN/handshake TCP est borné à 5 s
   // via AbortSignal, l'exécution Sonnet (~30-45 s) court côté Edge Function.
-  if (with_timestamps) {
+  // Gate sur `timelineUrl` : sans alignment ElevenLabs (D-S4-T5dette-02 :
+  // /v1/text-to-dialogue ignore silencieusement with_timestamps), il n'y a
+  // pas de word-indices → extract-scenes ne peut rien produire et crashe
+  // sur le fetch de la timeline. Le pipeline T2 (Python) reste la seule
+  // source légitime de timeline_url tant que la dette n'est pas levée.
+  if (with_timestamps && timelineUrl) {
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -315,6 +320,12 @@ async function runWorker(body: RequestBody): Promise<void> {
         sequence_id,
       });
     }
+  } else if (with_timestamps && !timelineUrl) {
+    logger.warn("scene_extraction_skipped_no_timeline", {
+      sequence_id,
+      reason:
+        "ElevenLabs /v1/text-to-dialogue ne retourne pas d'alignment (D-S4-T5dette-02) — extract-scenes-formation a besoin d'une timeline produite par le pipeline T2 Python",
+    });
   }
 }
 
