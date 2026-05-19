@@ -30,7 +30,8 @@ interface ExtractMeta {
 // Voie DRY-RUN — réponse synchrone historique
 interface DryRunSuccess {
   success: true
-  timeline: unknown
+  mode?: 'word_index' | 'approx_sec'
+  timeline: { generator?: string } & Record<string, unknown>
   llm_meta: ExtractMeta
   warnings: string[]
   dry_run: true
@@ -106,7 +107,9 @@ export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
   const [jobStatus, setJobStatus] = useState<StatusResponse | null>(null)
   const [pollStartedAt, setPollStartedAt] = useState<number | null>(null)
   const [elapsedSec, setElapsedSec] = useState<number>(0)
-  const [generatedTimeline, setGeneratedTimeline] = useState<unknown | null>(null)
+  const [generatedTimeline, setGeneratedTimeline] = useState<
+    ({ generator?: string } & Record<string, unknown>) | null
+  >(null)
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const elapsedTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -190,7 +193,9 @@ export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
           try {
             const tlRes = await fetch(status.timeline_url, { cache: 'no-store' })
             if (tlRes.ok) {
-              const tl = await tlRes.json()
+              const tl = (await tlRes.json()) as {
+                generator?: string
+              } & Record<string, unknown>
               setGeneratedTimeline(tl)
             }
           } catch {
@@ -299,6 +304,35 @@ export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
     return []
   }, [dryRunResult, jobStatus])
 
+  // §7 handoff — badge mode word_index / approx_sec basé sur le champ
+  // `generator` de la Timeline retournée.
+  const generatorBadge = useMemo<{
+    label: string
+    tone: 'green' | 'orange' | 'neutral'
+  } | null>(() => {
+    const tl = generatedTimeline ?? dryRunResult?.timeline ?? null
+    const generator =
+      tl && typeof tl === 'object' && 'generator' in tl
+        ? (tl as { generator?: unknown }).generator
+        : undefined
+    if (generator === 'auto_llm_extraction_approx') {
+      return {
+        label: 'Timeline approximative (Sonnet)',
+        tone: 'orange',
+      }
+    }
+    if (
+      generator === 'auto_llm_extraction' ||
+      generator === 'auto_python_pipeline'
+    ) {
+      return {
+        label: 'Timeline précise (word-index)',
+        tone: 'green',
+      }
+    }
+    return null
+  }, [generatedTimeline, dryRunResult])
+
   return (
     <main className="min-h-screen bg-[color:var(--color-bg)] text-[color:var(--color-text-primary)] p-6">
       <div className="mx-auto max-w-5xl">
@@ -345,8 +379,9 @@ export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
               </label>
               {sequences.length === 0 ? (
                 <p className="text-sm text-[color:var(--color-text-secondary)]">
-                  Aucune séquence avec <code>course_media_url</code> non null.
-                  Vérifier que les séquences ont bien un audio source uploadé.
+                  Aucune séquence avec <code>course_media_url</code> et{' '}
+                  <code>course_duration_seconds</code> non null. Vérifier que
+                  les séquences ont bien un audio source généré.
                 </p>
               ) : (
                 <select
@@ -365,6 +400,7 @@ export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
                     <optgroup key={formationTitle} label={formationTitle}>
                       {seqs.map((seq) => (
                         <option key={seq.id} value={seq.id}>
+                          {seq.timeline_url ? '● ' : '○ '}
                           {formationTitle} — {seq.sequence_number ? `#${seq.sequence_number} ` : ''}{seq.title}
                         </option>
                       ))}
@@ -556,6 +592,32 @@ export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
                 />
               )}
             </dl>
+          </section>
+        )}
+
+        {/* ─── Badge mode (word_index / approx_sec) — §7 handoff ───────── */}
+        {generatorBadge && (
+          <section className="mb-6">
+            <span
+              className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-medium ${
+                generatorBadge.tone === 'green'
+                  ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                  : generatorBadge.tone === 'orange'
+                  ? 'bg-amber-500/15 text-amber-200 border border-amber-500/30'
+                  : 'bg-white/10 text-white border border-white/20'
+              }`}
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  generatorBadge.tone === 'green'
+                    ? 'bg-emerald-400'
+                    : generatorBadge.tone === 'orange'
+                    ? 'bg-amber-400'
+                    : 'bg-white'
+                }`}
+              />
+              {generatorBadge.label}
+            </span>
           </section>
         )}
 

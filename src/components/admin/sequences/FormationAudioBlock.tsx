@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { AlertTriangle, Loader2, Mic } from 'lucide-react'
 
 import Badge from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader } from '@/components/ui/Card'
 import type { AudioJobStatusResponse } from '@/types/audio-jobs'
+import { TimelineSchema } from '@/lib/timeline/schema'
 
 interface FormationAudioBlockProps {
   sequenceId: string
@@ -71,6 +73,15 @@ export function FormationAudioBlock({
   // ne peut pas relancer directement — il faut un nouvel upload).
   const [userRequestedRegeneration, setUserRequestedRegeneration] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  // §9 handoff — upload manuel d'une timeline.json produite par le pipeline
+  // Python (generate_audio_PHASE_2B.py) pour les séquences historiques sans
+  // timeline_url.
+  const timelineFileInputRef = useRef<HTMLInputElement | null>(null)
+  const [timelineUploading, setTimelineUploading] = useState(false)
+  const [timelineUploadError, setTimelineUploadError] = useState<string | null>(
+    null,
+  )
+  const router = useRouter()
 
   // Polling effect for "generating" phase
   useEffect(() => {
@@ -184,6 +195,70 @@ export function FormationAudioBlock({
       setErrorBanner(err instanceof Error ? err.message : 'Erreur réseau')
     } finally {
       setSubmittingGenerate(false)
+    }
+  }
+
+  async function handleTimelineFileSelected(file: File) {
+    setTimelineUploadError(null)
+    setTimelineUploading(true)
+    try {
+      const text = await file.text()
+      let json: unknown
+      try {
+        json = JSON.parse(text)
+      } catch (e) {
+        setTimelineUploadError(
+          'Fichier JSON invalide : ' +
+            (e instanceof Error ? e.message : 'parse error'),
+        )
+        return
+      }
+      const parsed = TimelineSchema.safeParse(json)
+      if (!parsed.success) {
+        // Affichage compact : 3 premières erreurs Zod max.
+        const flat = parsed.error.flatten()
+        const issues = [
+          ...flat.formErrors,
+          ...Object.entries(flat.fieldErrors).flatMap(([k, vs]) =>
+            (vs ?? []).map((v) => `${k}: ${v}`),
+          ),
+        ]
+        setTimelineUploadError(
+          'Schéma timeline invalide : ' +
+            issues.slice(0, 3).join(' • ') +
+            (issues.length > 3 ? ` (+${issues.length - 3} autres)` : ''),
+        )
+        return
+      }
+      if (parsed.data.source_id !== sequenceId) {
+        setTimelineUploadError(
+          `Timeline pour une autre séquence (source_id="${parsed.data.source_id}" ≠ "${sequenceId}")`,
+        )
+        return
+      }
+
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch(
+        `/api/admin/sequences/${sequenceId}/timeline/upload`,
+        { method: 'POST', body: formData },
+      )
+      if (!res.ok) {
+        const msg = await extractErrorMessage(res)
+        setTimelineUploadError(msg)
+        return
+      }
+      // Succès — la page parent est un client component qui hydrate la séquence
+      // via supabase côté navigateur ; router.refresh() ne re-déclenche pas son
+      // useEffect, on force donc un reload complet.
+      router.refresh()
+      if (typeof window !== 'undefined') window.location.reload()
+    } catch (err) {
+      setTimelineUploadError(
+        err instanceof Error ? err.message : 'Erreur de lecture du fichier',
+      )
+    } finally {
+      setTimelineUploading(false)
     }
   }
 
@@ -343,7 +418,7 @@ export function FormationAudioBlock({
           {durationLabel && (
             <p className="text-sm text-gray-500">Durée : {durationLabel}</p>
           )}
-          {timelineUrl && (
+          {timelineUrl ? (
             <div className="flex items-center gap-2">
               <Badge
                 variant="info"
@@ -359,6 +434,38 @@ export function FormationAudioBlock({
               >
                 Éditer la timeline →
               </a>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  ref={timelineFileInputRef}
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) void handleTimelineFileSelected(f)
+                    e.target.value = ''
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => timelineFileInputRef.current?.click()}
+                  disabled={timelineUploading}
+                  className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
+                >
+                  {timelineUploading
+                    ? 'Upload en cours…'
+                    : 'Uploader une timeline (.json)'}
+                </button>
+                <span className="text-xs text-gray-500">
+                  Pour séquences générées via pipeline Python local
+                </span>
+              </div>
+              {timelineUploadError && (
+                <p className="text-sm text-red-600">{timelineUploadError}</p>
+              )}
             </div>
           )}
           <div>

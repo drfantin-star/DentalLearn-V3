@@ -286,6 +286,11 @@ export const TimelineSchema = z.object({
   generator: z.enum([
     'auto_python_pipeline',
     'auto_llm_extraction',
+    // §1-§7 handoff 19 mai 2026 — mode `approx_sec` : extraction Sonnet sans
+    // transcript word-level, scènes positionnées via trigger_at_sec
+    // proportionnel au script. Activé quand sequences.timeline_url IS NULL
+    // (séquences dashboard sans alignment ElevenLabs).
+    'auto_llm_extraction_approx',
     'manual_admin_edit',
     // T8 — mapping déterministe news_syntheses → Timeline (pas de LLM).
     'auto_news_deterministic',

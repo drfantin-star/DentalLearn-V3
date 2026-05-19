@@ -318,6 +318,219 @@ ${wordsBlock}
 }
 
 // ---------------------------------------------------------------------------
+// Variante approx_sec (§1 handoff 19 mai 2026)
+// ---------------------------------------------------------------------------
+
+/**
+ * Variante du prompt utilisée quand on n'a PAS de transcript word-level
+ * (séquence dashboard sans alignment ElevenLabs — D-S4-T5dette-02).
+ *
+ * Sonnet positionne les scènes via `trigger_at_sec` (float, secondes) qu'il
+ * estime proportionnellement à la position du passage dans le script. Idem
+ * pour les concepts via `at_sec`. La précision attendue est de l'ordre de
+ * la dizaine de secondes — la timeline est étiquetée "approximative" côté
+ * UI admin.
+ */
+export function buildFormationPromptApprox(
+  scriptText: string,
+  durationSec: number
+): string {
+  // Arrondi durée pour le prompt — Sonnet n'a pas besoin de la précision
+  // au centième et un entier est plus stable dans son raisonnement.
+  const durationLabel = Math.round(durationSec)
+
+  return `OBJECTIF
+Identifie 8 à 12 PASSAGES STRUCTURELS du script où une visualisation
+pédagogique enrichirait significativement la compréhension du praticien.
+La timeline doit être DENSE et couvrir l'essentiel du contenu pédagogique
+(≥ 80 % de la durée audio totale, idéalement ~1 scène par minute d'audio).
+
+DURÉE TOTALE DE L'AUDIO : ${durationLabel} secondes
+Tu dois positionner chaque scène via \`trigger_at_sec\` (float, secondes,
+0 ≤ trigger_at_sec ≤ ${durationLabel}, 2 décimales max). Estime
+\`trigger_at_sec\` proportionnellement à la position du passage dans le
+script : début du script ≈ 0, fin du script ≈ ${durationLabel}.
+
+CONTRAINTES STRICTES
+- 8 à 12 scènes par script (proportionnel à la durée : ~1 scène par minute d'audio)
+- Minimum 5 scènes, maximum 12 scènes
+- Chaque scène doit durer 15-35 secondes audio (display_duration_sec, entier)
+- Espacement minimum 15 secondes entre 2 scènes successives
+- Couvrir au minimum 80 % de la durée totale du script
+- Privilégier les passages avec : définitions cliniques, chiffres/statistiques,
+  classifications, protocoles cliniques, comparaisons, mécanismes de cause à effet,
+  étapes séquentielles, contre-indications, points de vigilance
+- Tolérance limitée pour les passages introductifs / conclusifs / transitions :
+  ne PAS visualiser si purement narratif ou rhétorique, MAIS visualiser dès qu'un
+  élément structurel (annonce de plan structuré, récap synthétique) le permet
+
+POUR CHAQUE SCÈNE, RETOURNE UN JSON STRICT CONFORME AU SCHÉMA TYPESCRIPT :
+
+type Scene = {
+  id: string;                              // "scene-1", "scene-2", ...
+  title: string;                           // 3-6 mots, sentence case
+  trigger_at_sec: number;                  // float secondes, 0..${durationLabel}
+  display_duration_sec: number;            // entier 15-35
+  pedagogical_intent: string;              // 1 phrase, debug
+  template:
+    | { kind: 'flowchart'; cards: CardContent[]; orientation?: 'horizontal' | 'vertical' }
+    | { kind: 'grid'; columns: 2 | 3 | 4; cards: CardContent[] }
+    | { kind: 'comparison'; left: { title: string; cards: CardContent[] }; right: { title: string; cards: CardContent[] } }
+    | { kind: 'causal'; nodes: Array<CardContent & { id: string }>; edges: Array<{ from: string; to: string; label?: string }> }
+    | { kind: 'figures'; figures: Array<{ value: string; label: string; emphasis?: boolean }> }
+    | { kind: 'timeline'; events: Array<{ at_label: string; text: string }> };
+};
+
+type CardContent = {
+  text: string;                            // ≤ 60 caractères, sentence case, sans point final
+  subtitle?: string;                       // ≤ 40 caractères
+  variant?: 'highlight' | 'warning' | 'success';
+};
+
+CHOIX DU TEMPLATE — Heuristique
+- flowchart : succession d'étapes (max 5 cards), processus clinique, arbre diagnostic
+- grid : classification, typologie, énumération de catégories (2-4 cards)
+- comparison : opposition entre 2 options, avant/après, technique A vs B
+- causal : relation de cause à effet, mécanisme physiopatho — 2 à 5 nodes,
+           edges OBLIGATOIRES (from/to qui référencent des id de nodes existants)
+- figures : mise en avant de chiffres clés (taux, durées, prévalence) — 1 à 3 items
+- timeline : chronologie d'événements, étapes temporelles d'un protocole
+
+CONTRAINTES SUR LES CARDS
+- text : MAXIMUM 60 caractères, sentence case, sans point final
+- subtitle : MAXIMUM 40 caractères, optionnel
+- variant 'highlight' : pour le résultat / la conclusion / le diagnostic principal
+- variant 'warning' : pour mises en garde, contre-indications
+- variant 'success' : pour résolution, validation
+
+CONCEPTS — Identifie 5 à 12 termes médicaux importants. Pour chaque terme :
+
+type Concept = {
+  term: string;                            // exactement comme prononcé
+  definition: string;                      // 1-2 phrases, ton clinique pro, ≤ 300 chars
+  at_sec: number;                          // float secondes, 0..${durationLabel}
+  source?: string;                         // "Wikipédia" / "Larousse Médical" / "généré"
+};
+
+NE PAS inclure de termes triviaux (patient, dent, soin, traitement).
+Privilégier termes anatomiques, syndromes, protocoles, instruments, acronymes,
+classifications.
+
+VOCABULAIRE
+- Reste strictement dans le vocabulaire médical/dentaire utilisé par le formateur
+- Ne PAS reformuler les termes techniques en langage simplifié
+- Préserve l'orthographe exacte des noms de syndromes, instruments, classifications
+
+FORMAT DE RÉPONSE
+Retourne UNIQUEMENT cet objet JSON, sans wrapper, sans commentaire :
+
+{
+  "scenes": [...],   // 8 à 12 scènes — DENSE, couvre ≥ 80 % du script
+  "concepts": [...]  // 5 à 12 concepts
+}
+
+EXEMPLE COMPLET (timeline dense, 9 scènes réparties sur tout un script ~9 min)
+Format représentatif uniquement — ne PAS recopier les contenus, conserver la
+structure JSON exacte (mêmes champs, mêmes \`kind\`). Noter la répartition :
+~1 scène par minute, début/milieu/fin couverts. Les valeurs \`trigger_at_sec\`
+ci-dessous correspondent à un audio de ~540 s — adapte-les proportionnellement
+à ${durationLabel} s.
+
+[
+  {
+    "id": "scene-1",
+    "title": "Trois piliers de l'examen clinique",
+    "trigger_at_sec": 18.5,
+    "display_duration_sec": 25,
+    "pedagogical_intent": "Annoncer la structure méthodologique de la séquence",
+    "template": {
+      "kind": "flowchart",
+      "orientation": "horizontal",
+      "cards": [
+        { "text": "Anamnèse ciblée" },
+        { "text": "Examen exobuccal" },
+        { "text": "Examen endobuccal", "variant": "highlight" }
+      ]
+    }
+  },
+  {
+    "id": "scene-2",
+    "title": "Classification ASA simplifiée",
+    "trigger_at_sec": 78.0,
+    "display_duration_sec": 30,
+    "pedagogical_intent": "Visualiser les 4 niveaux de risque anesthésique",
+    "template": {
+      "kind": "grid",
+      "columns": 2,
+      "cards": [
+        { "text": "ASA I — patient sain", "subtitle": "Aucun risque" },
+        { "text": "ASA II — pathologie légère", "subtitle": "HTA contrôlée" },
+        { "text": "ASA III — pathologie sévère", "subtitle": "Risque modéré", "variant": "warning" },
+        { "text": "ASA IV — menace vitale", "subtitle": "Avis spécialisé", "variant": "warning" }
+      ]
+    }
+  },
+  {
+    "id": "scene-3",
+    "title": "Prévalence carie en France",
+    "trigger_at_sec": 215.0,
+    "display_duration_sec": 22,
+    "pedagogical_intent": "Ancrer les ordres de grandeur épidémiologiques",
+    "template": {
+      "kind": "figures",
+      "figures": [
+        { "value": "33 %", "label": "enfants 6-12 ans", "emphasis": true },
+        { "value": "92 %", "label": "adultes 35-44 ans" },
+        { "value": "2,1", "label": "indice CAO moyen" }
+      ]
+    }
+  },
+  {
+    "id": "scene-4",
+    "title": "Cascade physiopatho de la carie",
+    "trigger_at_sec": 360.0,
+    "display_duration_sec": 32,
+    "pedagogical_intent": "Mécanisme cause-effet de la déminéralisation",
+    "template": {
+      "kind": "causal",
+      "nodes": [
+        { "id": "n1", "text": "Plaque bactérienne" },
+        { "id": "n2", "text": "Acides organiques" },
+        { "id": "n3", "text": "Déminéralisation émail" },
+        { "id": "n4", "text": "Cavitation", "variant": "warning" }
+      ],
+      "edges": [
+        { "from": "n1", "to": "n2", "label": "métabolisme" },
+        { "from": "n2", "to": "n3", "label": "pH < 5,5" },
+        { "from": "n3", "to": "n4", "label": "perte tissulaire" }
+      ]
+    }
+  },
+  {
+    "id": "scene-5",
+    "title": "Trois points à retenir",
+    "trigger_at_sec": 510.0,
+    "display_duration_sec": 24,
+    "pedagogical_intent": "Synthèse mémorisable en fin de séquence",
+    "template": {
+      "kind": "flowchart",
+      "orientation": "vertical",
+      "cards": [
+        { "text": "Anamnèse avant tout geste" },
+        { "text": "ASA III = vigilance accrue", "variant": "warning" },
+        { "text": "Documenter chaque décision", "variant": "highlight" }
+      ]
+    }
+  }
+]
+
+SCRIPT À TRAITER
+---
+${scriptText}
+---`
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

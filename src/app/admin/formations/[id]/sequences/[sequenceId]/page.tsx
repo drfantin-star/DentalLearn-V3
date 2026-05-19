@@ -80,6 +80,19 @@ export default function SequenceDetailPage() {
   const [infographicUrl, setInfographicUrl] = useState('');
   const [savingMedia, setSavingMedia] = useState(false);
   const [savingInfographic, setSavingInfographic] = useState(false);
+  // §10 handoff — feedback copier pour le bloc "Infos techniques" (UUID
+  // séquence + URL publique du média) affiché sous le player.
+  const [copiedField, setCopiedField] = useState<'id' | 'url' | null>(null);
+
+  async function handleCopyTech(value: string, field: 'id' | 'url') {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 1500);
+    } catch {
+      // clipboard indisponible (http, vieux navigateur) — silencieux.
+    }
+  }
 
   useEffect(() => {
     loadData();
@@ -577,6 +590,44 @@ export default function SequenceDetailPage() {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
               </div>
+
+              {/* §10 handoff — infos techniques admin (UUID + URL publique
+                  du média). Visible dès qu'un fichier est uploadé, se met à
+                  jour automatiquement quand mediaUrl change (MediaUpload
+                  appelle setMediaUrl après upload). */}
+              {mediaUrl && (
+                <div className="mt-1 p-3 bg-gray-50 border border-gray-100 rounded text-xs">
+                  <p className="text-gray-400 font-medium mb-2">🔧 Infos techniques</p>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-gray-400 shrink-0">Sequence ID</span>
+                    <span className="font-mono text-gray-600 truncate max-w-[200px]">
+                      {sequenceId}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void handleCopyTech(sequenceId, 'id')}
+                      className="text-gray-400 hover:text-gray-600 shrink-0"
+                    >
+                      {copiedField === 'id' ? '✓ copié' : 'copier'}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-gray-400 shrink-0">
+                      {mediaType === 'audio' ? 'Audio URL' : 'Media URL'}
+                    </span>
+                    <span className="font-mono text-gray-600 truncate max-w-[200px]">
+                      {mediaUrl}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void handleCopyTech(mediaUrl, 'url')}
+                      className="text-gray-400 hover:text-gray-600 shrink-0"
+                    >
+                      {copiedField === 'url' ? '✓ copié' : 'copier'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
