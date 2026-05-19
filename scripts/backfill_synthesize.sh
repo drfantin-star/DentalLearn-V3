@@ -10,11 +10,22 @@
 #   ./scripts/backfill_synthesize.sh
 #
 # Variables d'environnement supportées :
-#   SUPABASE_URL              (default https://dxybsuhfkwuemapqrvgz.supabase.co)
-#   BACKFILL_LIMIT            (default 5, max 5 — cap MAX_BATCH_LIMIT côté Edge)
-#   BACKFILL_SLEEP_S          (default 2 — pause entre invocations)
-#   BACKFILL_MAX_INVOCATIONS  (default 50 — cap dur anti-boucle infinie)
-#   BACKFILL_FORCE            (default 0 ; 1 → body inclut "force": true)
+#   SUPABASE_URL                       (default https://dxybsuhfkwuemapqrvgz.supabase.co)
+#   BACKFILL_LIMIT                     (default 5, max 5 — cap MAX_BATCH_LIMIT côté Edge)
+#   BACKFILL_SLEEP_S                   (default 2 — pause entre invocations)
+#   BACKFILL_MAX_INVOCATIONS           (default 50 — cap dur anti-boucle infinie)
+#   BACKFILL_FORCE                     (default 0 ; 1 → body inclut "force": true)
+#   BACKFILL_MAX_CONSECUTIVE_ERRORS    (default 3 — seuil d'arrêt sur 504 consécutifs)
+#
+# Tolérance aux HTTP 504 (gateway timeout) :
+#   L'Edge Function synthesize_articles INSERT chaque article atomiquement
+#   en BDD. Un 504 gateway côté Supabase signale que l'invocation a dépassé
+#   IDLE_TIMEOUT 150s, mais les articles déjà traités sont en base. Le script
+#   tolère donc les 504 ponctuels : warning + invocation suivante, sans
+#   stopper le backfill. Seul un run de BACKFILL_MAX_CONSECUTIVE_ERRORS 504
+#   d'affilée stoppe le script (signal d'un problème réel). Le compteur est
+#   remis à 0 dès qu'une invocation revient en 200.
+#   Toute autre erreur HTTP (401, 500, etc.) stoppe immédiatement le script.
 #
 # Sécurité (leçon Lz2 du Ticket 4) :
 #   - SUPABASE_SERVICE_ROLE_KEY n'est jamais affichée à l'écran ni loggée.
@@ -40,6 +51,7 @@ BACKFILL_LIMIT="${BACKFILL_LIMIT:-5}"
 BACKFILL_SLEEP_S="${BACKFILL_SLEEP_S:-2}"
 BACKFILL_MAX_INVOCATIONS="${BACKFILL_MAX_INVOCATIONS:-50}"
 BACKFILL_FORCE="${BACKFILL_FORCE:-0}"
+BACKFILL_MAX_CONSECUTIVE_ERRORS="${BACKFILL_MAX_CONSECUTIVE_ERRORS:-3}"
 
 ENDPOINT="${SUPABASE_URL}/functions/v1/synthesize_articles"
 
@@ -110,6 +122,7 @@ echo "   limit           : ${BACKFILL_LIMIT}"
 echo "   force           : ${BACKFILL_FORCE}"
 echo "   sleep entre runs: ${BACKFILL_SLEEP_S}s"
 echo "   cap invocations : ${BACKFILL_MAX_INVOCATIONS}"
+echo "   cap 504 consec. : ${BACKFILL_MAX_CONSECUTIVE_ERRORS}"
 echo "===================================================================="
 echo
 
@@ -122,6 +135,8 @@ total_processed=0
 total_cost_eur="0"
 invocation=0
 last_has_more=true
+consecutive_errors=0
+total_504=0
 
 # ----- Boucle principale -----
 while [ "$last_has_more" = "true" ] && [ "$invocation" -lt "$BACKFILL_MAX_INVOCATIONS" ]; do
@@ -142,6 +157,32 @@ while [ "$last_has_more" = "true" ] && [ "$invocation" -lt "$BACKFILL_MAX_INVOCA
   body="${http_response%__HTTP_STATUS:*}"
   body="${body%$'\n'}" # strip trailing newline avant le marqueur
 
+  if [ "$http_status" = "504" ]; then
+    # Gateway timeout : l'Edge Function a dépassé IDLE_TIMEOUT 150s côté
+    # Supabase. Les articles traités avant timeout sont en BDD (INSERT
+    # atomique par article côté synthesize_articles/index.ts). On tolère
+    # le 504 ponctuel et on continue — loadCandidates re-sélectionne les
+    # non-synthétisés à l'invocation suivante.
+    consecutive_errors=$((consecutive_errors + 1))
+    total_504=$((total_504 + 1))
+    echo "  WARN: HTTP 504 (gateway timeout) — invocation ${invocation}"
+    echo "        consecutive_errors=${consecutive_errors}/${BACKFILL_MAX_CONSECUTIVE_ERRORS}"
+    echo "        Note: articles traités avant timeout sont INSERT en BDD."
+    if [ "$consecutive_errors" -ge "$BACKFILL_MAX_CONSECUTIVE_ERRORS" ]; then
+      echo
+      echo "Arrêt: ${BACKFILL_MAX_CONSECUTIVE_ERRORS} timeouts 504 consécutifs — diagnostic requis."
+      echo "       Vérifier la latence Sonnet et le rythme Edge Function."
+      exit 1
+    fi
+    echo "  → poursuite du backfill (504 tolérable)."
+    echo
+    # has_more inconnu sur 504 — on force true pour que la boucle continue
+    # tant que le cap BACKFILL_MAX_INVOCATIONS n'est pas atteint.
+    last_has_more=true
+    sleep "$BACKFILL_SLEEP_S"
+    continue
+  fi
+
   if [ "$http_status" != "200" ]; then
     echo "  ERROR: HTTP ${http_status}"
     echo "  body: $(echo "$body" | head -c 500)"
@@ -149,6 +190,9 @@ while [ "$last_has_more" = "true" ] && [ "$invocation" -lt "$BACKFILL_MAX_INVOCA
     echo "Arrêt du backfill — vérifier les logs Supabase pour diagnostic."
     exit 1
   fi
+
+  # Invocation 200 OK : reset du compteur d'erreurs consécutives.
+  consecutive_errors=0
 
   # Parse de la réponse via jq. Tous les champs sont garantis par le
   # RunSummary du run() côté Edge.
@@ -200,6 +244,9 @@ echo "   total failed        : ${total_failed}"
 echo "   total skipped       : ${total_skipped}"
 echo "   total promoted_perm : ${total_promoted}"
 echo "   total cost EUR      : ${total_cost_eur}"
+if [ "$total_504" -gt 0 ]; then
+  echo "   total 504 timeouts  : ${total_504} (tolérés, articles INSERT atomiquement)"
+fi
 echo "===================================================================="
 
 # Code retour 1 si on a atteint le cap avec has_more encore true (boucle
