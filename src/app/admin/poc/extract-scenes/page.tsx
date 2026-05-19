@@ -1,8 +1,10 @@
 // Page POC admin — déclenchement de l'extraction Sonnet (T5.3).
 //
-// Liste les séquences ayant un audio source (course_media_url non null).
-// Le but du POC est précisément de générer des timelines sur des séquences
-// qui n'en ont pas encore — pas de filtre sur timeline_url ou timeline_published.
+// §7 handoff 19 mai 2026 — listing élargi :
+//   - filtre `course_media_url IS NOT NULL AND course_duration_seconds IS NOT NULL`
+//     (au lieu de `timeline_url IS NOT NULL` historiquement)
+//   - le badge UI distingue mode word_index (timeline_url déjà présente) vs
+//     mode approx_sec (timeline_url null, fallback Sonnet sur trigger_at_sec).
 
 import { redirect } from 'next/navigation'
 
@@ -41,6 +43,7 @@ export default async function ExtractScenesPage({ searchParams }: PageProps) {
     .from('sequences')
     .select('id, sequence_number, title, timeline_url, formation_id')
     .not('course_media_url', 'is', null)
+    .not('course_duration_seconds', 'is', null)
 
   const formationIds = Array.from(
     new Set((sequences ?? []).map((s) => s.formation_id).filter(Boolean)),

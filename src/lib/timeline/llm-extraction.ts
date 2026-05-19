@@ -20,6 +20,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import {
   EXTRACTION_SYSTEM_PROMPT,
   buildFormationPrompt,
+  buildFormationPromptApprox,
 } from './llm-prompt-formations'
 import { parseStrictWithRecovery } from './parse-json-recovery'
 import { TimelineSchema, type Timeline } from './schema'
@@ -84,10 +85,17 @@ const MAX_CARD_SUBTITLE_LEN = 40
 // Types — output BRUT LLM (avant conversion → Timeline finale T5.2)
 // ---------------------------------------------------------------------------
 
+/**
+ * Discriminated par la présence de `at_word_index` (mode word_index) ou
+ * `at_sec` (mode approx_sec, §1 handoff). Aucun des deux n'est strictement
+ * obligatoire au niveau type — `buildTimelineFromRaw` applique le fallback
+ * proportionnel si la valeur est absente.
+ */
 export interface SonnetRawConcept {
   term: string
   definition: string
-  at_word_index: number
+  at_word_index?: number
+  at_sec?: number
   source?: string
 }
 
@@ -120,10 +128,16 @@ export type SonnetRawTemplate =
     }
   | { kind: 'timeline'; events: Array<{ at_label: string; text: string }> }
 
+/**
+ * Discriminated par la présence de `trigger_at_word_index` (mode word_index)
+ * ou `trigger_at_sec` (mode approx_sec, §1 handoff). Le caller / le builder
+ * applique le fallback proportionnel si la valeur est absente.
+ */
 export interface SonnetRawScene {
   id?: string
   title: string
-  trigger_at_word_index: number
+  trigger_at_word_index?: number
+  trigger_at_sec?: number
   display_duration_sec: number
   pedagogical_intent?: string
   template: SonnetRawTemplate
@@ -242,10 +256,18 @@ function logEvent(event: string, payload: Record<string, unknown>): void {
 // Public API — extractScenesFromScript
 // ---------------------------------------------------------------------------
 
+export type ExtractionMode = 'word_index' | 'approx_sec'
+
 export interface ExtractScenesArgs {
   script_text: string
-  transcript: Timeline['transcript']
   source_id: string
+  /** Mode `word_index` (défaut historique) : nécessite `transcript`. Mode
+   *  `approx_sec` (§1 handoff) : transcript optionnel, `duration_sec` requis. */
+  mode?: ExtractionMode
+  transcript?: Timeline['transcript']
+  /** Durée audio en secondes — requise en mode `approx_sec` pour borner
+   *  `trigger_at_sec` dans le prompt et clamper côté builder. */
+  duration_sec?: number
 }
 
 /**
@@ -275,7 +297,25 @@ export async function extractScenesFromScript(
   }
 
   const client = new Anthropic({ apiKey, maxRetries: 3 })
-  const userPrompt = buildFormationPrompt(args.script_text, args.transcript)
+  const mode: ExtractionMode = args.mode ?? 'word_index'
+  let userPrompt: string
+  if (mode === 'approx_sec') {
+    if (!args.duration_sec || args.duration_sec <= 0) {
+      return {
+        ok: false,
+        stage: 'anthropic_call',
+        errors: ['mode approx_sec requires positive duration_sec'],
+        sonnet_raw: '',
+        partial_output: null,
+        tokens,
+        attempts: 0,
+        duration_ms: Math.round(performance.now() - startedAt),
+      }
+    }
+    userPrompt = buildFormationPromptApprox(args.script_text, args.duration_sec)
+  } else {
+    userPrompt = buildFormationPrompt(args.script_text, args.transcript)
+  }
   const warnings: string[] = []
 
   let lastSonnetRaw = ''
@@ -472,10 +512,15 @@ export type BuildTimelineResult = BuildTimelineSuccess | BuildTimelineFailure
 
 export interface BuildTimelineArgs {
   raw: SonnetExtractionRaw
-  transcript: Timeline['transcript']
   source_id: string
   audio_url: string
   duration_sec: number
+  /** Mode `word_index` (défaut) : utilise `transcript` pour la lookup
+   *  word-index → start_sec. Mode `approx_sec` (§1 handoff) : utilise
+   *  `trigger_at_sec` / `at_sec` directement, `transcript` est optionnel
+   *  (peut être absent ou des segments vides). */
+  mode?: ExtractionMode
+  transcript?: Timeline['transcript']
 }
 
 /**
@@ -499,6 +544,7 @@ export function buildTimelineFromRaw(
   args: BuildTimelineArgs
 ): BuildTimelineResult {
   const warnings: string[] = []
+  const mode: ExtractionMode = args.mode ?? 'word_index'
   const lookup = makeWordIndexLookup(args.transcript)
   const totalWords = countWordsFlat(args.transcript)
 
@@ -516,14 +562,34 @@ export function buildTimelineFromRaw(
     const sceneIndexLabel = `scene-${index + 1}`
     const safeId = ensureUniqueSceneId(scene.id, sceneIndexLabel, usedIds)
 
-    // Conversion start_sec
-    let startSec = lookup(scene.trigger_at_word_index)
+    // Conversion start_sec — branche selon le mode (§2 handoff).
+    let startSec: number | null = null
+    if (mode === 'approx_sec') {
+      const rawSec = Number(scene.trigger_at_sec)
+      if (Number.isFinite(rawSec)) {
+        startSec = clamp(rawSec, 0, args.duration_sec)
+      }
+    } else {
+      // mode === 'word_index'
+      if (typeof scene.trigger_at_word_index === 'number') {
+        startSec = lookup(scene.trigger_at_word_index)
+      }
+    }
     if (startSec === null) {
+      // Fallback proportionnel — identique aux deux modes : si on n'a pas
+      // pu lire la valeur (out-of-bounds word index ou trigger_at_sec
+      // manquant/non-fini), on répartit uniformément la scène sur la durée.
       startSec =
-        totalWords > 0
-          ? (index * args.duration_sec) / Math.max(scenes.length, 1)
-          : 0
-      warnings.push(`word_index_out_of_bounds:${safeId}`)
+        mode === 'word_index'
+          ? totalWords > 0
+            ? (index * args.duration_sec) / Math.max(scenes.length, 1)
+            : 0
+          : (index * args.duration_sec) / Math.max(scenes.length, 1)
+      warnings.push(
+        mode === 'word_index'
+          ? `word_index_out_of_bounds:${safeId}`
+          : `trigger_at_sec_missing:${safeId}`
+      )
     }
 
     // Clamp display_duration_sec
@@ -546,14 +612,26 @@ export function buildTimelineFromRaw(
     }
   })
 
-  // ----- 7. Concepts — conversion at_word_index → at_sec + dérivation id/label -----
+  // ----- 7. Concepts — branche selon le mode (§2 handoff) -----
   const sourceConcepts = args.raw.concepts ?? []
   const convertedConcepts = sourceConcepts.map((concept, index) => {
-    let atSec = lookup(concept.at_word_index)
+    let atSec: number | null = null
+    if (mode === 'approx_sec') {
+      const rawSec = Number(concept.at_sec)
+      if (Number.isFinite(rawSec)) {
+        atSec = clamp(rawSec, 0, args.duration_sec)
+      }
+    } else {
+      if (typeof concept.at_word_index === 'number') {
+        atSec = lookup(concept.at_word_index)
+      }
+    }
     if (atSec === null) {
       atSec = 0
       warnings.push(
-        `concept_word_index_out_of_bounds:${concept.term ?? `idx-${index}`}`
+        mode === 'word_index'
+          ? `concept_word_index_out_of_bounds:${concept.term ?? `idx-${index}`}`
+          : `concept_at_sec_missing:${concept.term ?? `idx-${index}`}`
       )
     }
     const id = generateConceptId()
@@ -569,7 +647,9 @@ export function buildTimelineFromRaw(
       term: concept.term,
       definition: truncateString(concept.definition, 300),
       at_sec: atSec,
-      at_word_index: concept.at_word_index,
+      ...(typeof concept.at_word_index === 'number'
+        ? { at_word_index: concept.at_word_index }
+        : {}),
       source: concept.source,
     }
   })
@@ -586,18 +666,23 @@ export function buildTimelineFromRaw(
     }))
 
   // ----- 9. Construction objet Timeline -----
-  const timelineDraft: unknown = {
+  // En mode approx_sec on n'embarque PAS de transcript (la timeline finale
+  // n'aura pas de karaoké word-level). Le champ est optionnel sur le schéma.
+  const timelineDraft: Record<string, unknown> = {
     schema_version: '1.0',
     source_type: 'formation_sequence',
     source_id: args.source_id,
     audio_url: args.audio_url,
     duration_sec: args.duration_sec,
     generated_at: new Date().toISOString(),
-    generator: 'auto_llm_extraction',
-    transcript: args.transcript,
+    generator:
+      mode === 'approx_sec' ? 'auto_llm_extraction_approx' : 'auto_llm_extraction',
     scenes: convertedScenes,
     concepts: convertedConcepts,
     chapters,
+  }
+  if (mode === 'word_index' && args.transcript) {
+    timelineDraft.transcript = args.transcript
   }
 
   // ----- 10. Validation Zod finale -----

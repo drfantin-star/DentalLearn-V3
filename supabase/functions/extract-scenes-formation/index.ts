@@ -109,10 +109,19 @@ interface TimelineJson {
   transcript: Transcript;
 }
 
+// §5 handoff 19 mai 2026 — modes :
+//   - word_index : Sonnet pointe sur `trigger_at_word_index` (entier, lookup
+//     dans transcript). Pipeline historique (Python ou upload manuel §9).
+//   - approx_sec : Sonnet positionne via `trigger_at_sec` (float, secondes)
+//     proportionnellement au script. Activé quand sequences.timeline_url IS
+//     NULL (séquence dashboard sans alignment ElevenLabs).
+type ExtractionMode = "word_index" | "approx_sec";
+
 interface RawScene {
   id?: string;
   title: string;
-  trigger_at_word_index: number;
+  trigger_at_word_index?: number;
+  trigger_at_sec?: number;
   display_duration_sec: number;
   pedagogical_intent?: string;
   template: unknown;
@@ -121,7 +130,8 @@ interface RawScene {
 interface RawConcept {
   term: string;
   definition: string;
-  at_word_index: number;
+  at_word_index?: number;
+  at_sec?: number;
   source?: string;
 }
 
@@ -426,6 +436,206 @@ ${wordsBlock}
 }
 
 // ---------------------------------------------------------------------------
+// §5 handoff — Variante approx_sec du prompt. Miroir de
+// src/lib/timeline/llm-prompt-formations.ts::buildFormationPromptApprox.
+// Toute modif doit être appliquée à l'identique côté TS.
+// ---------------------------------------------------------------------------
+
+function buildFormationPromptApprox(
+  scriptText: string,
+  durationSec: number,
+): string {
+  const durationLabel = Math.round(durationSec);
+  return `OBJECTIF
+Identifie 8 à 12 PASSAGES STRUCTURELS du script où une visualisation
+pédagogique enrichirait significativement la compréhension du praticien.
+La timeline doit être DENSE et couvrir l'essentiel du contenu pédagogique
+(≥ 80 % de la durée audio totale, idéalement ~1 scène par minute d'audio).
+
+DURÉE TOTALE DE L'AUDIO : ${durationLabel} secondes
+Tu dois positionner chaque scène via \`trigger_at_sec\` (float, secondes,
+0 ≤ trigger_at_sec ≤ ${durationLabel}, 2 décimales max). Estime
+\`trigger_at_sec\` proportionnellement à la position du passage dans le
+script : début du script ≈ 0, fin du script ≈ ${durationLabel}.
+
+CONTRAINTES STRICTES
+- 8 à 12 scènes par script (proportionnel à la durée : ~1 scène par minute d'audio)
+- Minimum 5 scènes, maximum 12 scènes
+- Chaque scène doit durer 15-35 secondes audio (display_duration_sec, entier)
+- Espacement minimum 15 secondes entre 2 scènes successives
+- Couvrir au minimum 80 % de la durée totale du script
+- Privilégier les passages avec : définitions cliniques, chiffres/statistiques,
+  classifications, protocoles cliniques, comparaisons, mécanismes de cause à effet,
+  étapes séquentielles, contre-indications, points de vigilance
+- Tolérance limitée pour les passages introductifs / conclusifs / transitions :
+  ne PAS visualiser si purement narratif ou rhétorique, MAIS visualiser dès qu'un
+  élément structurel (annonce de plan structuré, récap synthétique) le permet
+
+POUR CHAQUE SCÈNE, RETOURNE UN JSON STRICT CONFORME AU SCHÉMA TYPESCRIPT :
+
+type Scene = {
+  id: string;                              // "scene-1", "scene-2", ...
+  title: string;                           // 3-6 mots, sentence case
+  trigger_at_sec: number;                  // float secondes, 0..${durationLabel}
+  display_duration_sec: number;            // entier 15-35
+  pedagogical_intent: string;              // 1 phrase, debug
+  template:
+    | { kind: 'flowchart'; cards: CardContent[]; orientation?: 'horizontal' | 'vertical' }
+    | { kind: 'grid'; columns: 2 | 3 | 4; cards: CardContent[] }
+    | { kind: 'comparison'; left: { title: string; cards: CardContent[] }; right: { title: string; cards: CardContent[] } }
+    | { kind: 'causal'; nodes: Array<CardContent & { id: string }>; edges: Array<{ from: string; to: string; label?: string }> }
+    | { kind: 'figures'; figures: Array<{ value: string; label: string; emphasis?: boolean }> }
+    | { kind: 'timeline'; events: Array<{ at_label: string; text: string }> };
+};
+
+type CardContent = {
+  text: string;                            // ≤ 60 caractères, sentence case, sans point final
+  subtitle?: string;                       // ≤ 40 caractères
+  variant?: 'highlight' | 'warning' | 'success';
+};
+
+CHOIX DU TEMPLATE — Heuristique
+- flowchart : succession d'étapes (max 5 cards), processus clinique, arbre diagnostic
+- grid : classification, typologie, énumération de catégories (2-4 cards)
+- comparison : opposition entre 2 options, avant/après, technique A vs B
+- causal : relation de cause à effet, mécanisme physiopatho — 2 à 5 nodes,
+           edges OBLIGATOIRES (from/to qui référencent des id de nodes existants)
+- figures : mise en avant de chiffres clés (taux, durées, prévalence) — 1 à 3 items
+- timeline : chronologie d'événements, étapes temporelles d'un protocole
+
+CONTRAINTES SUR LES CARDS
+- text : MAXIMUM 60 caractères, sentence case, sans point final
+- subtitle : MAXIMUM 40 caractères, optionnel
+- variant 'highlight' : pour le résultat / la conclusion / le diagnostic principal
+- variant 'warning' : pour mises en garde, contre-indications
+- variant 'success' : pour résolution, validation
+
+CONCEPTS — Identifie 5 à 12 termes médicaux importants. Pour chaque terme :
+
+type Concept = {
+  term: string;                            // exactement comme prononcé
+  definition: string;                      // 1-2 phrases, ton clinique pro, ≤ 300 chars
+  at_sec: number;                          // float secondes, 0..${durationLabel}
+  source?: string;                         // "Wikipédia" / "Larousse Médical" / "généré"
+};
+
+NE PAS inclure de termes triviaux (patient, dent, soin, traitement).
+Privilégier termes anatomiques, syndromes, protocoles, instruments, acronymes,
+classifications.
+
+VOCABULAIRE
+- Reste strictement dans le vocabulaire médical/dentaire utilisé par le formateur
+- Ne PAS reformuler les termes techniques en langage simplifié
+- Préserve l'orthographe exacte des noms de syndromes, instruments, classifications
+
+FORMAT DE RÉPONSE
+Retourne UNIQUEMENT cet objet JSON, sans wrapper, sans commentaire :
+
+{
+  "scenes": [...],   // 8 à 12 scènes — DENSE, couvre ≥ 80 % du script
+  "concepts": [...]  // 5 à 12 concepts
+}
+
+EXEMPLE COMPLET (timeline dense, 5 scènes représentatives sur ~540 s)
+Format représentatif uniquement — ne PAS recopier les contenus, conserver la
+structure JSON exacte. Les valeurs \`trigger_at_sec\` ci-dessous correspondent
+à un audio de ~540 s — adapte-les proportionnellement à ${durationLabel} s.
+
+[
+  {
+    "id": "scene-1",
+    "title": "Trois piliers de l'examen clinique",
+    "trigger_at_sec": 18.5,
+    "display_duration_sec": 25,
+    "pedagogical_intent": "Annoncer la structure méthodologique de la séquence",
+    "template": {
+      "kind": "flowchart",
+      "orientation": "horizontal",
+      "cards": [
+        { "text": "Anamnèse ciblée" },
+        { "text": "Examen exobuccal" },
+        { "text": "Examen endobuccal", "variant": "highlight" }
+      ]
+    }
+  },
+  {
+    "id": "scene-2",
+    "title": "Classification ASA simplifiée",
+    "trigger_at_sec": 78.0,
+    "display_duration_sec": 30,
+    "pedagogical_intent": "Visualiser les 4 niveaux de risque anesthésique",
+    "template": {
+      "kind": "grid",
+      "columns": 2,
+      "cards": [
+        { "text": "ASA I — patient sain", "subtitle": "Aucun risque" },
+        { "text": "ASA II — pathologie légère", "subtitle": "HTA contrôlée" },
+        { "text": "ASA III — pathologie sévère", "subtitle": "Risque modéré", "variant": "warning" },
+        { "text": "ASA IV — menace vitale", "subtitle": "Avis spécialisé", "variant": "warning" }
+      ]
+    }
+  },
+  {
+    "id": "scene-3",
+    "title": "Prévalence carie en France",
+    "trigger_at_sec": 215.0,
+    "display_duration_sec": 22,
+    "pedagogical_intent": "Ancrer les ordres de grandeur épidémiologiques",
+    "template": {
+      "kind": "figures",
+      "figures": [
+        { "value": "33 %", "label": "enfants 6-12 ans", "emphasis": true },
+        { "value": "92 %", "label": "adultes 35-44 ans" },
+        { "value": "2,1", "label": "indice CAO moyen" }
+      ]
+    }
+  },
+  {
+    "id": "scene-4",
+    "title": "Cascade physiopatho de la carie",
+    "trigger_at_sec": 360.0,
+    "display_duration_sec": 32,
+    "pedagogical_intent": "Mécanisme cause-effet de la déminéralisation",
+    "template": {
+      "kind": "causal",
+      "nodes": [
+        { "id": "n1", "text": "Plaque bactérienne" },
+        { "id": "n2", "text": "Acides organiques" },
+        { "id": "n3", "text": "Déminéralisation émail" },
+        { "id": "n4", "text": "Cavitation", "variant": "warning" }
+      ],
+      "edges": [
+        { "from": "n1", "to": "n2", "label": "métabolisme" },
+        { "from": "n2", "to": "n3", "label": "pH < 5,5" },
+        { "from": "n3", "to": "n4", "label": "perte tissulaire" }
+      ]
+    }
+  },
+  {
+    "id": "scene-5",
+    "title": "Trois points à retenir",
+    "trigger_at_sec": 510.0,
+    "display_duration_sec": 24,
+    "pedagogical_intent": "Synthèse mémorisable en fin de séquence",
+    "template": {
+      "kind": "flowchart",
+      "orientation": "vertical",
+      "cards": [
+        { "text": "Anamnèse avant tout geste" },
+        { "text": "ASA III = vigilance accrue", "variant": "warning" },
+        { "text": "Documenter chaque décision", "variant": "highlight" }
+      ]
+    }
+  }
+]
+
+SCRIPT À TRAITER
+---
+${scriptText}
+---`;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers — conversion raw → Timeline shape (parité partielle avec
 // buildTimelineFromRaw côté TS, sans validation Zod stricte).
 // ---------------------------------------------------------------------------
@@ -466,13 +676,14 @@ interface BuildResult {
 
 function buildTimelineFromRaw(
   raw: RawExtraction,
-  transcript: Transcript,
+  transcript: Transcript | null,
   sequenceId: string,
   audioUrl: string,
   durationSec: number,
+  mode: ExtractionMode,
 ): BuildResult {
   const warnings: string[] = [];
-  const lookup = makeWordIndexLookup(transcript);
+  const lookup = transcript ? makeWordIndexLookup(transcript) : null;
 
   const sourceScenes = raw.scenes ?? [];
   let scenes = sourceScenes;
@@ -490,12 +701,22 @@ function buildTimelineFromRaw(
     if (usedIds.has(safeId)) safeId = fallbackId;
     usedIds.add(safeId);
 
-    let startSec = lookup(scene.trigger_at_word_index);
+    let startSec: number | null = null;
+    if (mode === "approx_sec") {
+      const rawSec = Number(scene.trigger_at_sec);
+      if (Number.isFinite(rawSec)) startSec = clamp(rawSec, 0, durationSec);
+    } else if (lookup && typeof scene.trigger_at_word_index === "number") {
+      startSec = lookup(scene.trigger_at_word_index);
+    }
     if (startSec === null) {
       startSec = scenes.length > 0
         ? (index * durationSec) / scenes.length
         : 0;
-      warnings.push(`word_index_out_of_bounds:${safeId}`);
+      warnings.push(
+        mode === "word_index"
+          ? `word_index_out_of_bounds:${safeId}`
+          : `trigger_at_sec_missing:${safeId}`,
+      );
     }
 
     const rawDuration = Number(scene.display_duration_sec ?? MIN_DURATION_SEC);
@@ -519,13 +740,21 @@ function buildTimelineFromRaw(
 
   const sourceConcepts = raw.concepts ?? [];
   const convertedConcepts = sourceConcepts.map((c, index) => {
-    let atSec = lookup(c.at_word_index);
+    let atSec: number | null = null;
+    if (mode === "approx_sec") {
+      const rawSec = Number(c.at_sec);
+      if (Number.isFinite(rawSec)) atSec = clamp(rawSec, 0, durationSec);
+    } else if (lookup && typeof c.at_word_index === "number") {
+      atSec = lookup(c.at_word_index);
+    }
     if (atSec === null) {
       atSec = sourceConcepts.length > 0
         ? (index * durationSec) / sourceConcepts.length
         : 0;
       warnings.push(
-        `concept_word_index_out_of_bounds:${c.term ?? `idx-${index}`}`,
+        mode === "word_index"
+          ? `concept_word_index_out_of_bounds:${c.term ?? `idx-${index}`}`
+          : `concept_at_sec_missing:${c.term ?? `idx-${index}`}`,
       );
     }
     const label = (c.term ?? "").trim() || `concept-${index + 1}`;
@@ -542,7 +771,9 @@ function buildTimelineFromRaw(
       term: c.term,
       definition,
       at_sec: atSec,
-      at_word_index: c.at_word_index,
+      ...(typeof c.at_word_index === "number"
+        ? { at_word_index: c.at_word_index }
+        : {}),
       ...(c.source ? { source: c.source } : {}),
     };
   });
@@ -557,20 +788,27 @@ function buildTimelineFromRaw(
       end_sec: s.end_sec,
     }));
 
+  const timeline: Record<string, unknown> = {
+    schema_version: "1.0",
+    source_type: "formation_sequence",
+    source_id: sequenceId,
+    audio_url: audioUrl,
+    duration_sec: durationSec,
+    generated_at: new Date().toISOString(),
+    generator:
+      mode === "approx_sec"
+        ? "auto_llm_extraction_approx"
+        : "auto_llm_extraction",
+    scenes: convertedScenes,
+    concepts: convertedConcepts,
+    chapters,
+  };
+  if (mode === "word_index" && transcript) {
+    timeline.transcript = transcript;
+  }
+
   return {
-    timeline: {
-      schema_version: "1.0",
-      source_type: "formation_sequence",
-      source_id: sequenceId,
-      audio_url: audioUrl,
-      duration_sec: durationSec,
-      generated_at: new Date().toISOString(),
-      generator: "auto_llm_extraction",
-      transcript,
-      scenes: convertedScenes,
-      concepts: convertedConcepts,
-      chapters,
-    },
+    timeline,
     warnings,
     scenes_count: convertedScenes.length,
     concepts_count: convertedConcepts.length,
@@ -671,56 +909,92 @@ async function runExtraction(
 
   const supabase = getServiceClient();
 
-  // 1. Lire sequences.timeline_url
+  // 1. Lire sequences — on a besoin de timeline_url (pour le mode),
+  //    course_media_url + course_duration_seconds (pour le mode approx_sec)
+  //    et script_text en fallback.
   const { data: seqRow, error: seqErr } = await supabase
     .from("sequences")
-    .select("id, timeline_url")
+    .select(
+      "id, timeline_url, course_media_url, course_duration_seconds, script_text",
+    )
     .eq("id", sequenceId)
     .maybeSingle();
   if (seqErr) throw new Error(`sequences read failed: ${seqErr.message}`);
   if (!seqRow) throw new Error(`sequence ${sequenceId} not found`);
-  if (!seqRow.timeline_url) {
-    throw new Error(
-      "sequences.timeline_url is null — le pipeline T2 (Python) doit avoir produit la timeline avant d'appeler extract-scenes. Le path audio-generation-worker n'est pas une source de timeline (D-S4-T5dette-02 : /v1/text-to-dialogue ignore with_timestamps).",
-    );
+
+  // 2. Dispatch mode :
+  //    - timeline_url non-null  → word_index (transcript depuis timeline JSON)
+  //    - timeline_url null      → approx_sec (script_text + duration depuis BDD)
+  let mode: ExtractionMode;
+  let transcript: Transcript | null = null;
+  let audioUrl: string;
+  let durationSec: number;
+  let scriptText: string;
+
+  if (seqRow.timeline_url) {
+    mode = "word_index";
+    const resp = await fetch(seqRow.timeline_url, {
+      headers: { "cache-control": "no-store" },
+    });
+    if (!resp.ok) {
+      throw new Error(`timeline_url fetch failed (HTTP ${resp.status})`);
+    }
+    const tlJson = (await resp.json()) as TimelineJson;
+    if (
+      !tlJson || typeof tlJson !== "object" ||
+      typeof tlJson.audio_url !== "string" ||
+      typeof tlJson.duration_sec !== "number" ||
+      !tlJson.transcript || !Array.isArray(tlJson.transcript.segments)
+    ) {
+      throw new Error(
+        "timeline JSON missing required fields (audio_url / duration_sec / transcript.segments)",
+      );
+    }
+    transcript = tlJson.transcript;
+    audioUrl = tlJson.audio_url;
+    durationSec = tlJson.duration_sec;
+    // Priorité 1 : body override (chaining T7). Priorité 2 : transcript.segments.
+    // Priorité 3 : sequences.script_text. Priorité 4 : on lève une erreur.
+    scriptText = scriptTextOverride?.trim() ||
+      tlJson.transcript.segments
+        .map((s) => `${s.speaker.toUpperCase()}: ${s.text}`)
+        .join("\n\n")
+        .trim() ||
+      (typeof seqRow.script_text === "string"
+        ? seqRow.script_text.trim()
+        : "");
+  } else {
+    mode = "approx_sec";
+    audioUrl = typeof seqRow.course_media_url === "string"
+      ? seqRow.course_media_url
+      : "";
+    if (!audioUrl) {
+      throw new Error(
+        "sequences.course_media_url is missing — impossible de positionner les scènes sans audio source",
+      );
+    }
+    durationSec =
+      typeof seqRow.course_duration_seconds === "number"
+        ? seqRow.course_duration_seconds
+        : 0;
+    if (!durationSec || durationSec <= 0) {
+      throw new Error(
+        "sequences.course_duration_seconds is missing or invalid — mode approx_sec requires a positive audio duration",
+      );
+    }
+    scriptText = scriptTextOverride?.trim() ||
+      (typeof seqRow.script_text === "string"
+        ? seqRow.script_text.trim()
+        : "");
   }
 
-  // 2. Fetch timeline_url
-  const resp = await fetch(seqRow.timeline_url, {
-    headers: { "cache-control": "no-store" },
-  });
-  if (!resp.ok) {
-    throw new Error(`timeline_url fetch failed (HTTP ${resp.status})`);
-  }
-  const tlJson = (await resp.json()) as TimelineJson;
-  if (
-    !tlJson || typeof tlJson !== "object" ||
-    typeof tlJson.audio_url !== "string" ||
-    typeof tlJson.duration_sec !== "number" ||
-    !tlJson.transcript || !Array.isArray(tlJson.transcript.segments)
-  ) {
-    throw new Error(
-      "timeline JSON missing required fields (audio_url / duration_sec / transcript.segments)",
-    );
-  }
-
-  // 3. Reconstitue script_text
-  // Priorité 1 : script_text fourni dans le body (chaining T7 depuis le
-  // worker audio — court-circuite la reconstruction quand la timeline
-  // ElevenLabs n'a pas de segments).
-  // Priorité 2 : reconstruction depuis transcript.segments (pipeline Python).
-  const scriptText = scriptTextOverride?.trim() ||
-    tlJson.transcript.segments
-      .map((s) => `${s.speaker.toUpperCase()}: ${s.text}`)
-      .join("\n\n")
-      .trim();
   if (scriptText.length < 50) {
     throw new Error(
-      "script_text too short (< 50 chars) — ni body.script_text ni transcript.segments utilisables",
+      "script_text too short (< 50 chars) — fournir un script via le body, le transcript existant ou sequences.script_text",
     );
   }
 
-  // 4. Appel Anthropic
+  // 3. Appel Anthropic — choix du prompt selon le mode (§5 handoff).
   const anthropicKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!anthropicKey) throw new Error("ANTHROPIC_API_KEY env var missing");
 
@@ -730,14 +1004,16 @@ async function runExtraction(
     timeoutMs: 90_000,
   });
 
+  const userPrompt = mode === "approx_sec"
+    ? buildFormationPromptApprox(scriptText, durationSec)
+    : buildFormationPrompt(scriptText, transcript as Transcript);
+
   const response = await client.messages({
     model: SONNET_MODEL,
     system: EXTRACTION_SYSTEM_PROMPT,
     max_tokens: MAX_OUTPUT_TOKENS,
     temperature: 0,
-    messages: [
-      { role: "user", content: buildFormationPrompt(scriptText, tlJson.transcript) },
-    ],
+    messages: [{ role: "user", content: userPrompt }],
   });
   const sonnetText = extractTextContent(response);
   if (!sonnetText || !sonnetText.trim()) {
@@ -754,13 +1030,14 @@ async function runExtraction(
     throw new Error("Sonnet output missing concepts[] array");
   }
 
-  // 6. Build Timeline shape (word_index → sec, clamp, ids, chapters)
+  // 6. Build Timeline shape (mode-aware : word_index → sec OU clamp trigger_at_sec)
   const built = buildTimelineFromRaw(
     parsed,
-    tlJson.transcript,
+    transcript,
     sequenceId,
-    tlJson.audio_url,
-    tlJson.duration_sec,
+    audioUrl,
+    durationSec,
+    mode,
   );
 
   // 7. Upload Storage
@@ -808,7 +1085,7 @@ async function runExtraction(
     // audio_generation_jobs.duration_sec est de type SQL `int` : on arrondit
     // explicitement la valeur (float dans le timeline JSON) au boundary
     // float→int pour éviter un cast implicite ambigu côté Postgres.
-    duration_sec: Math.round(tlJson.duration_sec),
+    duration_sec: Math.round(durationSec),
     scenes_count: built.scenes_count,
     concepts_count: built.concepts_count,
     duration_ms: durationMs,

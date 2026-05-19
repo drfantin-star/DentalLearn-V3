@@ -258,25 +258,32 @@ export async function POST(req: NextRequest) {
     let transcript = body.transcript
     let audioUrl = body.audio_url
     let durationSec = body.duration_sec
+    // §4 handoff — mode dispatch :
+    //   - timeline_url non-null : word_index (transcript + audio depuis timeline)
+    //   - timeline_url null : approx_sec (script_text + course_media_url depuis BDD)
+    let mode: 'word_index' | 'approx_sec' = 'word_index'
 
-    if (!scriptText || !transcript || !audioUrl || !durationSec) {
-      const ctx = await loadFormationContextFromTimeline(body.source_id)
+    if (!scriptText || !audioUrl || !durationSec || !transcript) {
+      const ctx = await loadFormationContext(body.source_id)
       if (!ctx.ok) {
         return NextResponse.json(
           { error: 'missing_context', message: ctx.message },
           { status: 400 }
         )
       }
+      mode = ctx.mode
       scriptText = scriptText ?? ctx.script_text
-      transcript = transcript ?? ctx.transcript
       audioUrl = audioUrl ?? ctx.audio_url
       durationSec = durationSec ?? ctx.duration_sec
+      transcript = transcript ?? ctx.transcript
     }
 
     const result = await extractScenesFromScript({
       script_text: scriptText,
       transcript,
       source_id: body.source_id,
+      mode,
+      duration_sec: durationSec,
     })
 
     if (!result.ok) {
@@ -305,6 +312,7 @@ export async function POST(req: NextRequest) {
       source_id: body.source_id,
       audio_url: audioUrl,
       duration_sec: durationSec,
+      mode,
     })
 
     if (!builtTimeline.ok) {
@@ -331,6 +339,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      mode,
       timeline: builtTimeline.timeline,
       llm_meta: {
         model: SONNET_MODEL_T5,
@@ -368,9 +377,10 @@ export async function POST(req: NextRequest) {
 
 interface FormationContext {
   script_text: string
-  transcript: z.infer<typeof TranscriptInputSchema>
   audio_url: string
   duration_sec: number
+  mode: 'word_index' | 'approx_sec'
+  transcript?: z.infer<typeof TranscriptInputSchema>
 }
 
 interface LoadOk extends FormationContext {
@@ -383,25 +393,26 @@ interface LoadFail {
 }
 
 /**
- * Lit la timeline existante de la séquence (générée par T2 — pipeline Python)
- * et en extrait :
- *   - transcript (segments[].words[]) — réutilisé tel quel
- *   - audio_url + duration_sec — copiés depuis les champs racine
- *   - script_text — reconstitué par concat des segment.text avec marqueurs
- *     speaker (Sonnet a besoin de la voix Sophie/Martin pour différencier
- *     les passages didactiques)
+ * §4 handoff — dispatcher selon la présence de `sequences.timeline_url`.
  *
- * Si la séquence n'a pas encore de timeline_url (T2 pas exécuté), retourne
- * une erreur explicite pour que l'admin sache qu'il doit d'abord faire
- * tourner T2 avant T5.
+ * - timeline_url non-null → mode `word_index` : on fetch la timeline existante
+ *   (pipeline Python ou upload manuel §9) et on en extrait transcript +
+ *   audio + duration_sec ; script_text reconstitué depuis transcript.segments.
+ *
+ * - timeline_url null → mode `approx_sec` (§1 fallback) : on lit script_text,
+ *   course_media_url et course_duration_seconds directement sur la séquence ;
+ *   transcript reste indéfini, Sonnet positionne les scènes via trigger_at_sec
+ *   proportionnel au script.
  */
-async function loadFormationContextFromTimeline(
+async function loadFormationContext(
   sourceId: string
 ): Promise<LoadOk | LoadFail> {
   const admin = createAdminClient()
   const { data: sequence, error } = await admin
     .from('sequences')
-    .select('id, timeline_url')
+    .select(
+      'id, timeline_url, script_text, course_media_url, course_duration_seconds',
+    )
     .eq('id', sourceId)
     .maybeSingle()
 
@@ -411,74 +422,108 @@ async function loadFormationContextFromTimeline(
   if (!sequence) {
     return { ok: false, message: `sequence ${sourceId} not found` }
   }
-  if (!sequence.timeline_url) {
-    return {
-      ok: false,
-      message:
-        'sequences.timeline_url is null — run T2 (Python pipeline) first to generate the karaoke timeline.',
-    }
-  }
 
-  let json: unknown
-  try {
-    const resp = await fetch(sequence.timeline_url, { cache: 'no-store' })
-    if (!resp.ok) {
+  // ---- Mode word_index : timeline_url disponible -----------------------
+  if (sequence.timeline_url) {
+    let json: unknown
+    try {
+      const resp = await fetch(sequence.timeline_url, { cache: 'no-store' })
+      if (!resp.ok) {
+        return {
+          ok: false,
+          message: `timeline_url fetch failed (HTTP ${resp.status})`,
+        }
+      }
+      json = await resp.json()
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      return { ok: false, message: `timeline_url fetch error: ${msg}` }
+    }
+
+    if (!json || typeof json !== 'object') {
+      return { ok: false, message: 'timeline_url is not a JSON object' }
+    }
+    const obj = json as Record<string, unknown>
+
+    const audioUrl = typeof obj.audio_url === 'string' ? obj.audio_url : null
+    const durationSec =
+      typeof obj.duration_sec === 'number' ? obj.duration_sec : null
+    const transcript = obj.transcript
+
+    if (!audioUrl || !durationSec || !transcript) {
       return {
         ok: false,
-        message: `timeline_url fetch failed (HTTP ${resp.status})`,
+        message:
+          'timeline JSON is missing required fields (audio_url / duration_sec / transcript).',
       }
     }
-    json = await resp.json()
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    return { ok: false, message: `timeline_url fetch error: ${msg}` }
+
+    const transcriptParsed = TranscriptInputSchema.safeParse(transcript)
+    if (!transcriptParsed.success) {
+      return {
+        ok: false,
+        message: `transcript shape invalid: ${transcriptParsed.error.message}`,
+      }
+    }
+
+    const scriptText = transcriptParsed.data.segments
+      .map((seg) => `${seg.speaker.toUpperCase()}: ${seg.text}`)
+      .join('\n\n')
+      .trim()
+
+    if (scriptText.length < 50) {
+      return {
+        ok: false,
+        message: 'reconstructed script_text too short (< 50 chars)',
+      }
+    }
+
+    return {
+      ok: true,
+      mode: 'word_index',
+      script_text: scriptText,
+      transcript: transcriptParsed.data,
+      audio_url: audioUrl,
+      duration_sec: durationSec,
+    }
   }
 
-  if (!json || typeof json !== 'object') {
-    return { ok: false, message: 'timeline_url is not a JSON object' }
-  }
-  const obj = json as Record<string, unknown>
-
-  const audioUrl = typeof obj.audio_url === 'string' ? obj.audio_url : null
-  const durationSec =
-    typeof obj.duration_sec === 'number' ? obj.duration_sec : null
-  const transcript = obj.transcript
-
-  if (!audioUrl || !durationSec || !transcript) {
+  // ---- Mode approx_sec : pas de timeline_url, on lit directement la BDD -
+  const scriptText =
+    typeof sequence.script_text === 'string' ? sequence.script_text.trim() : ''
+  if (!scriptText || scriptText.length < 50) {
     return {
       ok: false,
       message:
-        'timeline JSON is missing required fields (audio_url / duration_sec / transcript).',
+        'sequences.script_text is missing or too short (< 50 chars). Uploadez d\'abord un script via le dashboard, ou uploadez une timeline pré-calculée (.json) si la séquence vient du pipeline Python.',
     }
   }
-
-  const transcriptParsed = TranscriptInputSchema.safeParse(transcript)
-  if (!transcriptParsed.success) {
+  const audioUrl =
+    typeof sequence.course_media_url === 'string'
+      ? sequence.course_media_url
+      : null
+  if (!audioUrl) {
     return {
       ok: false,
-      message: `transcript shape invalid: ${transcriptParsed.error.message}`,
+      message: 'sequences.course_media_url is missing (no audio generated yet).',
     }
   }
-
-  // Reconstitution script_text : un bloc par segment, préfixé par le speaker.
-  // Format proche du dialogue source (dialogues/sequence_*.txt) — donne au LLM
-  // la même structure que les pilotes écrits manuellement.
-  const scriptText = transcriptParsed.data.segments
-    .map((seg) => `${seg.speaker.toUpperCase()}: ${seg.text}`)
-    .join('\n\n')
-    .trim()
-
-  if (scriptText.length < 50) {
+  const durationSec =
+    typeof sequence.course_duration_seconds === 'number'
+      ? sequence.course_duration_seconds
+      : null
+  if (!durationSec || durationSec <= 0) {
     return {
       ok: false,
-      message: 'reconstructed script_text too short (< 50 chars)',
+      message:
+        'sequences.course_duration_seconds is missing or invalid (no audio duration recorded).',
     }
   }
 
   return {
     ok: true,
+    mode: 'approx_sec',
     script_text: scriptText,
-    transcript: transcriptParsed.data,
     audio_url: audioUrl,
     duration_sec: durationSec,
   }

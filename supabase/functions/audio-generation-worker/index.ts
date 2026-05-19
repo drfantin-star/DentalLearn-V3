@@ -220,6 +220,11 @@ async function runWorker(body: RequestBody): Promise<void> {
     audio_chars_consumed: charsConsumed,
     audio_cost_eur: costEur,
     audio_history: newHistory,
+    // §6/§8 handoff 19 mai 2026 — on persiste systématiquement le script
+    // source de l'audio sur la séquence. Permet à extract-scenes
+    // (mode approx_sec) de relancer une extraction Sonnet plus tard, depuis
+    // l'UI admin, sans dépendre du chaining worker → extract-scenes.
+    script_text: script_text,
     updated_at: nowIso,
   };
   if (timelineUrl) {
@@ -255,17 +260,18 @@ async function runWorker(body: RequestBody): Promise<void> {
 
   // 7. T7 — Chaining vers extract-scenes-formation. On crée un job dédié
   // `scene_extraction` puis on POST fire-and-forget vers l'Edge Function
-  // qui transforme la timeline karaoké brute en timeline structurée
-  // (scènes + concepts via Sonnet). Le worker audio est déjà completed :
-  // aucune erreur de chaining ne doit faire revenir le job en failed.
+  // qui transforme l'audio + script en timeline structurée (scènes +
+  // concepts via Sonnet). Le worker audio est déjà completed : aucune
+  // erreur de chaining ne doit faire revenir le job en failed.
   // Pas de await sur le fetch — seul le SYN/handshake TCP est borné à 5 s
   // via AbortSignal, l'exécution Sonnet (~30-45 s) court côté Edge Function.
-  // Gate sur `timelineUrl` : sans alignment ElevenLabs (D-S4-T5dette-02 :
-  // /v1/text-to-dialogue ignore silencieusement with_timestamps), il n'y a
-  // pas de word-indices → extract-scenes ne peut rien produire et crashe
-  // sur le fetch de la timeline. Le pipeline T2 (Python) reste la seule
-  // source légitime de timeline_url tant que la dette n'est pas levée.
-  if (with_timestamps && timelineUrl) {
+  //
+  // §6 handoff 19 mai 2026 — gate `timelineUrl` retirée. Avec le mode
+  // `approx_sec` côté Edge Function (§5), extract-scenes-formation accepte
+  // désormais une séquence SANS timeline_url et positionne les scènes via
+  // trigger_at_sec proportionnel au script. La condition se réduit donc à
+  // « avoir une durée audio valide ».
+  if (durationSec > 0) {
     try {
       const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
       const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -320,11 +326,11 @@ async function runWorker(body: RequestBody): Promise<void> {
         sequence_id,
       });
     }
-  } else if (with_timestamps && !timelineUrl) {
-    logger.warn("scene_extraction_skipped_no_timeline", {
+  } else {
+    logger.warn("scene_extraction_skipped_no_duration", {
       sequence_id,
       reason:
-        "ElevenLabs /v1/text-to-dialogue ne retourne pas d'alignment (D-S4-T5dette-02) — extract-scenes-formation a besoin d'une timeline produite par le pipeline T2 Python",
+        "durationSec <= 0 — impossible de positionner les scènes en mode approx_sec sans durée audio valide",
     });
   }
 }
