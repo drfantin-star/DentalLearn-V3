@@ -681,7 +681,7 @@ async function runExtraction(
   if (!seqRow) throw new Error(`sequence ${sequenceId} not found`);
   if (!seqRow.timeline_url) {
     throw new Error(
-      "sequences.timeline_url is null — run T2 (Python pipeline) first.",
+      "sequences.timeline_url is null — le pipeline T2 (Python) doit avoir produit la timeline avant d'appeler extract-scenes. Le path audio-generation-worker n'est pas une source de timeline (D-S4-T5dette-02 : /v1/text-to-dialogue ignore with_timestamps).",
     );
   }
 
