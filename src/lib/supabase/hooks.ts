@@ -243,17 +243,30 @@ export function useUserFormationProgress(formationId: string | null) {
         return
       }
 
+      // Source de vérité unique pour la progression : user_sequences
+      // (et NON course_watch_logs, qui sert au tracking DPC et compte des
+      // écoutes multiples de la même séquence comme autant de "completions").
+      // On joint sur sequences pour restreindre au formation_id courant.
       const { data: completed, error: completedErr } = await supabase
-        .rpc('get_user_completed_sequences', {
-          p_user_id: user.id,
-          p_formation_id: formationId,
-        })
+        .from('user_sequences')
+        .select('sequence_id, sequences!inner(formation_id)')
+        .eq('user_id', user.id)
+        .eq('sequences.formation_id', formationId)
+        .not('completed_at', 'is', null)
 
       if (completedErr) {
-        console.error('Erreur get_user_completed_sequences:', completedErr)
+        console.error('Erreur user_sequences:', completedErr)
         setCompletedSequenceIds([])
       } else {
-        setCompletedSequenceIds((completed || []).map((c: any) => c.sequence_id))
+        // Set pour garantir l'unicité — défense en profondeur, car
+        // user_sequences a déjà UNIQUE(user_id, sequence_id). Sans ça, des
+        // doublons feraient diverger les deux affichages de progression
+        // (le compteur "X/N" compte les séquences uniques, la barre la
+        // longueur du tableau).
+        const uniqueIds = Array.from(
+          new Set((completed || []).map((c: any) => c.sequence_id))
+        )
+        setCompletedSequenceIds(uniqueIds)
       }
 
       const { data: userFormation } = await supabase
@@ -627,17 +640,23 @@ export function useFormationPoints(formationId: string | null) {
 // ============================================
 
 export function useFormationCompletion(formationId: string | null, sequences: Sequence[], completedSequenceIds: string[]) {
+  // Compteur unique aligné sur sequences (et non sur completedSequenceIds)
+  // pour garantir que le texte "X/N séquences" et la barre de progression
+  // affichent toujours la MÊME valeur, même si completedSequenceIds contient
+  // des doublons.
+  const completedCount = useMemo(() => {
+    return sequences.filter(seq => completedSequenceIds.includes(seq.id)).length
+  }, [sequences, completedSequenceIds])
+
   const isCompleted = useMemo(() => {
     if (!sequences.length) return false
-    return sequences.every(seq => completedSequenceIds.includes(seq.id))
-  }, [sequences, completedSequenceIds])
+    return completedCount === sequences.length
+  }, [sequences.length, completedCount])
 
   const completionPercent = useMemo(() => {
     if (!sequences.length) return 0
-    return Math.round((completedSequenceIds.filter(id => 
-      sequences.some(s => s.id === id)
-    ).length / sequences.length) * 100)
-  }, [sequences, completedSequenceIds])
+    return Math.round((completedCount / sequences.length) * 100)
+  }, [sequences.length, completedCount])
 
-  return { isCompleted, completionPercent }
+  return { isCompleted, completionPercent, completedCount }
 }
