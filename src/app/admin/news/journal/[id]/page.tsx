@@ -515,7 +515,7 @@ export default function AdminJournalDetailPage() {
             value={scriptDraft}
             onChange={(e) => setScriptDraft(e.target.value)}
             rows={14}
-            className="w-full font-mono text-xs rounded-xl border border-gray-300 p-3 bg-gray-50"
+            className="w-full font-mono text-xs text-gray-900 rounded-xl border border-gray-300 p-3 bg-gray-50"
           />
           <p className="mt-2 text-xs text-gray-500">
             Édition locale uniquement — les modifications ne sont pas persistées
@@ -561,7 +561,7 @@ export default function AdminJournalDetailPage() {
                   value={scriptDraft}
                   readOnly
                   rows={10}
-                  className="mt-2 w-full font-mono text-xs rounded-xl border border-gray-300 p-3 bg-gray-50"
+                  className="mt-2 w-full font-mono text-xs text-gray-900 rounded-xl border border-gray-300 p-3 bg-gray-50"
                 />
               </details>
             </>
@@ -612,7 +612,7 @@ export default function AdminJournalDetailPage() {
             value={scriptDraft}
             readOnly
             rows={14}
-            className="w-full font-mono text-xs rounded-xl border border-gray-300 p-3 bg-gray-50"
+            className="w-full font-mono text-xs text-gray-900 rounded-xl border border-gray-300 p-3 bg-gray-50"
           />
         </section>
       )}
