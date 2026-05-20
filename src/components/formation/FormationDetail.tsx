@@ -22,6 +22,7 @@ import {
   type Sequence,
 } from '@/lib/supabase'
 import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
+import { useAudio } from '@/context/AudioContext'
 import EnrollmentCTA from '@/components/formation/EnrollmentCTA'
 import PostIntroEnrollmentModal from '@/components/formation/PostIntroEnrollmentModal'
 import { GenerateAttestationButton } from '@/components/attestations/GenerateAttestationButton'
@@ -231,6 +232,13 @@ export default function FormationDetail({
     refetch: refetchEnrollment,
   } = useEnrollmentStatus(formationId)
 
+  // MiniPlayer global (`(app)/layout.tsx`) flotte à `bottom-20` (z-40) dès
+  // qu'un audio est chargé dans le contexte. On surveille `state.audioUrl`
+  // pour décaler le CTA fixe au-dessus et éviter qu'il soit recouvert et
+  // donc inatteignable au clic.
+  const { state: audioState } = useAudio()
+  const isMiniPlayerVisible = !!audioState.audioUrl
+
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [showPostIntroModal, setShowPostIntroModal] = useState(false)
 
@@ -299,7 +307,10 @@ export default function FormationDetail({
   }
 
   return (
-    <div className="pb-24 min-h-screen" style={{ background: '#0F0F0F' }}>
+    <div
+      className={`${isMiniPlayerVisible ? 'pb-44' : 'pb-24'} min-h-screen`}
+      style={{ background: '#0F0F0F' }}
+    >
       {/* Modal de fin */}
       {showCompletionModal && (
         <CompletionModal
@@ -418,8 +429,12 @@ export default function FormationDetail({
         <ValidationFooter formationId={formation.id} />
       </div>
 
-      {/* CTA fixe en bas */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 shadow-lg z-20" style={{ background: '#1a1a1a', borderTop: '0.5px solid #2a2a2a' }}>
+      {/* CTA fixe en bas — décalé au-dessus du MiniPlayer global s'il est
+          présent, sinon collé juste au-dessus de la BottomNav. */}
+      <div
+        className={`fixed ${isMiniPlayerVisible ? 'bottom-40' : 'bottom-20'} left-0 right-0 p-4 shadow-lg z-50`}
+        style={{ background: '#1a1a1a', borderTop: '0.5px solid #2a2a2a' }}
+      >
         <div className="max-w-lg mx-auto">
           {completedInFormation >= sequences.length && sequences.length > 0 && (
             <div className="mb-3 space-y-3">
