@@ -39,6 +39,7 @@ interface SequencePlayerProps {
   coverImageUrl?: string | null
   onBack: () => void
   onComplete: (score: number, totalPoints: number) => void
+  shouldSubmitResult?: () => Promise<boolean>
 }
 
 type PlayerStep = 'video' | 'quiz' | 'pdf' | 'results'
@@ -229,6 +230,7 @@ export default function SequencePlayer({
   coverImageUrl,
   onBack,
   onComplete,
+  shouldSubmitResult,
 }: SequencePlayerProps) {
   const { questions, loading: loadingQuestions, error } = useSequenceQuestions(sequence.id)
   const { submit: submitResult, loading: submitting } = useSubmitSequenceResult()
@@ -513,13 +515,18 @@ export default function SequencePlayer({
 
   const finishSequence = async () => {
     try {
-      await submitResult({
-        sequenceId: sequence.id,
-        score: Math.round((correctCount / questions.length) * 100),
-        totalPoints,
-        timeSpentSeconds: Math.round((Date.now() - startTime) / 1000),
-        answers: answersLog,
-      })
+      // Demander au parent si on peut écrire en DB (gate l'auto-inscription
+      // silencieuse pour les intros complétées par un user non inscrit).
+      const canSubmit = shouldSubmitResult ? await shouldSubmitResult() : true
+      if (canSubmit) {
+        await submitResult({
+          sequenceId: sequence.id,
+          score: Math.round((correctCount / questions.length) * 100),
+          totalPoints,
+          timeSpentSeconds: Math.round((Date.now() - startTime) / 1000),
+          answers: answersLog,
+        })
+      }
     } catch (err) {
       console.error('Erreur soumission:', err)
     }

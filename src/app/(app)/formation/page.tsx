@@ -26,6 +26,7 @@ import FormationDetail from '@/components/formation/FormationDetail'
 import SequencePlayer from '@/components/formation/SequencePlayer'
 import Badge from '@/components/ui/Badge'
 import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
+import { createClient } from '@/lib/supabase/client'
 
 // ============================================
 // TYPES
@@ -133,26 +134,52 @@ export default function FormationPage() {
     }
   }
 
-  const handleSequenceComplete = (score: number, totalPoints: number) => {
+  // Fetch frais de l'inscription. Plus robuste qu'un snapshot d'état React
+  // qui peut être stale (race condition sur useEnrollmentStatus, navigation
+  // entre formations, désinscription SQL pendant que la page est ouverte).
+  const fetchEnrolledFresh = async (formationId: string): Promise<boolean> => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return false
+    const { data } = await supabase
+      .from('user_formations')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('formation_id', formationId)
+      .maybeSingle()
+    return !!data
+  }
+
+  const buildShouldSubmitResult = (seq: Sequence) => async () => {
+    if (!seq.is_intro) return true
+    const enrolled = await fetchEnrolledFresh(seq.formation_id)
+    return enrolled
+  }
+
+  const handleSequenceComplete = async (score: number, totalPoints: number) => {
     console.log('✅ Séquence terminée:', { score, totalPoints })
 
     const completedSequence = selectedSequence
-    const wasIntroOfNonEnrolled =
-      !!completedSequence?.is_intro && !wasEnrolledBeforeSequenceRef.current
-
-    // Si l'intro est complétée par un user non inscrit : on NE marque PAS la
-    // séquence complétée (markCompleted upsert user_formations et créerait
-    // une inscription implicite). L'inscription se fait via la modal.
-    if (completedSequence && !wasIntroOfNonEnrolled) {
-      markCompleted(completedSequence.id, completedSequence.sequence_number + 1)
+    if (!completedSequence) {
+      setSelectedSequence(null)
+      setViewMode('formation')
+      return
     }
+
+    const isCurrentlyEnrolled = await fetchEnrolledFresh(completedSequence.formation_id)
+    const isIntroOfNonEnrolled = !!completedSequence.is_intro && !isCurrentlyEnrolled
+
+    if (isIntroOfNonEnrolled) {
+      setSelectedSequence(null)
+      setViewMode('formation')
+      setPendingPostIntroModal(true)
+      return
+    }
+
+    markCompleted(completedSequence.id, completedSequence.sequence_number + 1)
 
     setSelectedSequence(null)
     setViewMode('formation')
-
-    if (wasIntroOfNonEnrolled) {
-      setPendingPostIntroModal(true)
-    }
   }
 
   // ============================================
@@ -166,6 +193,7 @@ export default function FormationPage() {
         coverImageUrl={formations.find(f => f.id === selectedFormationId)?.cover_image_url}
         onBack={goBack}
         onComplete={handleSequenceComplete}
+        shouldSubmitResult={buildShouldSubmitResult(selectedSequence)}
       />
     )
   }
