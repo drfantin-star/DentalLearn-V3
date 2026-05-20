@@ -12,8 +12,10 @@ import {
   AlertCircle,
   Search,
   RefreshCw,
-  BookOpen
+  BookOpen,
+  Plus
 } from 'lucide-react';
+import AddEnrollmentModal from '@/components/admin/AddEnrollmentModal';
 
 interface UserEnrollment {
   id: string;
@@ -41,6 +43,8 @@ export default function AccessManagementPage() {
   const [filterAccess, setFilterAccess] = useState<'all' | 'demo' | 'full'>('all');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formations, setFormations] = useState<Array<{ id: string; title: string }>>([]);
 
   const router = useRouter();
   const supabase = createClient();
@@ -69,12 +73,21 @@ export default function AccessManagementPage() {
         return;
       }
 
-      await loadEnrollments();
+      await Promise.all([loadEnrollments(), loadFormations()]);
     } catch (error) {
       console.error('Erreur:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadFormations = async () => {
+    const { data } = await supabase
+      .from('formations')
+      .select('id, title')
+      .eq('is_published', true)
+      .order('title');
+    setFormations(data || []);
   };
 
   const loadEnrollments = async () => {
@@ -197,7 +210,7 @@ export default function AccessManagementPage() {
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="p-3 bg-primary/10 rounded-xl">
             <Users className="w-8 h-8 text-primary" />
@@ -207,6 +220,13 @@ export default function AccessManagementPage() {
             <p className="text-gray-600">Gérer les accès aux formations</p>
           </div>
         </div>
+        <button
+          onClick={() => setShowAddModal(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Ajouter une inscription
+        </button>
       </div>
 
       {/* Message */}
@@ -430,6 +450,19 @@ export default function AccessManagementPage() {
           </table>
         </div>
       </div>
+
+      {showAddModal && (
+        <AddEnrollmentModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => {
+            loadEnrollments();
+            setMessage({ type: 'success', text: 'Inscription créée avec succès' });
+            setTimeout(() => setMessage(null), 3000);
+          }}
+          formations={formations}
+        />
+      )}
 
       {/* Info */}
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">

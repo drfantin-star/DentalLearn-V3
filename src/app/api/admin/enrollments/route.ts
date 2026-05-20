@@ -100,6 +100,72 @@ export async function GET() {
   }
 }
 
+// POST: Créer une nouvelle inscription
+export async function POST(request: Request) {
+  try {
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session) {
+      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+    }
+
+    if (!(await isSuperAdmin(session.user.id))) {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
+    }
+
+    const { userId, formationId } = await request.json()
+
+    if (!userId || !formationId) {
+      return NextResponse.json({ error: 'userId et formationId requis' }, { status: 400 })
+    }
+
+    const adminSupabase = createAdminClient()
+
+    const { data: existing, error: checkError } = await adminSupabase
+      .from('user_formations')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('formation_id', formationId)
+      .maybeSingle()
+
+    if (checkError) {
+      console.error('Erreur vérification doublon:', checkError)
+      return NextResponse.json({ error: 'Erreur vérification' }, { status: 500 })
+    }
+
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Cet utilisateur est déjà inscrit à cette formation' },
+        { status: 409 }
+      )
+    }
+
+    const { data: inserted, error: insertError } = await adminSupabase
+      .from('user_formations')
+      .insert({
+        user_id: userId,
+        formation_id: formationId,
+        is_active: true,
+        current_sequence: 1,
+        access_type: 'full'
+      })
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error('Erreur insertion inscription:', insertError)
+      return NextResponse.json({ error: 'Erreur création inscription' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, enrollment: inserted })
+
+  } catch (error) {
+    console.error('Erreur API admin/enrollments POST:', error)
+    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+  }
+}
+
 // PATCH: Mettre à jour le type d'accès d'une inscription
 export async function PATCH(request: Request) {
   try {
