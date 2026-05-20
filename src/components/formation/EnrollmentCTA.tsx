@@ -47,19 +47,27 @@ export default function EnrollmentCTA({
 
       const { error } = await supabase
         .from('user_formations')
-        .upsert(
-          {
-            user_id: user.id,
-            formation_id: formationId,
-            is_active: true,
-            current_sequence: 1,
-            access_type: 'full',
-            started_at: new Date().toISOString(),
-          },
-          { onConflict: 'user_id,formation_id' }
-        )
+        .insert({
+          user_id: user.id,
+          formation_id: formationId,
+          is_active: true,
+          current_sequence: 1,
+          access_type: 'full',
+          started_at: new Date().toISOString(),
+        })
+        .select()
 
-      if (error) throw error
+      if (error) {
+        // Code Postgres 23505 = violation contrainte unique = déjà inscrit.
+        // On resync l'UI au lieu d'afficher une erreur frustrante (le user
+        // EST inscrit, l'état local était stale).
+        if (error.code === '23505') {
+          onSuccess()
+          return
+        }
+        // Autre erreur (réseau, RLS, etc.) → message classique
+        throw error
+      }
 
       setMessage({ kind: 'success', text: 'Inscription réussie ! Bonne formation 🎓' })
       onSuccess()
