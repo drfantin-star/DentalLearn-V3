@@ -57,13 +57,27 @@ export function useEnrichedTimeline(
     fetch(timelineUrl, { cache: 'no-store' })
       .then(async (res) => {
         if (!res.ok) {
+          console.error('[EnrichedTimeline] fetch HTTP error', {
+            url: timelineUrl,
+            status: res.status,
+            statusText: res.statusText,
+          })
           throw new Error(
             `Timeline fetch failed: HTTP ${res.status} ${res.statusText}`
           )
         }
         const json = (await res.json()) as unknown
-        const parsed = TimelineSchema.parse(json)
-        return parsed
+        const parsed = TimelineSchema.safeParse(json)
+        if (!parsed.success) {
+          console.error('[EnrichedTimeline] Zod parse failed', {
+            url: timelineUrl,
+            issues: parsed.error.flatten(),
+          })
+          throw new Error(
+            `Timeline Zod validation failed: ${parsed.error.message}`
+          )
+        }
+        return parsed.data
       })
       .then((parsed) => {
         if (isStale) return
@@ -77,6 +91,10 @@ export function useEnrichedTimeline(
           err instanceof Error
             ? err
             : new Error('Timeline load failed (unknown error)')
+        console.error('[EnrichedTimeline] load failed', {
+          url: timelineUrl,
+          message: wrapped.message,
+        })
         setError(wrapped)
         setTimeline(null)
         setIsLoading(false)

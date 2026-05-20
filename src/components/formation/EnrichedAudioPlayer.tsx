@@ -207,6 +207,28 @@ export default function EnrichedAudioPlayer({
         />
       )}
 
+      {/* Diagnostic dev-only : signal visible quand la timeline est censée
+          être affichée (`hasTimeline === true`) mais le fetch/parse a échoué,
+          forçant le repli sur le legacy player. Le détail (status HTTP, issues
+          Zod) est dans la console via `useEnrichedTimeline`. Masqué en prod
+          pour respecter Q6 — fallback silencieux côté user final. */}
+      {process.env.NODE_ENV === 'development' && hasTimeline && error && (
+        <div
+          className="mt-2 px-3 py-2 rounded-lg text-xs"
+          style={{
+            background: 'rgba(220, 38, 38, 0.08)',
+            border: '0.5px solid rgba(220, 38, 38, 0.4)',
+            color: '#fca5a5',
+          }}
+        >
+          <strong>[dev] Timeline error:</strong> {error.message}
+          <br />
+          <span style={{ color: '#fecaca' }}>
+            Détails (status HTTP / Zod issues) → console DevTools.
+          </span>
+        </div>
+      )}
+
       {/* POC-T7.4-UX-FAB : pre-play state — large FAB Play centré dans une
           zone de la taille du futur whiteboard. Pattern YouTube tap-to-play.
           Disparaît dès `state.audioUrl === src` (la track démarre, le panneau
