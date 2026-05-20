@@ -173,17 +173,88 @@ export default function AdminJournalDetailPage() {
     }
   }
 
+  // Polling job audio + chaînage timeline.
+  //
+  // Architecture T5-dette-news : la génération audio passe par une Edge
+  // Function Supabase (audio-generation-journal-worker) car ElevenLabs sur
+  // un journal de 12 min dépassait les 300 s Vercel. La route /generate-audio
+  // crée un job et renvoie 202 + jobId, puis on polle
+  // /api/admin/audio-jobs/{jobId}/status toutes les 3 s jusqu'à
+  // completed/failed. Après succès on chaîne /generate-timeline (mapping
+  // déterministe rapide, <5 s) puis reload().
+  //
+  // Cap client à 15 min : largement au-dessus du sweep stale (10 min), évite
+  // les spinners orphelins si le worker meurt sans marquer le job failed.
+  const runAudioJobWithPolling = async (regenerate: boolean) => {
+    const path = regenerate
+      ? `/api/admin/news/journal/${id}/generate-audio?regenerate=true`
+      : `/api/admin/news/journal/${id}/generate-audio`
+    const startRes = await fetch(path, { method: 'POST' })
+    const startBody = await startRes.json().catch(() => ({}))
+    if (!startRes.ok) {
+      throw new Error(startBody?.error ?? `HTTP ${startRes.status}`)
+    }
+    const jobId = startBody?.jobId as string | undefined
+    if (!jobId) {
+      throw new Error('Réponse invalide : jobId manquant')
+    }
+
+    const POLL_INTERVAL_MS = 3000
+    const CLIENT_TIMEOUT_MS = 15 * 60 * 1000
+    const deadline = Date.now() + CLIENT_TIMEOUT_MS
+
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS))
+      const statusRes = await fetch(
+        `/api/admin/audio-jobs/${jobId}/status`,
+        { cache: 'no-store' },
+      )
+      const statusBody = await statusRes.json().catch(() => ({}))
+      if (!statusRes.ok) {
+        throw new Error(statusBody?.error ?? `HTTP ${statusRes.status}`)
+      }
+      const status = statusBody?.status as string | undefined
+      if (status === 'completed') {
+        // Timeline non-bloquante : si elle échoue, l'audio reste utilisable.
+        try {
+          const tlRes = await fetch(
+            `/api/admin/news/journal/${id}/generate-timeline`,
+            { method: 'POST' },
+          )
+          if (!tlRes.ok) {
+            const tlBody = await tlRes.json().catch(() => ({}))
+            console.warn(
+              '[journal] timeline generation failed (non-blocking):',
+              tlBody?.error,
+            )
+          }
+        } catch (tlErr) {
+          console.warn(
+            '[journal] timeline generation failed (non-blocking):',
+            tlErr,
+          )
+        }
+        return
+      }
+      if (status === 'failed' || status === 'cancelled') {
+        const msg =
+          (statusBody?.error?.message as string | undefined) ??
+          `Job ${status}`
+        throw new Error(msg)
+      }
+    }
+    throw new Error(
+      "Délai d'attente dépassé (15 min) — vérifier l'état du job dans /admin/audio-jobs",
+    )
+  }
+
   const handleGenerateAudio = async () => {
     if (!data) return
     if (!confirm('Générer le MP3 via ElevenLabs ? L\'opération peut prendre plusieurs minutes.')) return
     setBusy('audio')
     setOpError(null)
     try {
-      const res = await fetch(`/api/admin/news/journal/${id}/generate-audio`, {
-        method: 'POST',
-      })
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`)
+      await runAudioJobWithPolling(false)
       await reload()
     } catch (err) {
       setOpError(err instanceof Error ? err.message : 'Erreur génération audio')
@@ -198,12 +269,7 @@ export default function AdminJournalDetailPage() {
     setBusy('regen-audio')
     setOpError(null)
     try {
-      const res = await fetch(
-        `/api/admin/news/journal/${id}/generate-audio?regenerate=true`,
-        { method: 'POST' },
-      )
-      const body = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`)
+      await runAudioJobWithPolling(true)
       await reload()
     } catch (err) {
       setOpError(err instanceof Error ? err.message : 'Erreur régénération audio')
