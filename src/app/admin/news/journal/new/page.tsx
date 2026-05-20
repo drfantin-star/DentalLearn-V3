@@ -62,7 +62,7 @@ export default function AdminJournalNewPage() {
     let cancelled = false
 
     Promise.all([
-      fetch('/api/admin/news/syntheses?limit=50&status=active'),
+      fetch('/api/admin/news/syntheses?limit=50&status=active&sort=published_at_desc'),
       fetch('/api/admin/news/journal'),
     ])
       .then(async ([sRes, jRes]) => {
@@ -216,7 +216,7 @@ export default function AdminJournalNewPage() {
           <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
             <h2 className="font-semibold text-gray-900">Synthèses actives</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              50 plus récentes — cliquez pour ajouter au journal.
+              50 publications les plus récentes — cliquez pour ajouter au journal.
             </p>
           </div>
           {loading ? (
