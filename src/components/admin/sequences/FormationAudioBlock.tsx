@@ -449,16 +449,16 @@ export function FormationAudioBlock({
                     e.target.value = ''
                   }}
                 />
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={timelineUploading}
                   onClick={() => timelineFileInputRef.current?.click()}
-                  disabled={timelineUploading}
-                  className="px-3 py-1.5 text-sm border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50"
                 >
                   {timelineUploading
                     ? 'Upload en cours…'
                     : 'Uploader une timeline (.json)'}
-                </button>
+                </Button>
                 <span className="text-xs text-gray-500">
                   Pour séquences générées via pipeline Python local
                 </span>
