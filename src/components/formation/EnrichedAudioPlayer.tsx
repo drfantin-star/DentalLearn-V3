@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Play } from 'lucide-react'
 
 import { ConceptCard } from '@/components/audio-enriched/ConceptCard'
@@ -117,6 +117,35 @@ export default function EnrichedAudioPlayer({
     typeof timelineUrl === 'string' &&
     timelineUrl.length > 0 &&
     timelinePublished === true
+
+  // Diagnostic temporaire — surface les valeurs runtime des props gating
+  // pour comprendre pourquoi le panneau enrichi ne s'affiche pas. À retirer
+  // une fois la cause identifiée.
+  useEffect(() => {
+    console.log('[EnrichedAudioPlayer] gating props', {
+      sequenceId,
+      src,
+      timelineUrl,
+      timelineUrlType: typeof timelineUrl,
+      timelinePublished,
+      timelinePublishedType: typeof timelinePublished,
+      activeTab,
+      enrichmentEnabled,
+      hasTimeline,
+      isCurrentTrack,
+      hideLegacyCardWhenEnriched,
+    })
+  }, [
+    sequenceId,
+    src,
+    timelineUrl,
+    timelinePublished,
+    activeTab,
+    enrichmentEnabled,
+    hasTimeline,
+    isCurrentTrack,
+    hideLegacyCardWhenEnriched,
+  ])
 
   // Le hook gère son propre cache mémoire et son cycle de vie. On ne fetch
   // que si on a effectivement besoin du panneau enrichi pour cette piste.
