@@ -23,7 +23,8 @@ export async function GET() {
       .select('id, week_iso, audio_url, duration_s, status, created_at, published_at, timeline_url, timeline_published')
       .eq('type', 'journal')
       .eq('status', 'published')
-      .order('created_at', { ascending: false })
+      .not('audio_url', 'is', null)
+      .order('published_at', { ascending: false, nullsFirst: false })
       .limit(1)
       .maybeSingle()
 
@@ -31,8 +32,9 @@ export async function GET() {
       console.error('GET /api/news/journal/current episode error:', epErr)
       return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
     }
-    if (!episode || !episode.audio_url) {
-      return NextResponse.json(null, { status: 404 })
+    if (!episode) {
+      console.warn('GET /api/news/journal/current: aucun journal publié avec audio_url trouvé')
+      return NextResponse.json(null, { status: 200 })
     }
 
     // ----- Synthèses liées -----

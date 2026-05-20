@@ -71,7 +71,8 @@ export default function HomePage() {
       .catch(() => {})
   }, [])
 
-  // T11 : journal hebdo publié (404 silencieux si aucun journal disponible)
+  // T11 : journal hebdo publié — l'API renvoie 200 + null si aucun journal
+  // disponible (cf. /api/news/journal/current)
   useEffect(() => {
     fetch('/api/news/journal/current')
       .then((r) => (r.ok ? r.json() : null))
