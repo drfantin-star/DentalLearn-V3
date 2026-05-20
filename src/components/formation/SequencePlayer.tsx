@@ -566,6 +566,11 @@ export default function SequencePlayer({
         <div className="flex-1 p-4">
           {isAudio && sequence.course_media_url && sequence.timeline_url && sequence.timeline_published ? (
             <div className="mb-6">
+              <EnrichedTabSelector
+                active={enrichedActiveTab}
+                onChange={setEnrichedActiveTab}
+                categoryGradient={categoryGradient}
+              />
               <EnrichedAudioPlayer
                 src={sequence.course_media_url}
                 duration={sequence.course_duration_seconds || 0}
