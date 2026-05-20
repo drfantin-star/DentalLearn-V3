@@ -549,7 +549,31 @@ export default function SequenceDetailPage() {
                   path={`${formation.slug}/${mediaType}`}
                   accept={mediaType === 'audio' ? 'audio/*' : 'video/*'}
                   currentUrl={mediaUrl}
-                  onUpload={(url) => setMediaUrl(url)}
+                  onUpload={async (url) => {
+                    setMediaUrl(url);
+                    // Auto-save URL + type to DB so the upload persists without
+                    // requiring a click on "Enregistrer". On removal (url === ''),
+                    // clear both columns.
+                    const persistedUrl = url || null;
+                    const persistedType = url ? (mediaType || null) : null;
+                    const { error: persistError } = await supabase
+                      .from('sequences')
+                      .update({
+                        course_media_url: persistedUrl,
+                        course_media_type: persistedType,
+                      })
+                      .eq('id', sequenceId);
+                    if (persistError) {
+                      console.error('Erreur persistance média:', persistError);
+                      alert(`Erreur : ${persistError.message}`);
+                      return;
+                    }
+                    setSequence(prev => prev ? {
+                      ...prev,
+                      course_media_url: persistedUrl,
+                      course_media_type: persistedType as 'audio' | 'video' | null,
+                    } : null);
+                  }}
                   onDurationDetected={async (seconds) => {
                     setMediaDuration(seconds);
                     // Auto-save duration to DB
@@ -557,6 +581,7 @@ export default function SequenceDetailPage() {
                       .from('sequences')
                       .update({ course_duration_seconds: seconds })
                       .eq('id', sequenceId);
+                    setSequence(prev => prev ? { ...prev, course_duration_seconds: seconds } : null);
                   }}
                 />
                 <p className="text-sm text-gray-500 mt-2">
