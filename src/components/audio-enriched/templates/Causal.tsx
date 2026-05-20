@@ -114,6 +114,45 @@ function toSvgY(yPct: number): number {
   return yPct * SVG_HEIGHT_RATIO
 }
 
+// ─── Tokens label d'arête (partagés rendu + layout) ─────────────────────────
+//
+// Le calcul de bounding box doit être identique entre le composant qui rend
+// le label (`EdgeLabel`) et l'algo d'évitement de collision (`GraphDesktop`).
+// On les exporte ici pour éviter toute dérive.
+const LABEL_CHAR_W = 1.6
+const LABEL_PAD_X = 2.2
+const LABEL_HEIGHT = 6
+const LABEL_MAX_WIDTH = 50
+
+function getLabelWidth(label: string): number {
+  return Math.min(label.length * LABEL_CHAR_W + LABEL_PAD_X * 2, LABEL_MAX_WIDTH)
+}
+
+// Bounding box approximative d'une card-nœud, en unités viewBox (0..100 × 0..75).
+// Les cards sont en HTML positionnées en % du container avec une largeur
+// min 120px / max 160px ; sur un container de ~600-900px, ça correspond
+// à 14-26 unités viewBox horizontales et ~8-12 verticales. On prend une
+// estimation prudente — un peu généreuse pour éviter que les labels
+// flirtent avec les cards.
+const NODE_BBOX_W = 28
+const NODE_BBOX_H = 12
+
+type BBox = { x: number; y: number; w: number; h: number }
+
+function aabbOverlap(a: BBox, b: BBox): boolean {
+  return (
+    a.x < b.x + b.w &&
+    a.x + a.w > b.x &&
+    a.y < b.y + b.h &&
+    a.y + a.h > b.y
+  )
+}
+
+// Candidats de position le long d'une arête : le milieu d'abord, puis on
+// s'écarte par paliers symétriques. On reste dans [0.18, 0.82] pour ne pas
+// coller aux nœuds (le marqueur de flèche occupe les ~10% finaux).
+const LABEL_T_CANDIDATES = [0.5, 0.38, 0.62, 0.3, 0.7, 0.22, 0.78]
+
 // ─── Entrée du composant ────────────────────────────────────────────────────
 
 export function Causal({
@@ -177,6 +216,54 @@ function GraphDesktop({
   const nodesEndDelay = (total - 1) * NODE_STAGGER + NODE_DURATION
   const edgesEndDelay = nodesEndDelay + EDGE_DURATION
 
+  // ─ Évitement de collision des labels d'arêtes ────────────────────────────
+  // Greedy : pour chaque edge avec label, on essaie un jeu de positions
+  // paramétriques le long de l'arête et on retient la première qui n'entre
+  // pas en collision avec les labels déjà placés ni avec les cards-nœuds.
+  const nodeBoxes: BBox[] = positions.map((p) => ({
+    x: p.x - NODE_BBOX_W / 2,
+    y: toSvgY(p.y) - NODE_BBOX_H / 2,
+    w: NODE_BBOX_W,
+    h: NODE_BBOX_H,
+  }))
+  const placedLabelBoxes: BBox[] = []
+  const labelPositions: Array<{ x: number; y: number } | null> = edges.map(
+    (edge) => {
+      if (!edge.label) return null
+      const fromIdx = idToIndex.get(edge.from)
+      const toIdx = idToIndex.get(edge.to)
+      if (fromIdx === undefined || toIdx === undefined) return null
+      const a = positions[fromIdx]
+      const b = positions[toIdx]
+      const x1 = a.x
+      const y1 = toSvgY(a.y)
+      const x2 = b.x
+      const y2 = toSvgY(b.y)
+      const w = getLabelWidth(edge.label)
+      const h = LABEL_HEIGHT
+
+      let best: { x: number; y: number; box: BBox } | null = null
+      for (const t of LABEL_T_CANDIDATES) {
+        const cx = x1 + (x2 - x1) * t
+        const cy = y1 + (y2 - y1) * t
+        const box: BBox = { x: cx - w / 2, y: cy - h / 2, w, h }
+        const hitsLabel = placedLabelBoxes.some((other) =>
+          aabbOverlap(box, other)
+        )
+        const hitsNode = nodeBoxes.some((nb) => aabbOverlap(box, nb))
+        if (!hitsLabel && !hitsNode) {
+          best = { x: cx, y: cy, box }
+          break
+        }
+        // Fallback : si rien de mieux, on garde la première candidate
+        // (le midpoint) pour ne jamais retomber sur une position vide.
+        if (best === null) best = { x: cx, y: cy, box }
+      }
+      if (best) placedLabelBoxes.push(best.box)
+      return best ? { x: best.x, y: best.y } : null
+    }
+  )
+
   return (
     <div className="relative w-full h-[calc(100vh-37rem)] min-h-[240px] max-h-[400px]">
       {/* Couche SVG des edges (en dessous des cards visuellement) */}
@@ -209,8 +296,7 @@ function GraphDesktop({
           const y1 = toSvgY(a.y)
           const x2 = b.x
           const y2 = toSvgY(b.y)
-          const midX = (x1 + x2) / 2
-          const midY = (y1 + y2) / 2
+          const labelPos = labelPositions[i]
 
           return (
             <Fragment key={i}>
@@ -237,10 +323,10 @@ function GraphDesktop({
                   },
                 }}
               />
-              {edge.label && (
+              {edge.label && labelPos && (
                 <EdgeLabel
-                  midX={midX}
-                  midY={midY}
+                  midX={labelPos.x}
+                  midY={labelPos.y}
                   label={edge.label}
                   delay={edgesEndDelay}
                 />
@@ -303,12 +389,8 @@ function EdgeLabel({
   label: string
   delay: number
 }) {
-  // Largeur estimée du rect pour le fond — ~1.6 unité viewBox par caractère
-  // à font-size 3.5. Tronqué/centré.
-  const charW = 1.6
-  const padX = 1.2
-  const w = Math.min(label.length * charW + padX * 2, 50)
-  const h = 5
+  const w = getLabelWidth(label)
+  const h = LABEL_HEIGHT
   return (
     <motion.g
       initial={{ opacity: 0 }}
@@ -320,9 +402,9 @@ function EdgeLabel({
         y={midY - h / 2}
         width={w}
         height={h}
-        rx="1"
+        rx="1.5"
         fill="rgb(28 28 28)"
-        opacity="0.85"
+        opacity="0.95"
       />
       <text
         x={midX}
