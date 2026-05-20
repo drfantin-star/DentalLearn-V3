@@ -232,7 +232,7 @@ export default function AddEnrollmentModal({ isOpen, onClose, onSuccess, formati
               id="formation-select"
               value={selectedFormationId}
               onChange={(e) => setSelectedFormationId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary text-sm bg-white text-gray-900"
             >
               <option value="">— Sélectionner une formation —</option>
               {formations.map((f) => (
