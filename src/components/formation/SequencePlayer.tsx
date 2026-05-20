@@ -564,7 +564,40 @@ export default function SequencePlayer({
         </div>
 
         <div className="flex-1 p-4">
-          {isAudio && sequence.course_media_url && (
+          {isAudio && sequence.course_media_url && sequence.timeline_url && sequence.timeline_published ? (
+            <div className="mb-6">
+              <EnrichedAudioPlayer
+                src={sequence.course_media_url}
+                duration={sequence.course_duration_seconds || 0}
+                sequenceId={sequence.id}
+                sequenceTitle={sequence.title}
+                learningObjectives={sequence.learning_objectives}
+                coverImageUrl={coverImageUrl}
+                onComplete={() => {}}
+                onProgress={() => {}}
+                accentColor={categoryGradient.from}
+                accentColorSecondary={categoryGradient.to}
+                timelineUrl={sequence.timeline_url ?? null}
+                timelinePublished={sequence.timeline_published ?? false}
+                activeTab={enrichedActiveTab}
+                hideLegacyCardWhenEnriched={true}
+                onPlayRequest={() =>
+                  playAudio({
+                    audioUrl: sequence.course_media_url!,
+                    sequenceTitle: sequence.title,
+                    formationTitle: '',
+                    accentColor: categoryGradient.from,
+                    sequenceId: sequence.id,
+                    userId: '',
+                    duration: sequence.course_duration_seconds || 0,
+                    coverImageUrl: coverImageUrl || undefined,
+                    onComplete: () => {},
+                    onProgress: () => {},
+                  })
+                }
+              />
+            </div>
+          ) : isAudio && sequence.course_media_url ? (
             <div className="mb-6">
               <AudioPlayer
                 src={sequence.course_media_url}
@@ -579,7 +612,7 @@ export default function SequencePlayer({
                 accentColorSecondary={categoryGradient.to}
               />
             </div>
-          )}
+          ) : null}
 
           {mediaType === 'video' && sequence.course_media_url && (
             <div className="mb-6">
