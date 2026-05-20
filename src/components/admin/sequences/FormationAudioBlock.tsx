@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Loader2, Mic } from 'lucide-react'
 
@@ -81,7 +82,39 @@ export function FormationAudioBlock({
   const [timelineUploadError, setTimelineUploadError] = useState<string | null>(
     null,
   )
+  // null = inconnu/en cours de fetch, true = scènes extraites, false = aucune scène
+  const [scenesExtracted, setScenesExtracted] = useState<boolean | null>(null)
   const router = useRouter()
+
+  // Fetcher la timeline pour savoir si des scènes ont déjà été extraites.
+  // On évite une migration BDD en lisant directement le JSON pointé par
+  // `timeline_url`. En cas d'échec (404, JSON invalide, etc.) on retombe sur
+  // false pour garder le lien d'extraction disponible.
+  useEffect(() => {
+    if (!timelineUrl) {
+      setScenesExtracted(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch(timelineUrl, { cache: 'no-store' })
+        if (!res.ok) {
+          if (!cancelled) setScenesExtracted(false)
+          return
+        }
+        const json = (await res.json()) as { scenes?: unknown }
+        const hasScenes =
+          Array.isArray(json?.scenes) && json.scenes.length > 0
+        if (!cancelled) setScenesExtracted(hasScenes)
+      } catch {
+        if (!cancelled) setScenesExtracted(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [timelineUrl])
 
   // Polling effect for "generating" phase
   useEffect(() => {
@@ -426,14 +459,27 @@ export function FormationAudioBlock({
               >
                 Timeline disponible
               </Badge>
-              <a
-                href={`/admin/timelines/formation/${sequenceId}`}
-                className="text-sm text-primary underline underline-offset-2"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Éditer la timeline →
-              </a>
+              {scenesExtracted === true && (
+                <>
+                  <Badge variant="success">Scènes extraites</Badge>
+                  <a
+                    href={`/admin/timelines/formation/${sequenceId}`}
+                    className="text-sm text-primary underline underline-offset-2"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Éditer les scènes →
+                  </a>
+                </>
+              )}
+              {scenesExtracted === false && (
+                <Link
+                  href="/admin/poc/extract-scenes"
+                  className="text-sm text-primary underline underline-offset-2"
+                >
+                  Extraire les scènes →
+                </Link>
+              )}
             </div>
           ) : (
             <div className="flex flex-col gap-2">
