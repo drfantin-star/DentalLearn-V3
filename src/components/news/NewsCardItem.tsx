@@ -110,7 +110,6 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
             </Badge>
           ) : null}
         </div>
-        {date ? <span className="text-xs text-gray-400">{date}</span> : null}
       </div>
     </button>
   )
