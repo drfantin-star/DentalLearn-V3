@@ -189,9 +189,31 @@ export async function PATCH(
     }
 
     const newStatus = body?.status
-    if (newStatus !== 'published' && newStatus !== 'archived') {
+    const newScriptMd = body?.script_md
+    const hasStatus = newStatus !== undefined
+    const hasScript = newScriptMd !== undefined
+
+    if (hasStatus && hasScript) {
+      return NextResponse.json(
+        { error: 'status et script_md sont exclusifs dans une même requête' },
+        { status: 400 },
+      )
+    }
+    if (!hasStatus && !hasScript) {
+      return NextResponse.json(
+        { error: 'Body requis : { status } ou { script_md }' },
+        { status: 400 },
+      )
+    }
+    if (hasStatus && newStatus !== 'published' && newStatus !== 'archived') {
       return NextResponse.json(
         { error: 'status invalide (attendu : published ou archived)' },
+        { status: 400 },
+      )
+    }
+    if (hasScript && typeof newScriptMd !== 'string') {
+      return NextResponse.json(
+        { error: 'script_md doit être une chaîne' },
         { status: 400 },
       )
     }
@@ -211,6 +233,27 @@ export async function PATCH(
     }
     if (!existing) {
       return NextResponse.json({ error: 'Journal introuvable' }, { status: 404 })
+    }
+
+    if (hasScript) {
+      if (existing.status !== 'draft') {
+        return NextResponse.json(
+          { error: 'Édition du script autorisée uniquement en draft' },
+          { status: 409 },
+        )
+      }
+      const { data: updated, error: updErr } = await adminSupabase
+        .from('news_episodes')
+        .update({ script_md: newScriptMd })
+        .eq('id', id)
+        .select('id, script_md, updated_at')
+        .single()
+
+      if (updErr) {
+        console.error('PATCH /api/admin/news/journal/[id] script update error:', updErr)
+        return NextResponse.json({ error: updErr.message }, { status: 500 })
+      }
+      return NextResponse.json(updated)
     }
 
     if (existing.status === 'archived') {

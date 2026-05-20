@@ -107,7 +107,7 @@ export default function AdminJournalDetailPage() {
   const [scriptDraft, setScriptDraft] = useState('')
 
   const [busy, setBusy] = useState<
-    null | 'script' | 'audio' | 'regen-audio' | 'publish' | 'archive'
+    null | 'script' | 'save-script' | 'audio' | 'regen-audio' | 'publish' | 'archive'
   >(null)
   const [opError, setOpError] = useState<string | null>(null)
 
@@ -168,6 +168,26 @@ export default function AdminJournalDetailPage() {
       await reload()
     } catch (err) {
       setOpError(err instanceof Error ? err.message : 'Erreur génération script')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const handleSaveScript = async () => {
+    if (!data) return
+    setBusy('save-script')
+    setOpError(null)
+    try {
+      const res = await fetch(`/api/admin/news/journal/${id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ script_md: scriptDraft }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(body?.error ?? `HTTP ${res.status}`)
+      await reload()
+    } catch (err) {
+      setOpError(err instanceof Error ? err.message : 'Erreur sauvegarde script')
     } finally {
       setBusy(null)
     }
@@ -584,19 +604,35 @@ export default function AdminJournalDetailPage() {
             className="w-full font-mono text-xs text-gray-900 rounded-xl border border-gray-300 p-3 bg-gray-50"
           />
           <p className="mt-2 text-xs text-gray-500">
-            Édition locale uniquement — les modifications ne sont pas persistées
-            (utiliser « Régénérer le script » pour relancer Claude).
+            Éditer puis cliquer « Sauvegarder le script » pour persister les
+            modifications.
           </p>
-          <button
-            type="button"
-            onClick={handleGenerateAudio}
-            disabled={busy !== null || scriptDraft.trim().length === 0}
-            className="mt-3 bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-          >
-            {busy === 'audio'
-              ? 'Génération MP3 en cours…'
-              : 'Générer l\'audio'}
-          </button>
+          <div className="mt-3 flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={handleSaveScript}
+              disabled={
+                busy !== null ||
+                scriptDraft.trim().length === 0 ||
+                scriptDraft === (episode.script_md ?? '')
+              }
+              className="bg-gray-100 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            >
+              {busy === 'save-script'
+                ? 'Sauvegarde…'
+                : 'Sauvegarder le script'}
+            </button>
+            <button
+              type="button"
+              onClick={handleGenerateAudio}
+              disabled={busy !== null || scriptDraft.trim().length === 0}
+              className="bg-teal-600 hover:bg-teal-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+            >
+              {busy === 'audio'
+                ? 'Génération MP3 en cours…'
+                : 'Générer l\'audio'}
+            </button>
+          </div>
         </section>
       )}
 
