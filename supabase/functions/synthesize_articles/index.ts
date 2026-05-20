@@ -59,6 +59,20 @@ import type {
 
 const logger = new Logger("synthesize_articles");
 
+// Abstracts au-delà de ce seuil sont skippés silencieusement (l'article
+// reste status='selected' en BDD mais n'entre pas dans le pipeline Sonnet
+// du run en cours). Motivation : >3000 chars = Sonnet >50s, et avec les
+// autres étapes on dépasse l'IDLE_TIMEOUT Supabase 150s (timeout
+// systématique). Override via env var pour réactiver ces articles si on
+// monte sur un plan plus permissif ou si on ajoute un pipeline dédié aux
+// revues longues. Cf plan "Filtre abstracts longs" (T-tech-debt).
+const MAX_ABSTRACT_LENGTH = (() => {
+  const raw = Deno.env.get("SYNTHESIS_MAX_ABSTRACT_LENGTH");
+  if (!raw) return 3000;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 3000;
+})();
+
 // ---------------------------------------------------------------------------
 // Body parsing — défensif (pattern Ticket 4)
 // ---------------------------------------------------------------------------
@@ -210,6 +224,8 @@ interface LoadCandidatesResult {
   eligible: SelectedArticle[];
   /** Total éligibles avant slice — sert à RunSummary.total_remaining_estimate. */
   total_remaining_estimate: number;
+  /** Articles skippés pour cause d'abstract > MAX_ABSTRACT_LENGTH. */
+  skipped_long_abstract: number;
 }
 
 /**
@@ -243,13 +259,31 @@ async function loadCandidates(
     .limit(50_000); // buffer large — on filtre côté code
 
   if (error) throw new Error(`loadCandidates: ${error.message}`);
-  if (!Array.isArray(data)) return { eligible: [], total_remaining_estimate: 0 };
+  if (!Array.isArray(data)) {
+    return { eligible: [], total_remaining_estimate: 0, skipped_long_abstract: 0 };
+  }
 
   const eligible: SelectedArticle[] = [];
+  let skippedLongAbstract = 0;
   // deno-lint-ignore no-explicit-any
   for (const row of data as any[]) {
     const raw = row.raw;
     if (!raw) continue; // sécurité — !inner devrait empêcher ce cas
+
+    // Filtre abstracts trop longs (timeout Sonnet/IDLE_TIMEOUT 150s).
+    // Skip silencieux : l'article reste status='selected' en BDD et
+    // pourra être ré-éligible si on relève MAX_ABSTRACT_LENGTH.
+    const abstractLength =
+      typeof raw.abstract === "string" ? raw.abstract.length : 0;
+    if (abstractLength > MAX_ABSTRACT_LENGTH) {
+      logger.warn("skip_long_abstract", {
+        scored_id: row.id,
+        abstract_length: abstractLength,
+        threshold: MAX_ABSTRACT_LENGTH,
+      });
+      skippedLongAbstract++;
+      continue;
+    }
 
     const synArr = Array.isArray(row.syntheses) ? row.syntheses : [];
     const syn = synArr[0]; // 0 ou 1 (pas de UNIQUE sur scored_id mais
@@ -295,6 +329,7 @@ async function loadCandidates(
   return {
     eligible,
     total_remaining_estimate: eligible.length,
+    skipped_long_abstract: skippedLongAbstract,
   };
 }
 
@@ -366,6 +401,8 @@ async function run(opts: ParsedBody): Promise<RunSummary> {
     limit_applied: opts.limit,
     articles_in_window: window.length,
     has_more: loaded.total_remaining_estimate > opts.limit,
+    skipped_long_abstract: loaded.skipped_long_abstract,
+    max_abstract_length: MAX_ABSTRACT_LENGTH,
     taxonomy_specialites: taxonomy.specialites.length,
     taxonomy_themes: taxonomy.themes.length,
     taxonomy_niveaux_preuve: taxonomy.niveaux_preuve.length,
