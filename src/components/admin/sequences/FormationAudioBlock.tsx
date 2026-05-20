@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, Loader2, Mic } from 'lucide-react'
 
@@ -434,6 +435,12 @@ export function FormationAudioBlock({
               >
                 Éditer la timeline →
               </a>
+              <Link
+                href="/admin/poc/extract-scenes"
+                className="text-sm text-primary underline underline-offset-2"
+              >
+                Extraire les scènes →
+              </Link>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
