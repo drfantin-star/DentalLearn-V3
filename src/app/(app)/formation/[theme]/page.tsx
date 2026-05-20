@@ -17,6 +17,7 @@ import {
   type Sequence,
 } from '@/lib/supabase'
 import { useUser } from '@/lib/hooks/useUser'
+import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
 import FormationDetail from '@/components/formation/FormationDetail'
 import SequencePlayer from '@/components/formation/SequencePlayer'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
@@ -112,6 +113,11 @@ export default function ThemePage() {
   const [sequenceGradient, setSequenceGradient] = useState<{ from: string; to: string }>({ from: '#8B5CF6', to: '#A78BFA' })
 
   const { markCompleted } = useUserFormationProgress(selectedFormationId)
+
+  // Statut d'inscription — pour décider d'afficher la modal post-intro
+  const { isEnrolled: isEnrolledForSelected } = useEnrollmentStatus(selectedFormationId)
+  const wasEnrolledBeforeSequenceRef = useRef<boolean>(false)
+  const [pendingPostIntroModal, setPendingPostIntroModal] = useState(false)
 
   const themeConfig = getThemeConfig(themeSlug)
 
@@ -210,6 +216,7 @@ export default function ThemePage() {
   }
 
   const openSequence = (seq: Sequence) => {
+    wasEnrolledBeforeSequenceRef.current = isEnrolledForSelected
     setSelectedSequence(seq)
     setViewMode('sequence')
   }
@@ -224,10 +231,48 @@ export default function ThemePage() {
     }
   }
 
+  // Fetch frais de l'inscription. Plus robuste qu'un snapshot d'état React
+  // qui peut être stale (race condition sur useEnrollmentStatus, navigation
+  // entre formations, désinscription SQL pendant que la page est ouverte).
+  const fetchEnrolledFresh = async (formationId: string): Promise<boolean> => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return false
+    const { data } = await supabase
+      .from('user_formations')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('formation_id', formationId)
+      .maybeSingle()
+    return !!data
+  }
+
+  const buildShouldSubmitResult = (seq: Sequence) => async () => {
+    if (!seq.is_intro) return true
+    const enrolled = await fetchEnrolledFresh(seq.formation_id)
+    return enrolled
+  }
+
   const handleSequenceComplete = async (score: number, totalPoints: number) => {
-    if (selectedSequence) {
-      markCompleted(selectedSequence.id, selectedSequence.sequence_number + 1)
+    const completedSequence = selectedSequence
+    if (!completedSequence) {
+      setSelectedSequence(null)
+      setViewMode('formation')
+      return
     }
+
+    const isCurrentlyEnrolled = await fetchEnrolledFresh(completedSequence.formation_id)
+    const isIntroOfNonEnrolled = !!completedSequence.is_intro && !isCurrentlyEnrolled
+
+    if (isIntroOfNonEnrolled) {
+      setSelectedSequence(null)
+      setViewMode('formation')
+      setPendingPostIntroModal(true)
+      return
+    }
+
+    markCompleted(completedSequence.id, completedSequence.sequence_number + 1)
+
     try {
       await fetch('/api/streaks/update', { method: 'POST' })
     } catch (err) {
@@ -262,6 +307,7 @@ export default function ThemePage() {
         coverImageUrl={formations.find(f => f.id === selectedFormationId)?.cover_image_url}
         onBack={goBack}
         onComplete={handleSequenceComplete}
+        shouldSubmitResult={buildShouldSubmitResult(selectedSequence)}
       />
     )
   }
@@ -275,6 +321,8 @@ export default function ThemePage() {
         formationId={selectedFormationId}
         onBack={goBack}
         onStartSequence={openSequence}
+        triggerPostIntroModal={pendingPostIntroModal}
+        onPostIntroModalClose={() => setPendingPostIntroModal(false)}
       />
     )
   }

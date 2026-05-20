@@ -89,7 +89,7 @@ export function useFormations(userId?: string) {
         formation_id: formationId,
         is_active: true,
         current_sequence: 1,
-        access_type: 'demo'
+        access_type: 'full'
       })
       .select(`*, formation:formations(*)`)
       .single()

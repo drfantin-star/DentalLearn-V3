@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import {
   ChevronLeft,
   Check,
@@ -21,6 +21,10 @@ import {
   getCategoryConfig,
   type Sequence,
 } from '@/lib/supabase'
+import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
+import { useAudio } from '@/context/AudioContext'
+import EnrollmentCTA from '@/components/formation/EnrollmentCTA'
+import PostIntroEnrollmentModal from '@/components/formation/PostIntroEnrollmentModal'
 import { GenerateAttestationButton } from '@/components/attestations/GenerateAttestationButton'
 import { ColdSurveyEligibilityBadge } from '@/components/satisfaction/ColdSurveyEligibilityBadge'
 import { ValidationFooter } from '@/components/editorial/ValidationFooter'
@@ -34,6 +38,8 @@ interface FormationDetailProps {
   formationId: string
   onBack: () => void
   onStartSequence: (sequence: Sequence) => void
+  triggerPostIntroModal?: boolean
+  onPostIntroModalClose?: () => void
 }
 
 // ============================================
@@ -212,14 +218,45 @@ export default function FormationDetail({
   formationId,
   onBack,
   onStartSequence,
+  triggerPostIntroModal,
+  onPostIntroModalClose,
 }: FormationDetailProps) {
   const { formation, sequences, loading, error } = useFormation(formationId)
   const { currentSequence, completedSequenceIds } = useUserFormationProgress(formationId)
   const { isPremium } = usePremiumAccess()
   const { totalPoints, earnedPoints } = useFormationPoints(formationId)
   const { completionPercent } = useFormationCompletion(formationId, sequences, completedSequenceIds)
+  const {
+    isEnrolled,
+    loading: enrollmentLoading,
+    refetch: refetchEnrollment,
+  } = useEnrollmentStatus(formationId)
+
+  // MiniPlayer global (`(app)/layout.tsx`) flotte à `bottom-20` (z-40) dès
+  // qu'un audio est chargé dans le contexte. On surveille `state.audioUrl`
+  // pour décaler le CTA fixe au-dessus et éviter qu'il soit recouvert et
+  // donc inatteignable au clic.
+  const { state: audioState } = useAudio()
+  const isMiniPlayerVisible = !!audioState.audioUrl
 
   const [showCompletionModal, setShowCompletionModal] = useState(false)
+  const [showPostIntroModal, setShowPostIntroModal] = useState(false)
+
+  useEffect(() => {
+    if (triggerPostIntroModal && !isEnrolled && !enrollmentLoading) {
+      setShowPostIntroModal(true)
+    }
+  }, [triggerPostIntroModal, isEnrolled, enrollmentLoading])
+
+  const closePostIntroModal = () => {
+    setShowPostIntroModal(false)
+    onPostIntroModalClose?.()
+  }
+
+  const handleEnrolled = () => {
+    refetchEnrollment()
+    closePostIntroModal()
+  }
 
   const categoryConfig = useMemo(() => {
     return getCategoryConfig(formation?.category || null)
@@ -270,7 +307,10 @@ export default function FormationDetail({
   }
 
   return (
-    <div className="pb-24 min-h-screen" style={{ background: '#0F0F0F' }}>
+    <div
+      className={`${isMiniPlayerVisible ? 'pb-44' : 'pb-24'} min-h-screen`}
+      style={{ background: '#0F0F0F' }}
+    >
       {/* Modal de fin */}
       {showCompletionModal && (
         <CompletionModal
@@ -389,8 +429,12 @@ export default function FormationDetail({
         <ValidationFooter formationId={formation.id} />
       </div>
 
-      {/* CTA fixe en bas */}
-      <div className="fixed bottom-20 left-0 right-0 p-4 shadow-lg z-20" style={{ background: '#1a1a1a', borderTop: '0.5px solid #2a2a2a' }}>
+      {/* CTA fixe en bas — décalé au-dessus du MiniPlayer global s'il est
+          présent, sinon collé juste au-dessus de la BottomNav. */}
+      <div
+        className={`fixed ${isMiniPlayerVisible ? 'bottom-40' : 'bottom-20'} left-0 right-0 p-4 shadow-lg z-50`}
+        style={{ background: '#1a1a1a', borderTop: '0.5px solid #2a2a2a' }}
+      >
         <div className="max-w-lg mx-auto">
           {completedInFormation >= sequences.length && sequences.length > 0 && (
             <div className="mb-3 space-y-3">
@@ -404,7 +448,15 @@ export default function FormationDetail({
               />
             </div>
           )}
-          {nextSequence ? (
+          {!enrollmentLoading && !isEnrolled ? (
+            <EnrollmentCTA
+              formationId={formation.id}
+              formationTitle={formation.title}
+              onSuccess={refetchEnrollment}
+              variant="fixed-bottom"
+              gradient={categoryConfig.gradient}
+            />
+          ) : nextSequence ? (
             <button
               onClick={() => onStartSequence(nextSequence)}
               className="w-full py-3.5 rounded-2xl font-bold text-[15px] text-white flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
@@ -448,6 +500,16 @@ export default function FormationDetail({
           )}
         </div>
       </div>
+
+      {/* Modal d'inscription post-intro */}
+      <PostIntroEnrollmentModal
+        isOpen={showPostIntroModal}
+        onClose={closePostIntroModal}
+        formationId={formation.id}
+        formationTitle={formation.title}
+        onEnrolled={handleEnrolled}
+        gradient={categoryConfig.gradient}
+      />
     </div>
   )
 }

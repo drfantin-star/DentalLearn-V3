@@ -39,6 +39,7 @@ interface SequencePlayerProps {
   coverImageUrl?: string | null
   onBack: () => void
   onComplete: (score: number, totalPoints: number) => void
+  shouldSubmitResult?: () => Promise<boolean>
 }
 
 type PlayerStep = 'video' | 'quiz' | 'pdf' | 'results'
@@ -229,13 +230,14 @@ export default function SequencePlayer({
   coverImageUrl,
   onBack,
   onComplete,
+  shouldSubmitResult,
 }: SequencePlayerProps) {
   const { questions, loading: loadingQuestions, error } = useSequenceQuestions(sequence.id)
   const { submit: submitResult, loading: submitting } = useSubmitSequenceResult()
   // POC-T7.4-UX-FAB : on a besoin de `playAudio` pour démarrer la track depuis
   // le FAB overlay du wrapper enrichi (la card legacy étant masquée par
   // T7.4-UX-B). Aucune autre méthode du context n'est consommée ici.
-  const { playAudio } = useAudio()
+  const { playAudio, state: audioState } = useAudio()
 
   const hasMedia = !!sequence.course_media_url
   const hasPdf = !!sequence.infographic_url
@@ -283,6 +285,28 @@ export default function SequencePlayer({
     points_earned: number
   }[]>([])
   const [startTime] = useState(Date.now())
+
+  // Pour la branche intro audio-only : on n'affiche l'écran "Introduction
+  // terminée" + bouton "Retour à la formation" que quand l'audio a réellement
+  // été écouté jusqu'à la fin (sinon l'user voit ce message dès l'ouverture
+  // alors que l'audio démarre, c'est désorientant).
+  const [audioMediaCompleted, setAudioMediaCompleted] = useState(false)
+  useEffect(() => {
+    if (
+      isAudio &&
+      audioState.sequenceId === sequence.id &&
+      audioState.duration > 0 &&
+      audioState.currentTime >= audioState.duration - 0.5
+    ) {
+      setAudioMediaCompleted(true)
+    }
+  }, [
+    isAudio,
+    audioState.sequenceId,
+    audioState.currentTime,
+    audioState.duration,
+    sequence.id,
+  ])
 
   const steps: PlayerStep[] = useMemo(() => {
     const s: PlayerStep[] = []
@@ -513,13 +537,18 @@ export default function SequencePlayer({
 
   const finishSequence = async () => {
     try {
-      await submitResult({
-        sequenceId: sequence.id,
-        score: Math.round((correctCount / questions.length) * 100),
-        totalPoints,
-        timeSpentSeconds: Math.round((Date.now() - startTime) / 1000),
-        answers: answersLog,
-      })
+      // Demander au parent si on peut écrire en DB (gate l'auto-inscription
+      // silencieuse pour les intros complétées par un user non inscrit).
+      const canSubmit = shouldSubmitResult ? await shouldSubmitResult() : true
+      if (canSubmit) {
+        await submitResult({
+          sequenceId: sequence.id,
+          score: Math.round((correctCount / questions.length) * 100),
+          totalPoints,
+          timeSpentSeconds: Math.round((Date.now() - startTime) / 1000),
+          answers: answersLog,
+        })
+      }
     } catch (err) {
       console.error('Erreur soumission:', err)
     }
@@ -634,16 +663,22 @@ export default function SequencePlayer({
             </div>
           )}
 
-          <div className="mt-6 text-center">
-            <p className="text-green-600 font-medium mb-4">Introduction terminée</p>
-            <button
-              onClick={onBack}
-              className="px-6 py-3 text-white rounded-xl font-medium"
-              style={{ background: categoryGradient.from }}
-            >
-              Retour à la formation
-            </button>
-          </div>
+          {/* L'écran "Introduction terminée" + bouton de retour ne s'affiche
+              qu'une fois l'audio terminé pour les intros audio. Pour les
+              intros vidéo, on garde le comportement legacy (affichage
+              immédiat) car on n'a pas de tracking de fin de lecture vidéo. */}
+          {(!isAudio || audioMediaCompleted) && (
+            <div className="mt-6 text-center">
+              <p className="text-green-600 font-medium mb-4">Introduction terminée</p>
+              <button
+                onClick={() => onComplete(0, 0)}
+                className="px-6 py-3 text-white rounded-xl font-medium"
+                style={{ background: categoryGradient.from }}
+              >
+                Retour à la formation
+              </button>
+            </div>
+          )}
         </div>
       </div>
     )
