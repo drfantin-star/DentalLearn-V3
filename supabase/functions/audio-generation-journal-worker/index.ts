@@ -55,16 +55,31 @@ async function runWorker(body: RequestBody): Promise<void> {
   const { job_id, episode_id, script_text } = body;
   const isRegenerate = body.regenerate === true;
 
+  logger.info("job_start", {
+    job_id,
+    episode_id,
+    script_chars: script_text.length,
+    regenerate: isRegenerate,
+  });
+
   await markJobRunning(job_id);
 
   const inputs = parseDialogueScript(script_text);
+  logger.info("inputs_parsed", { job_id, count: inputs.length });
   if (inputs.length === 0) {
     throw new Error("parseDialogueScript: aucune réplique parsée du script");
   }
 
+  logger.info("elevenlabs_start", { job_id, inputs: inputs.length });
   const result = await generateDialogueAudio({
     inputs,
     speed: 1.1,
+  });
+  logger.info("elevenlabs_done", {
+    job_id,
+    total_chunks: result.totalChunks,
+    total_chars: result.totalChars,
+    audio_bytes: result.audio.byteLength,
   });
 
   if (result.audio.byteLength === 0) {
@@ -151,67 +166,82 @@ async function runWorker(body: RequestBody): Promise<void> {
 }
 
 Deno.serve(async (req) => {
-  const auth = req.headers.get("Authorization") ?? "";
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!serviceKey || auth !== `Bearer ${serviceKey}`) {
-    return new Response(JSON.stringify({ error: "unauthorized" }), {
-      status: 401,
-      headers: { "content-type": "application/json" },
-    });
-  }
-
-  let body: RequestBody;
   try {
-    body = (await req.json()) as RequestBody;
-  } catch {
-    return new Response(
-      JSON.stringify({ error: "invalid_json" }),
-      { status: 400, headers: { "content-type": "application/json" } },
-    );
-  }
-  if (
-    !body ||
-    typeof body.job_id !== "string" || body.job_id.length === 0 ||
-    typeof body.episode_id !== "string" || body.episode_id.length === 0 ||
-    typeof body.script_text !== "string" || body.script_text.length === 0
-  ) {
-    return new Response(
-      JSON.stringify({
-        error: "invalid_body",
-        message:
-          "job_id, episode_id, script_text (non-empty strings) required",
-      }),
-      { status: 400, headers: { "content-type": "application/json" } },
-    );
-  }
+    console.log("[worker] handler entered", {
+      method: req.method,
+      url: req.url,
+    });
 
-  // Fire-and-forget : on enregistre l'erreur dans le job, on ne propage rien.
-  const work = (async () => {
-    try {
-      await runWorker(body);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      logger.error("worker_failed", {
-        job_id: body.job_id,
-        episode_id: body.episode_id,
-        error: msg,
+    const auth = req.headers.get("Authorization") ?? "";
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceKey || auth !== `Bearer ${serviceKey}`) {
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { "content-type": "application/json" },
       });
-      await markJobFailed(body.job_id, msg);
     }
-  })();
 
-  // @ts-ignore — EdgeRuntime est injecté par le runtime Supabase et n'est
-  // pas typé dans Deno standard. Fallback silencieux si absent (dev local).
-  if (
-    typeof EdgeRuntime !== "undefined" &&
-    typeof EdgeRuntime.waitUntil === "function"
-  ) {
-    // @ts-ignore
-    EdgeRuntime.waitUntil(work);
+    let body: RequestBody;
+    try {
+      body = (await req.json()) as RequestBody;
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "invalid_json" }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      );
+    }
+    if (
+      !body ||
+      typeof body.job_id !== "string" || body.job_id.length === 0 ||
+      typeof body.episode_id !== "string" || body.episode_id.length === 0 ||
+      typeof body.script_text !== "string" || body.script_text.length === 0
+    ) {
+      return new Response(
+        JSON.stringify({
+          error: "invalid_body",
+          message:
+            "job_id, episode_id, script_text (non-empty strings) required",
+        }),
+        { status: 400, headers: { "content-type": "application/json" } },
+      );
+    }
+
+    // Fire-and-forget : on enregistre l'erreur dans le job, on ne propage rien.
+    const work = (async () => {
+      try {
+        await runWorker(body);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        logger.error("worker_failed", {
+          job_id: body.job_id,
+          episode_id: body.episode_id,
+          error: msg,
+        });
+        await markJobFailed(body.job_id, msg);
+      }
+    })();
+
+    // @ts-ignore — EdgeRuntime est injecté par le runtime Supabase et n'est
+    // pas typé dans Deno standard. Fallback silencieux si absent (dev local).
+    if (
+      typeof EdgeRuntime !== "undefined" &&
+      typeof EdgeRuntime.waitUntil === "function"
+    ) {
+      // @ts-ignore
+      EdgeRuntime.waitUntil(work);
+    }
+
+    return new Response(
+      JSON.stringify({ ok: true, job_id: body.job_id, status: "running" }),
+      { status: 202, headers: { "content-type": "application/json" } },
+    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const stack = e instanceof Error ? e.stack : undefined;
+    console.error("[worker] handler_crash", { error: msg, stack });
+    return new Response(
+      JSON.stringify({ error: "handler_crash", message: msg }),
+      { status: 500, headers: { "content-type": "application/json" } },
+    );
   }
-
-  return new Response(
-    JSON.stringify({ ok: true, job_id: body.job_id, status: "running" }),
-    { status: 202, headers: { "content-type": "application/json" } },
-  );
 });
