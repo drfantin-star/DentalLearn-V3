@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,6 +25,7 @@ import {
 import FormationDetail from '@/components/formation/FormationDetail'
 import SequencePlayer from '@/components/formation/SequencePlayer'
 import Badge from '@/components/ui/Badge'
+import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
 
 // ============================================
 // TYPES
@@ -96,6 +97,11 @@ export default function FormationPage() {
   // Hook pour la progression
   const { markCompleted } = useUserFormationProgress(selectedFormationId)
 
+  // Statut d'inscription — pour décider d'afficher la modal post-intro
+  const { isEnrolled: isEnrolledForSelected } = useEnrollmentStatus(selectedFormationId)
+  const wasEnrolledBeforeSequenceRef = useRef<boolean>(false)
+  const [pendingPostIntroModal, setPendingPostIntroModal] = useState(false)
+
   const cpCategories = CATEGORIES.filter((c) => c.type === 'cp')
 
   // Navigation handlers
@@ -112,6 +118,7 @@ export default function FormationPage() {
   }
 
   const openSequence = (seq: Sequence) => {
+    wasEnrolledBeforeSequenceRef.current = isEnrolledForSelected
     setSelectedSequence(seq)
     setViewMode('sequence')
   }
@@ -129,13 +136,23 @@ export default function FormationPage() {
   const handleSequenceComplete = (score: number, totalPoints: number) => {
     console.log('✅ Séquence terminée:', { score, totalPoints })
 
-    // Marquer comme complétée (localement en mode preview)
-    if (selectedSequence) {
-      markCompleted(selectedSequence.id, selectedSequence.sequence_number + 1)
+    const completedSequence = selectedSequence
+    const wasIntroOfNonEnrolled =
+      !!completedSequence?.is_intro && !wasEnrolledBeforeSequenceRef.current
+
+    // Si l'intro est complétée par un user non inscrit : on NE marque PAS la
+    // séquence complétée (markCompleted upsert user_formations et créerait
+    // une inscription implicite). L'inscription se fait via la modal.
+    if (completedSequence && !wasIntroOfNonEnrolled) {
+      markCompleted(completedSequence.id, completedSequence.sequence_number + 1)
     }
 
     setSelectedSequence(null)
     setViewMode('formation')
+
+    if (wasIntroOfNonEnrolled) {
+      setPendingPostIntroModal(true)
+    }
   }
 
   // ============================================
@@ -162,6 +179,8 @@ export default function FormationPage() {
         formationId={selectedFormationId}
         onBack={goBack}
         onStartSequence={openSequence}
+        triggerPostIntroModal={pendingPostIntroModal}
+        onPostIntroModalClose={() => setPendingPostIntroModal(false)}
       />
     )
   }

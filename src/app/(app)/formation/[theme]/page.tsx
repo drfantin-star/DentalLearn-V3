@@ -17,6 +17,7 @@ import {
   type Sequence,
 } from '@/lib/supabase'
 import { useUser } from '@/lib/hooks/useUser'
+import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
 import FormationDetail from '@/components/formation/FormationDetail'
 import SequencePlayer from '@/components/formation/SequencePlayer'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
@@ -112,6 +113,11 @@ export default function ThemePage() {
   const [sequenceGradient, setSequenceGradient] = useState<{ from: string; to: string }>({ from: '#8B5CF6', to: '#A78BFA' })
 
   const { markCompleted } = useUserFormationProgress(selectedFormationId)
+
+  // Statut d'inscription — pour décider d'afficher la modal post-intro
+  const { isEnrolled: isEnrolledForSelected } = useEnrollmentStatus(selectedFormationId)
+  const wasEnrolledBeforeSequenceRef = useRef<boolean>(false)
+  const [pendingPostIntroModal, setPendingPostIntroModal] = useState(false)
 
   const themeConfig = getThemeConfig(themeSlug)
 
@@ -210,6 +216,7 @@ export default function ThemePage() {
   }
 
   const openSequence = (seq: Sequence) => {
+    wasEnrolledBeforeSequenceRef.current = isEnrolledForSelected
     setSelectedSequence(seq)
     setViewMode('sequence')
   }
@@ -225,8 +232,15 @@ export default function ThemePage() {
   }
 
   const handleSequenceComplete = async (score: number, totalPoints: number) => {
-    if (selectedSequence) {
-      markCompleted(selectedSequence.id, selectedSequence.sequence_number + 1)
+    const completedSequence = selectedSequence
+    const wasIntroOfNonEnrolled =
+      !!completedSequence?.is_intro && !wasEnrolledBeforeSequenceRef.current
+
+    // Si l'intro est complétée par un user non inscrit : on NE marque PAS la
+    // séquence complétée (markCompleted upsert user_formations et créerait
+    // une inscription implicite). L'inscription se fait via la modal.
+    if (completedSequence && !wasIntroOfNonEnrolled) {
+      markCompleted(completedSequence.id, completedSequence.sequence_number + 1)
     }
     try {
       await fetch('/api/streaks/update', { method: 'POST' })
@@ -235,6 +249,10 @@ export default function ThemePage() {
     }
     setSelectedSequence(null)
     setViewMode('formation')
+
+    if (wasIntroOfNonEnrolled) {
+      setPendingPostIntroModal(true)
+    }
   }
 
   // ============================================
@@ -275,6 +293,8 @@ export default function ThemePage() {
         formationId={selectedFormationId}
         onBack={goBack}
         onStartSequence={openSequence}
+        triggerPostIntroModal={pendingPostIntroModal}
+        onPostIntroModalClose={() => setPendingPostIntroModal(false)}
       />
     )
   }

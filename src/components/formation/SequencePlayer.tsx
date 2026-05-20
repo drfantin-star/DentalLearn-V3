@@ -637,7 +637,7 @@ export default function SequencePlayer({
           <div className="mt-6 text-center">
             <p className="text-green-600 font-medium mb-4">Introduction terminée</p>
             <button
-              onClick={onBack}
+              onClick={() => onComplete(0, 0)}
               className="px-6 py-3 text-white rounded-xl font-medium"
               style={{ background: categoryGradient.from }}
             >
