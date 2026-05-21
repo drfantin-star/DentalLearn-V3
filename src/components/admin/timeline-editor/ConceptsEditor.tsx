@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import type { TimelineConcept } from '@/lib/timeline/schema'
 
@@ -23,6 +23,9 @@ interface Props {
   concepts: TimelineConcept[]
   audioDurationSec: number
   onChange: (next: TimelineConcept[]) => void
+  /** Concept à mettre en avant (sélectionné depuis la sidebar) : déplie le
+   *  panneau, scrolle vers sa ligne et la surligne. */
+  selectedConceptId?: string | null
 }
 
 function formatSec(sec: number | undefined): string {
@@ -50,9 +53,23 @@ export function ConceptsEditor({
   concepts,
   audioDurationSec,
   onChange,
+  selectedConceptId,
 }: Props) {
   const [expanded, setExpanded] = useState(false)
   const [showAddModal, setShowAddModal] = useState(false)
+
+  // Sélection depuis la sidebar : déplie le panneau puis scrolle/surligne la
+  // ligne correspondante (au prochain frame, une fois le contenu monté).
+  useEffect(() => {
+    if (!selectedConceptId) return
+    setExpanded(true)
+    const raf = requestAnimationFrame(() => {
+      document
+        .getElementById(`concept-row-${selectedConceptId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [selectedConceptId])
 
   function setConcept(idx: number, next: TimelineConcept) {
     onChange(concepts.map((c, i) => (i === idx ? next : c)))
@@ -124,13 +141,18 @@ export function ConceptsEditor({
                 const term = concept.term ?? concept.label ?? ''
                 const definition = concept.definition ?? ''
                 const isHidden = concept.hidden === true
+                const isSelected =
+                  selectedConceptId != null && concept.id === selectedConceptId
                 return (
                   <li
                     key={concept.id ?? idx}
+                    id={concept.id ? `concept-row-${concept.id}` : undefined}
                     className={`space-y-2 rounded-lg border p-3 transition-colors ${
-                      isHidden
-                        ? 'border-white/5 bg-white/5 opacity-60'
-                        : 'border-white/10 bg-[color:var(--color-bg-card)]/40'
+                      isSelected
+                        ? 'border-ds-turquoise/60 ring-1 ring-ds-turquoise/40'
+                        : isHidden
+                          ? 'border-white/5 bg-white/5 opacity-60'
+                          : 'border-white/10 bg-[color:var(--color-bg-card)]/40'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">

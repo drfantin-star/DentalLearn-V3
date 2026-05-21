@@ -130,28 +130,55 @@ function getLabelWidth(label: string): number {
 
 // Bounding box approximative d'une card-nœud, en unités viewBox (0..100 × 0..75).
 // Les cards sont en HTML positionnées en % du container avec une largeur
-// min 120px / max 160px ; sur un container de ~600-900px, ça correspond
-// à 14-26 unités viewBox horizontales et ~8-12 verticales. On prend une
-// estimation prudente — un peu généreuse pour éviter que les labels
-// flirtent avec les cards.
+// min 120px / max 160px et 1-2 lignes de texte ; sur un container de
+// ~600-900px de large et 240-400px de haut, ça correspond à ~14-26 unités
+// viewBox horizontales et ~10-14 verticales. On prend une estimation prudente,
+// un peu généreuse, pour éviter que les labels flirtent avec les cards.
 const NODE_BBOX_W = 28
-const NODE_BBOX_H = 12
+const NODE_BBOX_H = 14
+
+// Centre géométrique du graphe (viewBox) : sert à orienter le décalage des
+// labels « vers l'extérieur », là où il y a de l'espace libre.
+const GRAPH_CX = 50
+const GRAPH_CY = toSvgY(50)
+
+const VIEW_W = 100
+const VIEW_H = 75
+
+// Pénalités du fallback « moindre recouvrement » utilisé quand aucune position
+// n'est totalement libre : éviter les nœuds prime sur éviter les autres labels,
+// et l'amplitude du décalage perpendiculaire ne sert que de départage.
+const NODE_PENALTY_W = 3
+const LABEL_PENALTY_W = 1
+const OFFSET_PENALTY_W = 0.05
 
 type BBox = { x: number; y: number; w: number; h: number }
 
-function aabbOverlap(a: BBox, b: BBox): boolean {
-  return (
-    a.x < b.x + b.w &&
-    a.x + a.w > b.x &&
-    a.y < b.y + b.h &&
-    a.y + a.h > b.y
-  )
+// Aire d'intersection de deux AABB (0 si disjointes).
+function overlapArea(a: BBox, b: BBox): number {
+  const dx = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)
+  const dy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)
+  return dx > 0 && dy > 0 ? dx * dy : 0
 }
 
-// Candidats de position le long d'une arête : le milieu d'abord, puis on
-// s'écarte par paliers symétriques. On reste dans [0.18, 0.82] pour ne pas
-// coller aux nœuds (le marqueur de flèche occupe les ~10% finaux).
+// Candidats de position le long d'une arête (paramètre t) : le milieu d'abord,
+// puis on s'écarte par paliers symétriques. On reste dans [0.18, 0.82] pour ne
+// pas coller aux nœuds (le marqueur de flèche occupe les ~10% finaux).
 const LABEL_T_CANDIDATES = [0.5, 0.38, 0.62, 0.3, 0.7, 0.22, 0.78]
+
+// Décalages perpendiculaires à l'arête (unités viewBox), appliqués le long de
+// la perpendiculaire orientée vers l'extérieur du graphe (offset > 0). 0
+// d'abord (label sur la ligne, aspect par défaut), puis on s'écarte par paliers
+// en privilégiant l'extérieur, mais on autorise aussi l'intérieur (offset < 0) :
+// sur l'arête basse d'un pentagone, l'extérieur est plafonné par le bord du
+// viewBox alors que le cœur du graphe est vide.
+const LABEL_PERP_OFFSETS = [
+  0,
+  LABEL_HEIGHT,
+  -LABEL_HEIGHT,
+  LABEL_HEIGHT * 1.8,
+  -LABEL_HEIGHT * 1.8,
+]
 
 // ─── Entrée du composant ────────────────────────────────────────────────────
 
@@ -217,9 +244,12 @@ function GraphDesktop({
   const edgesEndDelay = nodesEndDelay + EDGE_DURATION
 
   // ─ Évitement de collision des labels d'arêtes ────────────────────────────
-  // Greedy : pour chaque edge avec label, on essaie un jeu de positions
-  // paramétriques le long de l'arête et on retient la première qui n'entre
-  // pas en collision avec les labels déjà placés ni avec les cards-nœuds.
+  // Greedy : pour chaque edge avec label, on essaie un jeu de positions le long
+  // de l'arête (paramètre t) ET décalées perpendiculairement vers l'extérieur
+  // du graphe. On retient la première position totalement libre (aucun
+  // recouvrement avec les nœuds ni les labels déjà placés). Si aucune ne l'est
+  // — typiquement un label large coincé entre deux nœuds — on retient celle qui
+  // minimise le recouvrement, en pénalisant d'abord les nœuds.
   const nodeBoxes: BBox[] = positions.map((p) => ({
     x: p.x - NODE_BBOX_W / 2,
     y: toSvgY(p.y) - NODE_BBOX_H / 2,
@@ -239,25 +269,57 @@ function GraphDesktop({
       const y1 = toSvgY(a.y)
       const x2 = b.x
       const y2 = toSvgY(b.y)
+      const dx = x2 - x1
+      const dy = y2 - y1
       const w = getLabelWidth(edge.label)
       const h = LABEL_HEIGHT
 
+      // Perpendiculaire unitaire orientée vers l'extérieur du graphe : on
+      // pousse les labels vers les marges (espace vide) plutôt que vers le
+      // cœur où s'amassent les nœuds.
+      const len = Math.hypot(dx, dy) || 1
+      let px = -dy / len
+      let py = dx / len
+      const mx = (x1 + x2) / 2
+      const my = (y1 + y2) / 2
+      if (px * (mx - GRAPH_CX) + py * (my - GRAPH_CY) < 0) {
+        px = -px
+        py = -py
+      }
+
       let best: { x: number; y: number; box: BBox } | null = null
+      let bestPenalty = Infinity
       for (const t of LABEL_T_CANDIDATES) {
-        const cx = x1 + (x2 - x1) * t
-        const cy = y1 + (y2 - y1) * t
-        const box: BBox = { x: cx - w / 2, y: cy - h / 2, w, h }
-        const hitsLabel = placedLabelBoxes.some((other) =>
-          aabbOverlap(box, other)
-        )
-        const hitsNode = nodeBoxes.some((nb) => aabbOverlap(box, nb))
-        if (!hitsLabel && !hitsNode) {
-          best = { x: cx, y: cy, box }
-          break
+        const bx = x1 + dx * t
+        const by = y1 + dy * t
+        for (const off of LABEL_PERP_OFFSETS) {
+          // Maintien dans le viewBox pour ne pas être rogné par les bords SVG.
+          const cx = Math.min(Math.max(bx + px * off, w / 2), VIEW_W - w / 2)
+          const cy = Math.min(Math.max(by + py * off, h / 2), VIEW_H - h / 2)
+          const box: BBox = { x: cx - w / 2, y: cy - h / 2, w, h }
+          const nodePen = nodeBoxes.reduce(
+            (s, nb) => s + overlapArea(box, nb),
+            0
+          )
+          const labelPen = placedLabelBoxes.reduce(
+            (s, lb) => s + overlapArea(box, lb),
+            0
+          )
+          if (nodePen === 0 && labelPen === 0) {
+            best = { x: cx, y: cy, box }
+            bestPenalty = 0
+            break
+          }
+          const penalty =
+            nodePen * NODE_PENALTY_W +
+            labelPen * LABEL_PENALTY_W +
+            Math.abs(off) * OFFSET_PENALTY_W
+          if (penalty < bestPenalty) {
+            bestPenalty = penalty
+            best = { x: cx, y: cy, box }
+          }
         }
-        // Fallback : si rien de mieux, on garde la première candidate
-        // (le midpoint) pour ne jamais retomber sur une position vide.
-        if (best === null) best = { x: cx, y: cy, box }
+        if (bestPenalty === 0) break
       }
       if (best) placedLabelBoxes.push(best.box)
       return best ? { x: best.x, y: best.y } : null
