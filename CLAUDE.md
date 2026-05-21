@@ -36,6 +36,25 @@ les appels LLM longs avant retour.
 - `course_watch_logs` (table) — préservé pour DPC
 - `useSubmitSequenceResult` — seul write path autorisé sur `user_points`
 
+## Source de vérité — progression des séquences
+
+Depuis le commit `19a589c` (PR auto-inscription user, mai 2026), il existe
+**une seule** source de vérité pour la complétion pédagogique.
+
+- **`user_sequences`** = source unique **pédagogique** (progression, compteur
+  "X/N", pastilles ✓, points). Stateful : 1 ligne par `(user_id, sequence_id)`,
+  contrainte `UNIQUE(user_id, sequence_id)`. Toute UI de progression DOIT lire
+  cette table (cf. `useUserFormationProgress` dans `src/lib/supabase/hooks.ts`).
+- **`course_watch_logs`** = audit **DPC immuable**. Plusieurs logs par séquence
+  possibles (tracking anti-skip). Ne JAMAIS l'utiliser pour l'UI pédagogique.
+- Les RPC `is_sequence_completed()` et `get_user_completed_sequences()` ont été
+  **retirés** en `19a589c` (ils s'appuyaient sur `course_watch_logs` et créaient
+  une double source de vérité). Ne pas les recréer.
+- **Unique pont autorisé** `course_watch_logs` → `user_sequences` :
+  `backfillIntroCompletions` dans `src/components/formation/EnrollmentCTA.tsx`,
+  qui rétro-marque à l'inscription les **intros audio-only** déjà écoutées
+  (exclut toute intro possédant un quiz).
+
 ## Couleurs interdites dans les nouveaux fichiers
 
 `#2D1B96`, `#231575`, `#00D1C1` — anciennes constantes du design system,
