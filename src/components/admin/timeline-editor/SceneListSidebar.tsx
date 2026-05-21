@@ -1,8 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
-import type { Scene, SceneTemplate } from '@/lib/timeline/schema'
+import {
+  computeConceptPlacements,
+  type ConceptPlacement,
+} from '@/lib/timeline/conceptVisibility'
+import type { Scene, SceneTemplate, TimelineConcept } from '@/lib/timeline/schema'
 
 import { DragHandle, SortableList } from './SortableList'
 
@@ -28,6 +32,14 @@ interface Props {
   onRegenerate?: () => void
   /** Spinner sur le bouton Régénérer + locke l'UI. */
   isRegenerating?: boolean
+  /** Concepts de la timeline, intercalés sous leur scène d'ancrage temporel. */
+  concepts: TimelineConcept[]
+  /** Durée audio (borne le calcul de visibilité des concepts). */
+  audioDurationSec: number
+  /** Concept sélectionné (surbrillance + sync avec le panneau Concepts). */
+  selectedConceptId?: string | null
+  /** Clic sur une pastille concept → ouvre/scrolle le panneau Concepts. */
+  onSelectConcept?: (id: string) => void
 }
 
 const KIND_BADGE_BG: Record<SceneTemplate['kind'], string> = {
@@ -65,6 +77,108 @@ function formatSec(sec: number): string {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
+// ─── Pastilles concept (intercalées sous les scènes) ────────────────────────
+
+const CONCEPT_STATUS: Record<
+  ConceptPlacement['status'],
+  { badge: string; badgeClass: string; rowClass: string; title: string }
+> = {
+  visible: {
+    badge: '✓ visible',
+    badgeClass: 'bg-emerald-500/15 text-emerald-300',
+    rowClass: 'border-white/5 bg-[color:var(--color-bg-card)]/30',
+    title: 'Ce concept s’affichera dans le whiteboard pendant un intervalle entre scènes.',
+  },
+  never: {
+    badge: '⚠ jamais affiché',
+    badgeClass: 'bg-amber-500/15 text-amber-300',
+    rowClass: 'border-amber-500/20 bg-amber-500/[0.04]',
+    title:
+      'Aucun intervalle libre entre les scènes ne couvre ce concept (il est recouvert par une scène ou supplanté par le concept suivant). Déplace son at_sec ou ajuste une scène pour le rendre visible.',
+  },
+  disabled: {
+    badge: 'désactivé',
+    badgeClass: 'bg-white/10 text-[color:var(--color-text-muted)]',
+    rowClass: 'border-white/5 bg-white/5 opacity-60',
+    title: 'Concept masqué via la case « Afficher » dans le panneau Concepts.',
+  },
+  incomplete: {
+    badge: 'incomplet',
+    badgeClass: 'bg-white/10 text-[color:var(--color-text-muted)]',
+    rowClass: 'border-white/5 bg-white/5 opacity-70',
+    title:
+      'Terme, définition ou position (at_sec) manquant → ignoré pendant la lecture.',
+  },
+}
+
+function ConceptChip({
+  placement,
+  selected,
+  onSelect,
+}: {
+  placement: ConceptPlacement
+  selected: boolean
+  onSelect?: (id: string) => void
+}) {
+  const { concept, atSec, status, insideScene } = placement
+  const cfg = CONCEPT_STATUS[status]
+  const term = concept.term?.trim() || concept.label?.trim() || '(sans terme)'
+  const titleSuffix =
+    status === 'never' && insideScene
+      ? ` (at_sec dans « ${insideScene.title} »)`
+      : ''
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect?.(concept.id)}
+      title={cfg.title + titleSuffix}
+      className={`flex w-full items-center gap-1.5 rounded-md border px-2 py-1 text-left transition-colors hover:border-ds-turquoise/40 ${
+        selected ? 'border-ds-turquoise/60 bg-ds-turquoise/10' : cfg.rowClass
+      }`}
+    >
+      <span aria-hidden="true" className="text-[color:var(--color-text-muted)]">
+        ·
+      </span>
+      <span className="flex-1 truncate text-xs text-[color:var(--color-text-primary)]">
+        {term}
+      </span>
+      <span className="font-mono text-[9px] text-[color:var(--color-text-muted)]">
+        {atSec === null ? '—' : formatSec(atSec)}
+      </span>
+      <span
+        className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-medium ${cfg.badgeClass}`}
+      >
+        {cfg.badge}
+      </span>
+    </button>
+  )
+}
+
+function ConceptChipList({
+  placements,
+  selectedConceptId,
+  onSelectConcept,
+}: {
+  placements: ConceptPlacement[]
+  selectedConceptId?: string | null
+  onSelectConcept?: (id: string) => void
+}) {
+  if (placements.length === 0) return null
+  return (
+    <div className="mt-1.5 flex flex-col gap-1 pl-4">
+      {placements.map((p) => (
+        <ConceptChip
+          key={p.concept.id}
+          placement={p}
+          selected={p.concept.id === selectedConceptId}
+          onSelect={onSelectConcept}
+        />
+      ))}
+    </div>
+  )
+}
+
 export function SceneListSidebar({
   scenes,
   selectedSceneId,
@@ -74,10 +188,20 @@ export function SceneListSidebar({
   onReorder,
   onRegenerate,
   isRegenerating = false,
+  concepts,
+  audioDurationSec,
+  selectedConceptId,
+  onSelectConcept,
 }: Props) {
   const [showHelp, setShowHelp] = useState(false)
 
   const canRegenerate = typeof onRegenerate === 'function'
+
+  const placement = useMemo(
+    () => computeConceptPlacements(scenes, concepts, audioDurationSec),
+    [scenes, concepts, audioDurationSec]
+  )
+  const hiddenConceptCount = concepts.length - placement.visibleCount
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -96,6 +220,23 @@ export function SceneListSidebar({
           </button>
         </div>
       </header>
+      {concepts.length > 0 && (
+        <p className="text-[10px] text-[color:var(--color-text-muted)]">
+          {concepts.length} concept{concepts.length > 1 ? 's' : ''} ·{' '}
+          <span className="text-emerald-300">
+            {placement.visibleCount} affiché{placement.visibleCount > 1 ? 's' : ''}
+          </span>{' '}
+          à la lecture
+          {hiddenConceptCount > 0 && (
+            <>
+              {' · '}
+              <span className="text-amber-300">
+                {hiddenConceptCount} jamais
+              </span>
+            </>
+          )}
+        </p>
+      )}
       {showHelp && (
         <div className="rounded-md border border-white/10 bg-[color:var(--color-bg-card)]/60 p-2.5 text-[11px] leading-relaxed text-[color:var(--color-text-secondary)]">
           L&apos;ordre est cosmétique : il n&apos;affecte pas la lecture audio.
@@ -106,6 +247,18 @@ export function SceneListSidebar({
       )}
 
       <div className="overflow-y-auto pr-1">
+        {placement.beforeFirst.length > 0 && (
+          <div className="mb-1.5">
+            <p className="mb-1 pl-1 text-[9px] uppercase tracking-wider text-[color:var(--color-text-muted)]">
+              Avant la 1re scène
+            </p>
+            <ConceptChipList
+              placements={placement.beforeFirst}
+              selectedConceptId={selectedConceptId}
+              onSelectConcept={onSelectConcept}
+            />
+          </div>
+        )}
         {scenes.length === 0 ? (
           <p className="rounded-lg bg-[color:var(--color-bg-card)]/40 p-3 text-xs italic text-[color:var(--color-text-muted)]">
             Aucune scène — clique sur « + Ajouter ».
@@ -119,14 +272,16 @@ export function SceneListSidebar({
             renderItem={(scene, idx, handleProps) => {
               const active = scene.id === selectedSceneId
               const kind = scene.template.kind
+              const sceneConcepts = placement.byAnchorScene.get(scene.id) ?? []
               return (
                 <div
-                  className={`group flex items-start gap-1.5 rounded-lg border p-2.5 text-left transition-colors ${
+                  className={`group rounded-lg border p-2.5 text-left transition-colors ${
                     active
                       ? 'border-ds-turquoise/60 bg-ds-turquoise/10'
                       : 'border-white/5 bg-[color:var(--color-bg-card)]/40 hover:bg-[color:var(--color-bg-card)]/70'
                   }`}
                 >
+                  <div className="flex items-start gap-1.5">
                   <DragHandle {...handleProps} ariaLabel={`Réordonner la scène ${idx + 1}`} />
                   <button
                     type="button"
@@ -185,10 +340,28 @@ export function SceneListSidebar({
                       <path d="M14 11v6" />
                     </svg>
                   </button>
+                  </div>
+                  <ConceptChipList
+                    placements={sceneConcepts}
+                    selectedConceptId={selectedConceptId}
+                    onSelectConcept={onSelectConcept}
+                  />
                 </div>
               )
             }}
           />
+        )}
+        {placement.noTimestamp.length > 0 && (
+          <div className="mt-2">
+            <p className="mb-1 pl-1 text-[9px] uppercase tracking-wider text-[color:var(--color-text-muted)]">
+              Sans position (at_sec)
+            </p>
+            <ConceptChipList
+              placements={placement.noTimestamp}
+              selectedConceptId={selectedConceptId}
+              onSelectConcept={onSelectConcept}
+            />
+          </div>
         )}
       </div>
 

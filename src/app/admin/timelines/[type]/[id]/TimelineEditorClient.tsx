@@ -104,6 +104,7 @@ export function TimelineEditorClient({
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(
     initialTimeline?.scenes[0]?.id ?? null
   )
+  const [selectedConceptId, setSelectedConceptId] = useState<string | null>(null)
   const [isDirty, setIsDirty] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isRegenerating, setIsRegenerating] = useState(false)
@@ -531,6 +532,10 @@ export function TimelineEditorClient({
                     : undefined
                 }
                 isRegenerating={isRegenerating}
+                concepts={timeline.concepts ?? []}
+                audioDurationSec={audioDurationSec}
+                selectedConceptId={selectedConceptId}
+                onSelectConcept={setSelectedConceptId}
               />
             </aside>
 
@@ -569,6 +574,7 @@ export function TimelineEditorClient({
               concepts={timeline.concepts ?? []}
               audioDurationSec={audioDurationSec}
               onChange={updateConcepts}
+              selectedConceptId={selectedConceptId}
             />
             <VersionsPanel
               type={type}
