@@ -12,8 +12,7 @@ import type { TimelineConcept } from '@/lib/timeline/schema'
  *  - Édition `term` (max 60) + `definition` (max 300)
  *  - Suppression (avec confirm)
  *  - Ajout manuel (modal léger), source = "généré_manuel"
- *
- * `at_sec` est lecture seule en V1 (formaté mm:ss).
+ *  - Édition `at_sec` (position en secondes ; mm:ss affiché à côté)
  */
 
 const TERM_LIMIT = 60
@@ -173,9 +172,31 @@ export function ConceptsEditor({
                         />
                         Afficher
                       </label>
-                      <span className="font-mono text-[10px] text-[color:var(--color-text-muted)]">
-                        {formatSec(concept.at_sec ?? concept.start_sec)}
-                      </span>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={0}
+                          max={Math.round(audioDurationSec)}
+                          step={1}
+                          value={Math.round(
+                            concept.at_sec ?? concept.start_sec ?? 0
+                          )}
+                          onChange={(e) => {
+                            const v = Number(e.target.value)
+                            if (!Number.isFinite(v)) return
+                            const clamped = Math.max(
+                              0,
+                              Math.min(Math.round(audioDurationSec), v)
+                            )
+                            setConcept(idx, { ...concept, at_sec: clamped })
+                          }}
+                          aria-label={`Position (secondes) du concept ${term || idx + 1}`}
+                          className="w-14 rounded border border-white/10 bg-[color:var(--color-bg-input)] px-1.5 py-0.5 text-right font-mono text-[10px] text-white focus:border-ds-turquoise focus:outline-none"
+                        />
+                        <span className="font-mono text-[10px] text-[color:var(--color-text-muted)]">
+                          {formatSec(concept.at_sec ?? concept.start_sec)}
+                        </span>
+                      </div>
                       <button
                         type="button"
                         onClick={() => deleteConcept(idx)}
