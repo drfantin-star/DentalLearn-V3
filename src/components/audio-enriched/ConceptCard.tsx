@@ -3,7 +3,6 @@
 import { memo } from 'react'
 import { motion } from 'framer-motion'
 
-import Badge from '@/components/ui/Badge'
 import { cn } from '@/lib/utils/cn'
 
 interface ConceptCardProps {
@@ -20,15 +19,12 @@ function ConceptCardBase({ term, definition, className }: ConceptCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
       className={cn(
-        'bg-[color:var(--color-bg-card)]/30 rounded-xl p-6 min-h-[240px] flex flex-col gap-3',
+        'bg-[color:var(--color-bg-card)]/30 rounded-xl p-6 flex flex-col gap-3',
         className,
       )}
     >
-      <Badge variant="info" size="sm" className="self-start">
-        Concept clé
-      </Badge>
-      <h3 className="text-lg font-semibold text-primary">{term}</h3>
-      <p className="text-sm text-[color:var(--color-text-secondary)] leading-relaxed">
+      <h3 className="text-lg font-bold text-white">{term}</h3>
+      <p className="text-sm font-bold text-white leading-relaxed">
         {definition}
       </p>
     </motion.div>
