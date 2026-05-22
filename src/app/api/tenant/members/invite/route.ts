@@ -16,7 +16,6 @@ const ALL_INTRA_ROLES = new Set<IntraRole>(
 
 // Lookup user_id par email via Admin SDK (pas d'API directe getUserByEmail).
 async function findUserIdByEmail(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   adminSupabase: any,
   email: string
 ): Promise<string | null> {
@@ -28,9 +27,7 @@ async function findUserIdByEmail(
       perPage: PER_PAGE,
     })
     if (error || !data) return null
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const found = (data.users ?? []).find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (u: any) => (u.email ?? '').toLowerCase() === target
     )
     if (found) return found.id as string

@@ -23,7 +23,6 @@ const ALL_INTRA_ROLES = new Set<IntraRole>(
 // — on parcourt les pages de listUsers. Acceptable tant que la base reste
 // modeste; à remplacer par une RPC SQL si la perf devient un problème.
 async function findUserIdByEmail(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   adminSupabase: any,
   email: string
 ): Promise<string | null> {
@@ -35,9 +34,7 @@ async function findUserIdByEmail(
       perPage: PER_PAGE,
     })
     if (error || !data) return null
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const found = (data.users ?? []).find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (u: any) => (u.email ?? '').toLowerCase() === target
     )
     if (found) return found.id as string

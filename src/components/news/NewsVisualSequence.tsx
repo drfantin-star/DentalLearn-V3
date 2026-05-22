@@ -1,7 +1,7 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Causal } from '@/components/audio-enriched/templates/Causal'
 import { Comparison } from '@/components/audio-enriched/templates/Comparison'
@@ -52,10 +52,9 @@ export function NewsVisualSequence({
   const chapters = timeline.chapters
   const sceneCount = timeline.scenes.length
 
-  // Garde-fou : si pas de chapitre ou de scène, on ne rend rien.
-  if (chapters.length === 0 || sceneCount === 0) {
-    return null
-  }
+  const [localSceneIndex, setLocalSceneIndex] = useState(0)
+  // Temps écoulé depuis le début du chapitre courant, en secondes.
+  const elapsedRef = useRef(0)
 
   const clampedIndex = Math.max(
     0,
@@ -63,15 +62,17 @@ export function NewsVisualSequence({
   )
   const currentChapter = chapters[clampedIndex]
 
-  const chapterScenes = timeline.scenes.filter(
-    (s) =>
-      s.start_sec >= currentChapter.start_sec &&
-      s.end_sec <= currentChapter.end_sec + 0.001,
+  const chapterScenes = useMemo(
+    () =>
+      currentChapter
+        ? timeline.scenes.filter(
+            (s) =>
+              s.start_sec >= currentChapter.start_sec &&
+              s.end_sec <= currentChapter.end_sec + 0.001,
+          )
+        : [],
+    [currentChapter, timeline.scenes],
   )
-
-  const [localSceneIndex, setLocalSceneIndex] = useState(0)
-  // Temps écoulé depuis le début du chapitre courant, en secondes.
-  const elapsedRef = useRef(0)
 
   // Reset quand la synthèse change (passage au chapitre suivant).
   useEffect(() => {
@@ -107,6 +108,9 @@ export function NewsVisualSequence({
     return () => clearInterval(interval)
   }, [isPlaying, chapterScenes])
 
+  // Gardes-fous placés après les hooks (rules-of-hooks) : rien à rendre si pas
+  // de chapitre/scène, ou si le chapitre courant ne contient aucune scène.
+  if (chapters.length === 0 || sceneCount === 0) return null
   if (chapterScenes.length === 0) return null
 
   const activeScene = chapterScenes[Math.min(localSceneIndex, chapterScenes.length - 1)]

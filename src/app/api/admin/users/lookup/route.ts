@@ -9,7 +9,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // Cf. dette D-S1-T5-01 (héritée Sprint 1) : `auth.admin.listUsers()` paginé,
 // pas d'API getUserByEmail. Acceptable tant que la base reste modeste.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function findUserByEmail(adminSupabase: any, email: string) {
   const target = email.toLowerCase()
   const PER_PAGE = 200
@@ -19,9 +18,7 @@ async function findUserByEmail(adminSupabase: any, email: string) {
       perPage: PER_PAGE,
     })
     if (error || !data) return null
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const found = (data.users ?? []).find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (u: any) => (u.email ?? '').toLowerCase() === target
     )
     if (found) return found
