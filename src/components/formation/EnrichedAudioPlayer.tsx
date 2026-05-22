@@ -9,7 +9,7 @@ import { StructuredWhiteboard } from '@/components/audio-enriched/StructuredWhit
 import { useAudio } from '@/context/AudioContext'
 import { useEnrichedTimeline } from '@/hooks/useEnrichedTimeline'
 import {
-  getActiveConcept,
+  getActiveConcepts,
   getActiveOrLastScene,
   getActiveScene,
   type DisplayableConcept,
@@ -145,11 +145,11 @@ export default function EnrichedAudioPlayer({
     [Math.floor(state.currentTime * 2), timeline]
   )
 
-  const activeConcept: DisplayableConcept | null = useMemo(
+  const activeConcepts: DisplayableConcept[] = useMemo(
     () =>
       timeline && !strictActiveScene
-        ? getActiveConcept(state.currentTime, timeline.concepts)
-        : null,
+        ? getActiveConcepts(state.currentTime, timeline.concepts, timeline.scenes)
+        : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [Math.floor(state.currentTime * 2), timeline, strictActiveScene]
   )
@@ -157,10 +157,10 @@ export default function EnrichedAudioPlayer({
   const displayedScene = useMemo(() => {
     if (!timeline) return null
     if (strictActiveScene) return strictActiveScene
-    if (activeConcept) return null
+    if (activeConcepts.length > 0) return null
     return getActiveOrLastScene(state.currentTime, timeline.scenes)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Math.floor(state.currentTime * 2), timeline, strictActiveScene, activeConcept])
+  }, [Math.floor(state.currentTime * 2), timeline, strictActiveScene, activeConcepts.length])
 
   // Décision finale d'affichage du panneau enrichi (Q6 + Q7.4 + Q7.7).
   const showEnrichedPanel =
@@ -245,7 +245,7 @@ export default function EnrichedAudioPlayer({
             <div className="w-full">
               <WhiteboardOrCover
                 displayedScene={displayedScene}
-                activeConcept={activeConcept}
+                activeConcepts={activeConcepts}
                 timeline={timeline}
               />
             </div>
@@ -278,7 +278,7 @@ export default function EnrichedAudioPlayer({
               <div className="order-1 md:order-2 flex-1 md:min-h-0 md:overflow-hidden">
                 <WhiteboardOrCover
                   displayedScene={displayedScene}
-                  activeConcept={activeConcept}
+                  activeConcepts={activeConcepts}
                   timeline={timeline}
                 />
               </div>
@@ -308,13 +308,13 @@ export default function EnrichedAudioPlayer({
 
 interface WhiteboardOrCoverProps {
   displayedScene: Scene | null
-  activeConcept: DisplayableConcept | null
+  activeConcepts: DisplayableConcept[]
   timeline: NonNullable<ReturnType<typeof useEnrichedTimeline>['timeline']>
 }
 
 function WhiteboardOrCover({
   displayedScene,
-  activeConcept,
+  activeConcepts,
   timeline,
 }: WhiteboardOrCoverProps) {
   if (displayedScene) {
@@ -333,15 +333,16 @@ function WhiteboardOrCover({
       />
     )
   }
-  // T7-bis : flow continu — quand aucune scène n'est strictement active et
-  // qu'un concept "passé" est disponible, on affiche sa carte définitionnelle
-  // dans le whiteboard plutôt que le placeholder.
-  if (activeConcept) {
+  // T7-bis : flow continu — quand aucune scène n'est strictement active,
+  // on affiche tous les concepts déclenchés dans le gap courant (triés par
+  // at_sec croissant). Plusieurs concepts peuvent s'afficher simultanément.
+  if (activeConcepts.length > 0) {
     return (
-      <ConceptCard
-        term={activeConcept.term}
-        definition={activeConcept.definition}
-      />
+      <div className="flex flex-col gap-3">
+        {activeConcepts.map((c) => (
+          <ConceptCard key={c.term} term={c.term} definition={c.definition} />
+        ))}
+      </div>
     )
   }
   // POC-T7.4a-E — gap initial sans concept disponible : 3 dots pulsants

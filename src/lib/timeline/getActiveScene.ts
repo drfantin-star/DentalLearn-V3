@@ -185,3 +185,48 @@ export function getActiveConcept(
   const sorted = [...passed].sort((a, b) => a.at_sec - b.at_sec)
   return sorted[sorted.length - 1]
 }
+
+/**
+ * Retourne TOUS les concepts affichables du gap courant, triés par `at_sec`
+ * croissant. Permet d'afficher simultanément plusieurs concepts qui se
+ * succèdent dans un même gap inter-scènes.
+ *
+ * Logique :
+ *  - Le "gap courant" commence à la fin de la dernière scène terminée avant
+ *    `currentTime` (ou à 0 s'il n'y a pas encore de scène).
+ *  - Sont inclus tous les concepts éligibles dont `at_sec` est compris dans
+ *    `[gapStart, currentTime]`.
+ */
+export function getActiveConcepts(
+  currentTime: number,
+  concepts: TimelineConcept[],
+  scenes: Scene[]
+): DisplayableConcept[] {
+  if (!concepts.length) return []
+  if (currentTime < 0) return []
+
+  const sortedScenes = isAscByStart(scenes)
+    ? scenes
+    : [...scenes].sort((a, b) => a.start_sec - b.start_sec)
+
+  let gapStart = 0
+  for (const scene of sortedScenes) {
+    if (scene.end_sec <= currentTime) {
+      gapStart = Math.max(gapStart, scene.end_sec)
+    }
+  }
+
+  return concepts
+    .filter(
+      (c): c is DisplayableConcept =>
+        typeof c.at_sec === 'number' &&
+        typeof c.term === 'string' &&
+        c.term.length > 0 &&
+        typeof c.definition === 'string' &&
+        c.definition.length > 0 &&
+        c.hidden !== true &&
+        c.at_sec >= gapStart &&
+        c.at_sec <= currentTime
+    )
+    .sort((a, b) => a.at_sec - b.at_sec)
+}
