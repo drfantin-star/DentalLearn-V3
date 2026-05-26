@@ -45,14 +45,15 @@ async function findUserIdByEmail(
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!UUID_RE.test(params.id)) {
+    const { id: orgId } = await params
+    if (!UUID_RE.test(orgId)) {
       return NextResponse.json({ error: 'ID invalide' }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -84,7 +85,7 @@ export async function POST(
     const { data: org, error: orgError } = await adminSupabase
       .from('organizations')
       .select('id, type')
-      .eq('id', params.id)
+      .eq('id', orgId)
       .single()
 
     if (orgError || !org) {
@@ -122,7 +123,7 @@ export async function POST(
     const nowIso = new Date().toISOString()
     const insertPayload: Record<string, unknown> = {
       user_id: userId,
-      org_id: params.id,
+      org_id: orgId,
       intra_role: intraRole,
       status: membershipStatus,
     }

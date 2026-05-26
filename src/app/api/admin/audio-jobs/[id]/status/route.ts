@@ -26,7 +26,7 @@ export const dynamic = 'force-dynamic'
 async function requireSuperAdmin(): Promise<
   { ok: true; userId: string } | { ok: false; response: NextResponse }
 > {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
     error,
@@ -48,13 +48,13 @@ async function requireSuperAdmin(): Promise<
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const auth = await requireSuperAdmin()
     if (!auth.ok) return auth.response
 
-    const { id: jobId } = params
+    const { id: jobId } = await params
     if (!jobId) {
       return NextResponse.json({ error: 'missing_job_id' }, { status: 400 })
     }

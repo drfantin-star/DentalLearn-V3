@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([])
   }
 
-  const supabase = createClient()
+  const supabase = await createClient()
 
   let query = supabase
     .from('live_sessions')

@@ -19,7 +19,7 @@ interface ValidationError {
 // 6a — réservé 6b). Source 'manual' utilisée systématiquement.
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })

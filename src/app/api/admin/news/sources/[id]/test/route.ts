@@ -8,10 +8,10 @@ import { testRssFeed, testPubmedQuery } from '@/lib/news-source-validate'
 // (cf news-source-validate). Retour homogène { ok, articles_found, error? }.
 export async function POST(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const {
       data: { session },
     } = await supabase.auth.getSession()
@@ -22,7 +22,7 @@ export async function POST(
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
     }
 
-    const sourceId = params.id
+    const { id: sourceId } = await params
     if (!sourceId) {
       return NextResponse.json({ error: 'id manquant' }, { status: 400 })
     }

@@ -16,7 +16,7 @@ export async function GET(
     const { id: synthesisId } = await params
 
     // ----- Auth admin -----
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })

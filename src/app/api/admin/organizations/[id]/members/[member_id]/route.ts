@@ -19,14 +19,15 @@ const ALL_INTRA_ROLES = new Set<IntraRole>(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string; member_id: string } }
+  { params }: { params: Promise<{ id: string; member_id: string }> }
 ) {
   try {
-    if (!UUID_RE.test(params.id) || !UUID_RE.test(params.member_id)) {
+    const { id, member_id } = await params
+    if (!UUID_RE.test(id) || !UUID_RE.test(member_id)) {
       return NextResponse.json({ error: 'ID invalide' }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -47,8 +48,8 @@ export async function PATCH(
     const { data: member, error: memberError } = await adminSupabase
       .from('organization_members')
       .select('id, user_id, org_id, intra_role, status')
-      .eq('id', params.member_id)
-      .eq('org_id', params.id)
+      .eq('id', member_id)
+      .eq('org_id', id)
       .single()
 
     if (memberError || !member) {
@@ -58,7 +59,7 @@ export async function PATCH(
     const { data: org, error: orgError } = await adminSupabase
       .from('organizations')
       .select('id, type')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (orgError || !org) {
@@ -119,7 +120,7 @@ export async function PATCH(
       const { count, error: countError } = await adminSupabase
         .from('organization_members')
         .select('id', { count: 'exact', head: true })
-        .eq('org_id', params.id)
+        .eq('org_id', id)
         .eq('status', 'active')
         .in('intra_role', ['titulaire', 'admin_rh', 'admin_of'])
 
@@ -138,8 +139,8 @@ export async function PATCH(
     const { data, error } = await adminSupabase
       .from('organization_members')
       .update(updates)
-      .eq('id', params.member_id)
-      .eq('org_id', params.id)
+      .eq('id', member_id)
+      .eq('org_id', id)
       .select('id, user_id, intra_role, status, joined_at, revoked_at')
       .single()
 

@@ -10,7 +10,7 @@ type ProfileRow = { user_id: string; display_name: string | null }
 const ALLOWED_TYPES = new Set(['all', 'presentiel', 'virtuel'])
 
 export async function GET(request: NextRequest) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) {
     return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })

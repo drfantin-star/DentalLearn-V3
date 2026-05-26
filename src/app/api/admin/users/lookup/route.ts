@@ -29,7 +29,7 @@ async function findUserByEmail(adminSupabase: any, email: string) {
 
 export async function GET(request: Request) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {

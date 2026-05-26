@@ -18,7 +18,7 @@ const POC_AUDIO_URL =
 const POC_SEQUENCE_ID = 'e8dfa6b8-ef34-4454-a198-e6f973f466de'
 
 export default async function KaraokePOCPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()

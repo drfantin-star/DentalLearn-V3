@@ -17,16 +17,16 @@ import { ExtractScenesClient, type SequenceLite } from './ExtractScenesClient'
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  searchParams?: { sequence_id?: string | string[] }
+  searchParams?: Promise<{ sequence_id?: string | string[] }>
 }
 
 export default async function ExtractScenesPage({ searchParams }: PageProps) {
-  const rawSequenceId = searchParams?.sequence_id
+  const rawSequenceId = (await searchParams)?.sequence_id
   const initialSequenceId = Array.isArray(rawSequenceId)
     ? rawSequenceId[0]
     : rawSequenceId
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()

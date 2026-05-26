@@ -9,16 +9,17 @@ export const dynamic = 'force-dynamic'
 // 404 si slug inconnu ou profil non publié.
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
-  const supabase = createClient()
+  const { slug } = await params
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('formateur_profiles')
     .select(
       'id, user_id, slug, display_name, bio_long, expertise_tags, annees_experience, ville, cabinet_nom, linkedin_url, instagram_url, photo_pro_url, is_published'
     )
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .eq('is_published', true)
     .maybeSingle()
 

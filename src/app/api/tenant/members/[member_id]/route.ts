@@ -18,10 +18,11 @@ const ALL_INTRA_ROLES = new Set<IntraRole>(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { member_id: string } }
+  { params }: { params: Promise<{ member_id: string }> }
 ) {
   try {
-    if (!UUID_RE.test(params.member_id)) {
+    const { member_id } = await params
+    if (!UUID_RE.test(member_id)) {
       return NextResponse.json({ error: 'ID invalide' }, { status: 400 })
     }
 
@@ -42,7 +43,7 @@ export async function PATCH(
     const { data: member, error: memberError } = await adminSupabase
       .from('organization_members')
       .select('id, user_id, org_id, intra_role, status')
-      .eq('id', params.member_id)
+      .eq('id', member_id)
       .eq('org_id', orgId)
       .single()
 
@@ -122,7 +123,7 @@ export async function PATCH(
     const { data, error } = await adminSupabase
       .from('organization_members')
       .update(updates)
-      .eq('id', params.member_id)
+      .eq('id', member_id)
       .eq('org_id', orgId)
       .select('id, user_id, intra_role, status, joined_at, revoked_at')
       .single()

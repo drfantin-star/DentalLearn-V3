@@ -12,7 +12,7 @@ const USER_AGENT =
 // 400 = DOI invalide / 404 = inconnu / 503 = Crossref indisponible.
 export async function GET(request: Request) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })

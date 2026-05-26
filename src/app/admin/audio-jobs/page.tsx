@@ -8,7 +8,7 @@ import { AudioJobsClient } from './AudioJobsClient'
 export const dynamic = 'force-dynamic'
 
 export default async function AudioJobsPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()

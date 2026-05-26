@@ -33,7 +33,7 @@ export async function PATCH(
     const { id: episodeId } = await params
 
     // ----- 1. Auth admin -----
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
@@ -160,7 +160,7 @@ export async function DELETE(
   try {
     const { id: episodeId } = await params
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })

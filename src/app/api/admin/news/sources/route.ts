@@ -20,7 +20,7 @@ interface ValidationError {
 // passer outre.
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const {
       data: { session },
     } = await supabase.auth.getSession()

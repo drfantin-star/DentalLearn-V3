@@ -13,14 +13,15 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  */
 export async function GET(
   _request: Request,
-  { params }: { params: { user_id: string } }
+  { params }: { params: Promise<{ user_id: string }> }
 ) {
   try {
-    if (!UUID_RE.test(params.user_id)) {
+    const { user_id } = await params
+    if (!UUID_RE.test(user_id)) {
       return NextResponse.json({ error: 'user_id invalide' }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -36,7 +37,7 @@ export async function GET(
     const { data: roleRow } = await adminSupabase
       .from('user_roles')
       .select('created_at')
-      .eq('user_id', params.user_id)
+      .eq('user_id', user_id)
       .eq('role', 'formateur')
       .maybeSingle()
 
@@ -45,21 +46,21 @@ export async function GET(
     }
 
     // 2. auth.users → email.
-    const { data: authData } = await adminSupabase.auth.admin.getUserById(params.user_id)
+    const { data: authData } = await adminSupabase.auth.admin.getUserById(user_id)
     const email = authData?.user?.email ?? null
 
     // 3. user_profiles → nom.
     const { data: profile } = await adminSupabase
       .from('user_profiles')
       .select('first_name, last_name, profile_photo_url, city')
-      .eq('id', params.user_id)
+      .eq('id', user_id)
       .maybeSingle()
 
     // 4. Formations rattachées + JOIN formations pour les titres.
     const { data: links } = await adminSupabase
       .from('formation_instructors')
       .select('formation_id, is_primary, assigned_at')
-      .eq('user_id', params.user_id)
+      .eq('user_id', user_id)
       .order('assigned_at', { ascending: true })
 
     const linkRows = links ?? []
@@ -97,7 +98,7 @@ export async function GET(
 
     return NextResponse.json({
       formateur: {
-        user_id: params.user_id,
+        user_id: user_id,
         email,
         first_name: (profile?.first_name as string | null) ?? null,
         last_name: (profile?.last_name as string | null) ?? null,
@@ -120,14 +121,15 @@ export async function GET(
  */
 export async function DELETE(
   _request: Request,
-  { params }: { params: { user_id: string } }
+  { params }: { params: Promise<{ user_id: string }> }
 ) {
   try {
-    if (!UUID_RE.test(params.user_id)) {
+    const { user_id } = await params
+    if (!UUID_RE.test(user_id)) {
       return NextResponse.json({ error: 'user_id invalide' }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -139,7 +141,7 @@ export async function DELETE(
 
     // Sécurité : un super_admin ne peut pas se rétrograder lui-même via cette
     // route (de toute façon il ne devrait pas être formateur, mais double check).
-    if (params.user_id === session.user.id) {
+    if (user_id === session.user.id) {
       return NextResponse.json(
         { error: 'Auto-rétrogradation interdite' },
         { status: 400 }
@@ -151,7 +153,7 @@ export async function DELETE(
     const { error: deleteError, count } = await adminSupabase
       .from('user_roles')
       .delete({ count: 'exact' })
-      .eq('user_id', params.user_id)
+      .eq('user_id', user_id)
       .eq('role', 'formateur')
 
     if (deleteError) {
@@ -162,11 +164,11 @@ export async function DELETE(
     await adminSupabase
       .from('formation_instructors')
       .delete()
-      .eq('user_id', params.user_id)
+      .eq('user_id', user_id)
 
     return NextResponse.json({
       success: true,
-      user_id: params.user_id,
+      user_id: user_id,
       rows_deleted: count ?? 0,
     })
   } catch (error) {

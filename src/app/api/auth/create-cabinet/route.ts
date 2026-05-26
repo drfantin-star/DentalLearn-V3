@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   // ─── Résolution de l'user_id ────────────────────────────────────────────
   // Priorité à la session si elle existe (cas upgrade /profil).
   // Sinon fallback sur user_id du body (cas post-signup pré-vérification email).
-  const sessionSupabase = createClient()
+  const sessionSupabase = await createClient()
   const {
     data: { user: sessionUser },
   } = await sessionSupabase.auth.getUser()

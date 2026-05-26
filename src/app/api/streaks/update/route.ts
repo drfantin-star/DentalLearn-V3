@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST() {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {

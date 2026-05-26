@@ -42,7 +42,7 @@ const ALLOWED_PERIODS = ['7d', '30d', 'all'] as const
 async function requireSuperAdmin(): Promise<
   { ok: true; userId: string } | { ok: false; response: NextResponse }
 > {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
     error,

@@ -29,7 +29,7 @@ function isTaxonomyType(value: string): value is TaxonomyType {
 export async function GET(request: Request) {
   try {
     // ----- 1. Auth -----
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {

@@ -32,7 +32,7 @@ const SELECT_COLUMNS =
 // requêtes count en parallèle) pour alimenter les compteurs globaux côté UI.
 export async function GET(request: Request) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })

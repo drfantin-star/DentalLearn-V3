@@ -16,11 +16,12 @@ import { EnrichedPlayerPocClient } from './EnrichedPlayerPocClient'
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  params: { type: string; id: string }
+  params: Promise<{ type: string; id: string }>
 }
 
 export default async function EnrichedPlayerPocPage({ params }: PageProps) {
-  const supabase = createClient()
+  const { type, id } = await params
+  const supabase = await createClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()
@@ -32,7 +33,7 @@ export default async function EnrichedPlayerPocPage({ params }: PageProps) {
     redirect('/')
   }
 
-  if (params.type !== 'formation') {
+  if (type !== 'formation') {
     // Réservé à T8 (news visual sequence).
     notFound()
   }
@@ -44,7 +45,7 @@ export default async function EnrichedPlayerPocPage({ params }: PageProps) {
     .select(
       'id, title, formation_id, course_media_url, course_media_type, course_duration_seconds, learning_objectives, timeline_url, timeline_published, updated_at'
     )
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (error || !sequence) {

@@ -6,7 +6,7 @@ import { isSuperAdmin } from '@/lib/auth/rbac'
 // GET: Lister toutes les inscriptions avec détails utilisateurs
 export async function GET() {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -103,7 +103,7 @@ export async function GET() {
 // POST: Créer une nouvelle inscription
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -169,7 +169,7 @@ export async function POST(request: Request) {
 // PATCH: Mettre à jour le type d'accès d'une inscription
 export async function PATCH(request: Request) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {

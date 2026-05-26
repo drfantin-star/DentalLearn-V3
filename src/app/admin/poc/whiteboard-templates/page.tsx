@@ -13,7 +13,7 @@ import { WhiteboardTemplatesPOCClient } from './WhiteboardTemplatesPOCClient'
 export const dynamic = 'force-dynamic'
 
 export default async function WhiteboardTemplatesPOCPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()
