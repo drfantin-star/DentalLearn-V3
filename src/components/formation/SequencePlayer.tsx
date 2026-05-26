@@ -1421,13 +1421,15 @@ export default function SequencePlayer({
                                 setSelectedLeftMatching(null)
                               }}
                               disabled={showFeedback || isMatched}
-                              className="p-3 rounded-xl border-2 text-left text-sm font-semibold transition-all"
+                              className="p-3 rounded-xl border-2 text-left text-sm font-semibold transition-all flex items-center justify-between gap-2"
                               style={{
                                 background: isMatched ? '#2a2a2a' : selectedLeftMatching ? `${categoryGradient.from}20` : '#242424',
                                 borderColor: isMatched ? '#444' : '#333',
-                                opacity: isMatched ? 0.6 : 1,
+                                opacity: isMatched ? 0.35 : 1,
+                                textDecoration: isMatched ? 'line-through' : 'none',
                               }}>
-                              {ro.text}
+                              <span className="flex-1">{ro.text}</span>
+                              {isMatched && <span aria-hidden className="shrink-0 text-emerald-400">✓</span>}
                             </button>
                           )
                         })}

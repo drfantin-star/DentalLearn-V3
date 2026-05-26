@@ -1298,13 +1298,16 @@ export default function DailyQuizModal({
                               setSelectedLeftMatching(null)
                             }}
                             disabled={showFeedback || !!isAssignedTo}
-                            className="w-full p-2.5 rounded-xl text-left text-xs font-semibold transition-all"
+                            className="w-full p-2.5 rounded-xl text-left text-xs font-semibold transition-all flex items-center justify-between gap-2"
                             style={{
                               background: isAssignedTo ? '#2a2a2a' : selectedLeftMatching ? 'rgba(0,209,193,0.15)' : '#242424',
                               border: `2px solid ${isAssignedTo ? '#444' : selectedLeftMatching ? '#00D1C1' : '#333'}`,
-                              color: '#e5e5e5'
+                              color: '#e5e5e5',
+                              opacity: isAssignedTo ? 0.35 : 1,
+                              textDecoration: isAssignedTo ? 'line-through' : 'none',
                             }}>
-                            {ro.text}
+                            <span className="flex-1">{ro.text}</span>
+                            {isAssignedTo && <span aria-hidden className="shrink-0 text-emerald-400">✓</span>}
                           </button>
                         )
                       })}
