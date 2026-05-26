@@ -46,7 +46,7 @@ export async function POST(
   { params }: { params: { id: string } },
 ) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })

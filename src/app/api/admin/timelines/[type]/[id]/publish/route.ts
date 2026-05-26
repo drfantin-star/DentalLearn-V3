@@ -30,7 +30,7 @@ export async function POST(
   ctx: { params: { type: string; id: string } }
 ) {
   // Auth
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
     error: authError,

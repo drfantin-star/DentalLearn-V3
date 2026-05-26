@@ -15,7 +15,7 @@ export async function PATCH(
   const redirect = await requireFormateur(request)
   if (redirect) return redirect
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 
@@ -79,7 +79,7 @@ export async function DELETE(
   const redirect = await requireFormateur(request)
   if (redirect) return redirect
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 

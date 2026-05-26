@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: 'ID invalide' }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -112,7 +112,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'ID invalide' }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {

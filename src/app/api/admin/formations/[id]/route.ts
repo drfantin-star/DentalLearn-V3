@@ -11,7 +11,7 @@ export async function GET(
   try {
     const { id } = await params
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -51,7 +51,7 @@ export async function PATCH(
   try {
     const { id } = await params
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -94,7 +94,7 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {

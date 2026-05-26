@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
   const redirect = await requireFormateur(request)
   if (redirect) return redirect
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -62,7 +62,7 @@ export async function PATCH(request: NextRequest) {
   const redirect = await requireFormateur(request)
   if (redirect) return redirect
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

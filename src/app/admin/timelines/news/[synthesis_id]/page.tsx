@@ -36,7 +36,7 @@ function deriveTitle(summary: string | null | undefined): string {
 
 export default async function NewsTimelineEditorPage({ params }: PageProps) {
   // ─── Auth ────────────────────────────────────────────────
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

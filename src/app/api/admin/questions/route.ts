@@ -139,7 +139,7 @@ function validateOptionsByType(questionType: QuestionType, options: unknown): st
 // POST: Créer une nouvelle question
 export async function POST(request: Request) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {

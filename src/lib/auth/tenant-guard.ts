@@ -27,7 +27,7 @@ export type TenantGuardResult =
  * Retourne soit le contexte, soit la réponse d'erreur à propager telle quelle.
  */
 export async function requireTenantAdmin(): Promise<TenantGuardResult> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

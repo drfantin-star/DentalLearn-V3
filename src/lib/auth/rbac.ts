@@ -103,7 +103,7 @@ const formateurFormationsCache = new Map<string, FormateurFormation[]>()
  * Pas de mémoization — cf. note de section "Cache par requête" plus haut.
  */
 export async function hasRole(userId: string, role: AppRole): Promise<boolean> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('user_roles')
     .select('role')
@@ -139,7 +139,7 @@ export async function getUserOrg(userId: string): Promise<UserOrg | null> {
   const cacheKey = `org:${userId}`
   if (orgCache.has(cacheKey)) return orgCache.get(cacheKey)!
 
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data: orgId, error: rpcError } = await supabase.rpc('user_org', {
     p_user_id: userId,
@@ -166,7 +166,7 @@ export async function getUserOrg(userId: string): Promise<UserOrg | null> {
  * Pas de mémoization — cf. note de section "Cache par requête" plus haut.
  */
 export async function getUserIntraRole(userId: string): Promise<IntraRole | null> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase
     .from('organization_members')
     .select('intra_role')
@@ -199,7 +199,7 @@ export async function getFormateurFormations(
     return formateurFormationsCache.get(cacheKey)!
   }
 
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // 1. Appel helper SQL : retourne SETOF uuid (les formation_id).
   const { data: idsRaw, error: idsError } = await supabase.rpc(
@@ -271,7 +271,7 @@ export async function isFormateurOf(
   userId: string,
   formationId: string
 ): Promise<boolean> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase.rpc('is_formateur_of', {
     p_user_id: userId,
     p_formation_id: formationId,
@@ -315,7 +315,7 @@ export async function getFormateurStats(
     formations_count: 0,
   }
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data, error } = await supabase.rpc('formateur_aggregated_stats', {
     p_user_id: userId,
     p_date_from: fromIso,

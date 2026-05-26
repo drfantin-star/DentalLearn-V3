@@ -15,7 +15,7 @@ export async function GET(
   try {
     const { id } = await params
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -169,7 +169,7 @@ export async function PATCH(
     const { id } = await params
 
     // ----- 1. Auth (invariant Q-T12-5) -----
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {

@@ -26,7 +26,7 @@ export default async function ExtractScenesPage({ searchParams }: PageProps) {
     ? rawSequenceId[0]
     : rawSequenceId
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()

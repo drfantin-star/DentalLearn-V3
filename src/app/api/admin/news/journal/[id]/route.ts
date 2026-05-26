@@ -16,7 +16,7 @@ export async function GET(
   { params }: { params: { id: string } },
 ) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
@@ -167,7 +167,7 @@ export async function PATCH(
   { params }: { params: { id: string } },
 ) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
@@ -316,7 +316,7 @@ export async function DELETE(
   { params }: { params: { id: string } },
 ) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })

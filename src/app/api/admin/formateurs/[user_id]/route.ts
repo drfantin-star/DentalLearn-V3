@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: 'user_id invalide' }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -127,7 +127,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'user_id invalide' }, { status: 400 })
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {

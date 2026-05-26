@@ -83,7 +83,7 @@ const BodySchema = z.object({
 export async function POST(req: NextRequest) {
   try {
     // ----- 1. Auth -----
-    const supabase = createClient()
+    const supabase = await createClient()
     const {
       data: { user },
       error: authError,

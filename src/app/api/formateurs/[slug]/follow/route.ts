@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 type Params = { params: { slug: string } }
 
 async function resolveFormateurUserId(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   slug: string,
 ): Promise<string | null> {
   const { data } = await supabase
@@ -17,7 +17,7 @@ async function resolveFormateurUserId(
 }
 
 export async function GET(_req: NextRequest, { params }: Params) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
@@ -44,7 +44,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 }
 
 export async function POST(_req: NextRequest, { params }: Params) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
@@ -69,7 +69,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Params) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 

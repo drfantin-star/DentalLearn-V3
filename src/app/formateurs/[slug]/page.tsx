@@ -37,7 +37,7 @@ export default async function FormateurPublicPage({
 }: {
   params: { slug: string }
 }) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // Vérification session — redirect /login si non connecté
   const {

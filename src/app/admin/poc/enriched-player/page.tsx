@@ -26,7 +26,7 @@ interface SequenceRow {
 }
 
 export default async function EnrichedPlayerPocIndexPage() {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()

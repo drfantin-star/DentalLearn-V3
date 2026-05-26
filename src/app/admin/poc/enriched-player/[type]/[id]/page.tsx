@@ -20,7 +20,7 @@ interface PageProps {
 }
 
 export default async function EnrichedPlayerPocPage({ params }: PageProps) {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { session },
   } = await supabase.auth.getSession()

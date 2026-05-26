@@ -40,7 +40,7 @@ function dailySeedFromDate(dateStr: string): number {
 // GET: Fetch today's 10 daily quiz questions
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
 // POST: Save daily quiz results
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {

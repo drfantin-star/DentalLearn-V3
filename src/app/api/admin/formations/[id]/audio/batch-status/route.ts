@@ -25,7 +25,7 @@ export const dynamic = 'force-dynamic'
 async function requireSuperAdmin(): Promise<
   { ok: true; userId: string } | { ok: false; response: NextResponse }
 > {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
     error,

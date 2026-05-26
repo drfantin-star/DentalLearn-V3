@@ -18,7 +18,7 @@ import { hasRole, isSuperAdmin } from '@/lib/auth/rbac'
 export async function requireFormateurOrRedirect(
   currentPath?: string
 ): Promise<string> {
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

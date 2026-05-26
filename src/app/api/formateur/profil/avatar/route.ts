@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   const redirect = await requireFormateur(request)
   if (redirect) return redirect
 
-  const supabase = createClient()
+  const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()

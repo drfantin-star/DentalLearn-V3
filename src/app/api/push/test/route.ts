@@ -5,7 +5,7 @@ import type { PushSubscriptionRecord } from '@/types/push-notifications';
 
 export async function POST() {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {

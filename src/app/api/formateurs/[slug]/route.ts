@@ -11,7 +11,7 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('formateur_profiles')

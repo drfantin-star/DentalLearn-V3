@@ -11,7 +11,7 @@ export async function GET(
   try {
     const { id } = await params
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {

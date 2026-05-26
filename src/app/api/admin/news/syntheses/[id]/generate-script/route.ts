@@ -38,7 +38,7 @@ export async function POST(
     const { id: synthesisId } = await params
 
     // ----- 1. Auth admin -----
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })

@@ -39,7 +39,7 @@ export async function POST(
     const isRegenerate =
       new URL(request.url).searchParams.get('regenerate') === 'true'
 
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
