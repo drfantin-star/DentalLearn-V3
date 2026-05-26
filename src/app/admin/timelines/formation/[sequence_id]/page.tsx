@@ -20,12 +20,13 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  params: { sequence_id: string }
+  params: Promise<{ sequence_id: string }>
 }
 
 export default async function FormationTimelineEditorPage({
   params,
 }: PageProps) {
+  const { sequence_id } = await params
   // ─── Auth ────────────────────────────────────────────────
   const supabase = await createClient()
   const {
@@ -52,14 +53,14 @@ export default async function FormationTimelineEditorPage({
     .select(
       'id, title, sequence_number, course_media_url, course_duration_seconds, timeline_url, timeline_published'
     )
-    .eq('id', params.sequence_id)
+    .eq('id', sequence_id)
     .maybeSingle()
 
   if (seqError || !seq) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[color:var(--color-bg)] text-[color:var(--color-text-primary)]">
         <p className="text-sm text-[color:var(--color-text-muted)]">
-          Séquence introuvable : {params.sequence_id}
+          Séquence introuvable : {sequence_id}
           {seqError ? ` (${seqError.message})` : ''}
         </p>
       </main>
@@ -93,7 +94,7 @@ export default async function FormationTimelineEditorPage({
   }
 
   // Versions Storage (best-effort).
-  const folder = buildVersionsFolder('formation', params.sequence_id)
+  const folder = buildVersionsFolder('formation', sequence_id)
   const { data: files } = await admin.storage
     .from(TIMELINE_STORAGE_BUCKET)
     .list(folder, {
@@ -107,7 +108,7 @@ export default async function FormationTimelineEditorPage({
   return (
     <TimelineEditorClient
       type="formation"
-      id={params.sequence_id}
+      id={sequence_id}
       initialTimeline={initialTimeline}
       initialTimelineUrl={timelineUrl}
       initialPublished={published}

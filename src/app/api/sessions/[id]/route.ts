@@ -8,8 +8,9 @@ export const dynamic = 'force-dynamic'
 // zoom_url et zoom_password sont masqués (null) si l'user n'est PAS inscrit.
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
@@ -17,7 +18,7 @@ export async function GET(
   const { data: session } = await supabase
     .from('live_sessions')
     .select('*, live_registrations(count)')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (!session || session.deleted_at !== null) {
@@ -36,7 +37,7 @@ export async function GET(
   const { data: registration } = await supabase
     .from('live_registrations')
     .select('id')
-    .eq('session_id', params.id)
+    .eq('session_id', id)
     .eq('user_id', user.id)
     .single()
 

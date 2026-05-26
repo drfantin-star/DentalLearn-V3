@@ -43,7 +43,7 @@ export const maxDuration = 300
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const supabase = await createClient()
@@ -55,7 +55,7 @@ export async function POST(
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 })
     }
 
-    const { id } = params
+    const { id } = await params
     if (!id) {
       return NextResponse.json({ error: 'id manquant' }, { status: 400 })
     }

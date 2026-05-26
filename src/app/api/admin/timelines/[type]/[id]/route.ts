@@ -68,12 +68,12 @@ async function requireSuperAdmin(): Promise<
 
 export async function GET(
   _req: NextRequest,
-  ctx: { params: { type: string; id: string } }
+  ctx: { params: Promise<{ type: string; id: string }> }
 ) {
   const auth = await requireSuperAdmin()
   if (!auth.ok) return auth.response
 
-  const paramsParsed = ParamsSchema.safeParse(ctx.params)
+  const paramsParsed = ParamsSchema.safeParse(await ctx.params)
   if (!paramsParsed.success) {
     return NextResponse.json(
       { error: 'invalid_params', details: paramsParsed.error.flatten() },
@@ -174,12 +174,12 @@ export async function GET(
 
 export async function PUT(
   req: NextRequest,
-  ctx: { params: { type: string; id: string } }
+  ctx: { params: Promise<{ type: string; id: string }> }
 ) {
   const auth = await requireSuperAdmin()
   if (!auth.ok) return auth.response
 
-  const paramsParsed = ParamsSchema.safeParse(ctx.params)
+  const paramsParsed = ParamsSchema.safeParse(await ctx.params)
   if (!paramsParsed.success) {
     return NextResponse.json(
       { error: 'invalid_params', details: paramsParsed.error.flatten() },

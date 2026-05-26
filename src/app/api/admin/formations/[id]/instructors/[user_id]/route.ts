@@ -13,10 +13,11 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  */
 export async function DELETE(
   _request: Request,
-  { params }: { params: { id: string; user_id: string } }
+  { params }: { params: Promise<{ id: string; user_id: string }> }
 ) {
   try {
-    if (!UUID_RE.test(params.id) || !UUID_RE.test(params.user_id)) {
+    const { id, user_id } = await params
+    if (!UUID_RE.test(id) || !UUID_RE.test(user_id)) {
       return NextResponse.json({ error: 'ID invalide' }, { status: 400 })
     }
 
@@ -34,8 +35,8 @@ export async function DELETE(
     const { error, count } = await adminSupabase
       .from('formation_instructors')
       .delete({ count: 'exact' })
-      .eq('formation_id', params.id)
-      .eq('user_id', params.user_id)
+      .eq('formation_id', id)
+      .eq('user_id', user_id)
 
     if (error) {
       console.error('Erreur DELETE formation_instructors:', error)
@@ -61,10 +62,11 @@ export async function DELETE(
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string; user_id: string } }
+  { params }: { params: Promise<{ id: string; user_id: string }> }
 ) {
   try {
-    if (!UUID_RE.test(params.id) || !UUID_RE.test(params.user_id)) {
+    const { id, user_id } = await params
+    if (!UUID_RE.test(id) || !UUID_RE.test(user_id)) {
       return NextResponse.json({ error: 'ID invalide' }, { status: 400 })
     }
 
@@ -93,7 +95,7 @@ export async function PATCH(
       const { error: demoteError } = await adminSupabase
         .from('formation_instructors')
         .update({ is_primary: false })
-        .eq('formation_id', params.id)
+        .eq('formation_id', id)
         .eq('is_primary', true)
       if (demoteError) {
         console.error('Erreur démise is_primary:', demoteError)
@@ -105,8 +107,8 @@ export async function PATCH(
     const { data, error: updateError } = await adminSupabase
       .from('formation_instructors')
       .update({ is_primary: body.is_primary })
-      .eq('formation_id', params.id)
-      .eq('user_id', params.user_id)
+      .eq('formation_id', id)
+      .eq('user_id', user_id)
       .select('id, user_id, is_primary')
       .single()
 

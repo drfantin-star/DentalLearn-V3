@@ -27,7 +27,7 @@ const BodySchema = z.object({
 
 export async function POST(
   req: NextRequest,
-  ctx: { params: { type: string; id: string } }
+  ctx: { params: Promise<{ type: string; id: string }> }
 ) {
   // Auth
   const supabase = await createClient()
@@ -43,7 +43,7 @@ export async function POST(
   }
 
   // Params
-  const paramsParsed = ParamsSchema.safeParse(ctx.params)
+  const paramsParsed = ParamsSchema.safeParse(await ctx.params)
   if (!paramsParsed.success) {
     return NextResponse.json(
       { error: 'invalid_params', details: paramsParsed.error.flatten() },

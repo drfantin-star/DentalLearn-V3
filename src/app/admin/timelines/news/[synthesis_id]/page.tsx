@@ -21,7 +21,7 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  params: { synthesis_id: string }
+  params: Promise<{ synthesis_id: string }>
 }
 
 function deriveTitle(summary: string | null | undefined): string {
@@ -35,6 +35,7 @@ function deriveTitle(summary: string | null | undefined): string {
 }
 
 export default async function NewsTimelineEditorPage({ params }: PageProps) {
+  const { synthesis_id } = await params
   // ─── Auth ────────────────────────────────────────────────
   const supabase = await createClient()
   const {
@@ -52,14 +53,14 @@ export default async function NewsTimelineEditorPage({ params }: PageProps) {
   const { data: synth } = await admin
     .from('news_syntheses')
     .select('id, summary_fr, timeline_url, timeline_published')
-    .eq('id', params.synthesis_id)
+    .eq('id', synthesis_id)
     .maybeSingle()
 
   if (!synth) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[color:var(--color-bg)] text-[color:var(--color-text-primary)]">
         <p className="text-sm text-[color:var(--color-text-muted)]">
-          Synthèse introuvable : {params.synthesis_id}
+          Synthèse introuvable : {synthesis_id}
         </p>
       </main>
     )
@@ -83,7 +84,7 @@ export default async function NewsTimelineEditorPage({ params }: PageProps) {
     }
   }
 
-  const folder = buildVersionsFolder('news', params.synthesis_id)
+  const folder = buildVersionsFolder('news', synthesis_id)
   const { data: files } = await admin.storage
     .from(TIMELINE_STORAGE_BUCKET)
     .list(folder, {
@@ -97,7 +98,7 @@ export default async function NewsTimelineEditorPage({ params }: PageProps) {
   return (
     <TimelineEditorClient
       type="news"
-      id={params.synthesis_id}
+      id={synthesis_id}
       initialTimeline={initialTimeline}
       initialTimelineUrl={timelineUrl}
       initialPublished={published}

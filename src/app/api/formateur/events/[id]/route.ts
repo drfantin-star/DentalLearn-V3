@@ -10,11 +10,12 @@ export const dynamic = 'force-dynamic'
 // Édite un event existant (ownership vérifié)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const redirect = await requireFormateur(request)
   if (redirect) return redirect
 
+  const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
@@ -23,7 +24,7 @@ export async function PATCH(
   const { data: event } = await supabase
     .from('live_events')
     .select('id, formateur_user_id, deleted_at')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (!event || event.deleted_at !== null) {
@@ -58,7 +59,7 @@ export async function PATCH(
   const { data, error } = await supabase
     .from('live_events')
     .update(payload)
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single()
 
@@ -74,11 +75,12 @@ export async function PATCH(
 // 409 si l'event est publié (dépublier d'abord)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const redirect = await requireFormateur(request)
   if (redirect) return redirect
 
+  const { id } = await params
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
@@ -87,7 +89,7 @@ export async function DELETE(
   const { data: event } = await supabase
     .from('live_events')
     .select('id, formateur_user_id, is_published, deleted_at')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (!event || event.deleted_at !== null) {
@@ -111,7 +113,7 @@ export async function DELETE(
   const { error } = await supabase
     .from('live_events')
     .update({ deleted_at: new Date().toISOString() })
-    .eq('id', params.id)
+    .eq('id', id)
 
   if (error) {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

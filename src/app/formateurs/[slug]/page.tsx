@@ -35,8 +35,9 @@ function getInitials(name: string): string {
 export default async function FormateurPublicPage({
   params,
 }: {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }) {
+  const { slug } = await params
   const supabase = await createClient()
 
   // Vérification session — redirect /login si non connecté
@@ -45,7 +46,7 @@ export default async function FormateurPublicPage({
   } = await supabase.auth.getUser()
 
   if (!user) {
-    redirect(`/login?next=/formateurs/${params.slug}`)
+    redirect(`/login?next=/formateurs/${slug}`)
   }
 
   // Fetch du profil public (RLS is_published=true filtre les profils non publiés)
@@ -54,7 +55,7 @@ export default async function FormateurPublicPage({
     .select(
       'id, user_id, slug, display_name, bio_long, expertise_tags, annees_experience, ville, cabinet_nom, linkedin_url, instagram_url, photo_pro_url, is_published'
     )
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .eq('is_published', true)
     .maybeSingle()
 

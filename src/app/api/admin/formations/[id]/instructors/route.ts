@@ -14,10 +14,11 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  */
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!UUID_RE.test(params.id)) {
+    const { id } = await params
+    if (!UUID_RE.test(id)) {
       return NextResponse.json({ error: 'ID formation invalide' }, { status: 400 })
     }
 
@@ -37,7 +38,7 @@ export async function GET(
     const { data: formation, error: formationError } = await adminSupabase
       .from('formations')
       .select('id, title, slug, owner_org_id')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (formationError || !formation) {
@@ -48,7 +49,7 @@ export async function GET(
     const { data: rawInstructors, error: instructorsError } = await adminSupabase
       .from('formation_instructors')
       .select('id, user_id, is_primary, assigned_at')
-      .eq('formation_id', params.id)
+      .eq('formation_id', id)
       .order('assigned_at', { ascending: true })
 
     if (instructorsError) {
@@ -116,10 +117,11 @@ export async function GET(
  */
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!UUID_RE.test(params.id)) {
+    const { id } = await params
+    if (!UUID_RE.test(id)) {
       return NextResponse.json({ error: 'ID formation invalide' }, { status: 400 })
     }
 
@@ -170,7 +172,7 @@ export async function POST(
       const { error: demoteError } = await adminSupabase
         .from('formation_instructors')
         .update({ is_primary: false })
-        .eq('formation_id', params.id)
+        .eq('formation_id', id)
         .eq('is_primary', true)
       if (demoteError) {
         console.error('Erreur démise is_primary:', demoteError)
@@ -181,7 +183,7 @@ export async function POST(
     const { data, error: insertError } = await adminSupabase
       .from('formation_instructors')
       .insert({
-        formation_id: params.id,
+        formation_id: id,
         user_id: userId,
         is_primary: isPrimary,
         assigned_by: session.user.id,

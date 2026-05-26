@@ -11,10 +11,11 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!UUID_RE.test(params.id)) {
+    const { id } = await params
+    if (!UUID_RE.test(id)) {
       return NextResponse.json({ error: 'ID invalide' }, { status: 400 })
     }
 
@@ -33,7 +34,7 @@ export async function GET(
     const { data: org, error: orgError } = await adminSupabase
       .from('organizations')
       .select('id, name, type, plan, owner_user_id, created_at, updated_at')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (orgError || !org) {
@@ -43,7 +44,7 @@ export async function GET(
     const { data: rawMembers, error: membersError } = await adminSupabase
       .from('organization_members')
       .select('id, user_id, intra_role, status, joined_at, revoked_at, created_at')
-      .eq('org_id', params.id)
+      .eq('org_id', id)
       .order('created_at', { ascending: true })
 
     if (membersError) {
@@ -105,10 +106,11 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!UUID_RE.test(params.id)) {
+    const { id } = await params
+    if (!UUID_RE.test(id)) {
       return NextResponse.json({ error: 'ID invalide' }, { status: 400 })
     }
 
@@ -157,7 +159,7 @@ export async function PATCH(
     const { data, error } = await adminSupabase
       .from('organizations')
       .update(updates)
-      .eq('id', params.id)
+      .eq('id', id)
       .select('id, name, type, plan, updated_at')
       .single()
 

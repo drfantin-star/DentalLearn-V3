@@ -29,10 +29,10 @@ const NEWS_DETAIL_COLUMNS = [
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
+    const { id } = await params
     if (!id) {
       return NextResponse.json({ error: 'Paramètre `id` manquant' }, { status: 400 })
     }
