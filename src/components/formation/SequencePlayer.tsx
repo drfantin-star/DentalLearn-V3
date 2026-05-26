@@ -100,6 +100,31 @@ interface CaseStudyOptions {
   questions: CaseStudySubQuestion[]
 }
 
+interface MatchingPairAssignment {
+  leftKey: string
+  rightId: string
+  pairIndex: number
+}
+
+// Palette cyclique pour les paires associées en matching (badge numéroté + halo).
+// Classes littérales pour que Tailwind JIT les détecte.
+const MATCHING_PAIR_COLORS = [
+  { bg: 'bg-violet-500/15',  border: 'border-violet-500',  text: 'text-violet-300',  badge: 'bg-violet-500' },
+  { bg: 'bg-emerald-500/15', border: 'border-emerald-500', text: 'text-emerald-300', badge: 'bg-emerald-500' },
+  { bg: 'bg-amber-500/15',   border: 'border-amber-500',   text: 'text-amber-300',   badge: 'bg-amber-500' },
+  { bg: 'bg-pink-500/15',    border: 'border-pink-500',    text: 'text-pink-300',    badge: 'bg-pink-500' },
+  { bg: 'bg-cyan-500/15',    border: 'border-cyan-500',    text: 'text-cyan-300',    badge: 'bg-cyan-500' },
+  { bg: 'bg-orange-500/15',  border: 'border-orange-500',  text: 'text-orange-300',  badge: 'bg-orange-500' },
+]
+
+function colorForPairIndex(pairIndex: number) {
+  return MATCHING_PAIR_COLORS[(pairIndex - 1) % MATCHING_PAIR_COLORS.length]
+}
+
+function nextPairIndex(matches: MatchingPairAssignment[]): number {
+  return matches.length > 0 ? Math.max(...matches.map(m => m.pairIndex)) + 1 : 1
+}
+
 // ============================================
 // PARSERS
 // ============================================
@@ -302,7 +327,7 @@ export default function SequencePlayer({
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([])
   const [fillBlankAnswers, setFillBlankAnswers] = useState<Record<string, string>>({})
   const [orderingOrder, setOrderingOrder] = useState<string[]>([])
-  const [matchingMatches, setMatchingMatches] = useState<Record<string, string>>({})
+  const [matchingMatches, setMatchingMatches] = useState<MatchingPairAssignment[]>([])
   const [caseStudyAnswers, setCaseStudyAnswers] = useState<Record<string, string>>({})
   const [caseStudyCurrentQ, setCaseStudyCurrentQ] = useState(0)
   const [selectedLeftMatching, setSelectedLeftMatching] = useState<string | null>(null)
@@ -421,7 +446,7 @@ export default function SequencePlayer({
     setSelectedAnswers([])
     setFillBlankAnswers({})
     setOrderingOrder([])
-    setMatchingMatches({})
+    setMatchingMatches([])
     setCaseStudyAnswers({})
     setCaseStudyCurrentQ(0)
     setSelectedLeftMatching(null)
@@ -540,10 +565,11 @@ export default function SequencePlayer({
     const q = currentQuestion
     const data = parseMatchingData(q.options)
     const items = data?.leftItems || []
+    const matchByLeft = new Map(matchingMatches.map(m => [m.leftKey, m.rightId]))
 
     let correct = 0
     for (const li of items) {
-      if (matchingMatches[li.left] === li.correctRightId) correct++
+      if (matchByLeft.get(li.left) === li.correctRightId) correct++
     }
 
     const score = items.length > 0 ? correct / items.length : 0
@@ -1383,28 +1409,57 @@ export default function SequencePlayer({
                   return <p className="text-gray-500">Format de question non supporté</p>
                 }
                 const rights = shuffledMatchingRights.length > 0 ? shuffledMatchingRights : data.rightOptions
+                const matchByLeft = new Map(matchingMatches.map(m => [m.leftKey, m]))
+                const matchByRight = new Map(matchingMatches.map(m => [m.rightId, m]))
 
                 return (
                   <>
-                    <p className="text-xs mb-3" style={{ color: '#2DD4BF' }}>🔗 Cliquez sur un élément gauche puis son correspondant à droite</p>
+                    <p className="text-xs mb-3" style={{ color: '#2DD4BF' }}>🔗 Cliquez sur un élément gauche puis son correspondant à droite. Re-cliquez sur un item déjà associé pour défaire la paire.</p>
                     <div className="grid grid-cols-2 gap-3">
                       {/* Gauche */}
                       <div className="flex flex-col gap-2">
                         {data.leftItems.map((li) => {
+                          const match = matchByLeft.get(li.left)
+                          const color = match ? colorForPairIndex(match.pairIndex) : null
                           const isSelected = selectedLeftMatching === li.left
-                          const isMatched = !!matchingMatches[li.left]
-                          const isCorrect = showFeedback && matchingMatches[li.left] === li.correctRightId
+                          const isCorrect = showFeedback && match && match.rightId === li.correctRightId
+                          const isWrong = showFeedback && match && match.rightId !== li.correctRightId
+                          const usePairColor = !!match && !showFeedback
+                          const pairClasses = usePairColor && color ? `${color.bg} ${color.border} ${color.text}` : ''
+
+                          const inlineBg = showFeedback ? (isCorrect ? '#052e16' : isWrong ? '#450a0a' : '#242424')
+                            : usePairColor ? undefined
+                            : isSelected ? `${categoryGradient.from}30`
+                            : '#242424'
+                          const inlineBorderColor = showFeedback ? (isCorrect ? '#4ADE80' : isWrong ? '#FCA5A5' : '#333')
+                            : usePairColor ? undefined
+                            : isSelected ? categoryGradient.from
+                            : '#333'
 
                           return (
-                            <button key={li.left} onClick={() => !showFeedback && !isMatched && setSelectedLeftMatching(li.left)}
-                              disabled={showFeedback || isMatched}
-                              className="p-3 rounded-xl border-2 text-left text-sm font-semibold transition-all"
+                            <button key={li.left}
+                              onClick={() => {
+                                if (showFeedback) return
+                                if (match) {
+                                  setMatchingMatches(prev => prev.filter(m => m.leftKey !== li.left))
+                                  if (isSelected) setSelectedLeftMatching(null)
+                                } else {
+                                  setSelectedLeftMatching(isSelected ? null : li.left)
+                                }
+                              }}
+                              disabled={showFeedback}
+                              className={`p-3 rounded-xl text-left text-sm font-semibold transition-all flex items-center gap-3 border-2 ${pairClasses}`}
                               style={{
-                                background: showFeedback ? (isCorrect ? '#052e16' : '#450a0a') : isSelected ? `${categoryGradient.from}30` : isMatched ? '#2a2a2a' : '#242424',
-                                borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : isSelected ? categoryGradient.from : isMatched ? '#444' : '#333',
-                                color: '#e5e5e5', opacity: isMatched && !showFeedback ? 0.7 : 1,
+                                ...(inlineBg !== undefined ? { background: inlineBg } : {}),
+                                ...(inlineBorderColor !== undefined ? { borderColor: inlineBorderColor } : {}),
+                                color: usePairColor ? undefined : '#e5e5e5',
                               }}>
-                              {li.left}
+                              {match && (
+                                <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${color?.badge ?? 'bg-gray-500'}`}>
+                                  {match.pairIndex}
+                                </span>
+                              )}
+                              <span className="flex-1">{li.left}</span>
                             </button>
                           )
                         })}
@@ -1412,29 +1467,46 @@ export default function SequencePlayer({
                       {/* Droite */}
                       <div className="flex flex-col gap-2">
                         {rights.map((ro) => {
-                          const isMatched = Object.values(matchingMatches).includes(ro.id)
+                          const match = matchByRight.get(ro.id)
+                          const color = match ? colorForPairIndex(match.pairIndex) : null
+                          const usePairColor = !!match && !showFeedback
+                          const pairClasses = usePairColor && color ? `${color.bg} ${color.border} ${color.text}` : ''
+
+                          const inlineBg = usePairColor ? undefined
+                            : match ? '#2a2a2a'
+                            : selectedLeftMatching ? `${categoryGradient.from}20`
+                            : '#242424'
+                          const inlineBorderColor = usePairColor ? undefined
+                            : match ? '#444'
+                            : '#333'
+
                           return (
                             <button key={ro.id}
                               onClick={() => {
-                                if (showFeedback || isMatched || !selectedLeftMatching) return
-                                setMatchingMatches(prev => ({ ...prev, [selectedLeftMatching]: ro.id }))
+                                if (showFeedback || match || !selectedLeftMatching) return
+                                setMatchingMatches(prev => [...prev, { leftKey: selectedLeftMatching, rightId: ro.id, pairIndex: nextPairIndex(prev) }])
                                 setSelectedLeftMatching(null)
                               }}
-                              disabled={showFeedback || isMatched}
-                              className="p-3 rounded-xl border-2 text-left text-sm font-semibold transition-all"
+                              disabled={showFeedback || !!match}
+                              className={`p-3 rounded-xl text-left text-sm font-semibold transition-all flex items-center gap-3 border-2 ${pairClasses}`}
                               style={{
-                                background: isMatched ? '#2a2a2a' : selectedLeftMatching ? `${categoryGradient.from}20` : '#242424',
-                                borderColor: isMatched ? '#444' : '#333',
-                                opacity: isMatched ? 0.6 : 1,
+                                ...(inlineBg !== undefined ? { background: inlineBg } : {}),
+                                ...(inlineBorderColor !== undefined ? { borderColor: inlineBorderColor } : {}),
+                                color: usePairColor ? undefined : '#e5e5e5',
                               }}>
-                              {ro.text}
+                              {match && (
+                                <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${color?.badge ?? 'bg-gray-500'}`}>
+                                  {match.pairIndex}
+                                </span>
+                              )}
+                              <span className="flex-1">{ro.text}</span>
                             </button>
                           )
                         })}
                       </div>
                     </div>
                     {!showFeedback && (
-                      <button onClick={handleMatchingValidate} disabled={Object.keys(matchingMatches).length < data.leftItems.length}
+                      <button onClick={handleMatchingValidate} disabled={matchingMatches.length < data.leftItems.length}
                         className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40" style={{ background: categoryGradient.from }}>
                         Valider les associations
                       </button>
