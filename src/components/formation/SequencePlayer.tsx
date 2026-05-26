@@ -68,10 +68,15 @@ interface OrderingOption {
   correctPosition: number
 }
 
-interface MatchingPair {
+interface MatchingRightOption {
   id: string
-  left: string
-  right: string
+  text: string
+}
+
+interface ParsedMatchingData {
+  leftItems: { index: number; left: string; correctRightId: string }[]
+  rightOptions: MatchingRightOption[]
+  correctAnswers: string[]
 }
 
 interface CaseStudyContext {
@@ -156,19 +161,54 @@ function parseOrderingOptions(options: unknown): OrderingOption[] {
   return []
 }
 
-function parseMatchingOptions(options: unknown): MatchingPair[] {
-  if (!options) return []
-  
+// Handles both DB formats:
+//   - old: { pairs: [{ id, left, right }] }
+//   - new: { pairs: [{ left, rightId }], options: [{ id, text }], correctAnswers: [...] }
+function parseMatchingData(options: unknown): ParsedMatchingData | null {
+  if (!options) return null
   let opts = options
   if (typeof options === 'string') {
-    try { opts = JSON.parse(options) } catch (e) { return [] }
+    try { opts = JSON.parse(options) } catch { return null }
   }
-  
-  if (typeof opts === 'object' && !Array.isArray(opts) && opts !== null) {
-    const o = opts as Record<string, unknown>
-    if ('pairs' in o && Array.isArray(o.pairs)) return o.pairs as MatchingPair[]
+  if (typeof opts !== 'object' || opts === null) return null
+  const o = opts as Record<string, unknown>
+
+  if ('pairs' in o && Array.isArray(o.pairs) && 'options' in o && Array.isArray(o.options)) {
+    const pairs = o.pairs as { left: string; rightId?: string }[]
+    const rightOptions = o.options as { id: string; text: string }[]
+    const correctAnswers = ('correctAnswers' in o && Array.isArray(o.correctAnswers))
+      ? o.correctAnswers as string[]
+      : pairs.map((p, i) => `${i + 1}-${p.rightId}`)
+    return {
+      leftItems: pairs.map((p, i) => ({
+        index: i,
+        left: p.left,
+        correctRightId: p.rightId || '',
+      })),
+      rightOptions,
+      correctAnswers,
+    }
   }
-  return []
+
+  if ('pairs' in o && Array.isArray(o.pairs)) {
+    const pairs = o.pairs as Partial<{ id: string; left: string; right: string }>[]
+    return {
+      leftItems: pairs.map((p, i) => ({
+        index: i,
+        left: p.left || '',
+        correctRightId: p.id || String.fromCharCode(65 + i),
+      })),
+      rightOptions: pairs.map((p, i) => ({
+        id: p.id || String.fromCharCode(65 + i),
+        text: p.right || '',
+      })),
+      correctAnswers: pairs.map((p, i) =>
+        `${i + 1}-${p.id || String.fromCharCode(65 + i)}`
+      ),
+    }
+  }
+
+  return null
 }
 
 // Helpers pour drag_drop (peut être matching ou ordering)
@@ -266,7 +306,7 @@ export default function SequencePlayer({
   const [caseStudyAnswers, setCaseStudyAnswers] = useState<Record<string, string>>({})
   const [caseStudyCurrentQ, setCaseStudyCurrentQ] = useState(0)
   const [selectedLeftMatching, setSelectedLeftMatching] = useState<string | null>(null)
-  const [shuffledMatchingRights, setShuffledMatchingRights] = useState<MatchingPair[]>([])
+  const [shuffledMatchingRights, setShuffledMatchingRights] = useState<MatchingRightOption[]>([])
   
   const [showFeedback, setShowFeedback] = useState(false)
   const [correctCount, setCorrectCount] = useState(0)
@@ -358,18 +398,17 @@ export default function SequencePlayer({
 
   // Initialiser matching - mélanger la colonne de droite
   useEffect(() => {
-    const isMatching = currentQuestion?.question_type === 'matching' || 
+    const isMatching = currentQuestion?.question_type === 'matching' ||
       (currentQuestion?.question_type === 'drag_drop' && isDragDropMatching(currentQuestion.options))
-    
+
     if (isMatching && shuffledMatchingRights.length === 0) {
-      const pairs = parseMatchingOptions(currentQuestion.options)
-      if (pairs.length > 0) {
-        // Mélanger pour que les droites ne correspondent pas aux gauches
-        let shuffled = shuffleArray([...pairs])
-        // Re-mélanger si par hasard l'ordre est identique (id gauche = position droite)
+      const data = parseMatchingData(currentQuestion.options)
+      if (data && data.rightOptions.length > 0) {
+        let shuffled = shuffleArray([...data.rightOptions])
+        // Re-mélanger si par hasard l'ordre est resté identique
         let attempts = 0
-        while (shuffled.every((p, i) => p.id === pairs[i].id) && attempts < 10) {
-          shuffled = shuffleArray([...pairs])
+        while (shuffled.every((ro, i) => ro.id === data.rightOptions[i].id) && attempts < 10) {
+          shuffled = shuffleArray([...data.rightOptions])
           attempts++
         }
         setShuffledMatchingRights(shuffled)
@@ -499,14 +538,15 @@ export default function SequencePlayer({
   // Matching
   const handleMatchingValidate = () => {
     const q = currentQuestion
-    const pairs = parseMatchingOptions(q.options)
+    const data = parseMatchingData(q.options)
+    const items = data?.leftItems || []
 
     let correct = 0
-    for (const pair of pairs) {
-      if (matchingMatches[pair.id] === pair.id) correct++
+    for (const li of items) {
+      if (matchingMatches[li.left] === li.correctRightId) correct++
     }
 
-    const score = pairs.length > 0 ? correct / pairs.length : 0
+    const score = items.length > 0 ? correct / items.length : 0
     const isCorrect = score === 1
     const points = Math.round(score * q.points)
 
@@ -1338,8 +1378,11 @@ export default function SequencePlayer({
 
               {/* === MATCHING (ou drag_drop format matching) === */}
               {(qType === 'matching' || (qType === 'drag_drop' && isDragDropMatching(q.options))) && (() => {
-                const pairs = parseMatchingOptions(q.options)
-                if (pairs.length === 0) return <p className="text-gray-500">Format de question non supporté</p>
+                const data = parseMatchingData(q.options)
+                if (!data || data.leftItems.length === 0) {
+                  return <p className="text-gray-500">Format de question non supporté</p>
+                }
+                const rights = shuffledMatchingRights.length > 0 ? shuffledMatchingRights : data.rightOptions
 
                 return (
                   <>
@@ -1347,34 +1390,34 @@ export default function SequencePlayer({
                     <div className="grid grid-cols-2 gap-3">
                       {/* Gauche */}
                       <div className="flex flex-col gap-2">
-                        {pairs.map((pair) => {
-                          const isSelected = selectedLeftMatching === pair.id
-                          const isMatched = matchingMatches[pair.id]
-                          const isCorrect = showFeedback && matchingMatches[pair.id] === pair.id
+                        {data.leftItems.map((li) => {
+                          const isSelected = selectedLeftMatching === li.left
+                          const isMatched = !!matchingMatches[li.left]
+                          const isCorrect = showFeedback && matchingMatches[li.left] === li.correctRightId
 
                           return (
-                            <button key={pair.id} onClick={() => !showFeedback && !isMatched && setSelectedLeftMatching(pair.id)}
-                              disabled={showFeedback || !!isMatched}
+                            <button key={li.left} onClick={() => !showFeedback && !isMatched && setSelectedLeftMatching(li.left)}
+                              disabled={showFeedback || isMatched}
                               className="p-3 rounded-xl border-2 text-left text-sm font-semibold transition-all"
                               style={{
                                 background: showFeedback ? (isCorrect ? '#052e16' : '#450a0a') : isSelected ? `${categoryGradient.from}30` : isMatched ? '#2a2a2a' : '#242424',
                                 borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : isSelected ? categoryGradient.from : isMatched ? '#444' : '#333',
                                 color: '#e5e5e5', opacity: isMatched && !showFeedback ? 0.7 : 1,
                               }}>
-                              {pair.left}
+                              {li.left}
                             </button>
                           )
                         })}
                       </div>
                       {/* Droite */}
                       <div className="flex flex-col gap-2">
-                        {(shuffledMatchingRights.length > 0 ? shuffledMatchingRights : pairs).map((pair) => {
-                          const isMatched = Object.values(matchingMatches).includes(pair.id)
+                        {rights.map((ro) => {
+                          const isMatched = Object.values(matchingMatches).includes(ro.id)
                           return (
-                            <button key={pair.id}
+                            <button key={ro.id}
                               onClick={() => {
                                 if (showFeedback || isMatched || !selectedLeftMatching) return
-                                setMatchingMatches(prev => ({ ...prev, [selectedLeftMatching]: pair.id }))
+                                setMatchingMatches(prev => ({ ...prev, [selectedLeftMatching]: ro.id }))
                                 setSelectedLeftMatching(null)
                               }}
                               disabled={showFeedback || isMatched}
@@ -1384,14 +1427,14 @@ export default function SequencePlayer({
                                 borderColor: isMatched ? '#444' : '#333',
                                 opacity: isMatched ? 0.6 : 1,
                               }}>
-                              {pair.right}
+                              {ro.text}
                             </button>
                           )
                         })}
                       </div>
                     </div>
                     {!showFeedback && (
-                      <button onClick={handleMatchingValidate} disabled={Object.keys(matchingMatches).length < pairs.length}
+                      <button onClick={handleMatchingValidate} disabled={Object.keys(matchingMatches).length < data.leftItems.length}
                         className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40" style={{ background: categoryGradient.from }}>
                         Valider les associations
                       </button>
