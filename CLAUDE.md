@@ -180,6 +180,32 @@ Mai 2026 — la branche `parking/sm2-spaced-repetition` contient
 déjà mergé sur `main`. À renommer avant tout merge ultérieur. Source de
 l'incident : feature non demandée + absence de vérification du préfixe.
 
+## Convention RPC : cast explicite varchar → text
+
+Tout RPC qui retourne `TABLE(...)` doit caster explicitement les colonnes
+tirées de tables avec types `varchar(N)` quand le `RETURNS TABLE` déclare
+`text` :
+
+```sql
+-- À éviter :
+SELECT f.title FROM formations f  -- f.title est varchar(255)
+-- RETURNS TABLE (formation_title text)  → erreur 42804 à l'exécution
+
+-- À utiliser :
+SELECT f.title::text AS formation_title FROM formations f
+-- ou aligner le RETURNS sur varchar :
+-- RETURNS TABLE (formation_title varchar)
+```
+
+Le cas inverse (varchar → varchar de taille différente) est généralement
+toléré par PostgreSQL, mais le cast explicite reste préférable pour la
+clarté de l'intention.
+
+Bug historique : `get_daily_quiz` échouait silencieusement en prod
+(masqué par fallback API) jusqu'à PR #346 (27/05/2026). Audit varchar/text
+sur les 20 RPC : aucun autre bug latent, tous les RPC post-`get_daily_quiz`
+suivent déjà le pattern.
+
 ## Couleurs interdites dans les nouveaux fichiers
 
 `#2D1B96`, `#231575`, `#00D1C1` — anciennes constantes du design system,
