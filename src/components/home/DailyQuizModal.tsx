@@ -44,12 +44,6 @@ interface OrderingOption {
   correctPosition: number
 }
 
-interface MatchingPair {
-  id: string
-  left: string
-  right: string
-}
-
 interface MatchingRightOption {
   id: string
   text: string
@@ -148,7 +142,10 @@ function parseOrderingOptions(options: unknown): OrderingOption[] {
   return []
 }
 
-function parseMatchingData(options: unknown): ParsedMatchingData | null {
+// NEW format only (post-migration 20260527e).
+// Shape : { pairs: [{left, rightId}], options: [{id, text}], correctAnswers: ["i-id"] }.
+// Tout payload OLD déclenche un warn explicite et retourne null (la question ne s'affiche pas).
+function parseMatchingData(options: unknown, questionId?: string): ParsedMatchingData | null {
   if (!options) return null
   let opts = options
   if (typeof options === 'string') {
@@ -157,45 +154,28 @@ function parseMatchingData(options: unknown): ParsedMatchingData | null {
   if (typeof opts !== 'object' || opts === null) return null
   const o = opts as Record<string, unknown>
 
-  // New DB format: { pairs: [{left, rightId}], options: [{id, text}], correctAnswers: [...] }
-  if ('pairs' in o && Array.isArray(o.pairs) && 'options' in o && Array.isArray(o.options)) {
-    const pairs = o.pairs as { left: string; rightId?: string }[]
-    const rightOptions = o.options as { id: string; text: string }[]
-    const correctAnswers = ('correctAnswers' in o && Array.isArray(o.correctAnswers))
-      ? o.correctAnswers as string[]
-      : pairs.map((p, i) => `${i + 1}-${p.rightId}`)
-    return {
-      leftItems: pairs.map((p, i) => ({
-        index: i,
-        left: p.left,
-        correctRightId: p.rightId || '',
-      })),
-      rightOptions,
-      correctAnswers,
-    }
+  if (!Array.isArray(o.pairs) || !Array.isArray(o.options) || !Array.isArray(o.correctAnswers)) {
+    console.warn(
+      '[matching] Legacy OLD format detected for question',
+      questionId ?? '<unknown>',
+      '— should not happen after migration 20260527e'
+    )
+    return null
   }
 
-  // Old format: { pairs: [{id?, left, right}] }
-  // id may be missing — generate stable alphabetical IDs (A, B, C…) as fallback
-  if ('pairs' in o && Array.isArray(o.pairs)) {
-    const pairs = o.pairs as Partial<MatchingPair>[]
-    return {
-      leftItems: pairs.map((p, i) => ({
-        index: i,
-        left: p.left || '',
-        correctRightId: p.id || String.fromCharCode(65 + i),
-      })),
-      rightOptions: pairs.map((p, i) => ({
-        id: p.id || String.fromCharCode(65 + i),
-        text: p.right || '',
-      })),
-      correctAnswers: pairs.map((p, i) =>
-        `${i + 1}-${p.id || String.fromCharCode(65 + i)}`
-      ),
-    }
-  }
+  const pairs = o.pairs as { left: string; rightId: string }[]
+  const rightOptions = o.options as { id: string; text: string }[]
+  const correctAnswers = o.correctAnswers as string[]
 
-  return null
+  return {
+    leftItems: pairs.map((p, i) => ({
+      index: i,
+      left: p.left,
+      correctRightId: p.rightId,
+    })),
+    rightOptions,
+    correctAnswers,
+  }
 }
 
 // ============================================
@@ -360,7 +340,7 @@ export default function DailyQuizModal({
     if (!q) return
 
     if (q.question_type === 'matching' && shuffledMatchingRights.length === 0) {
-      const data = parseMatchingData(q.options)
+      const data = parseMatchingData(q.options, q.id)
       if (data && data.rightOptions.length > 0) {
         let shuffled = shuffleArray([...data.rightOptions])
         let attempts = 0
@@ -415,7 +395,7 @@ export default function DailyQuizModal({
     // For matching, parseMatchingData handles both DB formats: old `{pairs:[{id,left,right}]}`
     // and new `{pairs:[{left,rightId}], options:[{id,text}]}`. Matches store rightOption.id.
     if (q.question_type === 'matching') {
-      const data = parseMatchingData(q.options)
+      const data = parseMatchingData(q.options, q.id)
       if (data && data.leftItems.length > 0) {
         const lookup = new Map(matchingMatchesRef.current.map(m => [m.leftKey, m.rightId]))
         const correctCount = data.leftItems.filter(li => lookup.get(li.left) === li.correctRightId).length
@@ -1274,7 +1254,7 @@ export default function DailyQuizModal({
 
             {/* === MATCHING === */}
             {q.question_type === 'matching' && (() => {
-              const data = parseMatchingData(q.options)
+              const data = parseMatchingData(q.options, q.id)
               if (!data || data.leftItems.length === 0) {
                 return <p className="text-gray-500">Format de question non supporté</p>
               }
@@ -1621,7 +1601,7 @@ function FeedbackPanel({
       }
 
       case 'matching': {
-        const data = parseMatchingData(q.options)
+        const data = parseMatchingData(q.options, q.id)
         if (!data) return null
         const rightLookup = new Map(data.rightOptions.map(r => [r.id, r.text]))
         const matchByLeft = new Map(matchingMatches.map(m => [m.leftKey, m.rightId]))

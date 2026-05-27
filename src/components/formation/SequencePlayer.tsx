@@ -186,10 +186,10 @@ function parseOrderingOptions(options: unknown): OrderingOption[] {
   return []
 }
 
-// Handles both DB formats:
-//   - old: { pairs: [{ id, left, right }] }
-//   - new: { pairs: [{ left, rightId }], options: [{ id, text }], correctAnswers: [...] }
-function parseMatchingData(options: unknown): ParsedMatchingData | null {
+// NEW format only (post-migration 20260527e).
+// Shape : { pairs: [{left, rightId}], options: [{id, text}], correctAnswers: ["i-id"] }.
+// Tout payload OLD déclenche un warn explicite et retourne null (la question ne s'affiche pas).
+function parseMatchingData(options: unknown, questionId?: string): ParsedMatchingData | null {
   if (!options) return null
   let opts = options
   if (typeof options === 'string') {
@@ -198,42 +198,28 @@ function parseMatchingData(options: unknown): ParsedMatchingData | null {
   if (typeof opts !== 'object' || opts === null) return null
   const o = opts as Record<string, unknown>
 
-  if ('pairs' in o && Array.isArray(o.pairs) && 'options' in o && Array.isArray(o.options)) {
-    const pairs = o.pairs as { left: string; rightId?: string }[]
-    const rightOptions = o.options as { id: string; text: string }[]
-    const correctAnswers = ('correctAnswers' in o && Array.isArray(o.correctAnswers))
-      ? o.correctAnswers as string[]
-      : pairs.map((p, i) => `${i + 1}-${p.rightId}`)
-    return {
-      leftItems: pairs.map((p, i) => ({
-        index: i,
-        left: p.left,
-        correctRightId: p.rightId || '',
-      })),
-      rightOptions,
-      correctAnswers,
-    }
+  if (!Array.isArray(o.pairs) || !Array.isArray(o.options) || !Array.isArray(o.correctAnswers)) {
+    console.warn(
+      '[matching] Legacy OLD format detected for question',
+      questionId ?? '<unknown>',
+      '— should not happen after migration 20260527e'
+    )
+    return null
   }
 
-  if ('pairs' in o && Array.isArray(o.pairs)) {
-    const pairs = o.pairs as Partial<{ id: string; left: string; right: string }>[]
-    return {
-      leftItems: pairs.map((p, i) => ({
-        index: i,
-        left: p.left || '',
-        correctRightId: p.id || String.fromCharCode(65 + i),
-      })),
-      rightOptions: pairs.map((p, i) => ({
-        id: p.id || String.fromCharCode(65 + i),
-        text: p.right || '',
-      })),
-      correctAnswers: pairs.map((p, i) =>
-        `${i + 1}-${p.id || String.fromCharCode(65 + i)}`
-      ),
-    }
-  }
+  const pairs = o.pairs as { left: string; rightId: string }[]
+  const rightOptions = o.options as { id: string; text: string }[]
+  const correctAnswers = o.correctAnswers as string[]
 
-  return null
+  return {
+    leftItems: pairs.map((p, i) => ({
+      index: i,
+      left: p.left,
+      correctRightId: p.rightId,
+    })),
+    rightOptions,
+    correctAnswers,
+  }
 }
 
 // Helpers pour drag_drop (peut être matching ou ordering)
@@ -427,7 +413,7 @@ export default function SequencePlayer({
       (currentQuestion?.question_type === 'drag_drop' && isDragDropMatching(currentQuestion.options))
 
     if (isMatching && shuffledMatchingRights.length === 0) {
-      const data = parseMatchingData(currentQuestion.options)
+      const data = parseMatchingData(currentQuestion.options, currentQuestion.id)
       if (data && data.rightOptions.length > 0) {
         let shuffled = shuffleArray([...data.rightOptions])
         // Re-mélanger si par hasard l'ordre est resté identique
@@ -563,7 +549,7 @@ export default function SequencePlayer({
   // Matching
   const handleMatchingValidate = () => {
     const q = currentQuestion
-    const data = parseMatchingData(q.options)
+    const data = parseMatchingData(q.options, q.id)
     const items = data?.leftItems || []
     const matchByLeft = new Map(matchingMatches.map(m => [m.leftKey, m.rightId]))
 
@@ -1403,7 +1389,7 @@ export default function SequencePlayer({
 
               {/* === MATCHING (ou drag_drop format matching) === */}
               {(qType === 'matching' || (qType === 'drag_drop' && isDragDropMatching(q.options))) && (() => {
-                const data = parseMatchingData(q.options)
+                const data = parseMatchingData(q.options, q.id)
                 if (!data || data.leftItems.length === 0) {
                   return <p className="text-gray-500">Format de question non supporté</p>
                 }

@@ -4,6 +4,94 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { QuestionType } from '@/types/questions'
 import { isSuperAdmin } from '@/lib/auth/rbac'
 
+// Validation NEW format matching (post-migration 20260527e).
+// Plus stricte que la contrainte CHECK DB : protège la qualité pédagogique
+// (intégrité référentielle, unicité, regex stricts). Identique à route.ts.
+function validateMatchingNew(options: unknown): { error: string; details: string[] } | null {
+  if (!options || typeof options !== 'object') {
+    return { error: 'matching_validation_failed', details: ['missing_options_object'] }
+  }
+  const o = options as Record<string, unknown>
+  const details: string[] = []
+
+  if (!Array.isArray(o.pairs) || o.pairs.length === 0) details.push('pairs_missing_or_empty')
+  if (!Array.isArray(o.options) || o.options.length === 0) details.push('options_missing_or_empty')
+  if (!Array.isArray(o.correctAnswers) || o.correctAnswers.length === 0) {
+    details.push('correctAnswers_missing_or_empty')
+  }
+  if (details.length > 0) return { error: 'matching_validation_failed', details }
+
+  const pairs = o.pairs as unknown[]
+  const opts = o.options as unknown[]
+  const answers = o.correctAnswers as unknown[]
+
+  if (pairs.length !== opts.length || pairs.length !== answers.length) details.push('lengths_mismatch')
+  if (pairs.length < 2) details.push('too_few_pairs')
+  if (details.length > 0) return { error: 'matching_validation_failed', details }
+
+  const RID_RE = /^[A-Z]+$/
+
+  for (let i = 0; i < pairs.length; i++) {
+    const p = pairs[i]
+    if (!p || typeof p !== 'object') { details.push(`pair_${i}_not_object`); continue }
+    const pp = p as Record<string, unknown>
+    const keys = Object.keys(pp).sort()
+    if (keys.length !== 2 || keys[0] !== 'left' || keys[1] !== 'rightId') {
+      details.push(`pair_${i}_unexpected_keys`)
+    }
+    if (typeof pp.left !== 'string' || !pp.left.trim()) details.push(`pair_${i}_left_empty`)
+    if (typeof pp.rightId !== 'string' || !pp.rightId || !RID_RE.test(pp.rightId)) {
+      details.push(`pair_${i}_rightId_invalid`)
+    }
+  }
+
+  for (let i = 0; i < opts.length; i++) {
+    const opt = opts[i]
+    if (!opt || typeof opt !== 'object') { details.push(`option_${i}_not_object`); continue }
+    const oo = opt as Record<string, unknown>
+    const keys = Object.keys(oo).sort()
+    if (keys.length !== 2 || keys[0] !== 'id' || keys[1] !== 'text') {
+      details.push(`option_${i}_unexpected_keys`)
+    }
+    if (typeof oo.id !== 'string' || !oo.id || !RID_RE.test(oo.id)) {
+      details.push(`option_${i}_id_invalid`)
+    }
+    if (typeof oo.text !== 'string' || !oo.text.trim()) details.push(`option_${i}_text_empty`)
+  }
+  const optionIds = new Set<string>()
+  for (const opt of opts) {
+    const id = (opt as { id?: unknown })?.id
+    if (typeof id === 'string') optionIds.add(id)
+  }
+  if (optionIds.size !== opts.length) details.push('option_ids_not_unique')
+  if (details.length > 0) return { error: 'matching_validation_failed', details }
+
+  const pairRids = (pairs as { rightId: string }[]).map((p) => p.rightId)
+  const pairRidSet = new Set(pairRids)
+  for (const rid of pairRids) {
+    if (!optionIds.has(rid)) details.push(`pair_rightId_${rid}_no_matching_option`)
+  }
+  for (const optId of optionIds) {
+    if (!pairRidSet.has(optId)) details.push(`option_id_${optId}_orphaned`)
+  }
+
+  const ANS_RE = /^(\d+)-([A-Z]+)$/
+  for (let i = 0; i < answers.length; i++) {
+    const ans = answers[i]
+    if (typeof ans !== 'string') { details.push(`correctAnswer_${i}_not_string`); continue }
+    const m = ans.match(ANS_RE)
+    if (!m) { details.push(`correctAnswer_${i}_format_invalid`); continue }
+    const idx = parseInt(m[1], 10)
+    const aid = m[2]
+    if (idx < 1 || idx > pairs.length) details.push(`correctAnswer_${i}_index_out_of_range`)
+    if (!optionIds.has(aid)) details.push(`correctAnswer_${i}_id_unknown`)
+    const expected = `${i + 1}-${(pairs[i] as { rightId: string }).rightId}`
+    if (ans !== expected) details.push(`correctAnswer_${i}_mismatch_with_pair`)
+  }
+
+  return details.length > 0 ? { error: 'matching_validation_failed', details } : null
+}
+
 // Validation des options par type de question (même logique que route.ts)
 function validateOptionsByType(questionType: QuestionType, options: unknown): string | null {
   if (!options) {
@@ -53,17 +141,9 @@ function validateOptionsByType(questionType: QuestionType, options: unknown): st
       break
     }
 
-    case 'matching': {
-      const matchingOpts = options as { pairs?: Array<{ left?: string; right?: string }> }
-      if (!matchingOpts.pairs || !Array.isArray(matchingOpts.pairs)) {
-        return 'Les paires doivent être définies'
-      }
-      if (matchingOpts.pairs.length < 2) return 'Il faut au moins 2 paires'
-      if (matchingOpts.pairs.some(p => !p.left?.trim() || !p.right?.trim())) {
-        return 'Toutes les paires doivent être complètes'
-      }
+    case 'matching':
+      // Géré séparément par validateMatchingNew avec réponse structurée
       break
-    }
 
     case 'ordering': {
       if (!Array.isArray(options)) return 'Les options doivent être un tableau'
@@ -160,9 +240,16 @@ export async function PATCH(
 
     // Validation des options par type
     if (question_type && options) {
-      const optionsError = validateOptionsByType(question_type, options)
-      if (optionsError) {
-        return NextResponse.json({ error: optionsError }, { status: 400 })
+      if (question_type === 'matching') {
+        const matchingError = validateMatchingNew(options)
+        if (matchingError) {
+          return NextResponse.json(matchingError, { status: 400 })
+        }
+      } else {
+        const optionsError = validateOptionsByType(question_type, options)
+        if (optionsError) {
+          return NextResponse.json({ error: optionsError }, { status: 400 })
+        }
       }
     }
 

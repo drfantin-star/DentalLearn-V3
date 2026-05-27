@@ -20,6 +20,7 @@ interface MatchingPair {
   id: string;
   left: string;
   right: string;
+  rightId?: string;
 }
 
 interface OrderingItem {
@@ -53,6 +54,53 @@ const QUESTION_TYPES: { value: QuestionType; label: string; description: string 
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
+}
+
+// Emits NEW matching format (post-migration 20260527e).
+// Preserves existing pair.rightId when present (round-trip idempotence);
+// assigns the next unused A/B/C... letter to any pair without one.
+function buildMatchingNewFormat(pairs: MatchingPair[]): {
+  pairs: { left: string; rightId: string }[];
+  options: { id: string; text: string }[];
+  correctAnswers: string[];
+} {
+  const used = new Set<string>();
+  pairs.forEach((p) => { if (p.rightId) used.add(p.rightId); });
+  let next = 65;
+  const nextUnusedRid = () => {
+    while (used.has(String.fromCharCode(next))) next++;
+    const rid = String.fromCharCode(next);
+    used.add(rid);
+    next++;
+    return rid;
+  };
+  const indexed = pairs.map((p, i) => ({
+    pair: p,
+    rid: p.rightId || nextUnusedRid(),
+    idx: i + 1,
+  }));
+  return {
+    pairs: indexed.map(({ pair, rid }) => ({ left: pair.left, rightId: rid })),
+    options: indexed.map(({ pair, rid }) => ({ id: rid, text: pair.right })),
+    correctAnswers: indexed.map(({ rid, idx }) => `${idx}-${rid}`),
+  };
+}
+
+// Parses NEW matching format back into MatchingPair[] for the admin UI state.
+// Carries `rightId` through so buildMatchingNewFormat can preserve it on save.
+function parseMatchingNewFormat(opts: unknown): MatchingPair[] | null {
+  if (!opts || typeof opts !== 'object') return null;
+  const o = opts as { pairs?: unknown; options?: unknown };
+  if (!Array.isArray(o.pairs) || !Array.isArray(o.options)) return null;
+  const pairs = o.pairs as { left: string; rightId: string }[];
+  const options = o.options as { id: string; text: string }[];
+  const textById = new Map(options.map((opt) => [opt.id, opt.text]));
+  return pairs.map((p, i) => ({
+    id: String(i + 1),
+    left: p.left,
+    right: textById.get(p.rightId) ?? '',
+    rightId: p.rightId,
+  }));
 }
 
 export default function EditQuestionPage() {
@@ -124,16 +172,13 @@ export default function EditQuestionPage() {
         }
         break;
 
-      case 'matching':
-        const pairs = opts?.pairs || opts;
-        if (Array.isArray(pairs)) {
-          setMatchingPairs(pairs.map((p: any) => ({
-            id: p.id || generateId(),
-            left: p.left,
-            right: p.right
-          })));
+      case 'matching': {
+        const parsed = parseMatchingNewFormat(opts);
+        if (parsed) {
+          setMatchingPairs(parsed);
         }
         break;
+      }
 
       case 'ordering':
         if (Array.isArray(opts)) {
@@ -190,7 +235,7 @@ export default function EditQuestionPage() {
         return mcqOptions;
 
       case 'matching':
-        return { pairs: matchingPairs };
+        return buildMatchingNewFormat(matchingPairs);
 
       case 'ordering':
         return orderingItems.map((item, idx) => ({
