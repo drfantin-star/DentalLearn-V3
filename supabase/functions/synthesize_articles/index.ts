@@ -286,8 +286,31 @@ async function loadCandidates(
     }
 
     const synArr = Array.isArray(row.syntheses) ? row.syntheses : [];
-    const syn = synArr[0]; // 0 ou 1 (pas de UNIQUE sur scored_id mais
-                            // en pratique le pipeline n'en crée qu'1)
+    // Sélection déterministe : on priorise les statuts "skip-wins" pour que
+    // isEligible retourne false même si l'embed renvoie plusieurs rows pour
+    // un même scored_id. Garde-fou défensif post-fix du bug d'idempotence
+    // 27 mai 2026 (cf DIAGNOSTIC_BUG_IDEMPOTENCE_27MAI2026.md) — strictement
+    // redondant après la migration partial UNIQUE INDEX
+    // 20260527a_news_syntheses_unique_active_scored.sql, mais on conserve la
+    // logique + le log sentinel pour détecter toute régression future
+    // (ex: contrainte UNIQUE droppée par erreur).
+    if (synArr.length > 1) {
+      logger.warn("duplicate_syntheses_detected", {
+        scored_id: row.id,
+        count: synArr.length,
+        // deno-lint-ignore no-explicit-any
+        statuses: synArr.map((s: any) => s?.status),
+      });
+    }
+    const syn =
+      // deno-lint-ignore no-explicit-any
+      synArr.find((s: any) => s?.status === "active") ??
+      // deno-lint-ignore no-explicit-any
+      synArr.find((s: any) => s?.status === "failed_permanent") ??
+      // deno-lint-ignore no-explicit-any
+      synArr.find((s: any) => s?.status === "failed") ??
+      synArr[0] ??
+      null;
 
     // Matrice 0bis — filtrage éligibilité
     const isEligible = (() => {

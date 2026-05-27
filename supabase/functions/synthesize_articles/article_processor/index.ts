@@ -354,6 +354,54 @@ export async function processArticle(
   // suffisant pour le suivi cost run_complete (cible <2 €/run).
   tokens.embedding = Math.ceil(embedTextStr.length / 4);
 
+  // ----- ÉTAPE 3bis : cleanup retry-de-failed (post-étape 0bis) -----
+  // Cf DIAGNOSTIC_BUG_IDEMPOTENCE_27MAI2026.md. Si on est en train de réussir
+  // un retry sur un existing.status='failed', l'INSERT de l'étape 4 créerait
+  // un doublon (pas de UNIQUE constraint sur scored_id côté schéma jusqu'à
+  // 20260527a_news_syntheses_unique_active_scored.sql).
+  // On supprime explicitement l'ancienne ligne failed + ses questions —
+  // symétrique du DELETE de l'étape 0 (force reset), mais déclenché par le
+  // succès du retry naturel (cron sans force).
+  if (
+    article.existing_synthesis &&
+    article.existing_synthesis.status === "failed"
+  ) {
+    const delRes = await deleteSynthesisAndQuestions(
+      deps.supabase,
+      article.existing_synthesis.id,
+    );
+    if (!delRes.ok) {
+      // R1 — On incrémente failed_attempts via la matrice fail normale
+      // (persistFailureAndReport ci-dessous) plutôt que skip. Une cleanup
+      // ratée laisse un état BDD potentiellement incohérent (DELETE partielle
+      // des questions). Retenter en boucle sans cap risquerait de re-déclencher
+      // la cascade de doublons. À 2 cleanup ratées consécutives →
+      // failed_permanent + investigation manuelle via le log sentinel.
+      // Cohérent avec le chemin force-reset cleanup-failed (lignes 254-273
+      // de ce fichier).
+      logger.error("article_retry_cleanup_failed", {
+        scored_id: article.scored_id,
+        existing_synth_id: article.existing_synthesis.id,
+        error: delRes.error,
+      });
+      const payload = buildErrorPayload({
+        stage: "synthesis_insert",
+        reason: `failed-row cleanup before retry insert failed: ${delRes.error}`,
+        details: { existing_synth_id: article.existing_synthesis.id },
+      });
+      return persistFailureAndReport(deps, article, payload, output, tokens);
+    }
+    logger.info("article_retry_cleanup", {
+      scored_id: article.scored_id,
+      previous_synth_id: article.existing_synthesis.id,
+    });
+    // existing supprimé en BDD : on bascule l'objet local à null pour que
+    // l'étape 4 fasse bien un INSERT propre (et qu'un éventuel fail en étape
+    // 4 retombe sur l'INSERT-path de upsertFailedSynthesis avec attempts=1
+    // au lieu d'un UPDATE sur une id désormais inexistante).
+    article.existing_synthesis = null;
+  }
+
   // ----- ÉTAPE 4 : INSERT atomique -----
   const insertRes = await insertSynthesisAndQuestions(
     deps.supabase,
