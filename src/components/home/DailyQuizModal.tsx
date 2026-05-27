@@ -959,8 +959,7 @@ export default function DailyQuizModal({
 
               return (
                 <div className="space-y-4">
-                  {/* Contexte clinique — affiché uniquement si plusieurs sous-questions */}
-                  {caseOpts.questions && caseOpts.questions.length > 1 && caseOpts.context?.history && (
+                  {caseOpts.context?.history && (
                     <div className="rounded-2xl p-4" style={{ background: '#0f172a', border: '1px solid #1e3a5f' }}>
                       <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: '#60a5fa' }}>Contexte clinique</p>
                       <p className="text-sm leading-relaxed" style={{ color: '#e5e5e5' }}>{caseOpts.context.history}</p>
