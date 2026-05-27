@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
@@ -18,6 +18,9 @@ export default function NewsPage() {
   const [items, setItems] = useState<NewsCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const [modalNewsId, setModalNewsId] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<string>('all')
@@ -38,14 +41,16 @@ export default function NewsPage() {
     setLoading(true)
     setError(null)
 
-    fetch(`/api/news/syntheses?limit=${FETCH_LIMIT}`)
+    fetch(`/api/news/syntheses?limit=${FETCH_LIMIT}&page=1`)
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json() as Promise<{ data: NewsCard[] }>
+        return res.json() as Promise<{ data: NewsCard[]; total: number; page: number }>
       })
       .then((payload) => {
         if (cancelled) return
         setItems(payload.data ?? [])
+        setTotal(payload.total ?? 0)
+        setPage(1)
       })
       .catch((err: unknown) => {
         if (cancelled) return
@@ -60,6 +65,33 @@ export default function NewsPage() {
       cancelled = true
     }
   }, [])
+
+  const loadMore = useCallback(async () => {
+    if (loadingMore) return
+    const nextPage = page + 1
+    setLoadingMore(true)
+    try {
+      const res = await fetch(`/api/news/syntheses?limit=${FETCH_LIMIT}&page=${nextPage}`)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const payload = (await res.json()) as { data: NewsCard[]; total: number; page: number }
+      // Anti-doublons : id-based dedupe au cas où une nouvelle synthèse aurait
+      // été insérée entre deux fetches et décalerait la pagination par
+      // published_at desc.
+      setItems((prev) => {
+        const seen = new Set(prev.map((i) => i.id))
+        const next = (payload.data ?? []).filter((i) => !seen.has(i.id))
+        return [...prev, ...next]
+      })
+      setTotal(payload.total ?? total)
+      setPage(nextPage)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [loadingMore, page, total])
+
+  const hasMore = items.length < total
 
   const presentSpecialites = useMemo(() => {
     const slugs = new Set<string>()
@@ -92,7 +124,9 @@ export default function NewsPage() {
               Actualités scientifiques
             </h1>
             <p className="text-xs text-gray-400 truncate">
-              Toutes les dernières publications dentaires
+              {loading || total === 0
+                ? 'Toutes les dernières publications dentaires'
+                : `${items.length} sur ${total} articles`}
             </p>
           </div>
         </div>
@@ -233,6 +267,20 @@ export default function NewsPage() {
                     onClick={(n) => setModalNewsId(n.id)}
                   />
                 ))}
+              </div>
+            )}
+
+            {hasMore && (
+              <div className="flex justify-center mt-6 px-4">
+                <button
+                  type="button"
+                  disabled={loadingMore}
+                  onClick={loadMore}
+                  className="px-5 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50
+                             rounded-full text-gray-200 text-sm font-medium transition"
+                >
+                  {loadingMore ? 'Chargement…' : 'Charger plus'}
+                </button>
               </div>
             )}
           </section>
