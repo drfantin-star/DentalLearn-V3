@@ -20,6 +20,7 @@ interface MatchingPair {
   id: string;
   left: string;
   right: string;
+  rightId?: string;
 }
 
 interface OrderingItem {
@@ -53,6 +54,36 @@ const QUESTION_TYPES: { value: QuestionType; label: string; description: string 
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
+}
+
+// Emits NEW matching format (post-migration 20260527e).
+// Preserves existing pair.rightId when present (round-trip idempotence for edited questions);
+// assigns the next unused A/B/C... letter to any pair without one.
+function buildMatchingNewFormat(pairs: MatchingPair[]): {
+  pairs: { left: string; rightId: string }[];
+  options: { id: string; text: string }[];
+  correctAnswers: string[];
+} {
+  const used = new Set<string>();
+  pairs.forEach((p) => { if (p.rightId) used.add(p.rightId); });
+  let next = 65;
+  const nextUnusedRid = () => {
+    while (used.has(String.fromCharCode(next))) next++;
+    const rid = String.fromCharCode(next);
+    used.add(rid);
+    next++;
+    return rid;
+  };
+  const indexed = pairs.map((p, i) => ({
+    pair: p,
+    rid: p.rightId || nextUnusedRid(),
+    idx: i + 1,
+  }));
+  return {
+    pairs: indexed.map(({ pair, rid }) => ({ left: pair.left, rightId: rid })),
+    options: indexed.map(({ pair, rid }) => ({ id: rid, text: pair.right })),
+    correctAnswers: indexed.map(({ rid, idx }) => `${idx}-${rid}`),
+  };
 }
 
 export default function NewQuestionPage() {
@@ -147,7 +178,7 @@ export default function NewQuestionPage() {
         ];
 
       case 'matching':
-        return { pairs: matchingPairs };
+        return buildMatchingNewFormat(matchingPairs);
 
       case 'ordering':
         return orderingItems.map((item, idx) => ({
