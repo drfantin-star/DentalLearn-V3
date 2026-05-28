@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
@@ -14,17 +14,35 @@ import { useAudioPlayer, type AudioTrack } from '@/context/AudioPlayerContext'
 
 const FETCH_LIMIT = 50
 
+type SynthesesPayload = { data: NewsCard[]; total: number; page: number }
+
+function buildSyntheseUrl(page: number, filter: string): string {
+  const params = new URLSearchParams({
+    limit: String(FETCH_LIMIT),
+    page: String(page),
+  })
+  // Filtre serveur : 'all' = aucun param specialite (tout le catalogue).
+  if (filter !== 'all') params.set('specialite', filter)
+  return `/api/news/syntheses?${params.toString()}`
+}
+
 export default function NewsPage() {
   const [items, setItems] = useState<NewsCard[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [listLoading, setListLoading] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const [modalNewsId, setModalNewsId] = useState<string | null>(null)
   const [activeFilter, setActiveFilter] = useState<string>('all')
+
+  const [modalNewsId, setModalNewsId] = useState<string | null>(null)
   const [playlistLoading, setPlaylistLoading] = useState(false)
 
   const { addToQueue } = useAudioPlayer()
 
+  const hasLoadedOnce = useRef(false)
   const filterScrollRef = useRef<HTMLDivElement>(null)
   const scrollFilters = (dir: 'left' | 'right') => {
     filterScrollRef.current?.scrollBy({
@@ -33,19 +51,25 @@ export default function NewsPage() {
     })
   }
 
+  // Chargement initial + refetch page 1 à chaque changement de filtre.
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    const isInitial = !hasLoadedOnce.current
+    if (isInitial) setLoading(true)
+    else setListLoading(true)
     setError(null)
 
-    fetch(`/api/news/syntheses?limit=${FETCH_LIMIT}`)
+    fetch(buildSyntheseUrl(1, activeFilter))
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json() as Promise<{ data: NewsCard[] }>
+        return res.json() as Promise<SynthesesPayload>
       })
       .then((payload) => {
         if (cancelled) return
         setItems(payload.data ?? [])
+        setTotal(payload.total ?? 0)
+        setPage(1)
+        hasLoadedOnce.current = true
       })
       .catch((err: unknown) => {
         if (cancelled) return
@@ -54,27 +78,39 @@ export default function NewsPage() {
       .finally(() => {
         if (cancelled) return
         setLoading(false)
+        setListLoading(false)
       })
 
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [activeFilter])
 
-  const presentSpecialites = useMemo(() => {
-    const slugs = new Set<string>()
-    for (const item of items) {
-      if (item.specialite) slugs.add(item.specialite)
+  const loadMore = useCallback(async () => {
+    if (loadingMore) return
+    const nextPage = page + 1
+    setLoadingMore(true)
+    try {
+      const res = await fetch(buildSyntheseUrl(nextPage, activeFilter))
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const payload = (await res.json()) as SynthesesPayload
+      // Anti-doublons par id : protège contre une insertion entre deux fetches
+      // qui décalerait la pagination (published_at desc).
+      setItems((prev) => {
+        const seen = new Set(prev.map((i) => i.id))
+        const next = (payload.data ?? []).filter((i) => !seen.has(i.id))
+        return [...prev, ...next]
+      })
+      setTotal(payload.total ?? total)
+      setPage(nextPage)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur inconnue')
+    } finally {
+      setLoadingMore(false)
     }
-    return NEWS_SPECIALITES
-      .filter((s) => slugs.has(s.value))
-      .map((s) => ({ slug: s.value, label: NEWS_SPECIALITE_LABELS[s.value] ?? s.label }))
-  }, [items])
+  }, [loadingMore, page, activeFilter, total])
 
-  const filteredNews = useMemo(() => {
-    if (activeFilter === 'all') return items
-    return items.filter((item) => item.specialite === activeFilter)
-  }, [items, activeFilter])
+  const hasMore = items.length < total
 
   return (
     <div className="min-h-screen bg-[#0F0F0F]">
@@ -92,7 +128,9 @@ export default function NewsPage() {
               Actualités scientifiques
             </h1>
             <p className="text-xs text-gray-400 truncate">
-              Toutes les dernières publications dentaires
+              {loading || total === 0
+                ? 'Toutes les dernières publications dentaires'
+                : `${items.length} sur ${total} articles`}
             </p>
           </div>
         </div>
@@ -112,13 +150,9 @@ export default function NewsPage() {
           <p className="px-4 text-sm text-red-400">
             Impossible de charger les actualités ({error}).
           </p>
-        ) : items.length === 0 ? (
-          <p className="px-4 text-sm text-gray-400">
-            Aucune actualité disponible pour le moment.
-          </p>
         ) : (
           <section>
-            {filteredNews.length > 0 && (
+            {!listLoading && items.length > 0 && (
               <button
                 type="button"
                 disabled={playlistLoading}
@@ -130,7 +164,7 @@ export default function NewsPage() {
                   setPlaylistLoading(true)
                   try {
                     const results = await Promise.all(
-                      filteredNews.map(async (n): Promise<AudioTrack | null> => {
+                      items.map(async (n): Promise<AudioTrack | null> => {
                         try {
                           const res = await fetch(`/api/news/syntheses/${n.id}`)
                           if (!res.ok) return null
@@ -160,7 +194,7 @@ export default function NewsPage() {
               >
                 {playlistLoading
                   ? '⏳ Préparation…'
-                  : `▶ Écouter la playlist (${filteredNews.length} articles)`}
+                  : `▶ Écouter la playlist (${items.length} articles)`}
               </button>
             )}
 
@@ -191,18 +225,18 @@ export default function NewsPage() {
                 >
                   Toutes
                 </button>
-                {presentSpecialites.map((s) => (
+                {NEWS_SPECIALITES.map((s) => (
                   <button
-                    key={s.slug}
+                    key={s.value}
                     type="button"
-                    onClick={() => setActiveFilter(s.slug)}
+                    onClick={() => setActiveFilter(s.value)}
                     className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
-                      activeFilter === s.slug
+                      activeFilter === s.value
                         ? 'bg-violet-500 text-white'
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                     }`}
                   >
-                    {s.label}
+                    {NEWS_SPECIALITE_LABELS[s.value] ?? s.label}
                   </button>
                 ))}
               </div>
@@ -219,21 +253,45 @@ export default function NewsPage() {
               </button>
             </div>
 
-            {filteredNews.length === 0 ? (
+            {listLoading ? (
+              <div className="flex flex-col gap-3 px-4">
+                <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
+                <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
+                <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
+              </div>
+            ) : items.length === 0 ? (
               <p className="px-4 text-sm text-gray-400">
-                Aucune actualité pour cette spécialité.
+                {activeFilter === 'all'
+                  ? 'Aucune actualité disponible pour le moment.'
+                  : 'Aucun article dans cette spécialité pour le moment.'}
               </p>
             ) : (
-              <div className="flex flex-col gap-3 px-4">
-                {filteredNews.map((item) => (
-                  <NewsCardItem
-                    key={item.id}
-                    news={item}
-                    variant="grid"
-                    onClick={(n) => setModalNewsId(n.id)}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="flex flex-col gap-3 px-4">
+                  {items.map((item) => (
+                    <NewsCardItem
+                      key={item.id}
+                      news={item}
+                      variant="grid"
+                      onClick={(n) => setModalNewsId(n.id)}
+                    />
+                  ))}
+                </div>
+
+                {hasMore && (
+                  <div className="flex justify-center mt-6 px-4">
+                    <button
+                      type="button"
+                      disabled={loadingMore}
+                      onClick={loadMore}
+                      className="px-5 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50
+                                 rounded-full text-gray-200 text-sm font-medium transition"
+                    >
+                      {loadingMore ? 'Chargement…' : 'Charger plus'}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </section>
         )}
