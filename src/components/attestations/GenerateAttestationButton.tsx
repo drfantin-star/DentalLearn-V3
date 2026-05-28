@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Award, Loader2, AlertCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -30,7 +30,51 @@ export function GenerateAttestationButton({
   const [rppsMissing, setRppsMissing] = useState(false)
   const [showSurveyModal, setShowSurveyModal] = useState(false)
   const [surveyContext, setSurveyContext] = useState<{ formationTitle: string } | null>(null)
+  // Condition d'acquisition 100 % (PARTIE_A_v4 §4.3) — formations CP uniquement.
+  const [acqGate, setAcqGate] = useState<{ ok: boolean; remaining: number } | null>(null)
   const router = useRouter()
+
+  // Pré-calcul du verrou d'acquisition : on désactive le bouton tant que
+  // toutes les questions de la formation CP ne sont pas acquises.
+  useEffect(() => {
+    if (type !== 'formation_online') {
+      setAcqGate({ ok: true, remaining: 0 })
+      return
+    }
+    let active = true
+    ;(async () => {
+      try {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: formationRow } = await supabase
+          .from('formations')
+          .select('axe_cp')
+          .eq('id', sourceId)
+          .single()
+        // Hors périmètre CP : pas de condition d'acquisition.
+        if (formationRow?.axe_cp == null) {
+          if (active) setAcqGate({ ok: true, remaining: 0 })
+          return
+        }
+        const { data: blocs } = await supabase.rpc('get_bloc_acquisition_status', {
+          p_user_id: user.id,
+          p_formation_id: sourceId,
+        })
+        const rows = (blocs ?? []) as { total_questions: number; acquired_questions: number }[]
+        const total = rows.reduce((s, b) => s + b.total_questions, 0)
+        const acquired = rows.reduce((s, b) => s + b.acquired_questions, 0)
+        if (active) setAcqGate({ ok: acquired >= total, remaining: Math.max(0, total - acquired) })
+      } catch (err) {
+        console.error('acquisition gate error:', err)
+        // fail open : handleClick re-vérifie et bloque si besoin.
+        if (active) setAcqGate({ ok: true, remaining: 0 })
+      }
+    })()
+    return () => {
+      active = false
+    }
+  }, [type, sourceId])
 
   const handleClick = async () => {
     setLoading(true)
@@ -159,6 +203,26 @@ export function GenerateAttestationButton({
           .single()
         if (!formation) throw new Error('Formation introuvable')
 
+        // Condition d'acquisition 100 % (PARTIE_A_v4 §2.4 Niveau 3 / §4.3) —
+        // formations CP uniquement. Bloque la génération tant que toutes les
+        // questions ne sont pas acquises.
+        let acquisition: { acquired: number; total: number } | undefined
+        if (formation.axe_cp != null) {
+          const { data: blocs } = await supabase.rpc('get_bloc_acquisition_status', {
+            p_user_id: user.id,
+            p_formation_id: sourceId,
+          })
+          const rows = (blocs ?? []) as { total_questions: number; acquired_questions: number }[]
+          const total = rows.reduce((s, b) => s + b.total_questions, 0)
+          const acquired = rows.reduce((s, b) => s + b.acquired_questions, 0)
+          if (acquired < total) {
+            throw new Error(
+              `${total - acquired} question(s) restent à acquérir avant de générer votre attestation.`
+            )
+          }
+          acquisition = { acquired, total }
+        }
+
         const dureeHeures = formation.cp_hours || 6
         const typeCnp = TYPE_CNP_BY_AXE[formation.axe_cp || 1] || 'D'
 
@@ -181,6 +245,7 @@ export function GenerateAttestationButton({
             taux_reussite_quiz: Number(m.taux_reussite_quiz || 0),
             taux_completion: Number(m.taux_completion || 0),
           },
+          acquisition,
           verification_code: verificationCode,
           organisme,
         })
@@ -306,14 +371,16 @@ export function GenerateAttestationButton({
     )
   }
 
+  const acquisitionBlocked = !!acqGate && !acqGate.ok
+
   return (
     <div className="space-y-2">
       <button
         onClick={handleClick}
-        disabled={loading}
+        disabled={loading || acquisitionBlocked}
         className={
           className ??
-          'w-full flex items-center justify-center gap-2 bg-white text-[#0a0a0a] hover:bg-[#e5e5e5] px-4 py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60'
+          'w-full flex items-center justify-center gap-2 bg-white text-[#0a0a0a] hover:bg-[#e5e5e5] px-4 py-3 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed'
         }
       >
         {loading ? (
@@ -328,6 +395,12 @@ export function GenerateAttestationButton({
           </>
         )}
       </button>
+      {acquisitionBlocked && (
+        <p className="text-xs text-amber-400 flex items-center gap-1.5">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+          {acqGate!.remaining} question{acqGate!.remaining > 1 ? 's' : ''} reste{acqGate!.remaining > 1 ? 'nt' : ''} à acquérir avant de générer votre attestation.
+        </p>
+      )}
       {error && <p className="text-xs text-red-400">{error}</p>}
 
       {showSurveyModal && surveyContext && type === 'formation_online' && (
