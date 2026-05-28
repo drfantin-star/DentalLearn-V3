@@ -25,6 +25,8 @@ import {
 import FormationDetail from '@/components/formation/FormationDetail'
 import SequencePlayer from '@/components/formation/SequencePlayer'
 import Badge from '@/components/ui/Badge'
+import BibliothequeBanner from '@/components/ui/BibliothequeBanner'
+import { BIBLIOTHEQUE_FORMATION } from '@/lib/constants/bibliotheque'
 import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
 import { createClient } from '@/lib/supabase/client'
 
@@ -259,6 +261,11 @@ export default function FormationPage() {
       </header>
 
       <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen" style={{ background: '#0F0F0F' }}>
+        <BibliothequeBanner
+          axe={1}
+          href="/formation/bibliotheque"
+          count={BIBLIOTHEQUE_FORMATION.length}
+        />
         <section>
           <h2 className="text-xl font-black text-white mb-4">
             🔍 Explorer par spécialité
