@@ -14,7 +14,6 @@ import { useAudioPlayer, type AudioTrack } from '@/context/AudioPlayerContext'
 
 const FETCH_LIMIT = 50
 
-type SpecialiteChip = { slug: string; label: string }
 type SynthesesPayload = { data: NewsCard[]; total: number; page: number }
 
 function buildSyntheseUrl(page: number, filter: string): string {
@@ -27,16 +26,6 @@ function buildSyntheseUrl(page: number, filter: string): string {
   return `/api/news/syntheses?${params.toString()}`
 }
 
-function deriveSpecialites(items: NewsCard[]): SpecialiteChip[] {
-  const slugs = new Set<string>()
-  for (const item of items) {
-    if (item.specialite) slugs.add(item.specialite)
-  }
-  return NEWS_SPECIALITES
-    .filter((s) => slugs.has(s.value))
-    .map((s) => ({ slug: s.value, label: NEWS_SPECIALITE_LABELS[s.value] ?? s.label }))
-}
-
 export default function NewsPage() {
   const [items, setItems] = useState<NewsCard[]>([])
   const [total, setTotal] = useState(0)
@@ -47,10 +36,6 @@ export default function NewsPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [activeFilter, setActiveFilter] = useState<string>('all')
-  // Liste des chips de spécialité, figée depuis le premier chargement non
-  // filtré. On ne la recalcule pas depuis `items` (désormais filtré côté
-  // serveur), sinon elle s'effondrerait à la seule spécialité active.
-  const [availableSpecialites, setAvailableSpecialites] = useState<SpecialiteChip[]>([])
 
   const [modalNewsId, setModalNewsId] = useState<string | null>(null)
   const [playlistLoading, setPlaylistLoading] = useState(false)
@@ -84,10 +69,6 @@ export default function NewsPage() {
         setItems(payload.data ?? [])
         setTotal(payload.total ?? 0)
         setPage(1)
-        // Fige la liste des chips uniquement sur le chargement non filtré.
-        if (activeFilter === 'all') {
-          setAvailableSpecialites(deriveSpecialites(payload.data ?? []))
-        }
         hasLoadedOnce.current = true
       })
       .catch((err: unknown) => {
@@ -217,62 +198,60 @@ export default function NewsPage() {
               </button>
             )}
 
-            {availableSpecialites.length > 0 && (
-              <div className="relative mb-4">
+            <div className="relative mb-4">
+              <button
+                type="button"
+                onClick={() => scrollFilters('left')}
+                aria-label="Faire défiler vers la gauche"
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10
+                           w-9 h-9 rounded-full bg-[#242424] shadow-md items-center
+                           justify-center text-gray-300 hover:bg-gray-50"
+              >
+                <ChevronLeft size={18} />
+              </button>
+
+              <div
+                ref={filterScrollRef}
+                className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 px-4"
+              >
                 <button
                   type="button"
-                  onClick={() => scrollFilters('left')}
-                  aria-label="Faire défiler vers la gauche"
-                  className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10
-                             w-9 h-9 rounded-full bg-[#242424] shadow-md items-center
-                             justify-center text-gray-300 hover:bg-gray-50"
+                  onClick={() => setActiveFilter('all')}
+                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                    activeFilter === 'all'
+                      ? 'bg-violet-500 text-white'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  }`}
                 >
-                  <ChevronLeft size={18} />
+                  Toutes
                 </button>
-
-                <div
-                  ref={filterScrollRef}
-                  className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 px-4"
-                >
+                {NEWS_SPECIALITES.map((s) => (
                   <button
+                    key={s.value}
                     type="button"
-                    onClick={() => setActiveFilter('all')}
+                    onClick={() => setActiveFilter(s.value)}
                     className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
-                      activeFilter === 'all'
+                      activeFilter === s.value
                         ? 'bg-violet-500 text-white'
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                     }`}
                   >
-                    Toutes
+                    {NEWS_SPECIALITE_LABELS[s.value] ?? s.label}
                   </button>
-                  {availableSpecialites.map((s) => (
-                    <button
-                      key={s.slug}
-                      type="button"
-                      onClick={() => setActiveFilter(s.slug)}
-                      className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
-                        activeFilter === s.slug
-                          ? 'bg-violet-500 text-white'
-                          : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => scrollFilters('right')}
-                  aria-label="Faire défiler vers la droite"
-                  className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10
-                             w-9 h-9 rounded-full bg-[#242424] shadow-md items-center
-                             justify-center text-gray-300 hover:bg-gray-50"
-                >
-                  <ChevronRight size={18} />
-                </button>
+                ))}
               </div>
-            )}
+
+              <button
+                type="button"
+                onClick={() => scrollFilters('right')}
+                aria-label="Faire défiler vers la droite"
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10
+                           w-9 h-9 rounded-full bg-[#242424] shadow-md items-center
+                           justify-center text-gray-300 hover:bg-gray-50"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
 
             {listLoading ? (
               <div className="flex flex-col gap-3 px-4">
@@ -284,7 +263,7 @@ export default function NewsPage() {
               <p className="px-4 text-sm text-gray-400">
                 {activeFilter === 'all'
                   ? 'Aucune actualité disponible pour le moment.'
-                  : 'Aucune actualité pour cette spécialité.'}
+                  : 'Aucun article dans cette spécialité pour le moment.'}
               </p>
             ) : (
               <>
