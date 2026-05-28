@@ -14,6 +14,13 @@ interface Formation {
   slug: string;
 }
 
+function calcBloc(n: number): number {
+  if (n <= 5) return 1;
+  if (n <= 10) return 2;
+  if (n <= 14) return 3;
+  return 4;
+}
+
 export default function NewSequencePage() {
   const params = useParams();
   const router = useRouter();
@@ -29,6 +36,7 @@ export default function NewSequencePage() {
   const [formData, setFormData] = useState({
     title: '',
     sequence_number: 1,
+    bloc_number: 1,
     estimated_duration_minutes: 3,
     learning_objectives: [''],
     course_media_type: '' as '' | 'audio' | 'video',
@@ -64,7 +72,7 @@ export default function NewSequencePage() {
 
     const nextNumber = (count || 0) + 1;
     setSequenceCount(count || 0);
-    setFormData(prev => ({ ...prev, sequence_number: nextNumber }));
+    setFormData(prev => ({ ...prev, sequence_number: nextNumber, bloc_number: calcBloc(nextNumber) }));
 
     setLoading(false);
   }
@@ -117,6 +125,7 @@ export default function NewSequencePage() {
       formation_id: formationId,
       title: formData.title.trim(),
       sequence_number: formData.sequence_number,
+      bloc_number: formData.bloc_number,
       estimated_duration_minutes: formData.estimated_duration_minutes,
       learning_objectives: objectives,
       access_level: formData.sequence_number === 0 ? 'free' : 'premium',
@@ -199,7 +208,10 @@ export default function NewSequencePage() {
               <input
                 type="number"
                 value={formData.sequence_number}
-                onChange={(e) => setFormData({ ...formData, sequence_number: parseInt(e.target.value) || 0 })}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value) || 0;
+                  setFormData(prev => ({ ...prev, sequence_number: n, bloc_number: calcBloc(n) }));
+                }}
                 min="0"
                 max="16"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -230,6 +242,24 @@ export default function NewSequencePage() {
               />
               <p className="text-xs text-gray-500 mt-1">Recommandé: 3-4 minutes pour 4 questions</p>
             </div>
+          </div>
+
+          {/* Bloc pédagogique */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Bloc pédagogique
+            </label>
+            <select
+              value={formData.bloc_number}
+              onChange={(e) => setFormData(prev => ({ ...prev, bloc_number: parseInt(e.target.value) }))}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value={1}>Bloc 1 — Fondamentaux (séq. 1-5)</option>
+              <option value={2}>Bloc 2 — Approfondissement (séq. 6-10)</option>
+              <option value={3}>Bloc 3 — Techniques avancées (séq. 11-14)</option>
+              <option value={4}>Bloc 4 — Synthèse (séq. 15)</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Calculé automatiquement selon le numéro de séquence, modifiable manuellement.</p>
           </div>
 
           {/* Objectifs pédagogiques */}

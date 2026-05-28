@@ -247,7 +247,8 @@ export async function POST(request: Request) {
       feedback_correct,
       feedback_incorrect,
       image_url,
-      points
+      points,
+      recommended_time_seconds
     } = body
 
     // Validation de base
@@ -287,7 +288,8 @@ export async function POST(request: Request) {
         feedback_correct: feedback_correct.trim(),
         feedback_incorrect: feedback_incorrect?.trim() || '',
         image_url: image_url?.trim() || null,
-        points: points || 10
+        points: points || 10,
+        recommended_time_seconds: recommended_time_seconds ?? null
       })
       .select()
       .single()

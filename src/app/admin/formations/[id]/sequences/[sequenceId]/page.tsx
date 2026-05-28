@@ -283,22 +283,35 @@ export default function SequenceDetailPage() {
         }
         break;
 
-      case 'matching':
+      case 'matching': {
         const pairs = options.pairs || options;
         if (Array.isArray(pairs)) {
+          // NEW format: options.options[] keyed by id; OLD format: pair.right directly
+          const optMap = new Map<string, string>();
+          if (Array.isArray(options.options)) {
+            for (const o of options.options as { id: string; text: string }[]) {
+              optMap.set(o.id, o.text);
+            }
+          }
           return (
             <div className="space-y-2">
-              {pairs.map((pair: any, idx: number) => (
-                <div key={idx} className="flex items-center gap-3 bg-gray-50 p-2 rounded">
-                  <span className="font-medium text-gray-700">{pair.left}</span>
-                  <span className="text-gray-400">→</span>
-                  <span className="text-gray-600">{pair.right}</span>
-                </div>
-              ))}
+              {pairs.map((pair: any, idx: number) => {
+                const rightText = optMap.size > 0
+                  ? (optMap.get(pair.rightId) ?? pair.right ?? '')
+                  : (pair.right ?? '');
+                return (
+                  <div key={idx} className="flex items-center gap-3 bg-gray-50 p-2 rounded">
+                    <span className="font-medium text-gray-700">{pair.left}</span>
+                    <span className="text-gray-400">→</span>
+                    <span className="text-gray-600">{rightText}</span>
+                  </div>
+                );
+              })}
             </div>
           );
         }
         break;
+      }
 
       case 'ordering':
         if (Array.isArray(options)) {

@@ -103,6 +103,21 @@ function parseMatchingNewFormat(opts: unknown): MatchingPair[] | null {
   }));
 }
 
+// Parses OLD matching format {pairs:[{id?,left,right}]} into MatchingPair[].
+// No rightId — buildMatchingNewFormat will assign A/B/C on save (migration douce).
+function parseMatchingOldFormat(opts: unknown): MatchingPair[] | null {
+  if (!opts || typeof opts !== 'object') return null;
+  const o = opts as { pairs?: unknown };
+  if (!Array.isArray(o.pairs)) return null;
+  const pairs = o.pairs as { id?: string; left: string; right: string }[];
+  if (!pairs.length || typeof pairs[0].left !== 'string') return null;
+  return pairs.map((p, i) => ({
+    id: p.id || String(i + 1),
+    left: p.left,
+    right: p.right,
+  }));
+}
+
 export default function EditQuestionPage() {
   const params = useParams();
   const router = useRouter();
@@ -120,6 +135,7 @@ export default function EditQuestionPage() {
   const [questionText, setQuestionText] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [points, setPoints] = useState(10);
+  const [recommendedTime, setRecommendedTime] = useState(60);
   const [feedbackCorrect, setFeedbackCorrect] = useState('');
   const [feedbackIncorrect, setFeedbackIncorrect] = useState('');
 
@@ -152,6 +168,7 @@ export default function EditQuestionPage() {
     setQuestionText(data.question_text);
     setImageUrl(data.image_url || '');
     setPoints(data.points);
+    setRecommendedTime(data.recommended_time_seconds ?? 60);
     setFeedbackCorrect(data.feedback_correct);
     setFeedbackIncorrect(data.feedback_incorrect || '');
 
@@ -173,7 +190,7 @@ export default function EditQuestionPage() {
         break;
 
       case 'matching': {
-        const parsed = parseMatchingNewFormat(opts);
+        const parsed = parseMatchingNewFormat(opts) ?? parseMatchingOldFormat(opts);
         if (parsed) {
           setMatchingPairs(parsed);
         }
@@ -292,7 +309,8 @@ export default function EditQuestionPage() {
           feedback_correct: feedbackCorrect.trim(),
           feedback_incorrect: feedbackIncorrect.trim(),
           image_url: imageUrl || null,
-          points
+          points,
+          recommended_time_seconds: recommendedTime
         })
       });
 
@@ -498,22 +516,42 @@ export default function EditQuestionPage() {
             />
           )}
 
-          <div className="w-32">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Points
-            </label>
-            <select
-              value={points}
-              onChange={(e) => setPoints(parseInt(e.target.value))}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg"
-            >
-              <option value={5}>5 pts</option>
-              <option value={10}>10 pts</option>
-              <option value={15}>15 pts</option>
-              <option value={20}>20 pts</option>
-              <option value={25}>25 pts</option>
-              <option value={30}>30 pts</option>
-            </select>
+          <div className="flex gap-4">
+            <div className="w-32">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Points
+              </label>
+              <select
+                value={points}
+                onChange={(e) => setPoints(parseInt(e.target.value))}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg"
+              >
+                <option value={5}>5 pts</option>
+                <option value={10}>10 pts</option>
+                <option value={15}>15 pts</option>
+                <option value={20}>20 pts</option>
+                <option value={25}>25 pts</option>
+                <option value={30}>30 pts</option>
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Temps recommandé (s)
+                <span className="ml-1 text-xs font-normal text-gray-400">
+                  {['mcq', 'true_false'].includes(questionType) ? '30-45s' :
+                   ['checkbox', 'highlight', 'fill_blank'].includes(questionType) ? '45-60s' :
+                   ['matching', 'ordering'].includes(questionType) ? '60-90s' : '90-120s'}
+                </span>
+              </label>
+              <input
+                type="number"
+                value={recommendedTime}
+                onChange={(e) => setRecommendedTime(Math.max(10, Math.min(300, parseInt(e.target.value) || 60)))}
+                min={10}
+                max={300}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
           </div>
         </div>
 
