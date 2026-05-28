@@ -65,7 +65,7 @@ export const BIBLIOTHEQUE_PATIENT: RessourceBibliotheque[] = [
     description:
       'Médecine orale et chirurgie orale : conseils post-opératoires, questionnaire médical…',
     type: 'external',
-    url: 'https://societechirorale.com/pages/sfco/info-du-patient',
+    url: 'https://societechirorale.com/fiches-informations-a-destination-des-patients/',
     categorie: 'Conseils post-opératoires',
   },
   {
