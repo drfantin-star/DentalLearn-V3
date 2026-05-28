@@ -103,6 +103,7 @@ export default function NewQuestionPage() {
   const [questionText, setQuestionText] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [points, setPoints] = useState(10);
+  const [recommendedTime, setRecommendedTime] = useState(60);
   const [feedbackCorrect, setFeedbackCorrect] = useState('');
   const [feedbackIncorrect, setFeedbackIncorrect] = useState('');
 
@@ -238,7 +239,8 @@ export default function NewQuestionPage() {
           feedback_correct: feedbackCorrect.trim(),
           feedback_incorrect: feedbackIncorrect.trim(),
           image_url: imageUrl || null,
-          points
+          points,
+          recommended_time_seconds: recommendedTime
         })
       });
 
@@ -452,7 +454,7 @@ export default function NewQuestionPage() {
             />
           )}
 
-          {/* Points */}
+          {/* Points + Temps recommandé */}
           <div className="flex gap-4">
             <div className="w-32">
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -470,6 +472,24 @@ export default function NewQuestionPage() {
                 <option value={25}>25 pts</option>
                 <option value={30}>30 pts</option>
               </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Temps recommandé (s)
+                <span className="ml-1 text-xs font-normal text-gray-400">
+                  {['mcq', 'true_false'].includes(questionType) ? '30-45s' :
+                   ['checkbox', 'highlight', 'fill_blank'].includes(questionType) ? '45-60s' :
+                   ['matching', 'ordering'].includes(questionType) ? '60-90s' : '90-120s'}
+                </span>
+              </label>
+              <input
+                type="number"
+                value={recommendedTime}
+                onChange={(e) => setRecommendedTime(Math.max(10, Math.min(300, parseInt(e.target.value) || 60)))}
+                min={10}
+                max={300}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
             </div>
           </div>
         </div>

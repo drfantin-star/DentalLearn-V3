@@ -228,7 +228,7 @@ export async function PATCH(
     }
 
     const body = await request.json()
-    const { question_type, question_text, options, feedback_correct, feedback_incorrect, image_url, points } = body
+    const { question_type, question_text, options, feedback_correct, feedback_incorrect, image_url, points, recommended_time_seconds } = body
 
     // Validation de base
     if (!question_text?.trim()) {
@@ -264,7 +264,8 @@ export async function PATCH(
         feedback_correct: feedback_correct.trim(),
         feedback_incorrect: feedback_incorrect?.trim() || '',
         image_url: image_url?.trim() || null,
-        points
+        points,
+        recommended_time_seconds: recommended_time_seconds ?? null
       })
       .eq('id', questionId)
 
