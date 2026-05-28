@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   X,
@@ -16,6 +16,8 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import Confetti from '@/components/Confetti'
+import CaseStudyQuestion from '@/components/questions/CaseStudyQuestion'
+import { parseCaseStudyData } from '@/lib/questions/parseCaseStudyData'
 
 // ============================================
 // TYPES
@@ -430,6 +432,31 @@ export default function DailyQuizModal({
     setShowFeedback(true)
   }
 
+  // Case study — le composant <CaseStudyQuestion> remonte le choix ; le scoring
+  // reste ici. useCallback stable (deps métier, hors timer) pour éviter de
+  // re-rendre / dégeler le composant mémoïsé à chaque tick du chrono.
+  const handleCaseStudySelect = useCallback((choiceId: string) => {
+    const q = questions[current]
+    if (!q) return
+    const parsed = parseCaseStudyData(q.options)
+    if (!parsed) return
+    const subQ = parsed.questions[caseStudyCurrentQ]
+    if (!subQ) return
+    if (showFeedback || caseStudyAnswers[subQ.id]) return
+
+    setCaseStudyAnswers({ ...caseStudyAnswers, [subQ.id]: choiceId })
+
+    const isLastSubQ = caseStudyCurrentQ >= parsed.questions.length - 1
+    if (!isLastSubQ) return // l'avance de sous-question est pilotée par le composant
+
+    const choice = subQ.choices.find(c => c.id === choiceId)
+    const correct = !!choice?.correct
+    setIsCorrect(correct)
+    setPointsEarned(correct ? q.points : 0)
+    if (correct) { setScore(s => s + 1); setTotalPoints(p => p + q.points) }
+    setShowFeedback(true)
+  }, [questions, current, caseStudyCurrentQ, caseStudyAnswers, showFeedback])
+
   // MCQ / True-False / MCQ Image
   const handleSingleAnswer = (answerId: string) => {
     if (showFeedback || selectedAnswer) return
@@ -694,15 +721,11 @@ export default function DailyQuizModal({
   // Normalize type names (API may use 'qcm' instead of 'mcq', 'case_study' behaves like 'mcq')
   const normalizedType = qType === 'qcm' ? 'mcq' : qType === 'qcm_image' ? 'mcq_image' : qType
 
-  // Détecter le sous-format case_study
-  const isCaseStudyStructured = q.question_type === 'case_study' && (() => {
-    try {
-      const raw = typeof q.options === 'string' ? JSON.parse(q.options) : q.options
-      return raw && !Array.isArray(raw) && 'context' in raw && 'questions' in raw
-    } catch { return false }
-  })()
-  const isCaseStudyLegacy = q.question_type === 'case_study' && !isCaseStudyStructured
-  // Legacy = options est un tableau MCQ standard, question_text contient "CONTEXTE : ... QUESTION : ..."
+  // case_study : choix sélectionné de la sous-question courante (STRUCTURED +
+  // LEGACY_ARRAY gérés par le composant partagé).
+  const caseStudyParsed = q.question_type === 'case_study' ? parseCaseStudyData(q.options) : null
+  const caseStudySubQId = caseStudyParsed?.questions[caseStudyCurrentQ]?.id ?? ''
+  const caseStudySelectedId = caseStudyAnswers[caseStudySubQId] ?? null
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#0F0F0F' }}>
@@ -875,128 +898,17 @@ export default function DailyQuizModal({
               )
             })()}
 
-            {/* === CASE STUDY LEGACY (Axe 1) — options = tableau MCQ, contexte dans question_text === */}
-            {isCaseStudyLegacy && (() => {
-              const opts = (() => {
-                try {
-                  const raw = typeof q.options === 'string' ? JSON.parse(q.options) : q.options
-                  return Array.isArray(raw) ? raw as Array<{id: string; text: string; correct: boolean}> : []
-                } catch { return [] }
-              })()
-
-              return (
-                <div className="flex flex-col gap-2.5">
-                  {opts.map((opt, i) => {
-                    const isSelected = selectedAnswer === opt.id
-                    const isCorrectOpt = opt.correct
-                    let bg = '#242424', border = '#333', textColor = '#e5e5e5'
-                    if (isSelected && !showFeedback) { bg = 'rgba(45,27,150,0.25)'; border = '#2D1B96' }
-                    if (showFeedback) {
-                      if (isCorrectOpt) { bg = '#F0FDF4'; border = '#4ADE80' }
-                      else if (isSelected && !isCorrectOpt) { bg = '#FEF2F2'; border = '#FCA5A5' }
-                      else { textColor = '#94A3B8' }
-                    }
-                    return (
-                      <button
-                        key={opt.id}
-                        disabled={showFeedback}
-                        onClick={() => {
-                          if (showFeedback) return
-                          setSelectedAnswer(opt.id)
-                          const correct = opt.correct
-                          setIsCorrect(correct)
-                          if (correct) { setScore(s => s + 1); setTotalPoints(p => p + q.points) }
-                          setShowFeedback(true)
-                        }}
-                        className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
-                        style={{ background: bg, border: `2px solid ${border}`, cursor: showFeedback ? 'default' : 'pointer' }}
-                      >
-                        <span className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0"
-                          style={{ background: showFeedback && isCorrectOpt ? '#BBF7D0' : showFeedback && isSelected && !isCorrectOpt ? '#FECACA' : '#EEF2FF', color: showFeedback && isCorrectOpt ? '#166534' : showFeedback && isSelected && !isCorrectOpt ? '#991B1B' : '#4F46E5' }}>
-                          {showFeedback && isCorrectOpt ? '✓' : showFeedback && isSelected && !isCorrectOpt ? '✗' : String.fromCharCode(65 + i)}
-                        </span>
-                        <span className="flex-1 font-semibold text-sm" style={{ color: textColor }}>{opt.text}</span>
-                      </button>
-                    )
-                  })}
-                </div>
-              )
-            })()}
-
-            {/* === CASE_STUDY === */}
-            {isCaseStudyStructured && (() => {
-              // Parser les options case_study
-              let caseOpts: { context?: { history?: string; chief_complaint?: string }; questions?: Array<{ id: string; text: string; choices: Array<{ id: string; text: string; correct: boolean }>; feedback?: string; points?: number }> } | null = null
-              try {
-                const raw = typeof q.options === 'string' ? JSON.parse(q.options) : q.options
-                if (raw && 'context' in raw && 'questions' in raw) caseOpts = raw
-              } catch { caseOpts = null }
-
-              if (!caseOpts) return <p className="text-gray-400 text-sm">Cas clinique non disponible</p>
-
-              const subQ = caseOpts.questions?.[caseStudyCurrentQ]
-              if (!subQ) return null
-
-              return (
-                <div className="space-y-4">
-                  {caseOpts.context?.history && (
-                    <div className="rounded-2xl p-4" style={{ background: '#0f172a', border: '1px solid #1e3a5f' }}>
-                      <p className="text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: '#60a5fa' }}>Contexte clinique</p>
-                      <p className="text-sm leading-relaxed" style={{ color: '#e5e5e5' }}>{caseOpts.context.history}</p>
-                      {caseOpts.context?.chief_complaint && <p className="text-sm mt-1 italic" style={{ color: '#a3a3a3' }}>{caseOpts.context.chief_complaint}</p>}
-                    </div>
-                  )}
-
-                  {caseOpts.questions && caseOpts.questions.length > 1 && (
-                    <p className="text-[11px] text-gray-400">Question {caseStudyCurrentQ + 1} / {caseOpts.questions.length}</p>
-                  )}
-                  <p className="font-bold text-[15px] leading-snug" style={{ color: '#e5e5e5' }}>{subQ.text}</p>
-
-                  <div className="flex flex-col gap-2.5">
-                    {subQ.choices.map((choice, i) => {
-                      const isSelected = caseStudyAnswers[subQ.id] === choice.id
-                      const isCorrectChoice = choice.correct
-                      let bg = '#242424', border = '#333', textColor = '#e5e5e5'
-                      if (isSelected && !showFeedback) { bg = 'rgba(45,27,150,0.25)'; border = '#2D1B96' }
-                      if (showFeedback) {
-                        if (isCorrectChoice) { bg = '#F0FDF4'; border = '#4ADE80' }
-                        else if (isSelected && !isCorrectChoice) { bg = '#FEF2F2'; border = '#FCA5A5' }
-                        else { textColor = '#94A3B8' }
-                      }
-                      return (
-                        <button
-                          key={choice.id}
-                          disabled={showFeedback || !!caseStudyAnswers[subQ.id]}
-                          onClick={() => {
-                            if (showFeedback || caseStudyAnswers[subQ.id]) return
-                            const newAnswers = { ...caseStudyAnswers, [subQ.id]: choice.id }
-                            setCaseStudyAnswers(newAnswers)
-                            const isLastSubQ = caseStudyCurrentQ >= (caseOpts!.questions!.length - 1)
-                            if (isLastSubQ) {
-                              const correct = choice.correct
-                              setIsCorrect(correct)
-                              setPointsEarned(correct ? q.points : 0)
-                              if (correct) { setScore(s => s + 1); setTotalPoints(p => p + q.points) }
-                              setShowFeedback(true)
-                            } else {
-                              setTimeout(() => setCaseStudyCurrentQ(c => c + 1), 600)
-                            }
-                          }}
-                          className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
-                          style={{ background: bg, border: `2px solid ${border}`, cursor: showFeedback ? 'default' : 'pointer' }}
-                        >
-                          <span className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0"
-                            style={{ background: showFeedback && isCorrectChoice ? '#BBF7D0' : showFeedback && isSelected && !isCorrectChoice ? '#FECACA' : '#EEF2FF', color: showFeedback && isCorrectChoice ? '#166534' : showFeedback && isSelected && !isCorrectChoice ? '#991B1B' : '#4F46E5' }}>
-                            {showFeedback && isCorrectChoice ? '\u2713' : showFeedback && isSelected && !isCorrectChoice ? '\u2717' : String.fromCharCode(65 + i)}
-                          </span>
-                          <span className="flex-1 font-semibold text-sm" style={{ color: textColor }}>{choice.text}</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })()}
+            {/* === CASE STUDY (STRUCTURED + LEGACY_ARRAY) === */}
+            {q.question_type === 'case_study' && (
+              <CaseStudyQuestion
+                options={q.options}
+                showFeedback={showFeedback}
+                selectedChoiceId={caseStudySelectedId}
+                onSelectChoice={handleCaseStudySelect}
+                currentSubQ={caseStudyCurrentQ}
+                onSubQChange={setCaseStudyCurrentQ}
+              />
+            )}
 
             {/* === CHECKBOX === */}
             {normalizedType === 'checkbox' && (() => {
