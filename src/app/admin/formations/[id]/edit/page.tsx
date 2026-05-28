@@ -20,6 +20,7 @@ interface FormData {
   category: string;
   level: string;
   total_sequences: number;
+  axe_cp: number | null;
 }
 
 export default function EditFormationPage() {
@@ -36,6 +37,7 @@ export default function EditFormationPage() {
     category: 'esthetique',
     level: 'intermediate',
     total_sequences: 16,
+    axe_cp: null,
   });
   const router = useRouter();
   const params = useParams();
@@ -67,6 +69,7 @@ export default function EditFormationPage() {
         category: data.category || 'esthetique',
         level: data.level || 'intermediate',
         total_sequences: data.total_sequences || 16,
+        axe_cp: data.axe_cp ?? null,
       });
     } catch (error) {
       console.error('Erreur:', error);
@@ -305,6 +308,21 @@ export default function EditFormationPage() {
               ]}
               className="rounded-xl"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Axe CP</label>
+            <select
+              value={formData.axe_cp ?? ''}
+              onChange={(e) => setFormData({ ...formData, axe_cp: e.target.value === '' ? null : parseInt(e.target.value) })}
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="">Hors CP / formation bonus</option>
+              <option value={1}>Axe 1 — Actualiser les connaissances et compétences</option>
+              <option value={2}>Axe 2 — Renforcer la qualité des pratiques</option>
+              <option value={3}>Axe 3 — Améliorer la relation avec les patients</option>
+              <option value={4}>Axe 4 — Mieux prendre en compte sa santé personnelle</option>
+            </select>
           </div>
 
           <TextField
