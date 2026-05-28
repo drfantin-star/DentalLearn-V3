@@ -418,23 +418,47 @@ export default function HomePage() {
           <h2 className="text-xl font-black text-white mb-4 flex items-center gap-2">
             🔍 Explorer
           </h2>
-          <h3 className="text-base font-bold text-white mb-3">
-            Pratiques cliniques
-          </h3>
+          <Link
+            href="/formation"
+            className="group mb-3 flex w-fit items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          >
+            <h3 className="text-base font-bold text-white">Pratiques cliniques</h3>
+            <ChevronRight
+              size={18}
+              aria-hidden="true"
+              className="text-white/60 transition-all group-hover:translate-x-0.5 group-hover:text-white"
+            />
+          </Link>
           <CategoryCarousel
             categories={axe12Categories}
             scrollRef={axe12ScrollRef}
           />
-          <h3 className="text-base font-bold text-white mt-6 mb-3">
-            Relation Patient
-          </h3>
+          <Link
+            href="/patient"
+            className="group mt-6 mb-3 flex w-fit items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          >
+            <h3 className="text-base font-bold text-white">Relation Patient</h3>
+            <ChevronRight
+              size={18}
+              aria-hidden="true"
+              className="text-white/60 transition-all group-hover:translate-x-0.5 group-hover:text-white"
+            />
+          </Link>
           <CategoryCarousel
             categories={axe3Categories}
             scrollRef={axe3ScrollRef}
           />
-          <h3 className="text-base font-bold text-white mt-6 mb-3">
-            Santé Praticien
-          </h3>
+          <Link
+            href="/sante"
+            className="group mt-6 mb-3 flex w-fit items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          >
+            <h3 className="text-base font-bold text-white">Santé Praticien</h3>
+            <ChevronRight
+              size={18}
+              aria-hidden="true"
+              className="text-white/60 transition-all group-hover:translate-x-0.5 group-hover:text-white"
+            />
+          </Link>
           <CategoryCarousel
             categories={axe4Categories}
             scrollRef={axe4ScrollRef}

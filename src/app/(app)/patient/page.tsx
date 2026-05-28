@@ -4,6 +4,8 @@ import React, { useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { CATEGORIES } from '@/lib/supabase/types'
+import BibliothequeBanner from '@/components/ui/BibliothequeBanner'
+import { BIBLIOTHEQUE_PATIENT } from '@/lib/constants/bibliotheque'
 
 function PatientPageContent() {
   const searchParams = useSearchParams()
@@ -34,6 +36,12 @@ function PatientPageContent() {
       </header>
 
       <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 min-h-screen" style={{ background: '#0F0F0F' }}>
+        <BibliothequeBanner
+          axe={3}
+          href="/patient/bibliotheque"
+          count={BIBLIOTHEQUE_PATIENT.length}
+          className="mb-6"
+        />
         <h2 className="text-xl font-black text-white mb-4">
           🔍 Explorer par thème
         </h2>
