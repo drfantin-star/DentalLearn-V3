@@ -129,6 +129,9 @@ export async function generateFormationPDF(
       ['Séquences complétées', `${data.parcours.nb_sequences} / ${data.parcours.nb_sequences_total}`],
       ['Taux de complétion', `${data.parcours.taux_completion.toFixed(0)} %`],
       ['Taux de réussite aux quiz', `${data.parcours.taux_reussite_quiz.toFixed(1)} %`],
+      ...(data.acquisition
+        ? [['Acquisition des questions', `${data.acquisition.acquired}/${data.acquisition.total} questions acquises`]]
+        : []),
     ],
   })
 
@@ -154,8 +157,20 @@ export async function generateFormationPDF(
     105, valY + 15, { align: 'center' }
   )
 
+  // ── MENTION ACQUISITION (PARTIE_A_v4 §4.3) ───────────────────
+  let sigY = valY + 30
+  if (data.acquisition) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.setTextColor(...teal)
+    doc.text(
+      `Acquisition validée sur ${data.acquisition.acquired}/${data.acquisition.total} questions`,
+      105, valY + 28, { align: 'center' }
+    )
+    sigY = valY + 38
+  }
+
   // ── SIGNATURE / TAMPON ────────────────────────────────────────
-  const sigY = valY + 30
   doc.setTextColor(...darkGray)
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')

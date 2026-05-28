@@ -24,6 +24,9 @@ export interface Formation {
   cp_eligible: boolean | null
   cp_axe_id: number | null
   cp_hours: number | null
+  // Axe CP réel (1..3). Sert de critère de périmètre au modèle d'acquisition
+  // par bloc (formations CP = axe_cp non nul, décision Dr Fantin 28/05/2026).
+  axe_cp: number | null
   likes_count: number
   created_at: string
   updated_at: string
@@ -37,6 +40,9 @@ export interface Sequence {
   id: string
   formation_id: string
   sequence_number: number
+  // Modèle d'acquisition par bloc (PARTIE_A_v4 §2.4). Optionnel pour ne pas
+  // casser les fetches qui ne sélectionnent pas cette colonne ; NOT NULL en BDD.
+  bloc_number?: number
   title: string
   unlock_day: number | null
   estimated_duration_minutes: number

@@ -40,6 +40,12 @@ export interface FormationAttestationData {
     taux_reussite_quiz: number
     taux_completion: number
   }
+  // Acquisition par bloc (PARTIE_A_v4 §4.3) — présent pour les formations CP.
+  // Mention « Acquisition validée sur N/N questions » sur le PDF.
+  acquisition?: {
+    acquired: number
+    total: number
+  }
   verification_code: string   // "DL-XXXXXX-XXXX"
   organisme?: AttestationOrganisme  // T7 — si absent, fallback Dentalschool
 }

@@ -660,3 +660,58 @@ export function useFormationCompletion(formationId: string | null, sequences: Se
 
   return { isCompleted, completionPercent, completedCount }
 }
+
+// ============================================
+// HOOK — Statut d'acquisition par bloc (PARTIE_A_v4 §2.4)
+// ============================================
+
+export interface BlocAcquisitionStatus {
+  bloc_number: number
+  total_questions: number
+  acquired_questions: number
+  failed_questions: number
+  is_complete: boolean
+  is_locked: boolean
+}
+
+// Lit get_bloc_acquisition_status (RLS via auth.uid()). `enabled` permet de
+// n'activer le fetch que pour les formations CP (axe_cp non nul).
+export function useBlocAcquisitionStatus(formationId: string | null, enabled: boolean) {
+  const [blocs, setBlocs] = useState<BlocAcquisitionStatus[]>([])
+  const [loading, setLoading] = useState(false)
+
+  const load = useCallback(async () => {
+    if (!formationId || !enabled) {
+      setBlocs([])
+      return
+    }
+    try {
+      setLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setBlocs([])
+        return
+      }
+      const { data, error } = await supabase.rpc('get_bloc_acquisition_status', {
+        p_user_id: user.id,
+        p_formation_id: formationId,
+      })
+      if (!error && data) {
+        setBlocs(data as BlocAcquisitionStatus[])
+      } else {
+        setBlocs([])
+      }
+    } catch (err) {
+      console.error('bloc acquisition status load error:', err)
+      setBlocs([])
+    } finally {
+      setLoading(false)
+    }
+  }, [formationId, enabled])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  return { blocs, loading, refresh: load }
+}

@@ -10,6 +10,8 @@ import {
   Star,
   Trophy,
   Sparkles,
+  AlertTriangle,
+  CheckCircle2,
 } from 'lucide-react'
 import {
   useFormation,
@@ -17,9 +19,11 @@ import {
   usePremiumAccess,
   useFormationPoints,
   useFormationCompletion,
+  useBlocAcquisitionStatus,
   isSequenceAccessible,
   getCategoryConfig,
   type Sequence,
+  type BlocAcquisitionStatus,
 } from '@/lib/supabase'
 import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
 import { useAudio } from '@/context/AudioContext'
@@ -62,6 +66,8 @@ function SequenceCard({
   const isCurrent = accessibility.reason === 'unlocked' || accessibility.reason === 'free'
   const isLocked = accessibility.reason === 'premium_required'
   const isNotUnlocked = accessibility.reason === 'not_unlocked'
+  // Verrou inter-bloc (PARTIE_A_v4 §2.4) : le bloc précédent n'est pas acquis.
+  const isBlocLocked = accessibility.reason === 'bloc_locked'
 
   // Styles conditionnels
   let bgColor = '#1e1e1e'
@@ -73,7 +79,7 @@ function SequenceCard({
   } else if (isCurrent && !isCompleted) {
     bgColor = '#242424'
     borderColor = gradient.from
-  } else if (isLocked || isNotUnlocked) {
+  } else if (isLocked || isNotUnlocked || isBlocLocked) {
     bgColor = '#1a1a1a'
     borderColor = '#333'
   }
@@ -88,7 +94,7 @@ function SequenceCard({
   } else if (isCurrent && !isCompleted) {
     badgeBg = gradient.from
     badgeColor = 'white'
-  } else if (isLocked || isNotUnlocked) {
+  } else if (isLocked || isNotUnlocked || isBlocLocked) {
     badgeBg = '#CBD5E1'
     badgeColor = 'white'
   }
@@ -110,7 +116,7 @@ function SequenceCard({
         borderRadius: 16,
         padding: '12px 14px',
         cursor: canClick ? 'pointer' : 'not-allowed',
-        opacity: isNotUnlocked ? 0.5 : 1,
+        opacity: isNotUnlocked || isBlocLocked ? 0.5 : 1,
       }}
     >
       <div className="flex items-center gap-3">
@@ -121,7 +127,7 @@ function SequenceCard({
         >
           {isCompleted ? (
             <Check size={18} />
-          ) : isLocked ? (
+          ) : isLocked || isBlocLocked ? (
             <Lock size={14} />
           ) : (
             sequence.sequence_number
@@ -132,7 +138,7 @@ function SequenceCard({
         <div className="flex-1 min-w-0">
           <p
             className={`font-semibold text-[15px] leading-snug ${
-              isLocked || isNotUnlocked ? 'text-gray-400' : 'text-[#e5e5e5]'
+              isLocked || isNotUnlocked || isBlocLocked ? 'text-gray-400' : 'text-[#e5e5e5]'
             }`}
           >
             {sequence.title}
@@ -259,6 +265,15 @@ export default function FormationDetail({
     closePostIntroModal()
   }
 
+  // Modèle d'acquisition par bloc (PARTIE_A_v4 §2.4) : uniquement formations CP.
+  const isCpFormation = formation?.axe_cp != null
+  const { blocs: blocStatus } = useBlocAcquisitionStatus(formationId, isCpFormation)
+  const blocStatusMap = useMemo(() => {
+    const m = new Map<number, BlocAcquisitionStatus>()
+    blocStatus.forEach(b => m.set(b.bloc_number, b))
+    return m
+  }, [blocStatus])
+
   const categoryConfig = useMemo(() => {
     return getCategoryConfig(formation?.category || null)
   }, [formation?.category])
@@ -272,17 +287,18 @@ export default function FormationDetail({
   const nextSequence = useMemo(() => {
     if (!sequences.length) return null
     
-    // Chercher la première séquence accessible et non complétée
+    // Chercher la première séquence accessible et non complétée. Pour les
+    // formations CP, on saute les séquences d'un bloc verrouillé (PARTIE_A §2.4).
     for (const seq of sequences) {
       const access = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium)
-      if (access.accessible && access.reason !== 'completed') {
-        return seq
-      }
+      if (!access.accessible || access.reason === 'completed') continue
+      if (isCpFormation && blocStatusMap.get(seq.bloc_number ?? 1)?.is_locked) continue
+      return seq
     }
 
     // Si toutes complétées, retourner null (formation terminée)
     return null
-  }, [sequences, currentSequence, completedSequenceIds, isPremium])
+  }, [sequences, currentSequence, completedSequenceIds, isPremium, isCpFormation, blocStatusMap])
 
   // Loading state
   if (loading) {
@@ -404,19 +420,90 @@ export default function FormationDetail({
           Séquences ({sequences.length})
         </h3>
 
-        {sequences.map((seq) => {
-          const accessibility = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium)
-          
-          return (
-            <SequenceCard
-              key={seq.id}
-              sequence={seq}
-              accessibility={accessibility}
-              gradient={categoryConfig.gradient}
-              onStart={() => onStartSequence(seq)}
-            />
-          )
-        })}
+        {isCpFormation && blocStatus.length > 0 ? (
+          Array.from(new Set(sequences.map(s => s.bloc_number ?? 1)))
+            .sort((a, b) => a - b)
+            .map((blocNum) => {
+              const b = blocStatusMap.get(blocNum)
+              const blocSeqs = sequences.filter(s => (s.bloc_number ?? 1) === blocNum)
+              const locked = !!b?.is_locked
+              const complete = !!b?.is_complete
+              const needsRemediation = !!b && !b.is_locked && !b.is_complete && b.failed_questions > 0
+
+              let statusLabel = 'En cours'
+              let statusColor = '#a3a3a3'
+              let statusBg = '#242424'
+              let StatusIcon = Play
+              if (locked) {
+                statusLabel = 'Verrouillé'
+                statusColor = '#a3a3a3'
+                statusBg = '#1a1a1a'
+                StatusIcon = Lock
+              } else if (complete) {
+                statusLabel = 'Acquis'
+                statusColor = '#86EFAC'
+                statusBg = 'rgba(34,197,94,0.14)'
+                StatusIcon = CheckCircle2
+              } else if (needsRemediation) {
+                statusLabel = 'Remédiation requise'
+                statusColor = '#FBBF24'
+                statusBg = 'rgba(245,158,11,0.14)'
+                StatusIcon = AlertTriangle
+              }
+
+              return (
+                <div key={`bloc-${blocNum}`} className="mb-4">
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <div className="flex items-baseline gap-2 min-w-0">
+                      <span className="text-[13px] font-bold text-[#e5e5e5] shrink-0">Bloc {blocNum}</span>
+                      {b && b.total_questions > 0 && (
+                        <span className="text-[11px] text-[#a3a3a3] truncate">
+                          {b.acquired_questions}/{b.total_questions} questions acquises
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0"
+                      style={{ background: statusBg, color: statusColor }}
+                    >
+                      <StatusIcon size={12} />
+                      {statusLabel}
+                    </span>
+                  </div>
+
+                  {blocSeqs.map((seq) => {
+                    const base = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium)
+                    const accessibility = locked
+                      ? { accessible: false, reason: 'bloc_locked' }
+                      : base
+                    return (
+                      <SequenceCard
+                        key={seq.id}
+                        sequence={seq}
+                        accessibility={accessibility}
+                        gradient={categoryConfig.gradient}
+                        onStart={() => onStartSequence(seq)}
+                      />
+                    )
+                  })}
+                </div>
+              )
+            })
+        ) : (
+          sequences.map((seq) => {
+            const accessibility = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium)
+
+            return (
+              <SequenceCard
+                key={seq.id}
+                sequence={seq}
+                accessibility={accessibility}
+                gradient={categoryConfig.gradient}
+                onStart={() => onStartSequence(seq)}
+              />
+            )
+          })
+        )}
 
         {sequences.length === 0 && (
           <p className="text-gray-400 text-sm text-center py-8">

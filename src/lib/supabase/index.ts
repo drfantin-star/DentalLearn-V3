@@ -41,4 +41,7 @@ export {
   useFormationLike,
   useFormationPoints,
   useFormationCompletion,
+  useBlocAcquisitionStatus,
 } from './hooks'
+
+export type { BlocAcquisitionStatus } from './hooks'
