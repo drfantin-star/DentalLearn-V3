@@ -37,6 +37,9 @@ export interface Sequence {
   id: string
   formation_id: string
   sequence_number: number
+  // Modèle d'acquisition par bloc (PARTIE_A_v4 §2.4). Optionnel pour ne pas
+  // casser les fetches qui ne sélectionnent pas cette colonne ; NOT NULL en BDD.
+  bloc_number?: number
   title: string
   unlock_day: number | null
   estimated_duration_minutes: number
