@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
@@ -14,20 +14,50 @@ import { useAudioPlayer, type AudioTrack } from '@/context/AudioPlayerContext'
 
 const FETCH_LIMIT = 50
 
+type SpecialiteChip = { slug: string; label: string }
+type SynthesesPayload = { data: NewsCard[]; total: number; page: number }
+
+function buildSyntheseUrl(page: number, filter: string): string {
+  const params = new URLSearchParams({
+    limit: String(FETCH_LIMIT),
+    page: String(page),
+  })
+  // Filtre serveur : 'all' = aucun param specialite (tout le catalogue).
+  if (filter !== 'all') params.set('specialite', filter)
+  return `/api/news/syntheses?${params.toString()}`
+}
+
+function deriveSpecialites(items: NewsCard[]): SpecialiteChip[] {
+  const slugs = new Set<string>()
+  for (const item of items) {
+    if (item.specialite) slugs.add(item.specialite)
+  }
+  return NEWS_SPECIALITES
+    .filter((s) => slugs.has(s.value))
+    .map((s) => ({ slug: s.value, label: NEWS_SPECIALITE_LABELS[s.value] ?? s.label }))
+}
+
 export default function NewsPage() {
   const [items, setItems] = useState<NewsCard[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [loading, setLoading] = useState(true)
+  const [listLoading, setListLoading] = useState(false)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const [activeFilter, setActiveFilter] = useState<string>('all')
+  // Liste des chips de spécialité, figée depuis le premier chargement non
+  // filtré. On ne la recalcule pas depuis `items` (désormais filtré côté
+  // serveur), sinon elle s'effondrerait à la seule spécialité active.
+  const [availableSpecialites, setAvailableSpecialites] = useState<SpecialiteChip[]>([])
 
   const [modalNewsId, setModalNewsId] = useState<string | null>(null)
-  const [activeFilter, setActiveFilter] = useState<string>('all')
   const [playlistLoading, setPlaylistLoading] = useState(false)
 
   const { addToQueue } = useAudioPlayer()
 
+  const hasLoadedOnce = useRef(false)
   const filterScrollRef = useRef<HTMLDivElement>(null)
   const scrollFilters = (dir: 'left' | 'right') => {
     filterScrollRef.current?.scrollBy({
@@ -36,21 +66,29 @@ export default function NewsPage() {
     })
   }
 
+  // Chargement initial + refetch page 1 à chaque changement de filtre.
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
+    const isInitial = !hasLoadedOnce.current
+    if (isInitial) setLoading(true)
+    else setListLoading(true)
     setError(null)
 
-    fetch(`/api/news/syntheses?limit=${FETCH_LIMIT}&page=1`)
+    fetch(buildSyntheseUrl(1, activeFilter))
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json() as Promise<{ data: NewsCard[]; total: number; page: number }>
+        return res.json() as Promise<SynthesesPayload>
       })
       .then((payload) => {
         if (cancelled) return
         setItems(payload.data ?? [])
         setTotal(payload.total ?? 0)
         setPage(1)
+        // Fige la liste des chips uniquement sur le chargement non filtré.
+        if (activeFilter === 'all') {
+          setAvailableSpecialites(deriveSpecialites(payload.data ?? []))
+        }
+        hasLoadedOnce.current = true
       })
       .catch((err: unknown) => {
         if (cancelled) return
@@ -59,24 +97,24 @@ export default function NewsPage() {
       .finally(() => {
         if (cancelled) return
         setLoading(false)
+        setListLoading(false)
       })
 
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [activeFilter])
 
   const loadMore = useCallback(async () => {
     if (loadingMore) return
     const nextPage = page + 1
     setLoadingMore(true)
     try {
-      const res = await fetch(`/api/news/syntheses?limit=${FETCH_LIMIT}&page=${nextPage}`)
+      const res = await fetch(buildSyntheseUrl(nextPage, activeFilter))
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const payload = (await res.json()) as { data: NewsCard[]; total: number; page: number }
-      // Anti-doublons : id-based dedupe au cas où une nouvelle synthèse aurait
-      // été insérée entre deux fetches et décalerait la pagination par
-      // published_at desc.
+      const payload = (await res.json()) as SynthesesPayload
+      // Anti-doublons par id : protège contre une insertion entre deux fetches
+      // qui décalerait la pagination (published_at desc).
       setItems((prev) => {
         const seen = new Set(prev.map((i) => i.id))
         const next = (payload.data ?? []).filter((i) => !seen.has(i.id))
@@ -89,24 +127,9 @@ export default function NewsPage() {
     } finally {
       setLoadingMore(false)
     }
-  }, [loadingMore, page, total])
+  }, [loadingMore, page, activeFilter, total])
 
   const hasMore = items.length < total
-
-  const presentSpecialites = useMemo(() => {
-    const slugs = new Set<string>()
-    for (const item of items) {
-      if (item.specialite) slugs.add(item.specialite)
-    }
-    return NEWS_SPECIALITES
-      .filter((s) => slugs.has(s.value))
-      .map((s) => ({ slug: s.value, label: NEWS_SPECIALITE_LABELS[s.value] ?? s.label }))
-  }, [items])
-
-  const filteredNews = useMemo(() => {
-    if (activeFilter === 'all') return items
-    return items.filter((item) => item.specialite === activeFilter)
-  }, [items, activeFilter])
 
   return (
     <div className="min-h-screen bg-[#0F0F0F]">
@@ -146,13 +169,9 @@ export default function NewsPage() {
           <p className="px-4 text-sm text-red-400">
             Impossible de charger les actualités ({error}).
           </p>
-        ) : items.length === 0 ? (
-          <p className="px-4 text-sm text-gray-400">
-            Aucune actualité disponible pour le moment.
-          </p>
         ) : (
           <section>
-            {filteredNews.length > 0 && (
+            {!listLoading && items.length > 0 && (
               <button
                 type="button"
                 disabled={playlistLoading}
@@ -164,7 +183,7 @@ export default function NewsPage() {
                   setPlaylistLoading(true)
                   try {
                     const results = await Promise.all(
-                      filteredNews.map(async (n): Promise<AudioTrack | null> => {
+                      items.map(async (n): Promise<AudioTrack | null> => {
                         try {
                           const res = await fetch(`/api/news/syntheses/${n.id}`)
                           if (!res.ok) return null
@@ -194,94 +213,106 @@ export default function NewsPage() {
               >
                 {playlistLoading
                   ? '⏳ Préparation…'
-                  : `▶ Écouter la playlist (${filteredNews.length} articles)`}
+                  : `▶ Écouter la playlist (${items.length} articles)`}
               </button>
             )}
 
-            <div className="relative mb-4">
-              <button
-                type="button"
-                onClick={() => scrollFilters('left')}
-                aria-label="Faire défiler vers la gauche"
-                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10
-                           w-9 h-9 rounded-full bg-[#242424] shadow-md items-center
-                           justify-center text-gray-300 hover:bg-gray-50"
-              >
-                <ChevronLeft size={18} />
-              </button>
-
-              <div
-                ref={filterScrollRef}
-                className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 px-4"
-              >
+            {availableSpecialites.length > 0 && (
+              <div className="relative mb-4">
                 <button
                   type="button"
-                  onClick={() => setActiveFilter('all')}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
-                    activeFilter === 'all'
-                      ? 'bg-violet-500 text-white'
-                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                  }`}
+                  onClick={() => scrollFilters('left')}
+                  aria-label="Faire défiler vers la gauche"
+                  className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10
+                             w-9 h-9 rounded-full bg-[#242424] shadow-md items-center
+                             justify-center text-gray-300 hover:bg-gray-50"
                 >
-                  Toutes
+                  <ChevronLeft size={18} />
                 </button>
-                {presentSpecialites.map((s) => (
+
+                <div
+                  ref={filterScrollRef}
+                  className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 px-4"
+                >
                   <button
-                    key={s.slug}
                     type="button"
-                    onClick={() => setActiveFilter(s.slug)}
+                    onClick={() => setActiveFilter('all')}
                     className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
-                      activeFilter === s.slug
+                      activeFilter === 'all'
                         ? 'bg-violet-500 text-white'
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                     }`}
                   >
-                    {s.label}
+                    Toutes
                   </button>
-                ))}
-              </div>
+                  {availableSpecialites.map((s) => (
+                    <button
+                      key={s.slug}
+                      type="button"
+                      onClick={() => setActiveFilter(s.slug)}
+                      className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                        activeFilter === s.slug
+                          ? 'bg-violet-500 text-white'
+                          : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
 
-              <button
-                type="button"
-                onClick={() => scrollFilters('right')}
-                aria-label="Faire défiler vers la droite"
-                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10
-                           w-9 h-9 rounded-full bg-[#242424] shadow-md items-center
-                           justify-center text-gray-300 hover:bg-gray-50"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-
-            {filteredNews.length === 0 ? (
-              <p className="px-4 text-sm text-gray-400">
-                Aucune actualité pour cette spécialité.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-3 px-4">
-                {filteredNews.map((item) => (
-                  <NewsCardItem
-                    key={item.id}
-                    news={item}
-                    variant="grid"
-                    onClick={(n) => setModalNewsId(n.id)}
-                  />
-                ))}
+                <button
+                  type="button"
+                  onClick={() => scrollFilters('right')}
+                  aria-label="Faire défiler vers la droite"
+                  className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10
+                             w-9 h-9 rounded-full bg-[#242424] shadow-md items-center
+                             justify-center text-gray-300 hover:bg-gray-50"
+                >
+                  <ChevronRight size={18} />
+                </button>
               </div>
             )}
 
-            {hasMore && (
-              <div className="flex justify-center mt-6 px-4">
-                <button
-                  type="button"
-                  disabled={loadingMore}
-                  onClick={loadMore}
-                  className="px-5 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50
-                             rounded-full text-gray-200 text-sm font-medium transition"
-                >
-                  {loadingMore ? 'Chargement…' : 'Charger plus'}
-                </button>
+            {listLoading ? (
+              <div className="flex flex-col gap-3 px-4">
+                <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
+                <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
+                <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
               </div>
+            ) : items.length === 0 ? (
+              <p className="px-4 text-sm text-gray-400">
+                {activeFilter === 'all'
+                  ? 'Aucune actualité disponible pour le moment.'
+                  : 'Aucune actualité pour cette spécialité.'}
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-col gap-3 px-4">
+                  {items.map((item) => (
+                    <NewsCardItem
+                      key={item.id}
+                      news={item}
+                      variant="grid"
+                      onClick={(n) => setModalNewsId(n.id)}
+                    />
+                  ))}
+                </div>
+
+                {hasMore && (
+                  <div className="flex justify-center mt-6 px-4">
+                    <button
+                      type="button"
+                      disabled={loadingMore}
+                      onClick={loadMore}
+                      className="px-5 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50
+                                 rounded-full text-gray-200 text-sm font-medium transition"
+                    >
+                      {loadingMore ? 'Chargement…' : 'Charger plus'}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </section>
         )}
