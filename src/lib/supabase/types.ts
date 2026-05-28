@@ -24,6 +24,9 @@ export interface Formation {
   cp_eligible: boolean | null
   cp_axe_id: number | null
   cp_hours: number | null
+  // Axe CP réel (1..3). Sert de critère de périmètre au modèle d'acquisition
+  // par bloc (formations CP = axe_cp non nul, décision Dr Fantin 28/05/2026).
+  axe_cp: number | null
   likes_count: number
   created_at: string
   updated_at: string
