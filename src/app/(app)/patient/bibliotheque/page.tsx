@@ -1,8 +1,11 @@
 import BibliothequeView from '@/components/bibliotheque/BibliothequeView'
-import { BIBLIOTHEQUE_PATIENT } from '@/lib/constants/bibliotheque'
+import { getRessourcesByAxe } from '@/lib/bibliotheque/queries'
 
-export default function PatientBibliothequePage() {
+export const dynamic = 'force-dynamic'
+
+export default async function PatientBibliothequePage() {
+  const ressources = await getRessourcesByAxe(3)
   return (
-    <BibliothequeView axe={3} ressources={BIBLIOTHEQUE_PATIENT} backHref="/patient" />
+    <BibliothequeView axe={3} ressources={ressources} backHref="/patient" />
   )
 }

@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { CATEGORIES } from '@/lib/supabase/types'
 import BibliothequeBanner from '@/components/ui/BibliothequeBanner'
-import { BIBLIOTHEQUE_PATIENT } from '@/lib/constants/bibliotheque'
+import { useRessourceCount } from '@/lib/bibliotheque/useRessourceCount'
 
 function PatientPageContent() {
   const searchParams = useSearchParams()
@@ -17,6 +17,7 @@ function PatientPageContent() {
   }, [])
 
   const axe3Categories = CATEGORIES.filter((c) => c.type === 'axe3')
+  const biblioCount = useRessourceCount(3)
 
   return (
     <>
@@ -39,7 +40,7 @@ function PatientPageContent() {
         <BibliothequeBanner
           axe={3}
           href="/patient/bibliotheque"
-          count={BIBLIOTHEQUE_PATIENT.length}
+          count={biblioCount}
           className="mb-6"
         />
         <h2 className="text-xl font-black text-white mb-4">
