@@ -10,7 +10,7 @@ export interface RessourceBibliotheque {
   source: string // ex. "ADF", "SFCO", "HAS", "INRS", "DentalLearn"
   description?: string // 1 ligne max
   type: 'external' | 'internal'
-  url: string // external : URL officielle ; internal : route/PDF interne
+  url: string // external : URL officielle ; internal : PDF DentalLearn (Supabase Storage public)
   categorie?: string // pour regrouper (ex. "Consentements", "Conseils post-op")
 }
 
@@ -29,21 +29,41 @@ export const BIBLIOTHEQUE_FORMATION: RessourceBibliotheque[] = [
 
 // Axe 3 — Relation patient.
 export const BIBLIOTHEQUE_PATIENT: RessourceBibliotheque[] = [
+  // --- Fiches d'information DentalLearn (hébergées en interne) ---
   {
     id: 'droits-patient',
     titre: 'Vos droits en tant que patient',
     source: 'DentalLearn',
-    description: "Fiche d'information à remettre systématiquement au patient.",
+    description: "Fiche d'information générale à remettre systématiquement au patient.",
     type: 'internal',
-    url: '/patient/bibliotheque/droits-patient',
+    url: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/bibliotheque-publique/fiches-CP/patient/vos-droits.pdf',
     categorie: 'Information patient',
   },
+  {
+    id: 'fiche-enfant',
+    titre: 'Vous accompagnez votre enfant',
+    source: 'DentalLearn',
+    description: "Information destinée aux parents accompagnant un patient mineur.",
+    type: 'internal',
+    url: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/bibliotheque-publique/fiches-CP/patient/enfant.pdf',
+    categorie: 'Information patient',
+  },
+  {
+    id: 'fiche-majeur-protege',
+    titre: 'Vous accompagnez un proche sous protection juridique',
+    source: 'DentalLearn',
+    description: "Information destinée aux tuteurs, curateurs et personnes de confiance.",
+    type: 'internal',
+    url: 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/bibliotheque-publique/fiches-CP/patient/majeur-protege.pdf',
+    categorie: 'Information patient',
+  },
+
+  // --- Documents officiels externes (liens sortants vers les sources) ---
   {
     id: 'consentements-adf',
     titre: 'Formulaires de consentement éclairé (6 disciplines)',
     source: 'ADF',
-    description:
-      'Chirurgie orale, parodontale, pédiatrie, prothèse, implanto, endo. Téléchargement libre en bas de page.',
+    description: 'Chirurgie orale, parodontale, pédiatrie, prothèse, implanto, endo.',
     type: 'external',
     url: 'https://adf.asso.fr/articles/consentement-eclaire-du-patient-vos-formulaires-pour-le-recueillir/',
     categorie: 'Consentements',
@@ -52,8 +72,7 @@ export const BIBLIOTHEQUE_PATIENT: RessourceBibliotheque[] = [
     id: 'sfco-consentements',
     titre: 'Consentements et informations médicales par acte',
     source: 'SFCO',
-    description:
-      'Avulsions, dents de sagesse, implants, greffes, biopsies, comblements sinusiens…',
+    description: 'Avulsions, dents de sagesse, implants, greffes, biopsies, comblements sinusiens…',
     type: 'external',
     url: 'https://societechirorale.com/consentements/',
     categorie: 'Consentements',
@@ -62,10 +81,9 @@ export const BIBLIOTHEQUE_PATIENT: RessourceBibliotheque[] = [
     id: 'sfco-fiches-patient',
     titre: "Fiches d'information à destination des patients",
     source: 'SFCO',
-    description:
-      'Médecine orale et chirurgie orale : conseils post-opératoires, questionnaire médical…',
+    description: 'Médecine orale et chirurgie orale : conseils post-opératoires, questionnaire médical…',
     type: 'external',
-    url: 'https://societechirorale.com/fiches-informations-a-destination-des-patients/',
+    url: 'https://societechirorale.com/pages/sfco/info-du-patient',
     categorie: 'Conseils post-opératoires',
   },
   {
