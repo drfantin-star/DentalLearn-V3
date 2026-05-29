@@ -132,9 +132,10 @@ Depuis le commit `19a589c` (PR auto-inscription user, mai 2026), il existe
   cette table (cf. `useUserFormationProgress` dans `src/lib/supabase/hooks.ts`).
 - **`course_watch_logs`** = audit **DPC immuable**. Plusieurs logs par séquence
   possibles (tracking anti-skip). Ne JAMAIS l'utiliser pour l'UI pédagogique.
-- Les RPC `is_sequence_completed()` et `get_user_completed_sequences()` ont été
-  **retirés** en `19a589c` (ils s'appuyaient sur `course_watch_logs` et créaient
-  une double source de vérité). Ne pas les recréer.
+- Les RPC `is_sequence_completed()` et `get_user_completed_sequences()` ne sont
+  plus appelées par le frontend depuis `19a589c` (source de progression =
+  `SELECT` direct sur `user_sequences`), mais restent présentes en base —
+  suppression DB en attente (dette AUTO-INSCR-D4). Ne pas les réutiliser.
 - **Unique pont autorisé** `course_watch_logs` → `user_sequences` :
   `backfillIntroCompletions` dans `src/components/formation/EnrollmentCTA.tsx`,
   qui rétro-marque à l'inscription les **intros audio-only** déjà écoutées
