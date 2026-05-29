@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-export type AttestationType = 'formation_online' | 'epp'
+export type AttestationType = 'formation_online' | 'epp' | 'action_cnp_info_patient'
 export type CnpLabellisation = 'en_cours' | 'labellisee' | 'non_applicable'
 
 export interface UserAttestation {
@@ -34,6 +34,7 @@ export interface UserAttestation {
   verification_code: string
   issued_at: string
   created_at: string
+  metadata: Record<string, any> | null
 }
 
 export function useUserAttestations() {
@@ -81,6 +82,7 @@ export function useUserAttestations() {
     error,
     formationOnline: byType('formation_online'),
     epp: byType('epp'),
+    actionF: byType('action_cnp_info_patient'),
     refetch: () => {
       setLoading(true)
       // Trigger via dependency change — simple approach

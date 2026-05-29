@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, Shield, Calendar, Clock, Award, TrendingUp, Loader2 } from 'lucide-react'
+import { Download, Shield, ShieldCheck, Calendar, Clock, Award, TrendingUp, FileText, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { UserAttestation } from '@/lib/hooks/useUserAttestations'
 
@@ -28,6 +28,11 @@ export function AttestationCard({ attestation }: AttestationCardProps) {
 
   const isFormation = attestation.type === 'formation_online'
   const isEpp = attestation.type === 'epp'
+  const isActionF = attestation.type === 'action_cnp_info_patient'
+  const nbRessources =
+    isActionF && typeof attestation.metadata?.nb_ressources === 'number'
+      ? (attestation.metadata.nb_ressources as number)
+      : null
   const axeColor = attestation.axe_cp ? AXE_COLORS[attestation.axe_cp] : 'from-gray-600 to-gray-500'
   const axeLabel = attestation.axe_cp ? AXE_LABELS[attestation.axe_cp] : null
 
@@ -72,11 +77,17 @@ export function AttestationCard({ attestation }: AttestationCardProps) {
           <div className="flex items-center gap-2 text-white">
             {isFormation ? (
               <Award className="w-4 h-4" />
+            ) : isActionF ? (
+              <ShieldCheck className="w-4 h-4" />
             ) : (
               <Shield className="w-4 h-4" />
             )}
             <span className="text-xs font-semibold uppercase tracking-wide">
-              {isFormation ? 'Formation en ligne' : 'Audit EPP'}
+              {isFormation
+                ? 'Formation en ligne'
+                : isActionF
+                  ? "Démarche d'information patient"
+                  : 'Audit EPP'}
             </span>
           </div>
           {axeLabel && (
@@ -126,13 +137,24 @@ export function AttestationCard({ attestation }: AttestationCardProps) {
               </span>
             </div>
           )}
+          {isActionF && nbRessources !== null && (
+            <div className="flex items-center gap-1 text-gray-600 dark:text-neutral-300">
+              <FileText className="w-3.5 h-3.5" />
+              <span>
+                {nbRessources} ressource{nbRessources > 1 ? 's' : ''} attestée
+                {nbRessources > 1 ? 's' : ''}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Label CNP si applicable */}
         {attestation.type_action_cnp && (
           <div className="text-xs text-gray-500 dark:text-neutral-400">
-            <span className="font-medium">Type {attestation.type_action_cnp}</span>
-            {attestation.cnp_labellisation === 'en_cours' && (
+            <span className="font-medium">
+              {isActionF ? 'Action F' : `Type ${attestation.type_action_cnp}`}
+            </span>
+            {!isActionF && attestation.cnp_labellisation === 'en_cours' && (
               <span className="ml-1 italic">— labellisation CNP en cours</span>
             )}
             {attestation.cnp_labellisation === 'labellisee' && (
