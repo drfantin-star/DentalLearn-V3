@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils/cn'
 import {
   AXE_GRADIENTS,
   BIBLIOTHEQUE_DEFAULT_SUBTITLES,
-} from '@/lib/constants/bibliotheque'
+} from '@/lib/bibliotheque/types'
 
 interface BibliothequeBannerProps {
   axe: 1 | 3 | 4 // détermine couleur d'accent + sous-titre par défaut

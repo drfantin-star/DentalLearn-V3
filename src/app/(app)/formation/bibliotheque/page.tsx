@@ -1,8 +1,11 @@
 import BibliothequeView from '@/components/bibliotheque/BibliothequeView'
-import { BIBLIOTHEQUE_FORMATION } from '@/lib/constants/bibliotheque'
+import { getRessourcesByAxe } from '@/lib/bibliotheque/queries'
 
-export default function FormationBibliothequePage() {
+export const dynamic = 'force-dynamic'
+
+export default async function FormationBibliothequePage() {
+  const ressources = await getRessourcesByAxe(1)
   return (
-    <BibliothequeView axe={1} ressources={BIBLIOTHEQUE_FORMATION} backHref="/formation" />
+    <BibliothequeView axe={1} ressources={ressources} backHref="/formation" />
   )
 }

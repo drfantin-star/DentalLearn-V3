@@ -9,7 +9,7 @@ import {
   AXE_GRADIENTS,
   BIBLIOTHEQUE_DEFAULT_SUBTITLES,
   type RessourceBibliotheque,
-} from '@/lib/constants/bibliotheque'
+} from '@/lib/bibliotheque/types'
 
 interface BibliothequeViewProps {
   axe: 1 | 3 | 4

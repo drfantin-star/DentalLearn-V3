@@ -26,7 +26,7 @@ import FormationDetail from '@/components/formation/FormationDetail'
 import SequencePlayer from '@/components/formation/SequencePlayer'
 import Badge from '@/components/ui/Badge'
 import BibliothequeBanner from '@/components/ui/BibliothequeBanner'
-import { BIBLIOTHEQUE_FORMATION } from '@/lib/constants/bibliotheque'
+import { useRessourceCount } from '@/lib/bibliotheque/useRessourceCount'
 import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
 import { createClient } from '@/lib/supabase/client'
 
@@ -85,6 +85,7 @@ function FormationCard({ formation, onSelect }: { formation: Formation; onSelect
 
 export default function FormationPage() {
   const router = useRouter()
+  const biblioCount = useRessourceCount(1)
 
   // Récupérer les formations depuis Supabase
   const { formations: allFormations, loading, error } = useFormations({ isPublished: true })
@@ -264,7 +265,7 @@ export default function FormationPage() {
         <BibliothequeBanner
           axe={1}
           href="/formation/bibliotheque"
-          count={BIBLIOTHEQUE_FORMATION.length}
+          count={biblioCount}
         />
         <section>
           <h2 className="text-xl font-black text-white mb-4">
