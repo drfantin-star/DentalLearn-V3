@@ -10,6 +10,7 @@ import {
   BIBLIOTHEQUE_DEFAULT_SUBTITLES,
   type RessourceBibliotheque,
 } from '@/lib/bibliotheque/types'
+import { AttesterActionFButton } from './AttesterActionFButton'
 
 interface BibliothequeViewProps {
   axe: 1 | 3 | 4
@@ -17,6 +18,10 @@ interface BibliothequeViewProps {
   backHref: string // page d'axe parente (ex. /patient)
   title?: string // défaut : "Bibliothèque de ressources"
   subtitle?: string // défaut adapté à l'axe
+  // Affiche le bouton « Attester ma démarche d'information patient (Action F) »
+  // sous la liste. Réservé à l'axe 3 (/patient/bibliotheque) — les autres axes
+  // ont leurs propres actions CNP, hors périmètre.
+  showActionFAttestation?: boolean
 }
 
 // Regroupe les ressources par catégorie en préservant l'ordre d'apparition.
@@ -130,6 +135,7 @@ export default function BibliothequeView({
   backHref,
   title = 'Bibliothèque de ressources',
   subtitle,
+  showActionFAttestation = false,
 }: BibliothequeViewProps) {
   const gradient = AXE_GRADIENTS[axe]
   const resolvedSubtitle = subtitle ?? BIBLIOTHEQUE_DEFAULT_SUBTITLES[axe]
@@ -186,6 +192,8 @@ export default function BibliothequeView({
             ))}
           </div>
         )}
+
+        {showActionFAttestation && <AttesterActionFButton />}
       </main>
     </>
   )

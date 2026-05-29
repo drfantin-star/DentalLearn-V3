@@ -2,18 +2,23 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Award, Shield, Loader2 } from 'lucide-react'
+import { ArrowLeft, Award, Shield, ShieldCheck, Loader2 } from 'lucide-react'
 import { useUserAttestations } from '@/lib/hooks/useUserAttestations'
 import { AttestationCard } from '@/components/profile/attestations/AttestationCard'
 import { AttestationEmptyState } from '@/components/profile/attestations/AttestationEmptyState'
 
-type TabType = 'formation_online' | 'epp'
+type TabType = 'formation_online' | 'epp' | 'action_cnp_info_patient'
 
 export default function AttestationsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('formation_online')
-  const { formationOnline, epp, loading, error } = useUserAttestations()
+  const { formationOnline, epp, actionF, loading, error } = useUserAttestations()
 
-  const currentList = activeTab === 'formation_online' ? formationOnline : epp
+  const currentList =
+    activeTab === 'formation_online'
+      ? formationOnline
+      : activeTab === 'epp'
+        ? epp
+        : actionF
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black pb-24">
@@ -69,6 +74,22 @@ export default function AttestationsPage() {
               {epp.length > 0 && (
                 <span className="text-xs bg-gray-200 dark:bg-neutral-700 rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
                   {epp.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab('action_cnp_info_patient')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'action_cnp_info_patient'
+                  ? 'bg-white dark:bg-neutral-800 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-neutral-400'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Démarche patient</span>
+              {actionF.length > 0 && (
+                <span className="text-xs bg-gray-200 dark:bg-neutral-700 rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                  {actionF.length}
                 </span>
               )}
             </button>
