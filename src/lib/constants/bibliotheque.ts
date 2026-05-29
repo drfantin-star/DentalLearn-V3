@@ -79,11 +79,11 @@ export const BIBLIOTHEQUE_PATIENT: RessourceBibliotheque[] = [
   },
   {
     id: 'sfco-fiches-patient',
-    titre: "Fiches d'information à destination des patients",
+    titre: 'Conseils post-opératoires (chirurgie orale)',
     source: 'SFCO',
-    description: 'Médecine orale et chirurgie orale : conseils post-opératoires, questionnaire médical…',
+    description: 'Document officiel SFCO à remettre au patient après intervention de chirurgie orale.',
     type: 'external',
-    url: 'https://societechirorale.com/pages/sfco/info-du-patient',
+    url: 'https://societechirorale.com/wp-content/uploads/2023/06/conseils_postoperatoires.pdf',
     categorie: 'Conseils post-opératoires',
   },
   {
