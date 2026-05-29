@@ -107,13 +107,15 @@ function RessourceCard({
   }
 
   return (
-    <Link
+    <a
       href={ressource.url}
-      aria-label={ressource.titre}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`${ressource.titre} (PDF, nouvelle fenêtre)`}
       className={cardClass}
     >
       {inner}
-    </Link>
+    </a>
   )
 }
 
