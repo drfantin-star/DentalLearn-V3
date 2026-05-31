@@ -48,11 +48,30 @@ export async function generateBilanPDF(data: BilanData): Promise<Blob> {
   )
 
   let y = 54
+  const PAGE_BOTTOM = 280
   const ensure = (needed: number) => {
-    if (y + needed > 280) {
+    if (y + needed > PAGE_BOTTOM) {
       doc.addPage()
       y = 20
     }
+  }
+
+  type Part = { txt: string; bold?: boolean; size?: number }
+  const partHeight = (p: Part) => doc.splitTextToSize(p.txt, 182).length * 5 + 2
+  const drawPart = (p: Part) => {
+    doc.setFont('helvetica', p.bold ? 'bold' : 'normal')
+    doc.setFontSize(p.size ?? 9)
+    doc.setTextColor(...dark)
+    const lines = doc.splitTextToSize(p.txt, 182)
+    doc.text(lines, 14, y)
+    y += lines.length * 5 + 2
+  }
+  // Dessine un groupe de lignes d'un seul tenant : si le groupe ne tient pas dans
+  // l'espace restant, on saute la page AVANT (évite qu'une carte soit coupée).
+  const group = (parts: Part[]) => {
+    const total = parts.reduce((acc, p) => acc + partHeight(p), 0)
+    ensure(total)
+    parts.forEach(drawPart)
   }
   const heading = (txt: string) => {
     ensure(14)
@@ -66,22 +85,15 @@ export async function generateBilanPDF(data: BilanData): Promise<Blob> {
     y += 8
     doc.setTextColor(...dark)
   }
-  const line = (txt: string, bold = false, size = 9) => {
-    doc.setFont('helvetica', bold ? 'bold' : 'normal')
-    doc.setFontSize(size)
-    const lines = doc.splitTextToSize(txt, 182)
-    ensure(lines.length * 5 + 2)
-    doc.text(lines, 14, y)
-    y += lines.length * 5 + 2
-  }
 
   // Blocs
   for (const block of data.blocks) {
     heading(block.titre)
     if (block.cbi) {
       for (const sub of block.cbi) {
-        line(`${sub.label} — ${sub.bandLabel} (${sub.score}/100)`, true)
-        if (sub.message) line(sub.message)
+        const parts: Part[] = [{ txt: `${sub.label} — ${sub.bandLabel} (${sub.score}/100)`, bold: true }]
+        if (sub.message) parts.push({ txt: sub.message })
+        group(parts)
       }
     } else if (block.reflexif) {
       const palierLabel =
@@ -90,10 +102,11 @@ export async function generateBilanPDF(data: BilanData): Promise<Blob> {
           : block.reflexif.palier === 'orange'
             ? 'Vigilance'
             : 'Équilibre'
-      line(`${palierLabel} (${block.reflexif.percent}%)`, true)
-      if (block.reflexif.message) line(block.reflexif.message)
+      const parts: Part[] = [{ txt: `${palierLabel} (${block.reflexif.percent}%)`, bold: true }]
+      if (block.reflexif.message) parts.push({ txt: block.reflexif.message })
+      group(parts)
     } else if (block.substancesNeutralMessage) {
-      line(block.substancesNeutralMessage)
+      group([{ txt: block.substancesNeutralMessage }])
     }
     y += 2
   }
@@ -101,16 +114,18 @@ export async function generateBilanPDF(data: BilanData): Promise<Blob> {
   // Top 3
   if (data.results.topPreoccupations.length) {
     heading('Points qui ressortent')
-    data.results.topPreoccupations.forEach((p, i) => line(`${i + 1}. ${p.label}`))
+    data.results.topPreoccupations.forEach((p, i) => group([{ txt: `${i + 1}. ${p.label}` }]))
     y += 2
   }
 
-  // Ressources
+  // Ressources — chaque carte (titre + corps + tél) reste insécable.
   if (data.results.cards.length) {
     heading('Ressources utiles')
     for (const c of data.results.cards) {
-      line(c.title, true)
-      line(c.body + (c.phone ? `  ☎ ${c.phone}` : ''))
+      group([
+        { txt: c.title, bold: true },
+        { txt: c.body + (c.phone ? `  ☎ ${c.phone}` : '') },
+      ])
     }
   }
 

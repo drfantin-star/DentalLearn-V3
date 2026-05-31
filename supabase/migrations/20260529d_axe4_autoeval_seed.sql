@@ -41,14 +41,14 @@ values (
   true,
   $intro$Ce bilan est un miroir de votre santé professionnelle — pas un diagnostic. Il est là pour vous, et pour personne d'autre.
 
-⏱️ Comptez environ 10 minutes (une quarantaine de questions). À faire d'une seule traite.
+⏱️ Comptez entre 15 et 20 minutes (une quarantaine de questions), à faire d'une seule traite.
 
 ⚠️ Vos réponses ne sont pas enregistrées en cours de route. Si vous quittez avant la fin, il faudra recommencer depuis le début. Prévoyez un moment au calme.
 
 🔒 Confidentialité : vos réponses restent sur votre appareil, ne sont jamais transmises à nos serveurs, et ne sont partagées avec personne — ni Ordre, ni employeur. Seule la date de réalisation est conservée, pour générer votre attestation.
 
 À la fin, vous pourrez télécharger votre bilan (il reste sur votre appareil) et votre attestation de réalisation (utile pour votre certification périodique).$intro$,
-  10
+  20
 )
 returning id into q_id;
 
@@ -68,7 +68,7 @@ insert into public.questionnaire_items (block_id, ordre, libelle, libelle_en, ty
   (cbi_id, 2,  $b$À quelle fréquence vous sentez-vous physiquement épuisé·e ?$b$, $b$physically exhausted$b$, 'scale', cbi_freq, 'negatif', false),
   (cbi_id, 3,  $b$À quelle fréquence vous sentez-vous émotionnellement épuisé·e ?$b$, $b$emotionally exhausted$b$, 'scale', cbi_freq, 'negatif', false),
   (cbi_id, 4,  $b$À quelle fréquence vous dites-vous « je n'en peux plus » ?$b$, $b$I can't take it anymore$b$, 'scale', cbi_freq, 'negatif', false),
-  (cbi_id, 5,  $b$À quelle fréquence vous sentez-vous éreinté·e ?$b$, $b$worn out$b$, 'scale', cbi_freq, 'negatif', false),
+  (cbi_id, 5,  $b$À quelle fréquence vous sentez-vous à bout de forces ?$b$, $b$worn out$b$, 'scale', cbi_freq, 'negatif', false),
   (cbi_id, 6,  $b$À quelle fréquence vous sentez-vous fragile et vulnérable à la maladie ?$b$, $b$weak and susceptible to illness$b$, 'scale', cbi_freq, 'negatif', false),
   (cbi_id, 7,  $b$Vous sentez-vous éreinté·e à la fin de votre journée de travail ?$b$, null, 'scale', cbi_freq, 'negatif', false),
   (cbi_id, 8,  $b$Êtes-vous épuisé·e le matin à l'idée d'une nouvelle journée de travail ?$b$, null, 'scale', cbi_freq, 'negatif', false),
@@ -137,7 +137,9 @@ insert into public.questionnaire_items (block_id, ordre, libelle, type_input, op
   (equi_id, 1, $b$Avez-vous des activités régulières en dehors du travail ?$b$, 'scale', reflex, 'positif', true),
   (equi_id, 2, $b$Votre entourage proche exprime-t-il des inquiétudes sur votre fatigue ou votre surmenage ?$b$, 'scale', reflex, 'negatif', false),
   (equi_id, 3, $b$Arrivez-vous à décrocher mentalement du cabinet le week-end ?$b$, 'scale', reflex, 'positif', true),
-  (equi_id, 4, $b$Avez-vous un projet personnel ou de vie qui vous tient à cœur en ce moment ?$b$, 'scale', reflex, 'positif', true);
+  -- Item 4 : oui/non scoré positif (Oui=0 / Non=3) — la fréquence est inadaptée pour « un projet ».
+  (equi_id, 4, $b$Avez-vous un projet personnel ou de vie qui vous tient à cœur en ce moment ?$b$, 'yesno',
+     $j$[{"label":"Oui","value":0},{"label":"Non","value":3}]$j$::jsonb, 'positif', false);
 
 -- ============================================================================
 -- BLOC 5 — Substances (aucun score, message neutre + carte conditionnelle)
@@ -180,7 +182,7 @@ insert into public.questionnaire_routing (questionnaire_id, ordre, condition, ca
   (q_id, 1, $j${"key":"sps"}$j$::jsonb,
      $j${"key":"sps","variant":"sps","title":"Besoin d'être écouté·e ?","body":"SPS — Soins aux Professionnels en Santé met à votre disposition une ligne d'écoute par des psychologues, gratuite, anonyme et confidentielle, 24h/24 et 7j/7. Votre médecin traitant est aussi un interlocuteur sans jugement.","phone":"0 805 23 23 36"}$j$::jsonb),
   (q_id, 2, $j${"key":"cdom_onvs"}$j$::jsonb,
-     $j${"key":"cdom_onvs","variant":"sensitive","title":"Vous n'êtes pas seul·e face à ça","body":"Le Conseil départemental de l'Ordre et l'ONVS peuvent vous accompagner, en toute confidentialité."}$j$::jsonb),
+     $j${"key":"cdom_onvs","variant":"sensitive","title":"Vous n'êtes pas seul·e face à ça","body":"Le Conseil départemental de l'Ordre et l'ONVS peuvent vous accompagner, en toute confidentialité.","href":"https://sante.gouv.fr/professionnels/ameliorer-les-conditions-d-exercice/observatoire-national-des-violences-en-sante/"}$j$::jsonb),
   (q_id, 3, $j${"key":"inrs_tms"}$j$::jsonb,
      $j${"key":"inrs_tms","variant":"default","title":"Étirements & pauses actives","body":"Des gestes simples entre deux patients réduisent les tensions cervicales et lombaires. Voir aussi le dossier INRS sur les troubles musculo-squelettiques.","href":"https://www.inrs.fr/risques/tms-troubles-musculosquelettiques/ce-qu-il-faut-retenir.html"}$j$::jsonb),
   (q_id, 4, $j${"key":"ergonomie_poste"}$j$::jsonb,

@@ -11,7 +11,6 @@ import {
 import StatsCards from '@/components/home/StatsCards'
 import DemarcheCard from '@/components/home/DemarcheCard'
 import RadarCP from '@/components/profile/RadarCP'
-import AutoevalProofCard from '@/components/autoeval/AutoevalProofCard'
 import CreateCabinetModal from '@/components/auth/CreateCabinetModal'
 import { useDemarches } from '@/lib/hooks/useDemarches'
 import { useUser } from '@/lib/hooks/useUser'
@@ -275,9 +274,6 @@ export default function ProfilPage() {
           ordreInscriptionDate={ordreDate}
           actionsParAxe={actionsParAxe}
         />
-
-        {/* Preuve Action B — auto-évaluation santé (découplé du RadarCP) */}
-        <AutoevalProofCard />
 
         {/* Mes attestations */}
         <Link

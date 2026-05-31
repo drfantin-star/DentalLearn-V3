@@ -2,7 +2,14 @@
 
 import { useMemo, useReducer, useState } from 'react'
 import { computeBlockRecap } from '@/lib/autoeval/scoring'
-import type { Answers, AnswerValue, Questionnaire, QuestionnaireItem } from '@/lib/autoeval/types'
+import type {
+  Answers,
+  AnswerValue,
+  CbiScoringRule,
+  Questionnaire,
+  QuestionnaireBlock,
+  QuestionnaireItem,
+} from '@/lib/autoeval/types'
 import ScaleInput from './inputs/ScaleInput'
 import YesNoInput from './inputs/YesNoInput'
 import ChoiceInput from './inputs/ChoiceInput'
@@ -53,6 +60,24 @@ function isAnswered(v: AnswerValue | undefined): boolean {
 }
 
 /**
+ * Pour un bloc CBI, retourne le titre de sous-échelle à afficher AVANT un item
+ * donné (clé = item.id du premier item de chaque sous-échelle). Dérivé de
+ * scoring_rule.subscales — aucun champ DB supplémentaire.
+ */
+function subscaleHeaders(block: QuestionnaireBlock): Map<string, string> {
+  const headers = new Map<string, string>()
+  if (block.type_bloc !== 'cbi') return headers
+  const rule = block.scoring_rule as CbiScoringRule | null
+  if (!rule?.subscales) return headers
+  for (const sub of rule.subscales) {
+    const firstOrdre = Math.min(...sub.items)
+    const item = block.items.find((i) => i.ordre === firstOrdre)
+    if (item) headers.set(item.id, sub.label)
+  }
+  return headers
+}
+
+/**
  * Parcours bloc par bloc. Réponses en mémoire (useReducer) — AUCUNE persistance,
  * AUCune reprise : quitter = recommencer (contrainte RGPD voulue).
  */
@@ -74,6 +99,8 @@ export default function AutoEvalPlayer({ questionnaire, onComplete }: Props) {
     () => (showRecap ? computeBlockRecap(block, answers, questionnaire.routing) : null),
     [showRecap, block, answers, questionnaire.routing]
   )
+
+  const headers = useMemo(() => subscaleHeaders(block), [block])
 
   const handleContinue = () => {
     if (isLastBlock) {
@@ -107,6 +134,11 @@ export default function AutoEvalPlayer({ questionnaire, onComplete }: Props) {
       <div className="space-y-6">
         {block.items.map((item, idx) => (
           <div key={item.id}>
+            {headers.has(item.id) && (
+              <h3 className="mb-3 border-l-2 border-[#EC4899] pl-3 text-xs font-black uppercase tracking-wide text-[#EC4899]">
+                {headers.get(item.id)}
+              </h3>
+            )}
             <p className="mb-3 text-sm font-semibold leading-relaxed text-white">
               <span className="mr-1.5 text-[#EC4899]">{idx + 1}.</span>
               {item.libelle}

@@ -27,7 +27,7 @@ export default function AutoEvalIntro({ questionnaire, onStart }: Props) {
         <div className="flex items-start gap-3 rounded-2xl border border-[#333] bg-[#1a1a1a] p-3.5">
           <Clock size={18} className="mt-0.5 flex-shrink-0 text-[#EC4899]" />
           <p className="text-xs leading-relaxed text-[#d4d4d4]">
-            Comptez environ {questionnaire.time_estimate_min ?? 10} minutes, à faire d'une seule traite.
+            Comptez 15 à 20 minutes, à faire d'une seule traite.
           </p>
         </div>
         <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5">

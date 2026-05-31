@@ -27,7 +27,7 @@ export default function AutoEvalCard({ className }: { className?: string }) {
       <div className="min-w-0 flex-1">
         <h2 className="truncate text-base font-black leading-tight">Auto-évaluation de ma santé</h2>
         <p className="mt-0.5 truncate text-xs font-semibold text-white/80">
-          Un miroir, pas un diagnostic · ~10 min · Action B
+          Un miroir, pas un diagnostic · 15-20 min · Action B
         </p>
       </div>
       <ChevronRight

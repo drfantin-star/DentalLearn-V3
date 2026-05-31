@@ -190,6 +190,22 @@ function reflexifBlock(opts: {
   const pure = scoreReflexifBlock(r.blk, r.answers)
   eq('reflexif forcing pur → orange', pure.palier, 'orange')
   eq('reflexif forcing pur → forced', pure.forced, true)
+
+  // item oui/non scoré (Oui=0 / Non=3) intégré au palier Équilibre (fix v2 #5)
+  // 4 items, seul item 4 (« projet ») = Non(3) → 3/12 = 25 % → vert (borne)
+  r = reflexifBlock({
+    maxPerItem: 3,
+    scored: [{ ordre: 1 }, { ordre: 2 }, { ordre: 3 }, { ordre: 4 }],
+    answers: { 1: 0, 2: 0, 3: 0, 4: 3 },
+  })
+  eq('reflexif Équilibre yes/no 25% → vert', scoreReflexifBlock(r.blk, r.answers).palier, 'vert')
+  // item1=2 + item4=Non(3) → 5/12 = 42 % → orange
+  r = reflexifBlock({
+    maxPerItem: 3,
+    scored: [{ ordre: 1 }, { ordre: 2 }, { ordre: 3 }, { ordre: 4 }],
+    answers: { 1: 2, 2: 0, 3: 0, 4: 3 },
+  })
+  eq('reflexif Équilibre yes/no 42% → orange', scoreReflexifBlock(r.blk, r.answers).palier, 'orange')
 })()
 
 // ── Substances : carte conditionnelle (string values) ────────────────────────
