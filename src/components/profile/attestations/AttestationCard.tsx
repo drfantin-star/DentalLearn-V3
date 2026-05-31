@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Download, Shield, ShieldCheck, Calendar, Clock, Award, TrendingUp, FileText, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { axeBanner } from '@/lib/cp/axeColors'
+import { axeBannerStyle } from '@/lib/cp/axeColors'
 import type { UserAttestation } from '@/lib/hooks/useUserAttestations'
 
 interface AttestationCardProps {
@@ -27,7 +27,7 @@ export function AttestationCard({ attestation }: AttestationCardProps) {
     isActionF && typeof attestation.metadata?.nb_ressources === 'number'
       ? (attestation.metadata.nb_ressources as number)
       : null
-  const axeColor = axeBanner(attestation.axe_cp)
+  const axeBannerBg = axeBannerStyle(attestation.axe_cp)
   const axeLabel = attestation.axe_cp ? AXE_LABELS[attestation.axe_cp] : null
 
   const handleDownload = async () => {
@@ -65,8 +65,8 @@ export function AttestationCard({ attestation }: AttestationCardProps) {
 
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden border border-gray-200 dark:border-neutral-800 shadow-sm">
-      {/* Header coloré selon axe */}
-      <div className={`bg-gradient-to-r ${axeColor} px-4 py-3`}>
+      {/* Header coloré selon axe (style inline : dérivé de la palette CP) */}
+      <div className="px-4 py-3" style={{ backgroundImage: axeBannerBg }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             {isFormation ? (
