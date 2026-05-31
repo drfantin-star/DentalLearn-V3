@@ -118,14 +118,85 @@ export async function generateBilanPDF(data: BilanData): Promise<Blob> {
     y += 2
   }
 
-  // Ressources — chaque carte (titre + corps + tél) reste insécable.
+  // Carte ressource = boîte bordée, hauteur dérivée du nombre RÉEL de lignes
+  // wrappées (mesure = dessin : même pas vertical), avec padding bas inclus pour
+  // que la dernière ligne tienne en entier. Largeur de wrap = largeur interne
+  // moins paddings (et colonne icône pour la pastille SPS).
+  const drawResourceCard = (c: { title: string; body: string; phone?: string }) => {
+    const boxX = 14
+    const boxW = 182
+    const padX = 5
+    const padTop = 5
+    const padBot = 4
+    const ascent = 3.5
+    const titleStep = 5
+    const gap = 1.5
+    const bodyStep = 4.6
+    const phoneStep = 6
+    const hasPhone = !!c.phone
+    const iconCol = hasPhone ? 11 : 0
+    const textX = boxX + padX + iconCol
+    const textW = boxW - padX * 2 - iconCol
+
+    // Mesure sur la largeur EXACTE de la zone de texte (paddings + colonne icône).
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9.5)
+    const titleLines: string[] = doc.splitTextToSize(c.title, textW)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    const bodyLines: string[] = doc.splitTextToSize(c.body, textW)
+
+    const consumed =
+      titleLines.length * titleStep + gap + bodyLines.length * bodyStep + (hasPhone ? phoneStep : 0)
+    const boxH = padTop + consumed + padBot
+
+    ensure(boxH + 3)
+
+    // Boîte
+    doc.setDrawColor(228, 228, 228)
+    doc.setFillColor(250, 250, 250)
+    doc.setLineWidth(0.3)
+    doc.roundedRect(boxX, y, boxW, boxH, 2.5, 2.5, 'FD')
+
+    // Pastille (cartes avec téléphone, ex. SPS) — vectoriel, pas de glyphe ☎.
+    if (hasPhone) {
+      doc.setFillColor(...ROSE)
+      doc.circle(boxX + padX + 4, y + padTop + 3.2, 3.2, 'F')
+    }
+
+    // Texte ligne par ligne : même pas vertical que la mesure → jamais coupé.
+    let ty = y + padTop + ascent
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9.5)
+    doc.setTextColor(...dark)
+    for (const l of titleLines) {
+      doc.text(l, textX, ty)
+      ty += titleStep
+    }
+    ty += gap
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(60, 60, 60)
+    for (const l of bodyLines) {
+      doc.text(l, textX, ty)
+      ty += bodyStep
+    }
+    if (c.phone) {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(...ROSE)
+      doc.text(c.phone, textX, ty + 1)
+    }
+
+    y += boxH + 3
+    doc.setTextColor(...dark)
+  }
+
+  // Ressources — chaque carte est insécable et dimensionnée à son contenu.
   if (data.results.cards.length) {
     heading('Ressources utiles')
     for (const c of data.results.cards) {
-      group([
-        { txt: c.title, bold: true },
-        { txt: c.body + (c.phone ? `  ☎ ${c.phone}` : '') },
-      ])
+      drawResourceCard({ title: c.title, body: c.body, phone: c.phone })
     }
   }
 
