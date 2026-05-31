@@ -5,6 +5,7 @@ import {
   type FormationAttestationData,
   type AttestationOrganisme,
 } from './types'
+import { axePdfRgb } from '../cp/axeColors'
 import { SIGNATURE_BASE64, SIGNATURE_RATIO } from './signatureBase64'
 
 const FALLBACK_ORGANISME: AttestationOrganisme = {
@@ -15,7 +16,8 @@ const FALLBACK_ORGANISME: AttestationOrganisme = {
 
 /**
  * Génère un blob PDF pour une attestation de formation en ligne.
- * Style visuel cohérent avec l'attestation EPP (teal #0F7B6C, autoTable).
+ * Style visuel cohérent avec l'attestation EPP ; couleur de base dérivée de
+ * l'axe CP de la formation (cf. src/lib/cp/axeColors), autoTable.
  */
 export async function generateFormationPDF(
   data: FormationAttestationData
@@ -25,7 +27,8 @@ export async function generateFormationPDF(
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
-  const teal = [15, 123, 108] as [number, number, number]
+  // Base couleur dérivée de l'axe CP de la formation (cf. src/lib/cp/axeColors).
+  const base = axePdfRgb(data.formation.axe_cp)
   const darkGray = [30, 30, 30] as [number, number, number]
   const lightGray = [245, 245, 245] as [number, number, number]
 
@@ -35,8 +38,8 @@ export async function generateFormationPDF(
   const organisme = data.organisme ?? FALLBACK_ORGANISME
   const isDentalschool = organisme.nom === DENTALSCHOOL_ORGANISME
 
-  // ── EN-TÊTE TEAL ─────────────────────────────────────────────
-  doc.setFillColor(...teal)
+  // ── EN-TÊTE (couleur d'axe) ──────────────────────────────────
+  doc.setFillColor(...base)
   doc.rect(0, 0, 210, 35, 'F')
 
   doc.setTextColor(255, 255, 255)
@@ -71,7 +74,7 @@ export async function generateFormationPDF(
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.text("IDENTIFICATION DU PARCOURS", 14, 66)
-  doc.setDrawColor(...teal)
+  doc.setDrawColor(...base)
   doc.setLineWidth(0.5)
   doc.line(14, 68, 196, 68)
 
@@ -162,7 +165,7 @@ export async function generateFormationPDF(
   if (data.acquisition) {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(9)
-    doc.setTextColor(...teal)
+    doc.setTextColor(...base)
     doc.text(
       `Acquisition validée sur ${data.acquisition.acquired}/${data.acquisition.total} questions`,
       105, valY + 28, { align: 'center' }
@@ -207,7 +210,7 @@ export async function generateFormationPDF(
 
   // Code de vérification à droite de la signature
   doc.setFontSize(8)
-  doc.setTextColor(...teal)
+  doc.setTextColor(...base)
   doc.setFont('helvetica', 'bold')
   doc.text('Code de vérification :', 130, sigY + 20)
   doc.setFont('courier', 'normal')

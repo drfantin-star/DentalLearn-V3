@@ -5,6 +5,7 @@ import {
   type EppAttestationData,
   type AttestationOrganisme,
 } from './types'
+import { axePdfRgb } from '../cp/axeColors'
 import { SIGNATURE_BASE64, SIGNATURE_RATIO } from './signatureBase64'
 
 const FALLBACK_ORGANISME: AttestationOrganisme = {
@@ -25,7 +26,8 @@ export async function generateEppPDF(
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
-  const teal = [15, 123, 108] as [number, number, number]
+  // EPP = Axe 2 (teal) — couleur dérivée de la palette CP (cf. src/lib/cp/axeColors).
+  const base = axePdfRgb(2)
   const darkGray = [30, 30, 30] as [number, number, number]
   const lightGray = [245, 245, 245] as [number, number, number]
 
@@ -35,8 +37,8 @@ export async function generateEppPDF(
   const organisme = data.organisme ?? FALLBACK_ORGANISME
   const isDentalschool = organisme.nom === DENTALSCHOOL_ORGANISME
 
-  // ── EN-TÊTE TEAL ─────────────────────────────────────────────
-  doc.setFillColor(...teal)
+  // ── EN-TÊTE (Axe 2 — teal) ───────────────────────────────────
+  doc.setFillColor(...base)
   doc.rect(0, 0, 210, 35, 'F')
 
   doc.setTextColor(255, 255, 255)
@@ -67,7 +69,7 @@ export async function generateEppPDF(
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.text("IDENTIFICATION DE L'AUDIT", 14, 66)
-  doc.setDrawColor(...teal)
+  doc.setDrawColor(...base)
   doc.setLineWidth(0.5)
   doc.line(14, 68, 196, 68)
 
@@ -165,7 +167,7 @@ export async function generateEppPDF(
   }
 
   doc.setFontSize(8)
-  doc.setTextColor(...teal)
+  doc.setTextColor(...base)
   doc.setFont('helvetica', 'bold')
   doc.text('Code de vérification :', 130, sigY + 20)
   doc.setFont('courier', 'normal')
