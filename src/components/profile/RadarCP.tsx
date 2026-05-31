@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { axeHex } from '@/lib/cp/axeColors';
 
 interface RadarCPProps {
   ordreInscriptionDate: string | null;
@@ -65,10 +66,10 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
   const OBJECTIF_PAR_AXE = 2;
 
   const axes = [
-    { id: 'axe1', label: 'Compétences', color: '#8B5CF6', icon: '📚', count: actionsParAxe.axe1 },
-    { id: 'axe2', label: 'Qualité pratiques', color: '#0F7B6C', icon: '📋', count: actionsParAxe.axe2 },
-    { id: 'axe3', label: 'Relation patient', color: '#F59E0B', icon: '🤝', count: actionsParAxe.axe3 },
-    { id: 'axe4', label: 'Santé praticien', color: '#EC4899', icon: '❤️', count: actionsParAxe.axe4 },
+    { id: 'axe1', label: 'Compétences', color: axeHex(1), icon: '📚', count: actionsParAxe.axe1 },
+    { id: 'axe2', label: 'Qualité pratiques', color: axeHex(2), icon: '📋', count: actionsParAxe.axe2 },
+    { id: 'axe3', label: 'Relation patient', color: axeHex(3), icon: '🤝', count: actionsParAxe.axe3 },
+    { id: 'axe4', label: 'Santé praticien', color: axeHex(4), icon: '❤️', count: actionsParAxe.axe4 },
   ];
 
   const totalActions = Object.values(actionsParAxe).reduce((a, b) => a + b, 0);

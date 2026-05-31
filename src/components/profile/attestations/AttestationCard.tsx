@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Download, Shield, ShieldCheck, Calendar, Clock, Award, TrendingUp, FileText, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { axeBannerStyle } from '@/lib/cp/axeColors'
 import type { UserAttestation } from '@/lib/hooks/useUserAttestations'
 
 interface AttestationCardProps {
@@ -16,13 +17,6 @@ const AXE_LABELS: Record<number, string> = {
   4: 'Axe 4 — Santé praticien',
 }
 
-const AXE_COLORS: Record<number, string> = {
-  1: 'from-blue-600 to-blue-500',
-  2: 'from-emerald-600 to-emerald-500',
-  3: 'from-pink-600 to-pink-500',
-  4: 'from-amber-600 to-amber-500',
-}
-
 export function AttestationCard({ attestation }: AttestationCardProps) {
   const [downloading, setDownloading] = useState(false)
 
@@ -33,7 +27,7 @@ export function AttestationCard({ attestation }: AttestationCardProps) {
     isActionF && typeof attestation.metadata?.nb_ressources === 'number'
       ? (attestation.metadata.nb_ressources as number)
       : null
-  const axeColor = attestation.axe_cp ? AXE_COLORS[attestation.axe_cp] : 'from-gray-600 to-gray-500'
+  const axeBannerBg = axeBannerStyle(attestation.axe_cp)
   const axeLabel = attestation.axe_cp ? AXE_LABELS[attestation.axe_cp] : null
 
   const handleDownload = async () => {
@@ -71,8 +65,8 @@ export function AttestationCard({ attestation }: AttestationCardProps) {
 
   return (
     <div className="bg-white dark:bg-neutral-900 rounded-2xl overflow-hidden border border-gray-200 dark:border-neutral-800 shadow-sm">
-      {/* Header coloré selon axe */}
-      <div className={`bg-gradient-to-r ${axeColor} px-4 py-3`}>
+      {/* Header coloré selon axe (style inline : dérivé de la palette CP) */}
+      <div className="px-4 py-3" style={{ backgroundImage: axeBannerBg }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-white">
             {isFormation ? (

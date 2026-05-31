@@ -1,4 +1,5 @@
 import { ORGANISME, DENTALSCHOOL_ORGANISME } from './types'
+import { axePdfRgb } from '../cp/axeColors'
 
 /**
  * Snapshot d'une ressource cochée par le praticien au moment de la déclaration.
@@ -43,8 +44,9 @@ function deriveType(categorie?: string): string {
  * (Certification Périodique — Axe 3, Action F). Déclaration sur l'honneur :
  * pas de signature manuelle, le code de vérification fait foi.
  *
- * Style visuel jumeau de generateFormationPDF / generateEppPDF
- * (teal #0F7B6C, jsPDF + jspdf-autotable, mêmes marges et pied de page).
+ * Style visuel jumeau de generateFormationPDF / generateEppPDF ; couleur de
+ * base dérivée de l'axe CP (Axe 3 — orange, cf. src/lib/cp/axeColors),
+ * jsPDF + jspdf-autotable, mêmes marges et pied de page.
  */
 export async function generateActionFPDF(
   data: ActionFAttestationData
@@ -54,7 +56,8 @@ export async function generateActionFPDF(
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
 
-  const teal = [15, 123, 108] as [number, number, number]
+  // Action F = Axe 3 (orange) — couleur dérivée de la palette CP (cf. src/lib/cp/axeColors).
+  const base = axePdfRgb(3)
   const darkGray = [30, 30, 30] as [number, number, number]
   const lightGray = [245, 245, 245] as [number, number, number]
 
@@ -65,8 +68,8 @@ export async function generateActionFPDF(
       year: 'numeric',
     })
 
-  // ── EN-TÊTE TEAL ─────────────────────────────────────────────
-  doc.setFillColor(...teal)
+  // ── EN-TÊTE (Axe 3 — orange) ─────────────────────────────────
+  doc.setFillColor(...base)
   doc.rect(0, 0, 210, 35, 'F')
 
   doc.setTextColor(255, 255, 255)
@@ -93,7 +96,7 @@ export async function generateActionFPDF(
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.text('IDENTITÉ DU PRATICIEN', 14, 47)
-  doc.setDrawColor(...teal)
+  doc.setDrawColor(...base)
   doc.setLineWidth(0.5)
   doc.line(14, 49, 196, 49)
 
@@ -136,7 +139,7 @@ export async function generateActionFPDF(
     margin: { left: 14, right: 14 },
     theme: 'grid',
     headStyles: {
-      fillColor: teal,
+      fillColor: base,
       textColor: [255, 255, 255],
       fontStyle: 'bold',
       fontSize: 9,
@@ -181,7 +184,7 @@ export async function generateActionFPDF(
   doc.text(`Fait à ${ORGANISME.ville}, le ${fmtDate(new Date())}`, 14, codeY)
 
   doc.setFontSize(8)
-  doc.setTextColor(...teal)
+  doc.setTextColor(...base)
   doc.setFont('helvetica', 'bold')
   doc.text('Code de vérification :', 14, codeY + 7)
   doc.setFont('courier', 'normal')
