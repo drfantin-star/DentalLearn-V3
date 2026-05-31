@@ -2,23 +2,28 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Award, Shield, ShieldCheck, Loader2 } from 'lucide-react'
+import { ArrowLeft, Award, Shield, ShieldCheck, HeartPulse, Loader2 } from 'lucide-react'
 import { useUserAttestations } from '@/lib/hooks/useUserAttestations'
+import { useAutoevalCompletions } from '@/lib/autoeval/useAutoevalCompletions'
 import { AttestationCard } from '@/components/profile/attestations/AttestationCard'
 import { AttestationEmptyState } from '@/components/profile/attestations/AttestationEmptyState'
+import AutoevalAttestationTab from '@/components/profile/attestations/AutoevalAttestationTab'
 
-type TabType = 'formation_online' | 'epp' | 'action_cnp_info_patient'
+type TabType = 'formation_online' | 'epp' | 'action_cnp_info_patient' | 'autoeval'
 
 export default function AttestationsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('formation_online')
   const { formationOnline, epp, actionF, loading, error } = useUserAttestations()
+  const autoeval = useAutoevalCompletions()
 
   const currentList =
     activeTab === 'formation_online'
       ? formationOnline
       : activeTab === 'epp'
         ? epp
-        : actionF
+        : activeTab === 'action_cnp_info_patient'
+          ? actionF
+          : []
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-black pb-24">
@@ -93,6 +98,22 @@ export default function AttestationsPage() {
                 </span>
               )}
             </button>
+            <button
+              onClick={() => setActiveTab('autoeval')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'autoeval'
+                  ? 'bg-white dark:bg-neutral-800 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-neutral-400'
+              }`}
+            >
+              <HeartPulse className="w-4 h-4" />
+              <span>Santé praticien</span>
+              {autoeval.count > 0 && (
+                <span className="text-xs bg-gray-200 dark:bg-neutral-700 rounded-full px-1.5 py-0.5 min-w-[20px] text-center">
+                  {autoeval.count}
+                </span>
+              )}
+            </button>
           </div>
           <div className="h-3" />
         </div>
@@ -100,6 +121,15 @@ export default function AttestationsPage() {
 
       {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-4">
+        {activeTab === 'autoeval' ? (
+          <AutoevalAttestationTab
+            count={autoeval.count}
+            latestCompletedAt={autoeval.latestCompletedAt}
+            participant={autoeval.participant}
+            loading={autoeval.loading}
+          />
+        ) : (
+        <>
         {loading && (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
@@ -135,6 +165,8 @@ export default function AttestationsPage() {
               Chaque attestation dispose d'un code de vérification unique permettant sa validation par un tiers.
             </p>
           </div>
+        )}
+        </>
         )}
       </div>
     </div>

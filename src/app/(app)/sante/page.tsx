@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { CATEGORIES } from '@/lib/supabase/types'
 import BibliothequeBanner from '@/components/ui/BibliothequeBanner'
+import AutoEvalCard from '@/components/autoeval/AutoEvalCard'
 import { useRessourceCount } from '@/lib/bibliotheque/useRessourceCount'
 
 function SantePageContent() {
@@ -41,8 +42,9 @@ function SantePageContent() {
           axe={4}
           href="/sante/bibliotheque"
           count={biblioCount}
-          className="mb-6"
+          className="mb-3"
         />
+        <AutoEvalCard className="mb-6" />
         <h2 className="text-xl font-black text-white mb-4">
           🔍 Explorer par thème
         </h2>
