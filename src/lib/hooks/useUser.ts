@@ -3,7 +3,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import type { UserInterests } from '@/lib/supabase/types'
 
+// NB : type partiel divergent du UserProfile canonique de types.ts. Unification
+// complète notée pour plus tard (cf. recap PR1) ; on expose ici a minima
+// `interests` en lecture (fetch déjà en select('*')) pour « Pour vous ».
 interface UserProfile {
   id: string
   first_name: string | null
@@ -11,6 +15,7 @@ interface UserProfile {
   profile_photo_url: string | null
   city: string | null
   practice_type: string | null
+  interests: UserInterests | null
 }
 
 interface Streak {

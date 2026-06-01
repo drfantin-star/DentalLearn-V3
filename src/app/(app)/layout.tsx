@@ -1,7 +1,4 @@
-import BottomNav from '@/components/layout/BottomNav'
-import PWAInstallBanner from '@/components/PWAInstallBanner'
-import MiniPlayer from '@/components/MiniPlayer'
-import AudioQueuePlayer from '@/components/news/AudioQueuePlayer'
+import AppShell from '@/components/layout/AppShell'
 import { AudioProvider } from '@/context/AudioContext'
 import { AudioPlayerProvider } from '@/context/AudioPlayerContext'
 import { redirect } from 'next/navigation'
@@ -42,17 +39,13 @@ export default async function AppLayout({
   return (
     <AudioProvider>
       <AudioPlayerProvider>
-        <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
+        <AppShell
+          intraRole={intraRole}
+          isSuperAdmin={superAdminFlag}
+          isFormateur={formateurFlag}
+        >
           {children}
-          <PWAInstallBanner />
-          <MiniPlayer />
-          <AudioQueuePlayer />
-          <BottomNav
-            intraRole={intraRole}
-            isSuperAdmin={superAdminFlag}
-            isFormateur={formateurFlag}
-          />
-        </div>
+        </AppShell>
       </AudioPlayerProvider>
     </AudioProvider>
   )
