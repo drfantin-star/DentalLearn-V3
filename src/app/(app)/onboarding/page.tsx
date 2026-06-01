@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Check } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 import { getCategoryConfig } from '@/lib/supabase/types'
 import { useSaveInterests } from '@/lib/hooks/useSaveInterests'
+import { useUser } from '@/lib/hooks/useUser'
 
 // ── Définition des chips ──────────────────────────────────────────────
 // Cliniques & bonus → poussent leur slug dans categories[] (libellés/couleurs
@@ -34,46 +34,30 @@ const AXE_CHIPS: { label: string; axe: number; color: string; emoji: string }[] 
 export default function OnboardingPage() {
   const router = useRouter()
   const { saveInterests, saving } = useSaveInterests()
+  // Même source d'`interests` qu'AppShell (store partagé) → pas de divergence.
+  const { user, profile, loading, refetch, mutateInterests } = useUser()
+  const guardDoneRef = useRef(false)
 
-  const [checkingGuard, setCheckingGuard] = useState(true)
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
     () => new Set()
   )
   const [selectedAxes, setSelectedAxes] = useState<Set<number>>(() => new Set())
 
-  // Garde-fou : si interests est déjà non-NULL (onboarding déjà vu), on sort.
+  // Garde-fou one-shot : pas d'utilisateur → /login ; interests déjà non-NULL
+  // (onboarding déjà vu) → home. Lit le store partagé (jamais un refetch direct
+  // divergent). `guardDoneRef` empêche toute redirection répétée (idempotence).
   useEffect(() => {
-    let active = true
-    async function checkGuard() {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-
-      if (!user) {
-        if (active) router.replace('/login')
-        return
-      }
-
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('interests')
-        .eq('id', user.id)
-        .single()
-
-      if (!active) return
-
-      if (data && data.interests !== null) {
-        router.replace('/')
-        return
-      }
-      setCheckingGuard(false)
+    if (loading || guardDoneRef.current) return
+    if (!user) {
+      guardDoneRef.current = true
+      router.replace('/login')
+      return
     }
-    checkGuard()
-    return () => {
-      active = false
+    if (profile && profile.interests !== null) {
+      guardDoneRef.current = true
+      router.replace('/')
     }
-  }, [router])
+  }, [loading, user, profile, router])
 
   const toggleCategory = useCallback((slug: string) => {
     setSelectedCategories((prev) => {
@@ -96,9 +80,16 @@ export default function OnboardingPage() {
   const persistAndGo = useCallback(
     async (categories: string[], axes: number[]) => {
       const ok = await saveInterests({ categories, axes })
-      if (ok) router.push('/')
+      if (!ok) return
+      // Synchroniser l'état partagé AVANT de naviguer : AppShell doit voir
+      // `interests` non-null tout de suite (sinon il redirige vers /onboarding
+      // → loop). On supprime aussi le garde-fou local pour éviter une double nav.
+      guardDoneRef.current = true
+      mutateInterests({ categories, axes }) // optimiste (synchrone)
+      await refetch() // réconciliation DB
+      router.replace('/')
     },
-    [saveInterests, router]
+    [saveInterests, mutateInterests, refetch, router]
   )
 
   const handleContinue = useCallback(() => {
@@ -109,7 +100,10 @@ export default function OnboardingPage() {
     persistAndGo([], [])
   }, [persistAndGo])
 
-  if (checkingGuard) {
+  // Loader tant que l'état n'est pas prêt OU qu'une redirection (guard) est en
+  // cours (pas d'utilisateur, ou interests déjà renseignés).
+  const redirecting = !user || (!!profile && profile.interests !== null)
+  if (loading || redirecting) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-7 w-7 animate-spin text-white/60" />
