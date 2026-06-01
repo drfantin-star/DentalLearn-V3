@@ -95,6 +95,34 @@ export interface Question {
 // USER FORMATIONS (progression)
 // ─────────────────────────────────────────────
 
+// ─────────────────────────────────────────────
+// USER PROFILE
+// ─────────────────────────────────────────────
+
+// Centres d'intérêt déclarés (« Pour vous »). Voir migration
+// 20260601a_user_profiles_interests. NULL = onboarding non fait.
+export interface UserInterests {
+  categories: string[]
+  axes: number[]
+}
+
+export interface UserProfile {
+  id: string
+  first_name: string | null
+  last_name: string | null
+  profile_photo_url: string | null
+  city: string | null
+  practice_type: string | null
+  years_experience: number | null
+  ordre_inscription_date: string | null
+  deletion_requested_at: string | null
+  rpps: string | null
+  profession: string | null
+  interests: UserInterests | null
+  created_at: string
+  updated_at: string
+}
+
 export interface UserFormation {
   id: string
   user_id: string
