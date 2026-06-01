@@ -1,10 +1,12 @@
 'use client'
 
-import { usePathname } from 'next/navigation'
+import { useEffect } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
 import BottomNav from '@/components/layout/BottomNav'
 import PWAInstallBanner from '@/components/PWAInstallBanner'
 import MiniPlayer from '@/components/MiniPlayer'
 import AudioQueuePlayer from '@/components/news/AudioQueuePlayer'
+import { useUser } from '@/lib/hooks/useUser'
 import type { IntraRole } from '@/lib/auth/rbac'
 
 interface AppShellProps {
@@ -28,6 +30,20 @@ export default function AppShell({
   isFormateur,
 }: AppShellProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const { profile, loading } = useUser()
+
+  // Gating onboarding (PR2b, Tâche B) : la redirection d'auth/callback ne couvre
+  // que le 1er signup ; un login classique d'un user `interests IS NULL` ne
+  // passait jamais par /onboarding. On complète ici, côté chrome global, une
+  // fois le profil chargé. auth/callback reste en place (les deux coexistent).
+  useEffect(() => {
+    if (loading) return
+    if (profile && profile.interests === null && pathname !== '/onboarding') {
+      router.replace('/onboarding')
+    }
+  }, [loading, profile, pathname, router])
+
   const isFullscreen = FULLSCREEN_SEGMENTS.some(
     (seg) => pathname === seg || pathname?.startsWith(`${seg}/`)
   )
