@@ -167,11 +167,13 @@ export interface RoutingCardTextPatch {
   body: string
   phone: string | null
   variant: RoutingCard['variant']
+  href: string | null
 }
 
 /**
- * Réécrit `carte` en ne changeant QUE les champs texte. `key` et `href`
- * (câblage / lien) sont conservés. `condition.key` n'est jamais touchée.
+ * Réécrit `carte` en ne changeant QUE les champs texte éditables (title, body,
+ * variant, phone, href). `key` (câblage) est conservée. `condition.key` n'est
+ * jamais touchée.
  */
 export async function updateRoutingCardText(
   client: Client,
@@ -179,7 +181,7 @@ export async function updateRoutingCardText(
   patch: RoutingCardTextPatch
 ): Promise<Result> {
   const next: RoutingCard = {
-    ...routing.carte, // conserve key, href, et toute clé future
+    ...routing.carte, // conserve key et toute clé future
     title: patch.title,
     body: patch.body,
     variant: patch.variant,
@@ -189,6 +191,13 @@ export async function updateRoutingCardText(
     next.phone = patch.phone.trim()
   } else {
     delete next.phone
+  }
+  // href optionnel : même convention que phone. Le rendu user (ResourceCard)
+  // teste `carte.href` en truthy → clé absente = aucun lien affiché.
+  if (patch.href && patch.href.trim()) {
+    next.href = patch.href.trim()
+  } else {
+    delete next.href
   }
   const { error } = await client
     .from('questionnaire_routing')

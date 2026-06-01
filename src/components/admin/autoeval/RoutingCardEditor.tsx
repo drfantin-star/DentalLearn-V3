@@ -27,6 +27,7 @@ export default function RoutingCardEditor({ routing, onSaved, onError }: Props) 
   const [title, setTitle] = useState(card.title)
   const [body, setBody] = useState(card.body)
   const [phone, setPhone] = useState(card.phone ?? '')
+  const [href, setHref] = useState(card.href ?? '')
   const [variant, setVariant] = useState<RoutingCard['variant']>(card.variant ?? 'default')
   const [saving, setSaving] = useState(false)
 
@@ -41,6 +42,7 @@ export default function RoutingCardEditor({ routing, onSaved, onError }: Props) 
       body: body.trim(),
       phone: phone.trim() || null,
       variant,
+      href: href.trim() || null,
     })
     setSaving(false)
     if (error) return onError(`Enregistrement échoué : ${error}`)
@@ -74,6 +76,21 @@ export default function RoutingCardEditor({ routing, onSaved, onError }: Props) 
             onChange={(e) => setVariant(e.target.value as RoutingCard['variant'])}
             options={VARIANT_OPTIONS}
           />
+        </div>
+        <div>
+          <TextField
+            label="Lien (URL, optionnel)"
+            type="url"
+            inputMode="url"
+            placeholder="https://… (lien externe ou URL publique d'une fiche PDF)"
+            value={href}
+            onChange={(e) => setHref(e.target.value)}
+          />
+          {href.trim() && !/^https?:\/\//i.test(href.trim()) && (
+            <p className="mt-1 text-xs text-amber-600">
+              Astuce : un lien commence généralement par « https:// ».
+            </p>
+          )}
         </div>
         <div className="flex justify-end">
           <Button variant="secondary" onClick={handleSave} loading={saving}>
