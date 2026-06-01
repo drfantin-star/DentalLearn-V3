@@ -3,17 +3,32 @@ import { createClient } from '@/lib/supabase/server'
 import { getCategoryConfig } from '@/lib/supabase/types'
 import type { UserInterests } from '@/lib/supabase/types'
 import type { NewsCard } from '@/types/news'
-import type { ForYouItem } from '@/types/forYou'
+import type { ForYouItem, ForYouType } from '@/types/forYou'
+import { fetchForYouNews } from '@/lib/news/forYouNews'
 
 export const dynamic = 'force-dynamic'
 
-// Cibles de remplissage (décision figée, cf. brief PR2b A1) :
-//  - news matchées plafonnées à 6 (anti-noyade : ~21 items pédagogiques only).
-//  - si le total reste < MIN_BEFORE_FALLBACK, on complète avec des news récentes.
-//  - une carte conformité (promo) ajoutée une fois, en fin de liste.
-const MAX_MATCHED_NEWS = 6
-const MIN_BEFORE_FALLBACK = 9
-const NEWS_POOL_LIMIT = 50
+// ── Plafonds d'assemblage (anti-flood, cf. PR2b-fix Tâche 2b) ──────────────
+// Sans plafond, le feed renvoyait jusqu'à ~21 cartes pédago (12 fiches noyant
+// le reste) et zéro news. On plafonne par type, on réserve des slots news
+// (jamais évincées), et on plafonne le total.
+const TOTAL_CAP = 12 // conformité incluse
+const NEWS_RESERVED = 5
+const SUBCAP: Record<'formation' | 'epp' | 'autoeval' | 'fiche', number> = {
+  formation: 4,
+  fiche: 4,
+  epp: 2,
+  autoeval: 1,
+}
+// Ordre de round-robin inter-types (variété : 1 de chaque type par tour avant
+// d'en reprendre un 2e). Le scoring reste l'ordre INTRA-type.
+const PEDAGO_ROTATION: Array<'formation' | 'fiche' | 'autoeval' | 'epp'> = [
+  'formation',
+  'fiche',
+  'autoeval',
+  'epp',
+]
+const NEWS_FETCH_LIMIT = 12
 
 // Libellés d'axe pour le microcopy « Parce que… ».
 const AXE_LABELS: Record<number, string> = {
@@ -35,6 +50,12 @@ function asInterests(raw: unknown): { categories: string[]; axes: number[] } {
   return { categories, axes }
 }
 
+function dateKey(d: string | null | undefined): number {
+  if (!d) return 0
+  const t = new Date(d).getTime()
+  return Number.isFinite(t) ? t : 0
+}
+
 // Carte conformité = promo de feature, jamais une progression dynamique
 // (les tables cabinet_compliance_* ne sont pas câblées, cf. audit Phase 0-bis).
 const CONFORMITE_PROMO: ForYouItem = {
@@ -47,7 +68,9 @@ const CONFORMITE_PROMO: ForYouItem = {
   matchReason: '52 points pour sécuriser votre cabinet',
 }
 
-export async function GET(request: Request) {
+type Scored = { item: ForYouItem; score: number }
+
+export async function GET() {
   try {
     const supabase = await createClient()
 
@@ -78,10 +101,9 @@ export async function GET(request: Request) {
     const axeSet = new Set(axes)
 
     // ── Sources pédagogiques (client SSR session, RLS appliquée) ──────────
-    // Volumes très faibles (~21 items au total, cf. audit) : on lit tout le
-    // contenu publié puis on filtre/score en JS, plus simple et robuste que
-    // des `.or()` Supabase. News traitées séparément (voir plus bas).
-    const [formationsRes, eppRes, questRes, ficheRes, newsRes] = await Promise.all([
+    // News lues séparément via fonction serveur partagée (colonnes sûres) —
+    // jamais d'URL relative serveur→serveur.
+    const [formationsRes, eppRes, questRes, ficheRes, news] = await Promise.all([
       supabase
         .from('formations')
         .select('id, title, slug, category, axe_cp, cover_image_url, created_at')
@@ -94,14 +116,20 @@ export async function GET(request: Request) {
         .from('questionnaires')
         .select('id, titre, slug, axe_cp, time_estimate_min')
         .eq('actif', true),
-      supabase
-        .from('bibliotheque_ressources')
-        .select('id, titre, axe'),
-      fetchNews(request),
+      supabase.from('bibliotheque_ressources').select('id, titre, axe'),
+      fetchForYouNews(categories, {
+        matchedLimit: NEWS_FETCH_LIMIT,
+        recentLimit: NEWS_FETCH_LIMIT,
+      }),
     ])
 
-    // Items pédagogiques avec score : category match = 2, axe match = 1.
-    const pedago: Array<{ item: ForYouItem; score: number }> = []
+    // Buckets par type — score : category match = 2, axe match = 1.
+    const buckets: Record<'formation' | 'epp' | 'autoeval' | 'fiche', Scored[]> = {
+      formation: [],
+      epp: [],
+      autoeval: [],
+      fiche: [],
+    }
 
     for (const f of formationsRes.data ?? []) {
       const catMatch = f.category != null && catSet.has(f.category)
@@ -111,7 +139,7 @@ export async function GET(request: Request) {
       const reasonLabel = catMatch
         ? categoryLabel(f.category)
         : AXE_LABELS[f.axe_cp as number] ?? 'ce sujet'
-      pedago.push({
+      buckets.formation.push({
         score,
         item: {
           id: `formation-${f.id}`,
@@ -133,7 +161,7 @@ export async function GET(request: Request) {
       if (!catMatch && !axeMatch) continue
       const score = catMatch ? 2 : 1
       const reasonLabel = catMatch ? categoryLabel(e.theme_slug) : AXE_LABELS[2]
-      pedago.push({
+      buckets.epp.push({
         score,
         item: {
           id: `epp-${e.id}`,
@@ -151,7 +179,7 @@ export async function GET(request: Request) {
       if (q.axe_cp == null || !axeSet.has(q.axe_cp)) continue
       // Garde-fou auto-éval : wording neutre, non culpabilisant. On expose la
       // définition (« point santé annuel »), jamais une reco fondée sur les réponses.
-      pedago.push({
+      buckets.autoeval.push({
         score: 1,
         item: {
           id: `autoeval-${q.id}`,
@@ -168,7 +196,7 @@ export async function GET(request: Request) {
 
     for (const r of ficheRes.data ?? []) {
       if (r.axe == null || !axeSet.has(r.axe)) continue
-      pedago.push({
+      buckets.fiche.push({
         score: 1,
         item: {
           id: `fiche-${r.id}`,
@@ -182,39 +210,59 @@ export async function GET(request: Request) {
       })
     }
 
-    // Tri pédagogique : score desc puis date desc (ils sont tous gardés).
-    pedago.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score
-      return dateKey(b.item.publishedAt) - dateKey(a.item.publishedAt)
-    })
-
-    // ── News ──────────────────────────────────────────────────────────────
-    const allNews: NewsCard[] = newsRes
-    const matchedNews = allNews
-      .filter(
-        (n) => n.formation_category_match != null && catSet.has(n.formation_category_match)
-      )
-      .sort((a, b) => dateKey(b.published_at) - dateKey(a.published_at))
-      .slice(0, MAX_MATCHED_NEWS)
-      .map((n) => newsToItem(n, `Parce que ${categoryLabel(n.formation_category_match)} vous intéresse`))
-
-    // ── Assemblage ──────────────────────────────────────────────────────
-    const items: ForYouItem[] = [...pedago.map((p) => p.item), ...matchedNews]
-
-    // Fallback : compléter avec des news actives récentes si le feed est mince,
-    // pour ne jamais rendre une section vide quand l'utilisateur a des intérêts.
-    if (items.length < MIN_BEFORE_FALLBACK) {
-      const usedIds = new Set(items.map((i) => i.id))
-      const recent = allNews
-        .sort((a, b) => dateKey(b.published_at) - dateKey(a.published_at))
-        .map((n) => newsToItem(n, 'Actualité récente'))
-        .filter((i) => !usedIds.has(i.id))
-        .slice(0, MIN_BEFORE_FALLBACK - items.length)
-      items.push(...recent)
+    // Tri intra-type (score desc, puis date desc) + sous-plafond par type.
+    for (const key of Object.keys(buckets) as Array<keyof typeof buckets>) {
+      buckets[key].sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score
+        return dateKey(b.item.publishedAt) - dateKey(a.item.publishedAt)
+      })
+      buckets[key] = buckets[key].slice(0, SUBCAP[key])
     }
 
-    // Carte conformité (promo) ajoutée une fois, en fin de liste.
-    items.push(CONFORMITE_PROMO)
+    // ── News : matchées d'abord, fallback récentes (dédup) ────────────────
+    const matchedItems = news.matched.map((n) =>
+      newsToItem(n, `Parce que ${categoryLabel(n.formation_category_match)} vous intéresse`)
+    )
+    const newsItems: ForYouItem[] = []
+    const usedNewsIds = new Set<string>()
+    for (const it of matchedItems) {
+      if (newsItems.length >= NEWS_RESERVED) break
+      if (usedNewsIds.has(it.id)) continue
+      usedNewsIds.add(it.id)
+      newsItems.push(it)
+    }
+    if (newsItems.length < NEWS_RESERVED) {
+      for (const n of news.recent) {
+        if (newsItems.length >= NEWS_RESERVED) break
+        const it = newsToItem(n, 'Actualité récente')
+        if (usedNewsIds.has(it.id)) continue
+        usedNewsIds.add(it.id)
+        newsItems.push(it)
+      }
+    }
+
+    // ── Pédago : round-robin inter-types jusqu'au budget restant ──────────
+    // Budget pédago = (cap total − conformité) − news réservées. Si peu de news,
+    // le pédago récupère les slots libérés (feed jamais sous-rempli).
+    const pedagoSlots = Math.max(0, TOTAL_CAP - 1 - newsItems.length)
+    const pedagoItems: ForYouItem[] = []
+    const cursors: Record<string, number> = { formation: 0, fiche: 0, autoeval: 0, epp: 0 }
+    let progressed = true
+    while (pedagoItems.length < pedagoSlots && progressed) {
+      progressed = false
+      for (const type of PEDAGO_ROTATION) {
+        if (pedagoItems.length >= pedagoSlots) break
+        const bucket = buckets[type as keyof typeof buckets]
+        const idx = cursors[type]
+        if (idx < bucket.length) {
+          pedagoItems.push(bucket[idx].item)
+          cursors[type] = idx + 1
+          progressed = true
+        }
+      }
+    }
+
+    const items: ForYouItem[] = [...pedagoItems, ...newsItems, CONFORMITE_PROMO]
 
     return NextResponse.json({ items })
   } catch (err) {
@@ -233,7 +281,7 @@ function ficheBibliothequeBase(axe: number): string {
 function newsToItem(n: NewsCard, matchReason: string | null): ForYouItem {
   return {
     id: `news-${n.id}`,
-    type: 'news',
+    type: 'news' as ForYouType,
     title: n.display_title,
     href: '/news',
     axe: null,
@@ -241,28 +289,5 @@ function newsToItem(n: NewsCard, matchReason: string | null): ForYouItem {
     cover: n.cover_image_url,
     publishedAt: n.published_at,
     matchReason,
-  }
-}
-
-function dateKey(d: string | null | undefined): number {
-  if (!d) return 0
-  const t = new Date(d).getTime()
-  return Number.isFinite(t) ? t : 0
-}
-
-// News non lisibles par le client session (RLS : SELECT réservé au service_role).
-// On réutilise donc l'endpoint public existant `/api/news/syntheses` (qui porte
-// déjà l'accès service-role) plutôt que d'introduire un service role ici.
-async function fetchNews(request: Request): Promise<NewsCard[]> {
-  try {
-    const origin = new URL(request.url).origin
-    const res = await fetch(`${origin}/api/news/syntheses?limit=${NEWS_POOL_LIMIT}`, {
-      cache: 'no-store',
-    })
-    if (!res.ok) return []
-    const json = await res.json()
-    return (json?.data ?? []) as NewsCard[]
-  } catch {
-    return []
   }
 }
