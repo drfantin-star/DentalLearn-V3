@@ -10,6 +10,7 @@ import {
 } from 'lucide-react'
 import StatsCards from '@/components/home/StatsCards'
 import DemarcheCard from '@/components/home/DemarcheCard'
+import InterestsSection from '@/components/interests/InterestsSection'
 import RadarCP from '@/components/profile/RadarCP'
 import CreateCabinetModal from '@/components/auth/CreateCabinetModal'
 import { useDemarches } from '@/lib/hooks/useDemarches'
@@ -153,6 +154,9 @@ export default function ProfilPage() {
           currentStreak={streak?.current_streak || 0}
           refreshTrigger={refreshTrigger}
         />
+
+        {/* Centres d'intérêt (« Pour vous ») — affichage + édition inline */}
+        <InterestsSection />
 
         {/* Carte upgrade solo → cabinet (uniquement si orgless) */}
         {showUpgradeCard && (
