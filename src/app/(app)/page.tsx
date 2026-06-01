@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Loader2, LogOut, UserCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2, LogOut, Sparkles, UserCircle } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, getCategoryConfig } from '@/lib/supabase/types'
@@ -15,7 +15,9 @@ import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 import { JournalWeekCard } from '@/components/home/JournalWeekCard'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
+import ForYouCard from '@/components/home/ForYouCard'
 import type { JournalEpisode, NewsCard } from '@/types/news'
+import type { ForYouItem } from '@/types/forYou'
 import type { EvenementItemData } from '@/types/evenements'
 
 export default function HomePage() {
@@ -33,6 +35,10 @@ export default function HomePage() {
   const [recentFormations, setRecentFormations] = useState<Formation[]>([])
   const [recentLoading, setRecentLoading] = useState(true)
 
+  // Feed « Pour vous » — personnalisé sur les intérêts déclarés (cf. /api/for-you)
+  const [forYouItems, setForYouItems] = useState<ForYouItem[]>([])
+  const [forYouLoading, setForYouLoading] = useState(true)
+
   // Événements — 3 prochains (live_events + live_sessions)
   const [evenements, setEvenements] = useState<EvenementItemData[]>([])
   const [formationProgress, setFormationProgress] = useState<
@@ -40,6 +46,7 @@ export default function HomePage() {
   >({})
 
   // Refs carousels
+  const forYouScrollRef = useRef<HTMLDivElement>(null)
   const recentScrollRef = useRef<HTMLDivElement>(null)
   const axe12ScrollRef = useRef<HTMLDivElement>(null)
   const axe3ScrollRef = useRef<HTMLDivElement>(null)
@@ -69,6 +76,16 @@ export default function HomePage() {
       .then(r => r.json())
       .then(d => setNewsItems(d.data ?? []))
       .catch(() => {})
+  }, [])
+
+  // Feed « Pour vous » — la route renvoie { items: [] } si l'utilisateur n'a
+  // pas d'intérêts (onboarding skippé) → la section ne sera pas rendue.
+  useEffect(() => {
+    fetch('/api/for-you')
+      .then(r => r.json())
+      .then(d => setForYouItems(d.items ?? []))
+      .catch(() => setForYouItems([]))
+      .finally(() => setForYouLoading(false))
   }, [])
 
   // T11 : journal hebdo publié — l'API renvoie 200 + null si aucun journal
@@ -172,6 +189,17 @@ export default function HomePage() {
     router.push('/login')
     router.refresh()
   }
+
+  // Dédup : « Pour vous » est prioritaire → on retire de « Fraîchement arrivé »
+  // les formations déjà présentes dans le feed perso (id `formation-<uuid>`).
+  const forYouFormationIds = new Set(
+    forYouItems
+      .filter((i) => i.type === 'formation')
+      .map((i) => i.id.replace(/^formation-/, ''))
+  )
+  const dedupedRecentFormations = recentFormations.filter(
+    (f) => !forYouFormationIds.has(f.id)
+  )
 
   // Catégories par axe
   const axe12Categories = CATEGORIES.filter(c => c.type === 'cp')
@@ -336,6 +364,40 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Pour vous — rendue seulement si le feed renvoie ≥1 item (un user
+            ayant skippé l'onboarding reçoit { items: [] } → pas de section). */}
+        {!forYouLoading && forYouItems.length > 0 && (
+          <section>
+            <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
+              <Sparkles size={18} className="text-violet-400" /> Pour vous
+            </h2>
+            <div className="relative">
+              <button
+                onClick={() => scroll(forYouScrollRef, 'left')}
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
+                aria-label="Précédent"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div
+                ref={forYouScrollRef}
+                className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+              >
+                {forYouItems.map((item) => (
+                  <ForYouCard key={item.id} item={item} />
+                ))}
+              </div>
+              <button
+                onClick={() => scroll(forYouScrollRef, 'right')}
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
+                aria-label="Suivant"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </section>
+        )}
+
         {/* News */}
         <section>
           <div className="flex items-center mb-4">
@@ -384,7 +446,7 @@ export default function HomePage() {
                 ref={recentScrollRef}
                 className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
               >
-                {recentFormations.map((f) => {
+                {dedupedRecentFormations.map((f) => {
                   const config = getCategoryConfig(f.category)
                   const from = config.type === 'axe3'
                     ? '/patient'
