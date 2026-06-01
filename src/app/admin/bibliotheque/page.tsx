@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Plus,
   Pencil,
@@ -27,9 +28,20 @@ const AXES: AxeId[] = [1, 3, 4]
 
 type Notification = { kind: 'success' | 'error'; message: string }
 
+// Ligne légère de la section « Questionnaire » (édition via écran dédié).
+type QuestionnaireRow = {
+  id: string
+  slug: string
+  titre: string
+  actif: boolean
+  time_estimate_min: number | null
+}
+
 export default function AdminBibliothequePage() {
+  const router = useRouter()
   const [activeAxe, setActiveAxe] = useState<AxeId>(3)
   const [ressources, setRessources] = useState<BibliothequeRessourceRow[]>([])
+  const [questionnaires, setQuestionnaires] = useState<QuestionnaireRow[]>([])
   const [loading, setLoading] = useState(true)
   const [notif, setNotif] = useState<Notification | null>(null)
 
@@ -62,9 +74,26 @@ export default function AdminBibliothequePage() {
     setLoading(false)
   }, [showNotif])
 
+  const loadQuestionnaires = useCallback(async (axe: AxeId) => {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('questionnaires')
+      .select('id, slug, titre, actif, time_estimate_min')
+      .eq('axe_cp', axe)
+      .order('titre', { ascending: true })
+    if (error) {
+      // Section secondaire : on n'interrompt pas l'affichage des ressources.
+      console.error('Chargement questionnaires échoué:', error.message)
+      setQuestionnaires([])
+    } else {
+      setQuestionnaires((data ?? []) as QuestionnaireRow[])
+    }
+  }, [])
+
   useEffect(() => {
     loadRessources(activeAxe)
-  }, [activeAxe, loadRessources])
+    loadQuestionnaires(activeAxe)
+  }, [activeAxe, loadRessources, loadQuestionnaires])
 
   // Regroupement par catégorie en préservant l'ordre (déjà trié par la requête).
   const groups = useMemo(() => {
@@ -277,6 +306,61 @@ export default function AdminBibliothequePage() {
             </section>
           ))}
         </div>
+      )}
+
+      {/* Section Questionnaire — masquée si aucun questionnaire pour l'axe actif */}
+      {!loading && questionnaires.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">
+            Questionnaire
+          </h2>
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            {/* En-têtes (desktop) */}
+            <div className="hidden md:grid grid-cols-[1fr_140px_90px_90px_90px] gap-3 px-4 py-2 border-b border-gray-100 text-xs font-semibold uppercase tracking-wide text-gray-400">
+              <span>Titre</span>
+              <span>Type</span>
+              <span>Actif</span>
+              <span>Durée</span>
+              <span className="text-right">Actions</span>
+            </div>
+            <ul className="divide-y divide-gray-100">
+              {questionnaires.map((q) => (
+                <li
+                  key={q.id}
+                  className="grid grid-cols-1 md:grid-cols-[1fr_140px_90px_90px_90px] gap-2 md:gap-3 px-4 py-3 md:items-center"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{q.titre}</p>
+                  </div>
+                  <span className="text-sm text-gray-600">Auto-évaluation</span>
+                  <span>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        q.actif ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {q.actif ? 'Actif' : 'Inactif'}
+                    </span>
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    {q.time_estimate_min != null ? `${q.time_estimate_min} min` : '—'}
+                  </span>
+                  <div className="flex items-center gap-1 md:justify-end">
+                    <button
+                      onClick={() =>
+                        router.push(`/admin/bibliotheque/questionnaire/${q.slug}`)
+                      }
+                      aria-label={`Éditer ${q.titre}`}
+                      className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
       )}
 
       {/* Modal formulaire */}
