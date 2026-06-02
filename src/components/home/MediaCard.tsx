@@ -16,7 +16,19 @@ import type { ReactNode } from 'react'
  * sombre → slots `topLeft` / `topRight` → bloc bas (`children`).
  */
 
+// Orientation de la carte. `portrait` (3/4) = format vedette « Fraîchement
+// arrivé ». `landscape` (3/2) = format des cartes catégories « Explorer »,
+// repris pour « Pour vous » et « Actualités » (hauteur réduite, alignée sur
+// les catégories).
+export type MediaCardAspect = 'portrait' | 'landscape'
+const ASPECT_RATIO: Record<MediaCardAspect, string> = {
+  portrait: '3 / 4',
+  landscape: '3 / 2',
+}
+
 // Dimensions partagées — source unique de vérité de la « hauteur de carte ».
+// La largeur (et donc la hauteur via l'aspect-ratio) est identique aux cartes
+// catégories de « Explorer » (CategoryCarousel dans page.tsx).
 export const MEDIA_CARD_STYLE: React.CSSProperties = {
   width: 'calc(50vw - 24px)',
   maxWidth: '220px',
@@ -44,6 +56,8 @@ interface MediaCardProps {
   topLeft?: ReactNode
   /** Badge secondaire (ex. podcast) — haut droite. */
   topRight?: ReactNode
+  /** Orientation. Défaut `portrait` (3/4). `landscape` (3/2) pour Pour vous / Actualités. */
+  aspect?: MediaCardAspect
   /** Bloc bas en overlay : titre + sous-titre / CTA. */
   children: ReactNode
 }
@@ -57,9 +71,11 @@ export default function MediaCard({
   fallback,
   topLeft,
   topRight,
+  aspect = 'portrait',
   children,
 }: MediaCardProps) {
   const className = 'flex-shrink-0 snap-start rounded-2xl overflow-hidden block text-left'
+  const style: React.CSSProperties = { ...MEDIA_CARD_STYLE, aspectRatio: ASPECT_RATIO[aspect] }
 
   const inner = (
     <>
@@ -115,7 +131,7 @@ export default function MediaCard({
 
   if (href) {
     return (
-      <a href={href} aria-label={ariaLabel} className={className} style={MEDIA_CARD_STYLE}>
+      <a href={href} aria-label={ariaLabel} className={className} style={style}>
         {inner}
       </a>
     )
@@ -127,7 +143,7 @@ export default function MediaCard({
       onClick={onClick}
       aria-label={ariaLabel}
       className={className}
-      style={MEDIA_CARD_STYLE}
+      style={style}
     >
       {inner}
     </button>

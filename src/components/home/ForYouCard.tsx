@@ -45,6 +45,7 @@ export default function ForYouCard({ item }: { item: ForYouItem }) {
 
   return (
     <MediaCard
+      aspect="landscape"
       href={item.href}
       ariaLabel={item.title}
       cover={item.cover}
@@ -58,10 +59,10 @@ export default function ForYouCard({ item }: { item: ForYouItem }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '46px',
+            fontSize: '56px',
           }}
         >
-          <span aria-hidden>{TYPE_PICTO[item.type]}</span>
+          <span aria-hidden style={{ opacity: 0.22 }}>{TYPE_PICTO[item.type]}</span>
         </div>
       }
       topLeft={
@@ -88,7 +89,7 @@ export default function ForYouCard({ item }: { item: ForYouItem }) {
           color: 'white',
           lineHeight: 1.3,
           display: '-webkit-box',
-          WebkitLineClamp: 3,
+          WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
           textShadow: '0 1px 3px rgba(0,0,0,0.5)',
@@ -96,23 +97,6 @@ export default function ForYouCard({ item }: { item: ForYouItem }) {
       >
         {item.title}
       </p>
-      {item.matchReason && (
-        <p
-          style={{
-            fontSize: '11px',
-            fontWeight: 500,
-            color: 'rgba(255,255,255,0.75)',
-            lineHeight: 1.25,
-            display: '-webkit-box',
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-          }}
-        >
-          {item.matchReason}
-          {item.estMinutes ? ` · ~${item.estMinutes} min` : ''}
-        </p>
-      )}
     </MediaCard>
   )
 }

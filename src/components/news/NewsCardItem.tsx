@@ -30,6 +30,25 @@ function dateLabel(publishedAt: string | null): string | null {
   return describeCardDate(publishedAt, '').label
 }
 
+// Ligne date « Publié le … » sous le titre (variante carousel paysage).
+function publishedOnLabel(publishedAt: string | null): string | null {
+  if (!publishedAt) return null
+  const d = new Date(publishedAt)
+  if (Number.isNaN(d.getTime())) return null
+  return `Publié le ${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
+}
+
+// Assombrit un hex de ~`amount` (0-1) en multipliant chaque canal — règle
+// UNIQUE et déterministe pour dériver le dégradé news (base → base assombri),
+// dans la direction 135° des cartes catégories.
+function darkenHex(hex: string, amount: number): string {
+  const m = hex.replace('#', '')
+  const n = m.length === 3 ? m.split('').map((c) => c + c).join('') : m
+  const ch = (i: number) => Math.round(parseInt(n.slice(i, i + 2), 16) * (1 - amount))
+  const h = (v: number) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')
+  return `#${h(ch(0))}${h(ch(2))}${h(ch(4))}`
+}
+
 export default function NewsCardItem({ news, onClick, variant }: Props) {
   const category = news.category_editorial
   const date = dateLabel(news.published_at)
@@ -77,12 +96,14 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
     )
   }
 
-  // Dégradé de fond par spécialité (mapping news existant, cf. NewsCardSVG) —
-  // utilisé seulement quand la news n'a pas de cover.
+  // Dégradé de fond par spécialité (mapping news existant `SPECIALITE_COLORS`) —
+  // base → base assombri ~35 %, direction 135°. Utilisé sans cover uniquement.
   const accent = (news.specialite && SPECIALITE_COLORS[news.specialite]) || NEWS_DEFAULT_COLOR
+  const publishedLine = publishedOnLabel(news.published_at)
 
   return (
     <MediaCard
+      aspect="landscape"
       onClick={() => onClick(news)}
       ariaLabel={news.display_title}
       cover={news.cover_image_url}
@@ -92,14 +113,14 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
           style={{
             position: 'absolute',
             inset: 0,
-            background: `linear-gradient(135deg, ${accent}, ${accent}99)`,
+            background: `linear-gradient(135deg, ${accent}, ${darkenHex(accent, 0.35)})`,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: '46px',
+            fontSize: '64px',
           }}
         >
-          <span aria-hidden>📰</span>
+          <span aria-hidden style={{ opacity: 0.16 }}>📰</span>
         </div>
       }
       topLeft={
@@ -117,7 +138,7 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
           color: 'white',
           lineHeight: 1.3,
           display: '-webkit-box',
-          WebkitLineClamp: 3,
+          WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
           textShadow: '0 1px 3px rgba(0,0,0,0.5)',
@@ -125,7 +146,7 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
       >
         {news.display_title}
       </p>
-      {date ? (
+      {publishedLine ? (
         <p
           style={{
             fontSize: '11px',
@@ -134,7 +155,7 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
             lineHeight: 1.25,
           }}
         >
-          {date}
+          {publishedLine}
         </p>
       ) : null}
     </MediaCard>
