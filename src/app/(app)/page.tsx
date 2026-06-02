@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronLeft, ChevronRight, Loader2, LogOut, Sparkles, UserCircle } from 'lucide-react'
+import { Calendar, CalendarDays, ChevronLeft, ChevronRight, Loader2, LogOut, Sparkles, UserCircle } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, getCategoryConfig } from '@/lib/supabase/types'
@@ -13,12 +13,20 @@ import DailyQuizButton from '@/components/home/DailyQuizButton'
 import DailyQuizModal from '@/components/home/DailyQuizModal'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 import { JournalWeekCard } from '@/components/home/JournalWeekCard'
+import { HomeHeroCard } from '@/components/home/HomeHeroCard'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
 import ForYouCard from '@/components/home/ForYouCard'
 import type { JournalEpisode, NewsCard } from '@/types/news'
 import type { ForYouItem } from '@/types/forYou'
 import type { EvenementItemData } from '@/types/evenements'
+
+function formatEventDate(iso: string): string {
+  const d = new Date(iso)
+  const date = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  return `${date} à ${time}`
+}
 
 export default function HomePage() {
   const [showDailyQuiz, setShowDailyQuiz] = useState(false)
@@ -341,9 +349,9 @@ export default function HomePage() {
 
       <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen" style={{ background: '#0F0F0F' }}>
 
-        {/* T11 : Quiz du jour + Journal hebdo en cartes carrées côte à côte */}
+        {/* 1ʳᵉ ligne unifiée : Quiz du jour / Journal / Événements (HomeHeroCard) */}
         <section>
-          <div className="flex gap-3 max-w-md">
+          <div className="flex items-stretch gap-3">
             <DailyQuizButton
               userId={user?.id}
               onStart={() => setShowDailyQuiz(true)}
@@ -351,16 +359,22 @@ export default function HomePage() {
               variant="square"
             />
             <JournalWeekCard journal={journal} />
-            <Link
-              href="/evenements"
-              className="flex-1 rounded-2xl bg-gray-800/60 border border-gray-700/50 flex flex-col items-center justify-center gap-2 p-3 text-center min-h-[160px]"
-            >
-              <span className="text-3xl">📅</span>
-              <p className="text-xs font-bold text-neutral-200 leading-tight">Événements</p>
-              <p className="text-[10px] text-gray-500">
-                {evenements.length > 0 ? `${evenements.length} à venir` : 'Aucun programmé'}
-              </p>
-            </Link>
+            <HomeHeroCard
+              surface="neutral"
+              icon={<Calendar size={26} />}
+              eyebrow="Événements"
+              title={evenements.length > 0 ? evenements[0].title : 'Rien à l’horizon'}
+              subtitle={
+                evenements.length > 0
+                  ? formatEventDate(evenements[0].starts_at)
+                  : 'Aucun événement programmé'
+              }
+              cta={{
+                label: 'Voir le calendrier',
+                icon: <CalendarDays size={15} />,
+                onClick: () => router.push('/evenements'),
+              }}
+            />
           </div>
         </section>
 

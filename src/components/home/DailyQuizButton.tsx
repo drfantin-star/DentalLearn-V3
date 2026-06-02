@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CheckCircle, Loader2 } from 'lucide-react'
+import { CheckCircle, Loader2, Play, Target } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { HomeHeroCard } from './HomeHeroCard'
 
 interface DailyQuizButtonProps {
   userId?: string
@@ -57,8 +58,8 @@ export default function DailyQuizButton({
     if (isSquare) {
       return (
         <div
-          className="flex-1 aspect-square rounded-2xl flex items-center justify-center"
-          style={{ background: '#242424', border: '0.5px solid #333' }}
+          className="flex flex-1 min-w-0 min-h-[180px] rounded-2xl items-center justify-center"
+          style={{ background: '#1C1C1E', border: '0.5px solid rgba(255,255,255,0.08)' }}
         >
           <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
         </div>
@@ -74,19 +75,20 @@ export default function DailyQuizButton({
   if (alreadyDone) {
     if (isSquare) {
       return (
-        <div className="flex-1 aspect-square rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-500 flex flex-col justify-between p-3 shadow-md">
-          <div>
-            <span className="text-xs font-bold text-white/90 uppercase tracking-wide">
-              ✅ Quiz du jour
-            </span>
-            <p className="text-white font-bold text-sm mt-1 leading-tight">
-              Terminé !
-            </p>
-          </div>
-          <p className="text-white/90 text-[11px]">
-            Score : {score}/10 · à demain
-          </p>
-        </div>
+        <HomeHeroCard
+          surface="gradient"
+          gradient="linear-gradient(160deg, #10B981, #14B8A6)"
+          icon={<CheckCircle size={26} />}
+          eyebrow="Quiz du jour"
+          title="Terminé !"
+          subtitle="À demain pour un nouveau défi"
+          cta={{
+            label: `Score ${score}/10`,
+            icon: <CheckCircle size={15} />,
+            onClick: () => {},
+            disabled: true,
+          }}
+        />
       )
     }
     return (
@@ -106,38 +108,19 @@ export default function DailyQuizButton({
 
   if (isSquare) {
     return (
-      <button
-        type="button"
-        onClick={onStart}
-        className="flex-1 aspect-square rounded-2xl flex flex-col justify-between items-center p-3 active:scale-95 transition-transform shadow-md"
-        style={{ background: 'linear-gradient(135deg, #2D1B96, #8B5CF6)' }}
-      >
-        {/* Bloc central : icône au-dessus du titre + sous-titre, le tout
-            centré horizontalement. Le justify-between du parent pousse ce
-            bloc vers le haut et la ligne "10 questions" vers le bas. */}
-        <div className="flex flex-col items-center text-center gap-2 mt-1">
-          <div className="w-10 h-10 rounded-xl overflow-hidden">
-            <img
-              src="https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/quizz.jpg"
-              alt="Quiz"
-              className="w-full h-full object-cover"
-            />
-          </div>
-          <div>
-            <span className="text-xs font-bold text-white/80 uppercase tracking-wide">
-              🎯 Quiz du jour
-            </span>
-            <p className="text-white font-bold text-sm mt-0.5 leading-tight">
-              Viens tester
-              <br />
-              tes connaissances
-            </p>
-          </div>
-        </div>
-        <p className="text-white/80 text-[11px] text-center">
-          10 questions · ~5 min
-        </p>
-      </button>
+      <HomeHeroCard
+        surface="gradient"
+        gradient="linear-gradient(160deg, #2D1B96, #8B5CF6)"
+        icon={<Target size={26} />}
+        eyebrow="Quiz du jour"
+        title="Teste tes connaissances"
+        subtitle="Ton défi quotidien t'attend"
+        cta={{
+          label: 'Commencer',
+          icon: <Play size={15} fill="currentColor" />,
+          onClick: onStart,
+        }}
+      />
     )
   }
 
