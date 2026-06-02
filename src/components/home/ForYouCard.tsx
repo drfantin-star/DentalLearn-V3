@@ -101,12 +101,12 @@ export default function ForYouCard({ item }: { item: ForYouItem }) {
     >
       <p
         style={{
-          fontSize: '13px',
+          fontSize: '14px',
           fontWeight: 700,
           color: 'white',
           lineHeight: 1.3,
           display: '-webkit-box',
-          WebkitLineClamp: 2,
+          WebkitLineClamp: 3,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
           textShadow: '0 1px 3px rgba(0,0,0,0.5)',

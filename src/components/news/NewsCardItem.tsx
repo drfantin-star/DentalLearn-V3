@@ -30,14 +30,6 @@ function dateLabel(publishedAt: string | null): string | null {
   return describeCardDate(publishedAt, '').label
 }
 
-// Ligne date « Publié le … » sous le titre (variante carousel paysage).
-function publishedOnLabel(publishedAt: string | null): string | null {
-  if (!publishedAt) return null
-  const d = new Date(publishedAt)
-  if (Number.isNaN(d.getTime())) return null
-  return `Publié le ${d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`
-}
-
 // Assombrit un hex de ~`amount` (0-1) en multipliant chaque canal — règle
 // UNIQUE et déterministe pour dériver le dégradé news (base → base assombri),
 // dans la direction 135° des cartes catégories.
@@ -99,7 +91,6 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
   // Dégradé de fond par spécialité (mapping news existant `SPECIALITE_COLORS`) —
   // base → base assombri ~35 %, direction 135°. Utilisé sans cover uniquement.
   const accent = (news.specialite && SPECIALITE_COLORS[news.specialite]) || NEWS_DEFAULT_COLOR
-  const publishedLine = publishedOnLabel(news.published_at)
 
   return (
     <MediaCard
@@ -134,12 +125,12 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
     >
       <p
         style={{
-          fontSize: '13px',
+          fontSize: '14px',
           fontWeight: 700,
           color: 'white',
           lineHeight: 1.3,
           display: '-webkit-box',
-          WebkitLineClamp: 2,
+          WebkitLineClamp: 3,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
           textShadow: '0 1px 3px rgba(0,0,0,0.5)',
@@ -147,18 +138,6 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
       >
         {news.display_title}
       </p>
-      {publishedLine ? (
-        <p
-          style={{
-            fontSize: '11px',
-            fontWeight: 500,
-            color: 'rgba(255,255,255,0.75)',
-            lineHeight: 1.25,
-          }}
-        >
-          {publishedLine}
-        </p>
-      ) : null}
     </MediaCard>
   )
 }
