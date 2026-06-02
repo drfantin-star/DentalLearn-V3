@@ -349,15 +349,20 @@ export default function HomePage() {
 
       <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen" style={{ background: '#0F0F0F' }}>
 
-        {/* 1ʳᵉ ligne unifiée : Quiz du jour / Journal / Événements (HomeHeroCard) */}
+        {/* 1ʳᵉ ligne unifiée : Quiz du jour / Journal / Événements (HomeHeroCard).
+            Mobile/tablette (< lg) : pattern hero → Quiz pleine largeur (col-span-2)
+            puis Journal + Événements en 2 colonnes. Desktop (≥ lg) : 3 colonnes
+            égales, identiques au rendu précédent (flex-1 → grid-cols-3). */}
         <section>
-          <div className="flex items-stretch gap-3">
-            <DailyQuizButton
-              userId={user?.id}
-              onStart={() => setShowDailyQuiz(true)}
-              refreshTrigger={refreshTrigger}
-              variant="square"
-            />
+          <div className="grid grid-cols-2 lg:grid-cols-3 items-stretch gap-3">
+            <div className="col-span-2 lg:col-span-1 flex">
+              <DailyQuizButton
+                userId={user?.id}
+                onStart={() => setShowDailyQuiz(true)}
+                refreshTrigger={refreshTrigger}
+                variant="square"
+              />
+            </div>
             <JournalWeekCard journal={journal} />
             <HomeHeroCard
               surface="neutral"

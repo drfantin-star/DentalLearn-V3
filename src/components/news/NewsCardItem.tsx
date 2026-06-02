@@ -3,8 +3,9 @@
 import React from 'react'
 import type { NewsCard } from '@/types/news'
 import { describeCardDate } from '@/lib/news-display'
-import NewsCardSVG from './NewsCardSVG'
+import NewsCardSVG, { SPECIALITE_COLORS, NEWS_DEFAULT_COLOR } from './NewsCardSVG'
 import Badge, { type BadgeVariant } from '@/components/ui/Badge'
+import MediaCard from '@/components/home/MediaCard'
 
 interface Props {
   news: NewsCard
@@ -76,41 +77,66 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
     )
   }
 
+  // Dégradé de fond par spécialité (mapping news existant, cf. NewsCardSVG) —
+  // utilisé seulement quand la news n'a pas de cover.
+  const accent = (news.specialite && SPECIALITE_COLORS[news.specialite]) || NEWS_DEFAULT_COLOR
+
   return (
-    <button
-      type="button"
+    <MediaCard
       onClick={() => onClick(news)}
-      className="flex-shrink-0 w-[200px] rounded-xl bg-gray-800 overflow-hidden
-                 cursor-pointer hover:scale-[1.02] transition text-left"
-    >
-      <div className="w-full h-[120px] bg-gray-900">
-        {news.cover_image_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={news.cover_image_url}
-            alt={news.display_title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <NewsCardSVG
-            specialite={news.specialite}
-            display_title={news.display_title}
-            className="w-full h-full"
-          />
-        )}
-      </div>
-      <div className="p-3 flex flex-col gap-2">
-        <h3 className="text-sm font-medium text-white line-clamp-2 leading-snug">
-          {news.display_title}
-        </h3>
-        <div className="flex items-center gap-2 flex-wrap">
-          {category ? (
-            <Badge variant={categoryVariant(category)} size="md">
-              {category}
-            </Badge>
-          ) : null}
+      ariaLabel={news.display_title}
+      cover={news.cover_image_url}
+      coverAlt={news.display_title}
+      fallback={
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(135deg, ${accent}, ${accent}99)`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '46px',
+          }}
+        >
+          <span aria-hidden>📰</span>
         </div>
-      </div>
-    </button>
+      }
+      topLeft={
+        category ? (
+          <Badge variant={categoryVariant(category)} size="md">
+            {category}
+          </Badge>
+        ) : undefined
+      }
+    >
+      <p
+        style={{
+          fontSize: '13px',
+          fontWeight: 700,
+          color: 'white',
+          lineHeight: 1.3,
+          display: '-webkit-box',
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+        }}
+      >
+        {news.display_title}
+      </p>
+      {date ? (
+        <p
+          style={{
+            fontSize: '11px',
+            fontWeight: 500,
+            color: 'rgba(255,255,255,0.75)',
+            lineHeight: 1.25,
+          }}
+        >
+          {date}
+        </p>
+      ) : null}
+    </MediaCard>
   )
 }
