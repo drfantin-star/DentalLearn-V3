@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { Info } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 
 interface HomeHeroCardProps {
@@ -17,6 +18,11 @@ interface HomeHeroCardProps {
     onClick: () => void
     /** État verrouillé/terminé : CTA non cliquable (ex. quiz du jour déjà fait). */
     disabled?: boolean
+  }
+  /** Bouton ℹ️ secondaire en haut à droite (ex. détails du Journal). Distinct du CTA. */
+  infoAction?: {
+    onClick: () => void
+    ariaLabel: string
   }
 }
 
@@ -36,6 +42,7 @@ export function HomeHeroCard({
   surface,
   gradient,
   cta,
+  infoAction,
 }: HomeHeroCardProps) {
   const isNeutral = surface === 'neutral'
 
@@ -48,19 +55,38 @@ export function HomeHeroCard({
           : { background: gradient }
       }
     >
-      {/* Pastille icône 52px */}
-      <div
-        className={cn(
-          'flex items-center justify-center rounded-2xl',
-          isNeutral ? 'text-neutral-200' : 'text-white'
+      {/* Ligne du haut : pastille icône 52px + bouton ℹ️ optionnel à droite */}
+      <div className="flex items-start justify-between">
+        <div
+          className={cn(
+            'flex items-center justify-center rounded-2xl',
+            isNeutral ? 'text-neutral-200' : 'text-white'
+          )}
+          style={{
+            width: '52px',
+            height: '52px',
+            background: isNeutral ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.2)',
+          }}
+        >
+          {icon}
+        </div>
+
+        {infoAction && (
+          <button
+            type="button"
+            onClick={infoAction.onClick}
+            aria-label={infoAction.ariaLabel}
+            className={cn(
+              'flex items-center justify-center w-8 h-8 rounded-full transition-colors',
+              isNeutral
+                ? 'text-neutral-300 hover:bg-white/5'
+                : 'text-white hover:bg-white/30'
+            )}
+            style={{ background: isNeutral ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.2)' }}
+          >
+            <Info size={15} />
+          </button>
         )}
-        style={{
-          width: '52px',
-          height: '52px',
-          background: isNeutral ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.2)',
-        }}
-      >
-        {icon}
       </div>
 
       <p

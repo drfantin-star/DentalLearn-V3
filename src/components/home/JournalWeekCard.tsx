@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { Mic, Headphones } from 'lucide-react'
 import { useAudioPlayer } from '@/context/AudioPlayerContext'
 import { HomeHeroCard } from './HomeHeroCard'
+import { JournalDetailModal } from './JournalDetailModal'
 import type { JournalEpisode } from '@/types/news'
 
 interface Props {
@@ -18,6 +20,7 @@ function getWeekNumber(week_iso: string): string {
 const JOURNAL_GRADIENT = 'linear-gradient(160deg, #0F766E, #0D9488)'
 
 export function JournalWeekCard({ journal }: Props) {
+  const [showModal, setShowModal] = useState(false)
   const { playTrack } = useAudioPlayer()
 
   // État vide — pas de journal publié
@@ -43,25 +46,35 @@ export function JournalWeekCard({ journal }: Props) {
   const weekNum = getWeekNumber(journal.week_iso)
 
   return (
-    <HomeHeroCard
-      surface="gradient"
-      gradient={JOURNAL_GRADIENT}
-      icon={<Mic size={26} />}
-      eyebrow="Journal"
-      title={`Semaine ${weekNum}`}
-      subtitle="Le récap audio de la semaine"
-      cta={{
-        label: 'Écouter',
-        icon: <Headphones size={15} />,
-        onClick: () =>
-          playTrack({
-            url: journal.audio_url,
-            title: `Journal S${weekNum}`,
-            duration_s: journal.duration_s,
-            type: 'journal',
-            episodeId: journal.id,
-          }),
-      }}
-    />
+    <>
+      <HomeHeroCard
+        surface="gradient"
+        gradient={JOURNAL_GRADIENT}
+        icon={<Mic size={26} />}
+        eyebrow="Journal"
+        title={`Semaine ${weekNum}`}
+        subtitle="Le récap audio de la semaine"
+        cta={{
+          label: 'Écouter',
+          icon: <Headphones size={15} />,
+          onClick: () =>
+            playTrack({
+              url: journal.audio_url,
+              title: `Journal S${weekNum}`,
+              duration_s: journal.duration_s,
+              type: 'journal',
+              episodeId: journal.id,
+            }),
+        }}
+        infoAction={{
+          onClick: () => setShowModal(true),
+          ariaLabel: 'Détails du journal',
+        }}
+      />
+
+      {showModal && (
+        <JournalDetailModal journal={journal} onClose={() => setShowModal(false)} />
+      )}
+    </>
   )
 }
