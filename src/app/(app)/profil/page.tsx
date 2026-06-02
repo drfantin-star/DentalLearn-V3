@@ -155,8 +155,68 @@ export default function ProfilPage() {
           refreshTrigger={refreshTrigger}
         />
 
-        {/* Centres d'intérêt (« Pour vous ») — affichage + édition inline */}
+        {/* Centres d'intérêt (« Pour vous ») — carte + modal d'édition */}
         <InterestsSection />
+
+        {/* Mes attestations */}
+        <Link
+          href="/profil/attestations"
+          className="block p-4 hover:border-[#444] transition-colors"
+          style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
+              <Award className="w-5 h-5 text-amber-400" />
+            </div>
+            <div className="flex-1">
+              <div className="font-semibold text-[#e5e5e5] text-sm">
+                Mes attestations
+              </div>
+              <div className="text-xs text-[#6b7280]">
+                Formations et audits EPP
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-[#6b7280]" />
+          </div>
+        </Link>
+
+        {/* Mes démarches en cours */}
+        <section>
+          <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2 mb-3">
+            <BookOpen size={18} className="text-[#8B5CF6]" />
+            Mes démarches en cours
+          </h2>
+          {demarchesLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="animate-spin text-gray-400" size={24} />
+            </div>
+          ) : demarches.length > 0 ? (
+            <div className="relative">
+              <button onClick={scrollLeft}
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50">
+                <ChevronLeft size={20} />
+              </button>
+              <div ref={demarchesScrollRef}
+                className="flex gap-3 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4">
+                {demarches.map(d => <DemarcheCard key={d.id} demarche={d} />)}
+              </div>
+              <button onClick={scrollRight}
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50">
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          ) : (
+            <div className="p-5 text-center" style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}>
+              <p className="text-[#6b7280] text-sm">Aucune démarche en cours</p>
+            </div>
+          )}
+        </section>
+
+        {/* Certification Périodique */}
+        <RadarCP
+          ordreInscriptionDate={ordreDate}
+          actionsParAxe={actionsParAxe}
+        />
 
         {/* Carte upgrade solo → cabinet (uniquement si orgless) */}
         {showUpgradeCard && (
@@ -240,66 +300,6 @@ export default function ProfilPage() {
             </div>
           </section>
         )}
-
-        {/* Mes démarches en cours */}
-        <section>
-          <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2 mb-3">
-            <BookOpen size={18} className="text-[#8B5CF6]" />
-            Mes démarches en cours
-          </h2>
-          {demarchesLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="animate-spin text-gray-400" size={24} />
-            </div>
-          ) : demarches.length > 0 ? (
-            <div className="relative">
-              <button onClick={scrollLeft}
-                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50">
-                <ChevronLeft size={20} />
-              </button>
-              <div ref={demarchesScrollRef}
-                className="flex gap-3 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4">
-                {demarches.map(d => <DemarcheCard key={d.id} demarche={d} />)}
-              </div>
-              <button onClick={scrollRight}
-                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50">
-                <ChevronRight size={20} />
-              </button>
-            </div>
-          ) : (
-            <div className="p-5 text-center" style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}>
-              <p className="text-[#6b7280] text-sm">Aucune démarche en cours</p>
-            </div>
-          )}
-        </section>
-
-        {/* Radar CP */}
-        <RadarCP
-          ordreInscriptionDate={ordreDate}
-          actionsParAxe={actionsParAxe}
-        />
-
-        {/* Mes attestations */}
-        <Link
-          href="/profil/attestations"
-          className="block p-4 hover:border-[#444] transition-colors"
-          style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
-              <Award className="w-5 h-5 text-amber-400" />
-            </div>
-            <div className="flex-1">
-              <div className="font-semibold text-[#e5e5e5] text-sm">
-                Mes attestations
-              </div>
-              <div className="text-xs text-[#6b7280]">
-                Formations et audits EPP
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-[#6b7280]" />
-          </div>
-        </Link>
 
       </div>
 
