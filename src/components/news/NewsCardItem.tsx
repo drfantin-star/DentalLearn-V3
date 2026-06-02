@@ -114,13 +114,14 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
             position: 'absolute',
             inset: 0,
             background: `linear-gradient(135deg, ${accent}, ${darkenHex(accent, 0.35)})`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '64px',
           }}
         >
-          <span aria-hidden style={{ opacity: 0.16 }}>📰</span>
+          <span
+            aria-hidden
+            style={{ position: 'absolute', top: '8px', right: '10px', fontSize: '22px', opacity: 0.2 }}
+          >
+            📰
+          </span>
         </div>
       }
       topLeft={

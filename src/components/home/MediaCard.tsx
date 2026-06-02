@@ -28,19 +28,39 @@ const ASPECT_RATIO: Record<MediaCardAspect, string> = {
 
 // Dimensions partagées — source unique de vérité de la « hauteur de carte ».
 // La largeur (et donc la hauteur via l'aspect-ratio) est identique aux cartes
-// catégories de « Explorer » (CategoryCarousel dans page.tsx).
+// catégories de « Explorer » (CategoryCarousel dans page.tsx). Exporté pour que
+// les tuiles « hors shell » (ex. tuile « Voir toutes les actus » dans page.tsx)
+// s'alignent exactement sur les cartes — même largeur, même hauteur.
+export function mediaCardSizeStyle(aspect: MediaCardAspect): React.CSSProperties {
+  return {
+    width: 'calc(50vw - 24px)',
+    minWidth: '148px',
+    maxWidth: '220px',
+    aspectRatio: ASPECT_RATIO[aspect],
+  }
+}
+
 export const MEDIA_CARD_STYLE: React.CSSProperties = {
-  width: 'calc(50vw - 24px)',
-  maxWidth: '220px',
-  minWidth: '148px',
-  aspectRatio: '3 / 4',
+  ...mediaCardSizeStyle('portrait'),
   position: 'relative',
   border: '0.5px solid #333',
 }
 
-// Overlay sombre bas, identique pour les trois carrousels (lisibilité texte).
-const DARK_OVERLAY =
-  'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.3) 45%, transparent 70%)'
+// Overlay sombre bas, lié à l'aspect (lisibilité texte). Le portrait
+// (« Fraîchement arrivé ») garde un scrim plus dense (couvre une vedette plein
+// cadre) ; le landscape (« Pour vous » / « Actualités ») est allégé pour ne pas
+// noircir les covers paysage.
+const DARK_OVERLAY: Record<MediaCardAspect, string> = {
+  portrait:
+    'linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.3) 45%, transparent 70%)',
+  landscape:
+    'linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.28) 45%, transparent 72%)',
+}
+
+// Masque de couture pour une cover en `contain` ancrée haut-droite : adoucit les
+// bords gauche/bas de l'image (transition vers le dégradé de fond) plutôt qu'une
+// arête nette. Valeur tunable au smoke.
+const SEAM_FADE = 'linear-gradient(to top right, transparent 0%, #000 38%)'
 
 interface MediaCardProps {
   /** Rendu `<a>` si `href`, sinon `<button>`. */
@@ -50,6 +70,15 @@ interface MediaCardProps {
   /** URL cover ; si absente, `fallback` occupe le fond pleine carte. */
   cover?: string | null
   coverAlt?: string
+  /**
+   * Mode d'affichage de la cover. `cover` (défaut) = `object-cover` plein cadre.
+   * `contain` = image `object-contain` ancrée haut-droite (~58 %) sur un fond
+   * `coverBackground`, bords adoucis — pour des covers non recadrables (ex.
+   * covers formation arbitraires dans « Pour vous »).
+   */
+  coverFit?: 'cover' | 'contain'
+  /** Fond CSS derrière une cover `contain` (dégradé d'axe / catégorie). */
+  coverBackground?: string
   /** Fond pleine carte quand pas de cover (dégradé + picto/SVG). */
   fallback?: ReactNode
   /** Pastille catégorie / badge type — haut gauche. */
@@ -68,6 +97,8 @@ export default function MediaCard({
   ariaLabel,
   cover,
   coverAlt,
+  coverFit = 'cover',
+  coverBackground,
   fallback,
   topLeft,
   topRight,
@@ -81,24 +112,45 @@ export default function MediaCard({
     <>
       {/* Fond pleine carte */}
       {cover ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={cover}
-          alt={coverAlt ?? ''}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-          }}
-        />
+        coverFit === 'contain' ? (
+          <div style={{ position: 'absolute', inset: 0, background: coverBackground }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={cover}
+              alt={coverAlt ?? ''}
+              style={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                height: '100%',
+                width: '58%',
+                objectFit: 'contain',
+                objectPosition: 'top right',
+                WebkitMaskImage: SEAM_FADE,
+                maskImage: SEAM_FADE,
+              }}
+            />
+          </div>
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={cover}
+            alt={coverAlt ?? ''}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+        )
       ) : (
         fallback
       )}
 
       {/* Overlay dégradé sombre */}
-      <div style={{ position: 'absolute', inset: 0, background: DARK_OVERLAY }} />
+      <div style={{ position: 'absolute', inset: 0, background: DARK_OVERLAY[aspect] }} />
 
       {topLeft && (
         <div style={{ position: 'absolute', top: '10px', left: '10px', zIndex: 2 }}>

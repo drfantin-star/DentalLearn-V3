@@ -17,6 +17,7 @@ import { HomeHeroCard } from '@/components/home/HomeHeroCard'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
 import ForYouCard from '@/components/home/ForYouCard'
+import { mediaCardSizeStyle } from '@/components/home/MediaCard'
 import type { JournalEpisode, NewsCard } from '@/types/news'
 import type { ForYouItem } from '@/types/forYou'
 import type { EvenementItemData } from '@/types/evenements'
@@ -434,9 +435,10 @@ export default function HomePage() {
               />
             ))}
             <div
-              className="flex-shrink-0 w-[200px] rounded-xl bg-gradient-to-br
+              className="flex-shrink-0 rounded-2xl bg-gradient-to-br
                          from-violet-600 to-violet-900 flex flex-col items-center
                          justify-center cursor-pointer hover:scale-[1.02] transition"
+              style={mediaCardSizeStyle('landscape')}
               onClick={() => router.push('/news')}
             >
               <span className="text-white text-sm font-medium text-center px-4">

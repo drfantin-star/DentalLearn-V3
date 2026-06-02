@@ -2,6 +2,7 @@
 
 import React from 'react'
 import type { ForYouItem, ForYouType } from '@/types/forYou'
+import { getCategoryConfig } from '@/lib/supabase/types'
 import MediaCard from './MediaCard'
 
 // Carte unique du feed « Pour vous » : un seul rendu visuel cohérent (style
@@ -43,6 +44,19 @@ function accentFor(axe: ForYouItem['axe']): string {
 export default function ForYouCard({ item }: { item: ForYouItem }) {
   const accent = accentFor(item.axe)
 
+  // Cover formation : rendue en `contain` (non recadrée) sur un dégradé de fond,
+  // les covers admin étant des JPEG arbitraires. Le fond reprend la couleur de
+  // catégorie (même famille que la cover) ; à défaut (catégorie nulle / non
+  // mappée → on évite le gris neutre par défaut), on retombe sur le gradient
+  // d'axe — exactement la couleur du fallback sans cover.
+  const isFormationCover = item.type === 'formation' && !!item.cover
+  const cfg = item.category ? getCategoryConfig(item.category) : null
+  const g = cfg?.gradient
+  const coverBg =
+    g?.from && g?.to
+      ? `linear-gradient(135deg, ${g.from}, ${g.to})`
+      : `linear-gradient(135deg, ${accent}, ${accent}99)`
+
   return (
     <MediaCard
       aspect="landscape"
@@ -50,19 +64,22 @@ export default function ForYouCard({ item }: { item: ForYouItem }) {
       ariaLabel={item.title}
       cover={item.cover}
       coverAlt={item.title}
+      coverFit={isFormationCover ? 'contain' : 'cover'}
+      coverBackground={isFormationCover ? coverBg : undefined}
       fallback={
         <div
           style={{
             position: 'absolute',
             inset: 0,
             background: `linear-gradient(135deg, ${accent}, ${accent}99)`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '56px',
           }}
         >
-          <span aria-hidden style={{ opacity: 0.22 }}>{TYPE_PICTO[item.type]}</span>
+          <span
+            aria-hidden
+            style={{ position: 'absolute', top: '8px', right: '10px', fontSize: '22px', opacity: 0.2 }}
+          >
+            {TYPE_PICTO[item.type]}
+          </span>
         </div>
       }
       topLeft={
