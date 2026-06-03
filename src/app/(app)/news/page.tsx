@@ -95,7 +95,7 @@ export default function NewsPage() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const payload = (await res.json()) as SynthesesPayload
       // Anti-doublons par id : protège contre une insertion entre deux fetches
-      // qui décalerait la pagination (published_at desc).
+      // qui décalerait la pagination (created_at desc).
       setItems((prev) => {
         const seen = new Set(prev.map((i) => i.id))
         const next = (payload.data ?? []).filter((i) => !seen.has(i.id))
