@@ -77,14 +77,15 @@ export default function DailyQuizButton({
       return (
         <HomeHeroCard
           surface="gradient"
+          size="lg"
           gradient="linear-gradient(160deg, #10B981, #14B8A6)"
-          icon={<CheckCircle size={26} />}
+          icon={<CheckCircle size={30} />}
           eyebrow="Quiz du jour"
           title="Terminé !"
           subtitle="À demain pour un nouveau défi"
           cta={{
             label: `Score ${score}/10`,
-            icon: <CheckCircle size={15} />,
+            icon: <CheckCircle size={16} />,
             onClick: () => {},
             disabled: true,
           }}
@@ -110,14 +111,15 @@ export default function DailyQuizButton({
     return (
       <HomeHeroCard
         surface="gradient"
+        size="lg"
         gradient="linear-gradient(160deg, #2D1B96, #8B5CF6)"
-        icon={<Target size={26} />}
+        icon={<Target size={30} />}
         eyebrow="Quiz du jour"
         title="Teste tes connaissances"
         subtitle="Ton défi quotidien t'attend"
         cta={{
           label: 'Commencer',
-          icon: <Play size={15} fill="currentColor" />,
+          icon: <Play size={16} fill="currentColor" />,
           onClick: onStart,
         }}
       />

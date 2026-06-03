@@ -12,6 +12,12 @@ interface HomeHeroCardProps {
   surface: 'gradient' | 'neutral'
   /** Valeur CSS du gradient (ex. "linear-gradient(160deg,#2D1B96,#8B5CF6)"), surface 'gradient' uniquement. */
   gradient?: string
+  /**
+   * Échelle typographique. `md` (défaut) = rendu standard (Journal, Événements).
+   * `lg` = texte d'un cran au-dessus + pastille icône plus grande, pour une
+   * carte qui occupe plus de place (ex. Quiz du jour en pleine largeur mobile).
+   */
+  size?: 'md' | 'lg'
   cta: {
     label: string
     icon: ReactNode
@@ -41,10 +47,13 @@ export function HomeHeroCard({
   subtitle,
   surface,
   gradient,
+  size = 'md',
   cta,
   infoAction,
 }: HomeHeroCardProps) {
   const isNeutral = surface === 'neutral'
+  const lg = size === 'lg'
+  const iconBox = lg ? '60px' : '52px'
 
   return (
     <div
@@ -63,8 +72,8 @@ export function HomeHeroCard({
             isNeutral ? 'text-neutral-200' : 'text-white'
           )}
           style={{
-            width: '52px',
-            height: '52px',
+            width: iconBox,
+            height: iconBox,
             background: isNeutral ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.2)',
           }}
         >
@@ -91,7 +100,8 @@ export function HomeHeroCard({
 
       <p
         className={cn(
-          'mt-3 text-[11px] font-bold uppercase tracking-wide',
+          'mt-3 font-bold uppercase tracking-wide',
+          lg ? 'text-xs' : 'text-[11px]',
           isNeutral ? 'text-neutral-400' : 'text-white/80'
         )}
       >
@@ -99,7 +109,8 @@ export function HomeHeroCard({
       </p>
       <h3
         className={cn(
-          'mt-1 text-base font-bold leading-tight line-clamp-2',
+          'mt-1 font-bold leading-tight line-clamp-2',
+          lg ? 'text-lg' : 'text-base',
           isNeutral ? 'text-neutral-100' : 'text-white'
         )}
       >
@@ -107,7 +118,8 @@ export function HomeHeroCard({
       </h3>
       <p
         className={cn(
-          'mt-0.5 text-xs line-clamp-1',
+          'mt-0.5 line-clamp-1',
+          lg ? 'text-sm' : 'text-xs',
           isNeutral ? 'text-neutral-400' : 'text-white/80'
         )}
       >
@@ -122,7 +134,8 @@ export function HomeHeroCard({
         onClick={cta.onClick}
         disabled={cta.disabled}
         className={cn(
-          'mt-3 w-full rounded-xl py-2.5 flex items-center justify-center gap-1.5 text-sm font-bold transition-colors',
+          'mt-3 w-full rounded-xl flex items-center justify-center gap-1.5 font-bold transition-colors',
+          lg ? 'py-3 text-base' : 'py-2.5 text-sm',
           isNeutral
             ? 'border border-white/15 text-neutral-100 hover:bg-white/5 active:bg-white/10'
             : 'bg-white/20 text-white hover:bg-white/30 active:bg-white/40',

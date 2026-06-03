@@ -2,7 +2,7 @@
 
 import React from 'react'
 
-const SPECIALITE_COLORS: Record<string, string> = {
+export const SPECIALITE_COLORS: Record<string, string> = {
   'dent-resto': '#2A6EBB',
   'paro':       '#2E7D32',
   'implanto':   '#6A1B9A',
@@ -16,7 +16,8 @@ const SPECIALITE_COLORS: Record<string, string> = {
   'gero':       '#5D4037',
   'actu-pro':   '#37474F',
 }
-const DEFAULT_COLOR = '#1A1A2E'
+export const NEWS_DEFAULT_COLOR = '#1A1A2E'
+const DEFAULT_COLOR = NEWS_DEFAULT_COLOR
 
 interface Props {
   specialite: string | null
