@@ -60,7 +60,7 @@ export async function GET(request: Request) {
     const to = page * limit - 1
 
     const { data, error, count } = await query
-      .order('published_at', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false, nullsFirst: false })
       .range(from, to)
 
     if (error) {
