@@ -42,15 +42,15 @@ WHERE code = 'dosimetrie';
 
 UPDATE cabinet_compliance_items SET
   title = 'Contrôle qualité interne (CQI) + audit', reference_text = 'Décision ANSM 8/12/2008 ; CQI mensuel/trimestriel + audit annuel',
-  official_url = NULL, applies_when = 'xray', is_mandatory = true, frequency = 'monthly', display_order = 5
+  official_url = 'https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000019992769', applies_when = 'xray', is_mandatory = true, frequency = 'monthly', display_order = 5
 WHERE code = 'controle_qualite';
 
 INSERT INTO cabinet_compliance_items (category_id, code, title, frequency, is_mandatory, applies_when, reference_text, official_url, display_order)
 SELECT id, v.code, v.title, v.frequency, v.is_mandatory, 'xray', v.reference_text, v.official_url, v.display_order
 FROM cabinet_compliance_categories c, (VALUES
   ('enregistrement_asnr',      'Enregistrement activité ASNR',          'once',       true, 'CSP L.1333-8 ; enregistrement de l''activité (ASNR Téléservices)', NULL::text, 2),
-  ('formation_radioprotection','Formation radioprotection (triennale)', 'multi_year', true, 'C. travail R.4451-58 ; formation radioprotection triennale', 'https://reglementation-controle.asnr.fr/reglementation/guides-de-l-asnr/principales-dispositions-reglementaires-de-radioprotection-applicables-en-radiologie-medicale-et-dentaire', 4),
-  ('controle_qualite_externe', 'Contrôle qualité externe (CQE)',        'multi_year', true, 'Décision ANSM 8/12/2008 ; CQE quinquennal (5 ans) — conditionne le remboursement AM', NULL, 6),
+  ('formation_radioprotection','Formation radioprotection (renouvellement 10 ans)', 'multi_year', true, 'C. travail R.4451-58 ; renouvellement tous les 10 ans', 'https://reglementation-controle.asnr.fr/reglementation/guides-de-l-asnr/principales-dispositions-reglementaires-de-radioprotection-applicables-en-radiologie-medicale-et-dentaire', 4),
+  ('controle_qualite_externe', 'Contrôle qualité externe (CQE)',        'multi_year', true, 'Décision ANSM 8/12/2008 ; CQE quinquennal (5 ans) — conditionne le remboursement AM', 'https://www.legifrance.gouv.fr/jorf/id/JORFTEXT000019992769', 6),
   ('verifications_periodiques','Vérifications périodiques',             'yearly',     true, 'C. travail R.4451-40 à 51 ; vérifications périodiques', 'https://reglementation-controle.asnr.fr/reglementation/guides-de-l-asnr/principales-dispositions-reglementaires-de-radioprotection-applicables-en-radiologie-medicale-et-dentaire', 7),
   ('conformite_locaux',        'Conformité des locaux',                 'once',       true, 'Décision ASNR 2017-DC-0591 ; NF C 15-160', 'https://reglementation-controle.asnr.fr/reglementation/guides-de-l-asnr/principales-dispositions-reglementaires-de-radioprotection-applicables-en-radiologie-medicale-et-dentaire', 8),
   ('paq',                      'Programme d''assurance qualité (PAQ)',  'on_change',  true, 'Réglementation ASNR ; programme d''assurance qualité (PAQ)', 'https://reglementation-controle.asnr.fr/reglementation/guides-de-l-asnr/principales-dispositions-reglementaires-de-radioprotection-applicables-en-radiologie-medicale-et-dentaire', 9)
