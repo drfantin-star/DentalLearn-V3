@@ -1,6 +1,6 @@
 'use client'
 
-import { ExternalLink, Check, Circle, MinusCircle } from 'lucide-react'
+import { ExternalLink, Check, Circle, MinusCircle, FileText } from 'lucide-react'
 import Modal from '@/components/ui/Modal'
 import Badge from '@/components/ui/Badge'
 import { cn } from '@/lib/utils/cn'
@@ -143,17 +143,30 @@ export default function CategoryItemsModal({
                   })}
                 </div>
 
-                {item.official_url && (
-                  <a
-                    href={item.official_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
-                  >
-                    Source officielle
-                    <ExternalLink size={13} />
-                  </a>
-                )}
+                <div className="flex items-center gap-3">
+                  {item.fiche_url && (
+                    <a
+                      href={item.fiche_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                    >
+                      Fiche
+                      <FileText size={13} />
+                    </a>
+                  )}
+                  {item.official_url && (
+                    <a
+                      href={item.official_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-accent hover:underline"
+                    >
+                      Source officielle
+                      <ExternalLink size={13} />
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           )

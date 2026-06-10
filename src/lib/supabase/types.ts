@@ -265,6 +265,8 @@ export interface CabinetComplianceItem {
   help_url: string | null
   official_url: string | null
   fiche_slug: string | null
+  fiche_url: string | null
+  fiche_storage_path: string | null
   applies_when: ComplianceAppliesWhen
   display_order: number
   created_at: string

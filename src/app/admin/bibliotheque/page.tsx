@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import RessourceFormModal from '@/components/admin/bibliotheque/RessourceFormModal'
+import ConformiteAdminPanel from '@/components/admin/conformite/ConformiteAdminPanel'
 import {
   AXE_LABELS,
   type AxeId,
@@ -39,7 +40,8 @@ type QuestionnaireRow = {
 
 export default function AdminBibliothequePage() {
   const router = useRouter()
-  const [activeAxe, setActiveAxe] = useState<AxeId>(3)
+  const [activeTab, setActiveTab] = useState<AxeId | 'conformite'>(3)
+  const isConformite = activeTab === 'conformite'
   const [ressources, setRessources] = useState<BibliothequeRessourceRow[]>([])
   const [questionnaires, setQuestionnaires] = useState<QuestionnaireRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -91,9 +93,10 @@ export default function AdminBibliothequePage() {
   }, [])
 
   useEffect(() => {
-    loadRessources(activeAxe)
-    loadQuestionnaires(activeAxe)
-  }, [activeAxe, loadRessources, loadQuestionnaires])
+    if (typeof activeTab !== 'number') return
+    loadRessources(activeTab)
+    loadQuestionnaires(activeTab)
+  }, [activeTab, loadRessources, loadQuestionnaires])
 
   // Regroupement par catégorie en préservant l'ordre (déjà trié par la requête).
   const groups = useMemo(() => {
@@ -130,7 +133,7 @@ export default function AdminBibliothequePage() {
 
   const handleSaved = (message: string) => {
     showNotif({ kind: 'success', message })
-    loadRessources(activeAxe)
+    if (typeof activeTab === 'number') loadRessources(activeTab)
   }
 
   const confirmDelete = async () => {
@@ -162,7 +165,7 @@ export default function AdminBibliothequePage() {
     }
     showNotif({ kind: 'success', message: 'Ressource supprimée.' })
     setToDelete(null)
-    loadRessources(activeAxe)
+    if (typeof activeTab === 'number') loadRessources(activeTab)
   }
 
   return (
@@ -175,11 +178,13 @@ export default function AdminBibliothequePage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Bibliothèque</h1>
         </div>
-        <Button variant="primary" onClick={openCreate}>
-          <span className="flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Ajouter une ressource
-          </span>
-        </Button>
+        {!isConformite && (
+          <Button variant="primary" onClick={openCreate}>
+            <span className="flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Ajouter une ressource
+            </span>
+          </Button>
+        )}
       </div>
 
       {/* Notification */}
@@ -206,9 +211,9 @@ export default function AdminBibliothequePage() {
         {AXES.map((axe) => (
           <button
             key={axe}
-            onClick={() => setActiveAxe(axe)}
+            onClick={() => setActiveTab(axe)}
             className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
-              activeAxe === axe
+              activeTab === axe
                 ? 'bg-primary text-white shadow-md'
                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
@@ -216,17 +221,29 @@ export default function AdminBibliothequePage() {
             {AXE_LABELS[axe]}
           </button>
         ))}
+        <button
+          onClick={() => setActiveTab('conformite')}
+          className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+            isConformite
+              ? 'bg-primary text-white shadow-md'
+              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+          }`}
+        >
+          Conformité
+        </button>
       </div>
 
-      {/* Contenu */}
-      {loading ? (
+      {/* Conformité : panneau dédié (CRUD catégories + items) */}
+      {isConformite ? (
+        <ConformiteAdminPanel onNotify={showNotif} />
+      ) : loading ? (
         <div className="flex items-center justify-center py-16 text-gray-400">
           <Loader2 className="w-8 h-8 animate-spin" />
         </div>
       ) : groups.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-10 text-center">
           <p className="text-gray-500">
-            Aucune ressource pour {AXE_LABELS[activeAxe]}.
+            Aucune ressource pour {AXE_LABELS[activeTab as AxeId]}.
           </p>
           <button
             onClick={openCreate}
@@ -309,7 +326,7 @@ export default function AdminBibliothequePage() {
       )}
 
       {/* Section Questionnaire — masquée si aucun questionnaire pour l'axe actif */}
-      {!loading && questionnaires.length > 0 && (
+      {!isConformite && !loading && questionnaires.length > 0 && (
         <section className="mt-8">
           <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-gray-500">
             Questionnaire
@@ -367,7 +384,7 @@ export default function AdminBibliothequePage() {
       <RessourceFormModal
         open={formOpen}
         onClose={() => setFormOpen(false)}
-        axe={activeAxe}
+        axe={(typeof activeTab === 'number' ? activeTab : 3) as AxeId}
         existing={editing}
         existingCategories={existingCategories}
         onSaved={handleSaved}
