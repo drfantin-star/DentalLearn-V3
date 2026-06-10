@@ -1,71 +1,85 @@
 'use client'
 
+import { useMemo, useState } from 'react'
 import {
   ShieldCheck,
-  CheckCircle2,
-  Circle,
-  AlertTriangle,
   FileText,
   ChevronRight,
+  Radio,
+  Thermometer,
+  Trash2,
+  Shield,
+  Lock,
+  Accessibility,
+  Activity,
+  MonitorSmartphone,
+  Receipt,
+  Users,
+  Briefcase,
+  type LucideIcon,
 } from 'lucide-react'
+import { useCabinetCompliance, deriveEffectiveStatus } from '@/lib/hooks/useCabinetCompliance'
+import CategoryItemsModal from '@/components/conformite/CategoryItemsModal'
+import type { CabinetComplianceCategory } from '@/lib/supabase/types'
 
-// Catégories conformité — sera remplacé par Supabase
-const CONFORMITE_CATEGORIES = [
-  {
-    id: 'hygiene',
-    title: 'Hygiène & Stérilisation',
-    icon: '🧫',
-    itemsTotal: 12,
-    itemsDone: 0,
-  },
-  {
-    id: 'securite',
-    title: 'Sécurité du cabinet',
-    icon: '🔒',
-    itemsTotal: 8,
-    itemsDone: 0,
-  },
-  {
-    id: 'radioprotection',
-    title: 'Radioprotection',
-    icon: '☢️',
-    itemsTotal: 6,
-    itemsDone: 0,
-  },
-  {
-    id: 'dechets',
-    title: 'Gestion des déchets',
-    icon: '🗑️',
-    itemsTotal: 5,
-    itemsDone: 0,
-  },
-  {
-    id: 'affichages',
-    title: 'Affichages obligatoires',
-    icon: '📋',
-    itemsTotal: 9,
-    itemsDone: 0,
-  },
-  {
-    id: 'rh',
-    title: 'RH & Personnel',
-    icon: '👥',
-    itemsTotal: 7,
-    itemsDone: 0,
-  },
-  {
-    id: 'duerp',
-    title: 'DUERP',
-    icon: '📄',
-    itemsTotal: 5,
-    itemsDone: 0,
-  },
-]
+// Noms d'icônes lucide stockés en base (cabinet_compliance_categories.icon).
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  radio: Radio,
+  thermometer: Thermometer,
+  'trash-2': Trash2,
+  shield: Shield,
+  lock: Lock,
+  accessibility: Accessibility,
+  activity: Activity,
+  'monitor-smartphone': MonitorSmartphone,
+  'file-text': FileText,
+  receipt: Receipt,
+  users: Users,
+  briefcase: Briefcase,
+}
+
+function categoryIcon(name: string | null): LucideIcon {
+  return (name && CATEGORY_ICONS[name]) || ShieldCheck
+}
 
 export default function ConformitePage() {
-  const totalItems = CONFORMITE_CATEGORIES.reduce((sum, c) => sum + c.itemsTotal, 0)
-  const totalDone = CONFORMITE_CATEGORIES.reduce((sum, c) => sum + c.itemsDone, 0)
-  const progressPercent = totalItems > 0 ? Math.round((totalDone / totalItems) * 100) : 0
+  const { categories, items, progressByItem, loading, setItemStatus } =
+    useCabinetCompliance()
+  const [openCategory, setOpenCategory] =
+    useState<CabinetComplianceCategory | null>(null)
+
+  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), [])
+
+  // Items groupés par catégorie.
+  const itemsByCategory = useMemo(() => {
+    const map: Record<string, typeof items> = {}
+    for (const item of items) {
+      ;(map[item.category_id] ??= []).push(item)
+    }
+    return map
+  }, [items])
+
+  // % = done / (total − not_applicable). 'expired' compte comme non conforme
+  // (exclu du numérateur) mais reste au dénominateur.
+  const computeStats = useMemo(() => {
+    return (categoryId?: string) => {
+      const scope = categoryId
+        ? itemsByCategory[categoryId] ?? []
+        : items
+      let done = 0
+      let denom = 0
+      for (const item of scope) {
+        const effective = deriveEffectiveStatus(progressByItem[item.id], todayISO)
+        if (effective === 'not_applicable') continue
+        denom += 1
+        if (effective === 'done') done += 1
+      }
+      const percent = denom > 0 ? Math.round((done / denom) * 100) : 0
+      return { done, denom, percent }
+    }
+  }, [items, itemsByCategory, progressByItem, todayISO])
+
+  const global = computeStats()
 
   return (
     <>
@@ -90,20 +104,19 @@ export default function ConformitePage() {
                 Conformité cabinet
               </h2>
               <p className="text-xs text-gray-400 mt-0.5">
-                {totalDone}/{totalItems} items validés
+                {loading
+                  ? 'Chargement…'
+                  : `${global.done}/${global.denom} items validés`}
               </p>
             </div>
-            <div
-              className="text-2xl font-black"
-              style={{ color: '#00D1C1' }}
-            >
-              {progressPercent}%
+            <div className="text-2xl font-black text-accent">
+              {global.percent}%
             </div>
           </div>
           <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-accent rounded-full transition-all duration-700"
-              style={{ width: `${progressPercent}%` }}
+              style={{ width: `${global.percent}%` }}
             />
           </div>
         </div>
@@ -113,49 +126,69 @@ export default function ConformitePage() {
           <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">
             Catégories
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {CONFORMITE_CATEGORIES.map((category) => {
-              const percent =
-                category.itemsTotal > 0
-                  ? Math.round(
-                      (category.itemsDone / category.itemsTotal) * 100
-                    )
-                  : 0
 
-              return (
-                <button
-                  key={category.id}
-                  className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:shadow-md transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{category.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-bold text-gray-900 text-sm truncate">
-                          {category.title}
-                        </h3>
-                        <ChevronRight
-                          size={16}
-                          className="text-gray-300 shrink-0"
-                        />
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-[88px] bg-white rounded-2xl border border-gray-100 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {categories.map((category) => {
+                const Icon = categoryIcon(category.icon)
+                const stats = computeStats(category.id)
+                const total = (itemsByCategory[category.id] ?? []).length
+
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => setOpenCategory(category)}
+                    className="w-full bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-left hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                        style={{
+                          backgroundColor: category.color
+                            ? `${category.color}1A`
+                            : '#f3f4f6',
+                          color: category.color ?? '#374151',
+                        }}
+                      >
+                        <Icon size={20} />
                       </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-accent rounded-full"
-                            style={{ width: `${percent}%` }}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="font-bold text-gray-900 text-sm truncate">
+                            {category.name}
+                          </h3>
+                          <ChevronRight
+                            size={16}
+                            className="text-gray-300 shrink-0"
                           />
                         </div>
-                        <span className="text-[10px] text-gray-400 font-medium">
-                          {category.itemsDone}/{category.itemsTotal}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-accent rounded-full"
+                              style={{ width: `${stats.percent}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-gray-400 font-medium">
+                            {stats.done}/{total}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </section>
 
         {/* Générateur DUERP */}
@@ -175,6 +208,16 @@ export default function ConformitePage() {
           </div>
         </div>
       </main>
+
+      <CategoryItemsModal
+        open={openCategory !== null}
+        onClose={() => setOpenCategory(null)}
+        category={openCategory}
+        items={openCategory ? itemsByCategory[openCategory.id] ?? [] : []}
+        progressByItem={progressByItem}
+        todayISO={todayISO}
+        onSetStatus={setItemStatus}
+      />
     </>
   )
 }

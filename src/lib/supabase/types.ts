@@ -226,6 +226,65 @@ export interface CourseWatchLog {
 }
 
 // ─────────────────────────────────────────────
+// CONFORMITÉ CABINET (référentiel v2.2 — 12 catégories / 78 items)
+// ─────────────────────────────────────────────
+
+export type ComplianceAppliesWhen =
+  | 'always'
+  | 'xray'
+  | 'employer'
+  | 'hds'
+  | 'prescriber'
+  | 'stupefiant_stock'
+  | 'dae'
+
+/** Statuts stockés en base. 'expired' n'est PAS stocké : il est dérivé au front
+ *  depuis expiry_date < CURRENT_DATE. */
+export type ComplianceStatus = 'todo' | 'done' | 'not_applicable'
+
+export interface CabinetComplianceCategory {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  icon: string | null
+  color: string | null
+  display_order: number
+  created_at: string
+}
+
+export interface CabinetComplianceItem {
+  id: string
+  category_id: string
+  code: string
+  title: string
+  description: string | null
+  frequency: string | null
+  is_mandatory: boolean
+  reference_text: string | null
+  help_url: string | null
+  official_url: string | null
+  fiche_slug: string | null
+  applies_when: ComplianceAppliesWhen
+  display_order: number
+  created_at: string
+}
+
+export interface UserCabinetCompliance {
+  id: string
+  user_id: string
+  item_id: string
+  status: ComplianceStatus
+  last_check_date: string | null
+  next_check_date: string | null
+  expiry_date: string | null
+  proof_url: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+// ─────────────────────────────────────────────
 // CATÉGORIES (mapping frontend)
 // ─────────────────────────────────────────────
 
