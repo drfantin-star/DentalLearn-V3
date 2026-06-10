@@ -86,6 +86,29 @@ export function FormationAudioBlock({
   const [scenesExtracted, setScenesExtracted] = useState<boolean | null>(null)
   const router = useRouter()
 
+  // Sync prop → state : quand l'admin uploade un MP3, le parent (client
+  // component) renseigne `currentAudioUrl` et le redescend en prop, mais
+  // `initial` n'est calculé qu'au montage. Sans cette resync le composant
+  // resterait figé en 'idle' et le stepper (timeline / extraction de scènes)
+  // n'apparaîtrait qu'après un reload manuel. On promeut donc idle → done dès
+  // que `currentAudioUrl` est renseigné, en respectant le Cas D « Régénérer »
+  // (userRequestedRegeneration) et sans écraser les phases manuelles en cours
+  // (uploading/ready/generating/error).
+  useEffect(() => {
+    if (!currentAudioUrl) return
+    if (userRequestedRegeneration) return
+    setState((prev) => {
+      if (prev.phase === 'idle') {
+        return { phase: 'done', audioUrl: currentAudioUrl }
+      }
+      if (prev.phase === 'done' && prev.audioUrl !== currentAudioUrl) {
+        // spread : préserve tout champ futur de la variante done (durationSec…)
+        return { ...prev, audioUrl: currentAudioUrl }
+      }
+      return prev
+    })
+  }, [currentAudioUrl, userRequestedRegeneration])
+
   // Fetcher la timeline pour savoir si des scènes ont déjà été extraites.
   // On évite une migration BDD en lisant directement le JSON pointé par
   // `timeline_url`. En cas d'échec (404, JSON invalide, etc.) on retombe sur
