@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Save, Upload } from 'lucide-react';
+import { Save, Upload, FileText } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/Button';
@@ -17,6 +17,7 @@ interface FormData {
   description_short: string;
   description_long: string;
   cover_image_url: string;
+  biblio_pdf_url: string;
   category: string;
   level: string;
   total_sequences: number;
@@ -27,6 +28,10 @@ export default function EditFormationPage() {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadingBiblio, setUploadingBiblio] = useState(false);
+  // URL biblio au chargement : sert à déclencher le retrait storage au submit
+  // si l'admin a supprimé la fiche (mise à NULL en DB + remove storage atomiques).
+  const [initialBiblioUrl, setInitialBiblioUrl] = useState('');
   const [formData, setFormData] = useState<FormData>({
     title: '',
     slug: '',
@@ -34,6 +39,7 @@ export default function EditFormationPage() {
     description_short: '',
     description_long: '',
     cover_image_url: '',
+    biblio_pdf_url: '',
     category: 'esthetique',
     level: 'intermediate',
     total_sequences: 16,
@@ -66,11 +72,13 @@ export default function EditFormationPage() {
         description_short: data.description_short || '',
         description_long: data.description_long || '',
         cover_image_url: data.cover_image_url || '',
+        biblio_pdf_url: data.biblio_pdf_url || '',
         category: data.category || 'esthetique',
         level: data.level || 'intermediate',
         total_sequences: data.total_sequences || 16,
         axe_cp: data.axe_cp ?? null,
       });
+      setInitialBiblioUrl(data.biblio_pdf_url || '');
     } catch (error) {
       console.error('Erreur:', error);
       router.push('/admin/formations');
@@ -161,6 +169,52 @@ export default function EditFormationPage() {
     }
   };
 
+  const handleBiblioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+      alert('Format invalide : seuls les fichiers PDF sont acceptés.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('PDF trop lourd (5 Mo max).');
+      return;
+    }
+
+    setUploadingBiblio(true);
+    try {
+      const supabase = createClient();
+      const fileName = `biblio/${formationId}.pdf`;
+
+      const { error } = await supabase.storage
+        .from('formations')
+        .upload(fileName, file, {
+          upsert: true,
+          contentType: 'application/pdf',
+        });
+
+      if (error) {
+        console.error('Upload error:', error);
+        alert('Erreur lors de l\'upload');
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('formations')
+        .getPublicUrl(fileName);
+
+      // Path fixe + upsert : on ajoute un cache-buster pour éviter de servir
+      // l'ancien PDF après un « Remplacer ».
+      setFormData({ ...formData, biblio_pdf_url: `${publicUrl}?v=${Date.now()}` });
+    } catch (err) {
+      console.error('Upload error:', err);
+      alert('Erreur lors de l\'upload');
+    } finally {
+      setUploadingBiblio(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -176,6 +230,15 @@ export default function EditFormationPage() {
 
       if (!response.ok) {
         throw new Error(result.error || 'Erreur lors de la mise à jour');
+      }
+
+      // Si la fiche biblio a été supprimée, retirer aussi le fichier du storage
+      // (différé jusqu'ici pour rester atomique avec la mise à NULL en DB).
+      if (initialBiblioUrl && !formData.biblio_pdf_url) {
+        const supabase = createClient();
+        await supabase.storage
+          .from('formations')
+          .remove([`biblio/${formationId}.pdf`]);
       }
 
       router.push(`/admin/formations/${formationId}`);
@@ -273,6 +336,73 @@ export default function EditFormationPage() {
                   className="hidden"
                   onChange={handleCoverUpload}
                   disabled={uploading}
+                />
+              </label>
+            )}
+          </div>
+
+          {/* Fiche bibliographie (PDF) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Fiche bibliographie (PDF)
+            </label>
+
+            {formData.biblio_pdf_url ? (
+              <div className="rounded-xl border-2 border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <FileText className="w-5 h-5 text-red-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-700">Fiche bibliographie</p>
+                    <a
+                      href={formData.biblio_pdf_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline"
+                    >
+                      Voir la fiche actuelle
+                    </a>
+                  </div>
+                  <label className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                    {uploadingBiblio ? 'Upload…' : 'Remplacer'}
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={handleBiblioUpload}
+                      disabled={uploadingBiblio}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, biblio_pdf_url: '' })}
+                    className="px-3 py-1.5 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-primary hover:bg-gray-50 transition-colors">
+                {uploadingBiblio ? (
+                  <>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mb-2" />
+                    <span className="text-sm text-gray-500">Upload en cours...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileText size={24} className="text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-500">Cliquer pour uploader</span>
+                    <span className="text-xs text-gray-400">PDF — 5 Mo max</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={handleBiblioUpload}
+                  disabled={uploadingBiblio}
                 />
               </label>
             )}
