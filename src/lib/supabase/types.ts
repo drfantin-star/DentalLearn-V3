@@ -15,6 +15,7 @@ export interface Formation {
   description_short: string | null
   description_long: string | null
   cover_image_url: string | null
+  biblio_pdf_url: string | null
   category: string | null
   level: string | null
   total_sequences: number

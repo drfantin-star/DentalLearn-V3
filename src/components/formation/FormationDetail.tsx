@@ -12,6 +12,7 @@ import {
   Sparkles,
   AlertTriangle,
   CheckCircle2,
+  BookOpen,
 } from 'lucide-react'
 import {
   useFormation,
@@ -358,6 +359,18 @@ export default function FormationDetail({
           <h1 className="text-xl font-extrabold text-white leading-tight">
             {formation.title}
           </h1>
+          {formation.biblio_pdf_url && (
+            <a
+              href={formation.biblio_pdf_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-semibold hover:bg-white/20 transition-colors"
+              style={{ background: 'rgba(255,255,255,0.2)' }}
+            >
+              <BookOpen size={18} />
+              Biblio
+            </a>
+          )}
         </div>
 
         {/* Descriptif court — indenté sous le titre */}
