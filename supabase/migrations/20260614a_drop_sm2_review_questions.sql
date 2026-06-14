@@ -1,0 +1,21 @@
+-- ============================================
+-- Migration: 20260614a_drop_sm2_review_questions
+-- Nettoyage post-retrait surface B (révision inter-sessions SM-2)
+-- ============================================
+-- Contexte : la surface de révision inter-sessions (mécanisme B = phase
+-- 'review' du SequencePlayer + route /api/user/review-stats) a été retirée
+-- le 2026-06-14 (PR #378). La RPC get_sm2_review_questions(uuid,uuid,integer)
+-- n'avait plus qu'un seul appelant (mécanisme B) et est désormais orpheline :
+--   * 0 appelant côté src/
+--   * 0 dépendance DB (vérifié via pg_depend + scan prosrc/pg_views)
+--
+-- ⚠️ Drop volontairement SANS CASCADE : si une dépendance inattendue
+-- existait, le drop doit ÉCHOUER plutôt que de cascader silencieusement.
+--
+-- NE PAS toucher aux objets du mécanisme A (remédiation fin de bloc) :
+--   table  user_question_review
+--   RPC    update_sm2_state, record_question_acquisition,
+--          get_bloc_failed_questions, get_bloc_acquisition_status
+-- ============================================
+
+DROP FUNCTION public.get_sm2_review_questions(uuid, uuid, integer);

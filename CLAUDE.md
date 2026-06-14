@@ -38,9 +38,13 @@ le prompt de la session en cours fait foi.
 
 **Justification** : une feature livrée sans demande crée une branche
 orpheline, risque une collision de migration, consomme du temps de revue,
-et brouille la lecture de la roadmap. Cas connu : `parking/sm2-spaced-repetition`
-(mai 2026) — feature complète développée sans validation, migration en
-collision de préfixe avec `20260516c_t6_audio_batch.sql`.
+et brouille la lecture de la roadmap. Cas connu : SM-2 (mai 2026) — feature
+complète développée sans validation sur `parking/sm2-spaced-repetition`, avec
+une migration en collision de préfixe. Elle a *ensuite* été validée et mergée
+sur `main` (PR #352/#353) après renommage de la migration en
+`20260516d_sm2_review.sql` ; le mécanisme de révision inter-sessions a été
+retiré le 2026-06-14 (PR #378). Le coût de revue et de remise en ordre
+reste l'illustration du problème.
 
 ## Vercel Pro dependencies
 
@@ -141,6 +145,30 @@ Depuis le commit `19a589c` (PR auto-inscription user, mai 2026), il existe
   qui rétro-marque à l'inscription les **intros audio-only** déjà écoutées
   (exclut toute intro possédant un quiz).
 
+## SM-2 — objets DB à NE JAMAIS droper (mécanisme A conservé)
+
+SM-2 (répétition espacée) est mergé sur `main` (PR #352/#353). Il existe
+deux mécanismes, dont **un seul subsiste** :
+
+- **Mécanisme A — remédiation fin de bloc (CONSERVÉ).** Re-pose en fin de
+  bloc les questions ratées du même bloc.
+- **Mécanisme B — révision inter-sessions (RETIRÉ le 2026-06-14, PR #378).**
+  Phase `'review'` du `SequencePlayer` + route `/api/user/review-stats`.
+  Surface retirée ; la RPC orpheline `get_sm2_review_questions(uuid,uuid,integer)`
+  est droppée par `supabase/migrations/20260614a_drop_sm2_review_questions.sql`.
+
+**GOTCHA — ne JAMAIS droper ces objets** (le mécanisme A en dépend) :
+
+- Table `user_question_review`
+- RPC `update_sm2_state`
+- RPC `record_question_acquisition`
+- RPC `get_bloc_failed_questions`
+- RPC `get_bloc_acquisition_status`
+
+Seule `get_sm2_review_questions` (propre au mécanisme B retiré) était
+orpheline et a été supprimée. Toute confusion qui mènerait à droper un objet
+de la liste ci-dessus casserait la remédiation fin de bloc en production.
+
 ## Migrations SQL Supabase
 
 ### Convention de nommage
@@ -176,10 +204,12 @@ Si collision : passer à la lettre suivante (`a` → `b` → `c`…).
 
 ### Incident référence
 
-Mai 2026 — la branche `parking/sm2-spaced-repetition` contient
-`20260516c_sm2_review.sql` qui collisionne avec `20260516c_t6_audio_batch.sql`
-déjà mergé sur `main`. À renommer avant tout merge ultérieur. Source de
-l'incident : feature non demandée + absence de vérification du préfixe.
+Mai 2026 — la migration SM-2 `20260516c_sm2_review.sql` collisionnait avec
+`20260516c_t6_audio_batch.sql` déjà mergé sur `main`. **Résolu** : renommée
+en `20260516d_sm2_review.sql` puis mergée (PR #352/#353). Source de
+l'incident : feature non demandée + absence de vérification du préfixe — la
+règle de vérification du préfixe (`ls supabase/migrations/ | grep "^YYYYMMDD"`)
+en découle directement.
 
 ## Convention RPC : cast explicite varchar → text
 
