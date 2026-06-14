@@ -45,7 +45,7 @@ interface SequencePlayerProps {
   shouldSubmitResult?: () => Promise<boolean>
 }
 
-type PlayerStep = 'video' | 'quiz' | 'pdf' | 'results' | 'review' | 'bloc_remediation'
+type PlayerStep = 'video' | 'quiz' | 'pdf' | 'results' | 'bloc_remediation'
 
 // Question de remédiation = Question + provenance (séquence d'origine) pour
 // regrouper la liste « à acquérir » par séquence (PARTIE_A_v4 §2.4).
@@ -331,12 +331,9 @@ export default function SequencePlayer({
     sequence.id,
   ])
 
-  // SM-2 spaced repetition (T-SM2)
+  // Écriture SM-2 partagée avec la remédiation de bloc (mécanisme A)
   const supabase = useMemo(() => createClient(), [])
   const [userId, setUserId] = useState<string | null>(null)
-  const [reviewQuestions, setReviewQuestions] = useState<Question[]>([])
-  const [reviewIdx, setReviewIdx] = useState(0)
-  const [reviewLoading, setReviewLoading] = useState(false)
 
   // Remédiation obligatoire en fin de bloc (PARTIE_A_v4 §2.4). Uniquement pour
   // les formations CP (axe_cp non nul) et seulement à la dernière séquence du
@@ -394,16 +391,14 @@ export default function SequencePlayer({
   }, [showVideo])
 
   const currentStepIdx = steps.indexOf(
-    playerStep === 'results' || playerStep === 'review' || playerStep === 'bloc_remediation'
+    playerStep === 'results' || playerStep === 'bloc_remediation'
       ? 'quiz'
       : playerStep
   )
   const currentQuestion =
-    playerStep === 'review'
-      ? reviewQuestions[reviewIdx]
-      : playerStep === 'bloc_remediation'
-        ? remediationQuestions[remediationIdx]
-        : questions[currentQ]
+    playerStep === 'bloc_remediation'
+      ? remediationQuestions[remediationIdx]
+      : questions[currentQ]
 
   // Fisher-Yates shuffle - mélange aléatoire fiable
   const shuffleArray = <T,>(array: T[]): T[] => {
@@ -481,9 +476,9 @@ export default function SequencePlayer({
   // ============================================
 
   const evaluateAndShowFeedback = (isCorrect: boolean, points: number, feedback: string) => {
-    // Phases isolées (révision SM-2 + remédiation de bloc) : aucun impact sur le
-    // score / les points de la séquence.
-    const isIsolated = playerStep === 'review' || playerStep === 'bloc_remediation'
+    // Phase isolée (remédiation de bloc) : aucun impact sur le score / les
+    // points de la séquence.
+    const isIsolated = playerStep === 'bloc_remediation'
     if (!isIsolated) {
       if (isCorrect) setCorrectCount(c => c + 1)
       setTotalPoints(p => p + points)
@@ -492,18 +487,16 @@ export default function SequencePlayer({
     // En remédiation, la passe peut être suivie d'autres passes : on garde un
     // libellé « Question suivante » (isLast=false) — la transition décide ensuite.
     const isLast =
-      playerStep === 'review'
-        ? reviewIdx === reviewQuestions.length - 1
-        : playerStep === 'bloc_remediation'
-          ? false
-          : currentQ === questions.length - 1
+      playerStep === 'bloc_remediation'
+        ? false
+        : currentQ === questions.length - 1
     setOverlayData({ isCorrect, points: isIsolated ? 0 : points, feedback, isLast })
     setShowOverlay(true)
   }
 
   // SM-2 : enregistrement non-bloquant. INSERT only on failure (quality=1) en
-  // phase quiz ; en phase review, on enregistre toujours (quality=5|1) pour
-  // faire progresser le compteur de réussites consécutives vers mastered_at.
+  // phase quiz ; en remédiation de bloc, on enregistre toujours (quality=5|1)
+  // pour faire progresser consecutive_correct (et sortir la question du pool A).
   const recordSm2 = useCallback(async (questionId: string, isCorrect: boolean) => {
     if (!userId) return
     try {
@@ -534,16 +527,16 @@ export default function SequencePlayer({
     }
   }, [supabase, userId, sequence.id])
 
-  // Wrapper : en phases isolées ('review' + 'bloc_remediation'), on n'écrit PAS
-  // dans answersLog (isolation stricte, cf. décision Dr Fantin 16/05/2026).
+  // Wrapper : en phase isolée ('bloc_remediation'), on n'écrit PAS dans
+  // answersLog (isolation stricte, cf. décision Dr Fantin 16/05/2026).
   // Écritures user_question_review :
-  //   * phases isolées        -> recordSm2 (quality 5|1) : fait progresser
+  //   * remédiation           -> recordSm2 (quality 5|1) : fait progresser
   //     consecutive_correct (une bonne réponse en remédiation -> acquise)
   //   * quiz + échec          -> recordSm2 (quality 1) : crée la ligne « échouée »
   //   * quiz + bonne réponse  -> recordAcquisition : ligne « acquise » hors SM-2
   const logAnswer = useCallback(
     (q: Question, selectedOption: string, isCorrect: boolean, pointsEarned: number) => {
-      const isIsolated = playerStep === 'review' || playerStep === 'bloc_remediation'
+      const isIsolated = playerStep === 'bloc_remediation'
       if (!isIsolated) {
         setAnswersLog(prev => [
           ...prev,
@@ -561,7 +554,7 @@ export default function SequencePlayer({
 
   // Case study — le composant <CaseStudyQuestion> remonte le choix ; le scoring
   // et l'avance de sous-question restent ici. L'écriture answersLog passe par
-  // logAnswer (isolation review SM-2 + recordSm2).
+  // logAnswer (isolation remédiation + recordSm2).
   const handleCaseStudySelect = useCallback((choiceId: string) => {
     const q = currentQuestion
     if (!q) return
@@ -709,7 +702,7 @@ export default function SequencePlayer({
     evaluateAndShowFeedback(isCorrect, points, isCorrect ? q.feedback_correct : q.feedback_incorrect)
   }
 
-  // Après la phase de quiz (et révision SM-2 éventuelle) : décide s'il faut
+  // Après la phase de quiz : décide s'il faut
   // ouvrir la remédiation de bloc (PARTIE_A_v4 §2.4) ou passer aux résultats.
   // Remédiation seulement si : formation CP + dernière séquence du bloc +
   // au moins une question non acquise dans le bloc.
@@ -780,46 +773,13 @@ export default function SequencePlayer({
       return
     }
 
-    if (playerStep === 'review') {
-      if (reviewIdx < reviewQuestions.length - 1) {
-        setReviewIdx(i => i + 1)
-      } else {
-        await proceedAfterReview()
-      }
-      return
-    }
-
     if (currentQ < questions.length - 1) {
       setCurrentQ(c => c + 1)
       return
     }
 
-    // Fin du quiz : on tente d'ouvrir une phase de révision SM-2 sur le thème
-    // de la formation. Pool vide ou erreur -> remédiation de bloc ou résultats.
-    if (!userId) {
-      await proceedAfterReview()
-      return
-    }
-    setReviewLoading(true)
-    try {
-      const { data, error } = await supabase.rpc('get_sm2_review_questions', {
-        p_user_id: userId,
-        p_sequence_id: sequence.id,
-        p_limit: 3,
-      })
-      if (!error && data && data.length > 0) {
-        setReviewQuestions(data as Question[])
-        setReviewIdx(0)
-        setPlayerStep('review')
-      } else {
-        await proceedAfterReview()
-      }
-    } catch (err) {
-      console.error('SM-2 review fetch error:', err)
-      await proceedAfterReview()
-    } finally {
-      setReviewLoading(false)
-    }
+    // Fin du quiz : remédiation de bloc (mécanisme A) ou résultats.
+    await proceedAfterReview()
   }
 
   const skipQuestion = () => {
@@ -830,14 +790,6 @@ export default function SequencePlayer({
         setRemediationIdx(i => i + 1)
       } else {
         void reloadRemediationPass()
-      }
-      return
-    }
-    if (playerStep === 'review') {
-      if (reviewIdx < reviewQuestions.length - 1) {
-        setReviewIdx(i => i + 1)
-      } else {
-        void proceedAfterReview()
       }
       return
     }
@@ -1175,24 +1127,14 @@ export default function SequencePlayer({
           </div>
         )}
 
-        {/* Spinner pendant le fetch du pool SM-2 entre quiz et review */}
-        {reviewLoading && (
-          <div className="text-center py-10">
-            <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
-            <p className="text-sm" style={{ color: '#a3a3a3' }}>Préparation de la révision...</p>
-          </div>
-        )}
-
-        {/* QUIZ + REVIEW + REMÉDIATION : même rendu, currentQuestion pivote selon playerStep */}
+        {/* QUIZ + REMÉDIATION : même rendu, currentQuestion pivote selon playerStep */}
         {(playerStep === 'quiz' ||
-          playerStep === 'review' ||
           (playerStep === 'bloc_remediation' && remediationStarted && !remediationDone)) &&
           currentQuestion && (() => {
           const q = currentQuestion
           const qType = q.question_type
-          const isReview = playerStep === 'review'
           const isRemediation = playerStep === 'bloc_remediation'
-          const isIsolated = isReview || isRemediation
+          const isIsolated = isRemediation
 
           // case_study : choix sélectionné de la sous-question courante (les deux
           // formats — STRUCTURED et LEGACY_ARRAY — sont gérés par le composant).
@@ -1200,25 +1142,11 @@ export default function SequencePlayer({
           const caseStudySubQId = caseStudyParsed?.questions[caseStudyCurrentQ]?.id ?? ''
           const caseStudySelectedId = caseStudyAnswers[caseStudySubQId] ?? null
 
-          const stepIndex = isRemediation ? remediationIdx + 1 : isReview ? reviewIdx + 1 : currentQ + 1
-          const stepTotal = isRemediation
-            ? remediationQuestions.length
-            : isReview
-              ? reviewQuestions.length
-              : questions.length
+          const stepIndex = isRemediation ? remediationIdx + 1 : currentQ + 1
+          const stepTotal = isRemediation ? remediationQuestions.length : questions.length
 
           return (
             <div>
-              {/* Bandeau Révision SM-2 */}
-              {isReview && (
-                <div className="mb-3 rounded-2xl px-4 py-2.5" style={{ background: 'rgba(45,27,150,0.18)', border: '1px solid #2D1B96' }}>
-                  <p className="text-[11px] font-bold uppercase tracking-wide" style={{ color: '#a5b4fc' }}>Révision</p>
-                  <p className="text-xs" style={{ color: '#e5e5e5' }}>
-                    {reviewQuestions.length} question{reviewQuestions.length > 1 ? 's' : ''} du thème à consolider
-                  </p>
-                </div>
-              )}
-
               {/* Bandeau Remédiation de bloc (PARTIE_A_v4 §2.4) */}
               {isRemediation && (
                 <div className="mb-3 rounded-2xl px-4 py-2.5" style={{ background: 'rgba(245,158,11,0.14)', border: '1px solid #F59E0B' }}>
@@ -1235,7 +1163,7 @@ export default function SequencePlayer({
               <div className="mb-4">
                 <div className="flex justify-between mb-1.5">
                   <span className="text-xs" style={{ color: '#a3a3a3' }}>
-                    {isRemediation ? 'Remédiation' : isReview ? 'Révision' : 'Question'} {stepIndex}/{stepTotal}
+                    {isRemediation ? 'Remédiation' : 'Question'} {stepIndex}/{stepTotal}
                   </span>
                   {!isIsolated && (
                     <span className="text-xs" style={{ color: '#a3a3a3' }}>⭐ {totalPoints} pts</span>
