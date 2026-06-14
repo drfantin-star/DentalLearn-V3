@@ -13,34 +13,37 @@ ultérieure. Elles ne doivent pas être mergées en l'état.
 
 ---
 
-## `parking/sm2-spaced-repetition`
+## ~~`parking/sm2-spaced-repetition`~~ — RÉSOLU (mergé sur `main`)
+
+> **Mise à jour 2026-06-14 :** cette entrée n'est plus valide. SM-2 a
+> finalement été **mergé sur `main`** (PR #352/#353). Il n'existe plus de
+> branche SM-2 « parquée en attente ». Conservé ici pour historique.
 
 | Champ | Valeur |
 |---|---|
-| Date archivage | 2026-05-21 |
-| Origine | Branche `claude/dentallearn-development-4I9EV` renommée |
-| Statut produit | En attente — discussion "(en attente) catalogue fonctionnalité" |
-| Statut technique | Feature complète, livrée prématurément sans demande explicite |
+| Statut | **Mergé sur `main`** via PR #352/#353 |
+| Migration en prod | `supabase/migrations/20260516d_sm2_review.sql` (préfixe `d`, plus de collision avec `20260516c_t6_audio_batch.sql`) |
 
-### Contenu
+### Ce qui est en production aujourd'hui
 
-- Algorithme SuperMemo 2 (SM-2) pour répétition espacée des séquences de formation
-- Route API : `src/app/api/user/review-stats/route.ts`
-- Migration : `supabase/migrations/20260516c_sm2_review.sql` (+ `_down.sql`)
-- Modifications : `src/components/formation/SequencePlayer.tsx`
+SM-2 vit en deux mécanismes distincts :
 
-### ⚠️ À traiter avant tout merge futur
+- **Mécanisme A — remédiation fin de bloc (CONSERVÉ).** Re-pose en fin de
+  bloc les questions ratées du même bloc. S'appuie sur la table
+  `user_question_review` et les RPC `update_sm2_state`,
+  `record_question_acquisition`, `get_bloc_failed_questions`,
+  `get_bloc_acquisition_status`.
+- **Mécanisme B — révision inter-sessions (RETIRÉ le 2026-06-14, PR #378).**
+  Proposait, au sein du `SequencePlayer` (phase `'review'`), des questions à
+  réviser d'autres séquences via la route `src/app/api/user/review-stats/`
+  et la RPC `get_sm2_review_questions`. Surface retirée car non retenue
+  produit. La route a été supprimée ; la RPC orpheline
+  `get_sm2_review_questions(uuid,uuid,integer)` est droppée par la migration
+  `supabase/migrations/20260614a_drop_sm2_review_questions.sql`.
 
-**Collision de préfixe de migration.** Le fichier `20260516c_sm2_review.sql`
-partage le préfixe `20260516c_` avec `20260516c_t6_audio_batch.sql` déjà
-présent dans `main`. Renommer la migration SM-2 avec un préfixe disponible
-(ex. `20260521a_sm2_review.sql` ou date du sprint de reprise) avant tout
-merge, sinon ordre d'application non déterministe côté Supabase.
+### ⚠️ Ne JAMAIS droper (mécanisme A en dépend)
 
-### Conditions de reprise
-
-- Validation produit explicite (priorisation dans un sprint dédié)
-- Définition fonctionnelle : portée (Daily Quiz uniquement ? Séquences ? Les deux ?), UI feedback (boutons type Anki ?), intégration au système de points existant
-- Rebase sur `main` actuel (la branche aura probablement divergé significativement)
-- Renommage de la migration SQL (cf. ci-dessus)
-- Tests d'intégration avec `useSubmitSequenceResult` (source unique d'écriture sur `user_points`)
+Table `user_question_review` + RPC `update_sm2_state`,
+`record_question_acquisition`, `get_bloc_failed_questions`,
+`get_bloc_acquisition_status`. Seule `get_sm2_review_questions` (propre au
+mécanisme B retiré) était orpheline et a été supprimée.
