@@ -230,3 +230,52 @@ export function getActiveConcepts(
     )
     .sort((a, b) => a.at_sec - b.at_sec)
 }
+
+/**
+ * Retourne TOUS les concepts affichables rattachés à `scene`, indépendamment
+ * du `currentTime` (arbitrage 2A : pas de révélation progressive).
+ *
+ * Règle de rattachement concept → scène (arbitrage 3A avec raffinement gaps) —
+ * aucun lien explicite n'existe dans le schéma, on dérive donc le rattachement
+ * par le temps via la *même* règle de continuité que l'affichage des scènes :
+ *
+ *  - `at_sec` absent ou `=== 0` ⇒ concept exclu (garde anti-fallback raté :
+ *    `llm-extraction` pose `at_sec = 0` quand le lookup word-index échoue).
+ *  - sinon : `sceneOf = getActiveOrLastScene(concept.at_sec, scenes)`. Le
+ *    concept appartient à `scene` ssi `sceneOf?.id === scene.id`.
+ *
+ * Cela couvre d'un seul coup les deux cas :
+ *  - concept CONTENU dans la fenêtre `[start_sec, end_sec]` d'une scène ;
+ *  - concept tombant dans un TROU inter-scènes ⇒ rattaché à la scène qui vient
+ *    de se terminer (la "dernière connue" au sens de `getActiveOrLastScene`),
+ *    donc jamais perdu.
+ *
+ * Filtres d'affichage réutilisés (cohérents avec `getActiveConcept`) :
+ * `at_sec` numérique non nul, `term` non vide, `definition` non vide,
+ * `hidden !== true`. Tri `at_sec` croissant.
+ *
+ * Helper pur, sans dépendance à `currentTime` ni à l'AudioContext. Aucune
+ * signature existante modifiée — `getActiveScene`/`getActiveOrLastScene` et les
+ * pages admin (T3–T8) restent intacts.
+ */
+export function getConceptsForScene(
+  scene: Scene,
+  concepts: TimelineConcept[],
+  scenes: Scene[]
+): DisplayableConcept[] {
+  if (!concepts.length) return []
+
+  return concepts
+    .filter(
+      (c): c is DisplayableConcept =>
+        typeof c.at_sec === 'number' &&
+        c.at_sec > 0 &&
+        typeof c.term === 'string' &&
+        c.term.length > 0 &&
+        typeof c.definition === 'string' &&
+        c.definition.length > 0 &&
+        c.hidden !== true &&
+        getActiveOrLastScene(c.at_sec, scenes)?.id === scene.id
+    )
+    .sort((a, b) => a.at_sec - b.at_sec)
+}
