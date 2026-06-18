@@ -3,9 +3,8 @@
 import { useMemo } from 'react'
 import { Play } from 'lucide-react'
 
-import { ConceptCard } from '@/components/audio-enriched/ConceptCard'
 import { KaraokeTranscript } from '@/components/audio-enriched/KaraokeTranscript'
-import { StructuredWhiteboard } from '@/components/audio-enriched/StructuredWhiteboard'
+import { SceneWhiteboardWithConcepts } from '@/components/audio-enriched/SceneWhiteboardWithConcepts'
 import { useAudio } from '@/context/AudioContext'
 import { useEnrichedTimeline } from '@/hooks/useEnrichedTimeline'
 import {
@@ -315,31 +314,15 @@ function WhiteboardOrCover({
   timeline,
 }: WhiteboardOrCoverProps) {
   if (displayedScene) {
-    // `<StructuredWhiteboard>` consomme `currentTime` uniquement pour
-    // recalculer sa propre `getActiveScene` interne. Pour l'amener à
-    // afficher la scène voulue (y compris pendant un gap où le vrai
-    // `currentTime` audio ne tomberait dans aucune fenêtre), on lui
-    // passe une valeur calée à l'intérieur de la fenêtre de la scène.
-    // Pattern `start_sec + 0.5` déjà utilisé dans
-    // `src/components/admin/timeline-editor/TimelinePreviewPanel.tsx`.
-    const lockedCurrentTime = displayedScene.start_sec + 0.5
+    // Rendu « scène + concepts en dessous » extrait dans un composant
+    // présentationnel partagé, réutilisé à l'identique par la preview de
+    // l'éditeur de timeline admin (`TimelinePreviewPanel`).
     return (
-      <div className="flex flex-col gap-3">
-        <StructuredWhiteboard
-          scenes={timeline.scenes}
-          currentTime={lockedCurrentTime}
-        />
-        {/* Concepts clés de la scène active, regroupés sous le whiteboard
-            (arbitrage 2A : tous d'un coup). Le conteneur parent gère le
-            scroll interne si la hauteur dépasse. */}
-        {sceneConcepts.length > 0 && (
-          <div className="flex flex-col gap-3">
-            {sceneConcepts.map((c) => (
-              <ConceptCard key={c.id} term={c.term} definition={c.definition} />
-            ))}
-          </div>
-        )}
-      </div>
+      <SceneWhiteboardWithConcepts
+        displayedScene={displayedScene}
+        sceneConcepts={sceneConcepts}
+        scenes={timeline.scenes}
+      />
     )
   }
   // POC-T7.4a-E — gap initial avant la première scène (displayedScene null) :
