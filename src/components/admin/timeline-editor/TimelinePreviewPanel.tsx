@@ -2,7 +2,8 @@
 
 import { useEffect, useRef } from 'react'
 
-import { StructuredWhiteboard } from '@/components/audio-enriched/StructuredWhiteboard'
+import { SceneWhiteboardWithConcepts } from '@/components/audio-enriched/SceneWhiteboardWithConcepts'
+import type { DisplayableConcept } from '@/lib/timeline/getActiveScene'
 import type { Scene } from '@/lib/timeline/schema'
 
 /**
@@ -29,6 +30,10 @@ import type { Scene } from '@/lib/timeline/schema'
 interface Props {
   audioUrl: string
   sceneToRender: Scene | null
+  /** Concepts clés rattachés à `sceneToRender`, calculés par le parent via
+   *  `getConceptsForScene`. Rendus sous le whiteboard, à l'identique du user. */
+  sceneConcepts: DisplayableConcept[]
+  scenes: Scene[]
   onTimeUpdate: (currentTime: number) => void
   onPlayingChange: (isPlaying: boolean) => void
   onDurationDetected?: (duration: number) => void
@@ -40,6 +45,8 @@ interface Props {
 export function TimelinePreviewPanel({
   audioUrl,
   sceneToRender,
+  sceneConcepts,
+  scenes,
   onTimeUpdate,
   onPlayingChange,
   onDurationDetected,
@@ -97,9 +104,10 @@ export function TimelinePreviewPanel({
       </div>
 
       {sceneToRender ? (
-        <StructuredWhiteboard
-          scenes={[sceneToRender]}
-          currentTime={sceneToRender.start_sec + 0.5}
+        <SceneWhiteboardWithConcepts
+          displayedScene={sceneToRender}
+          sceneConcepts={sceneConcepts}
+          scenes={scenes}
         />
       ) : (
         <div className="rounded-xl bg-[color:var(--color-bg-card)]/30 p-8 text-center text-sm italic text-[color:var(--color-text-muted)]">

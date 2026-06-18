@@ -79,23 +79,25 @@ function formatSec(sec: number): string {
 
 // ─── Pastilles concept (intercalées sous les scènes) ────────────────────────
 
-const CONCEPT_STATUS: Record<
-  ConceptPlacement['status'],
-  { badge: string; badgeClass: string; rowClass: string; title: string }
+// Depuis le fix user (rendu « scène + tous ses concepts en dessous », cf.
+// `getConceptsForScene` / `SceneWhiteboardWithConcepts`), TOUS les concepts
+// éligibles d'une scène sont affichés groupés — la distinction « ✓ visible /
+// ⚠ jamais affiché » de l'ancien rendu (concepts qui se succédaient dans les
+// gaps inter-scènes) est obsolète et trompeuse, donc retirée.
+//
+// Ne subsistent que les états qui retirent RÉELLEMENT le concept de la lecture
+// (mêmes filtres que `getConceptsForScene`) : `disabled` (hidden === true) et
+// `incomplete` (term / definition / at_sec manquant).
+const NEUTRAL_ROW_CLASS = 'border-white/5 bg-[color:var(--color-bg-card)]/30'
+const NEUTRAL_TITLE =
+  'Ce concept s’affiche sous sa scène pendant la lecture.'
+
+const CONCEPT_STATUS_BADGE: Partial<
+  Record<
+    ConceptPlacement['status'],
+    { badge: string; badgeClass: string; rowClass: string; title: string }
+  >
 > = {
-  visible: {
-    badge: '✓ visible',
-    badgeClass: 'bg-emerald-500/15 text-emerald-300',
-    rowClass: 'border-white/5 bg-[color:var(--color-bg-card)]/30',
-    title: 'Ce concept s’affichera dans le whiteboard pendant un intervalle entre scènes.',
-  },
-  never: {
-    badge: '⚠ jamais affiché',
-    badgeClass: 'bg-amber-500/15 text-amber-300',
-    rowClass: 'border-amber-500/20 bg-amber-500/[0.04]',
-    title:
-      'Aucun intervalle libre entre les scènes ne couvre ce concept (il est recouvert par une scène ou supplanté par le concept suivant). Déplace son at_sec ou ajuste une scène pour le rendre visible.',
-  },
   disabled: {
     badge: 'désactivé',
     badgeClass: 'bg-white/10 text-[color:var(--color-text-muted)]',
@@ -120,21 +122,19 @@ function ConceptChip({
   selected: boolean
   onSelect?: (id: string) => void
 }) {
-  const { concept, atSec, status, insideScene } = placement
-  const cfg = CONCEPT_STATUS[status]
+  const { concept, atSec, status } = placement
+  const badgeCfg = CONCEPT_STATUS_BADGE[status]
   const term = concept.term?.trim() || concept.label?.trim() || '(sans terme)'
-  const titleSuffix =
-    status === 'never' && insideScene
-      ? ` (at_sec dans « ${insideScene.title} »)`
-      : ''
 
   return (
     <button
       type="button"
       onClick={() => onSelect?.(concept.id)}
-      title={cfg.title + titleSuffix}
+      title={badgeCfg?.title ?? NEUTRAL_TITLE}
       className={`flex w-full items-center gap-1.5 rounded-md border px-2 py-1 text-left transition-colors hover:border-ds-turquoise/40 ${
-        selected ? 'border-ds-turquoise/60 bg-ds-turquoise/10' : cfg.rowClass
+        selected
+          ? 'border-ds-turquoise/60 bg-ds-turquoise/10'
+          : (badgeCfg?.rowClass ?? NEUTRAL_ROW_CLASS)
       }`}
     >
       <span aria-hidden="true" className="text-[color:var(--color-text-muted)]">
@@ -146,11 +146,13 @@ function ConceptChip({
       <span className="font-mono text-[9px] text-[color:var(--color-text-muted)]">
         {atSec === null ? '—' : formatSec(atSec)}
       </span>
-      <span
-        className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-medium ${cfg.badgeClass}`}
-      >
-        {cfg.badge}
-      </span>
+      {badgeCfg && (
+        <span
+          className={`shrink-0 rounded px-1 py-0.5 text-[9px] font-medium ${badgeCfg.badgeClass}`}
+        >
+          {badgeCfg.badge}
+        </span>
+      )}
     </button>
   )
 }
@@ -197,11 +199,13 @@ export function SceneListSidebar({
 
   const canRegenerate = typeof onRegenerate === 'function'
 
+  // `computeConceptPlacements` reste utilisé pour le GROUPEMENT des concepts
+  // sous leur scène d'ancrage (byAnchorScene / beforeFirst / noTimestamp) ;
+  // les compteurs visible/never ne sont plus affichés (cf. note ci-dessus).
   const placement = useMemo(
     () => computeConceptPlacements(scenes, concepts, audioDurationSec),
     [scenes, concepts, audioDurationSec]
   )
-  const hiddenConceptCount = concepts.length - placement.visibleCount
 
   return (
     <div className="flex h-full flex-col gap-3">
@@ -222,19 +226,7 @@ export function SceneListSidebar({
       </header>
       {concepts.length > 0 && (
         <p className="text-[10px] text-[color:var(--color-text-muted)]">
-          {concepts.length} concept{concepts.length > 1 ? 's' : ''} ·{' '}
-          <span className="text-emerald-300">
-            {placement.visibleCount} affiché{placement.visibleCount > 1 ? 's' : ''}
-          </span>{' '}
-          à la lecture
-          {hiddenConceptCount > 0 && (
-            <>
-              {' · '}
-              <span className="text-amber-300">
-                {hiddenConceptCount} jamais
-              </span>
-            </>
-          )}
+          {concepts.length} concept{concepts.length > 1 ? 's' : ''}
         </p>
       )}
       {showHelp && (

@@ -11,7 +11,11 @@ import { SceneEditor } from '@/components/admin/timeline-editor/SceneEditor'
 import { SceneListSidebar } from '@/components/admin/timeline-editor/SceneListSidebar'
 import { TimelinePreviewPanel } from '@/components/admin/timeline-editor/TimelinePreviewPanel'
 import { VersionsPanel } from '@/components/admin/timeline-editor/VersionsPanel'
-import { getActiveScene } from '@/lib/timeline/getActiveScene'
+import {
+  getActiveScene,
+  getConceptsForScene,
+  type DisplayableConcept,
+} from '@/lib/timeline/getActiveScene'
 import { getDefaultTemplatePayload } from '@/lib/timeline/template-defaults'
 import type {
   Scene,
@@ -170,6 +174,13 @@ export function TimelineEditorClient({
     }
     return selectedScene
   }, [isPlaying, currentTime, selectedScene, timeline])
+
+  // Concepts clés rattachés à la scène rendue, à l'identique du rendu user
+  // (helper pur, non modifié). Rendus sous le whiteboard par la preview.
+  const sceneConcepts = useMemo<DisplayableConcept[]>(() => {
+    if (!timeline || !sceneToRender) return []
+    return getConceptsForScene(sceneToRender, timeline.concepts, timeline.scenes)
+  }, [timeline, sceneToRender])
 
   // Patch C — Quand la scène sélectionnée change ET qu'on n'est pas en
   // lecture, on seek le curseur audio au début de la scène (UX option β).
@@ -544,6 +555,8 @@ export function TimelineEditorClient({
               <TimelinePreviewPanel
                 audioUrl={timeline.audio_url}
                 sceneToRender={sceneToRender}
+                sceneConcepts={sceneConcepts}
+                scenes={timeline.scenes}
                 onTimeUpdate={setCurrentTime}
                 onPlayingChange={setIsPlaying}
                 onDurationDetected={handleDurationDetected}
