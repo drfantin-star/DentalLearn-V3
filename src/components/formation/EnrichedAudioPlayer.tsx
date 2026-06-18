@@ -9,9 +9,9 @@ import { StructuredWhiteboard } from '@/components/audio-enriched/StructuredWhit
 import { useAudio } from '@/context/AudioContext'
 import { useEnrichedTimeline } from '@/hooks/useEnrichedTimeline'
 import {
-  getActiveConcepts,
   getActiveOrLastScene,
   getActiveScene,
+  getConceptsForScene,
   type DisplayableConcept,
 } from '@/lib/timeline/getActiveScene'
 import type { Scene } from '@/lib/timeline/schema'
@@ -132,35 +132,31 @@ export default function EnrichedAudioPlayer({
   // la cover (Q6 cas 5). Cf. `getActiveOrLastScene` dans
   // `src/lib/timeline/getActiveScene.ts`. Throttle 2 Hz inchangé.
   //
-  // T7-bis (mode hybride) : priorité concept sur extension de scène. Quand
-  // on n'est pas dans une fenêtre [start_sec, end_sec] stricte d'une scène
-  // mais qu'un concept "passé" (at_sec ≤ currentTime) est disponible,
-  // on affiche `<ConceptCard>` plutôt que d'étendre la dernière scène.
-  // L'extension `getActiveOrLastScene` ne s'applique que si aucun concept
-  // n'est disponible — préserve le fallback T7.2 pour timelines T2 sans
-  // concepts (`concepts[]` vide ou tous incomplets).
-  const strictActiveScene = useMemo(
-    () => (timeline ? getActiveScene(state.currentTime, timeline.scenes) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [Math.floor(state.currentTime * 2), timeline]
-  )
-
-  const activeConcepts: DisplayableConcept[] = useMemo(
-    () =>
-      timeline && !strictActiveScene
-        ? getActiveConcepts(state.currentTime, timeline.concepts, timeline.scenes)
-        : [],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [Math.floor(state.currentTime * 2), timeline, strictActiveScene]
-  )
-
+  // Regroupement « scène active + ses concepts » : UNE seule scène est
+  // affichée à l'instant t (stricte si `currentTime ∈ [start_sec, end_sec]`,
+  // sinon la dernière connue via `getActiveOrLastScene` pour les gaps
+  // inter-scènes / post-dernière-scène). On ne bascule plus en mode
+  // "concepts seuls dans les gaps" : les concepts sont désormais rattachés à
+  // leur scène et rendus EN DESSOUS du whiteboard (cf. `sceneConcepts`).
   const displayedScene = useMemo(() => {
     if (!timeline) return null
-    if (strictActiveScene) return strictActiveScene
-    if (activeConcepts.length > 0) return null
+    const strict = getActiveScene(state.currentTime, timeline.scenes)
+    if (strict) return strict
     return getActiveOrLastScene(state.currentTime, timeline.scenes)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Math.floor(state.currentTime * 2), timeline, strictActiveScene, activeConcepts.length])
+  }, [Math.floor(state.currentTime * 2), timeline])
+
+  // Concepts rattachés à la scène affichée (arbitrage 2A : tous d'un coup,
+  // pas de filtre `at_sec ≤ currentTime`). Le rattachement est dérivé via
+  // `getConceptsForScene` (règle de continuité par `at_sec`). Indépendant de
+  // `currentTime` à scène constante ⇒ ne dépend que de `displayedScene`.
+  const sceneConcepts: DisplayableConcept[] = useMemo(
+    () =>
+      timeline && displayedScene
+        ? getConceptsForScene(displayedScene, timeline.concepts, timeline.scenes)
+        : [],
+    [timeline, displayedScene]
+  )
 
   // Décision finale d'affichage du panneau enrichi (Q6 + Q7.4 + Q7.7).
   const showEnrichedPanel =
@@ -245,7 +241,7 @@ export default function EnrichedAudioPlayer({
             <div className="w-full">
               <WhiteboardOrCover
                 displayedScene={displayedScene}
-                activeConcepts={activeConcepts}
+                sceneConcepts={sceneConcepts}
                 timeline={timeline}
               />
             </div>
@@ -275,10 +271,10 @@ export default function EnrichedAudioPlayer({
             // karaoké|whiteboard avec internal-scroll). `md:flex-initial`
             // implicite via md:grid qui reset le flex behavior.
             <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:gap-6 md:h-[calc(100vh-32rem)]">
-              <div className="order-1 md:order-2 flex-1 md:min-h-0 md:overflow-hidden">
+              <div className="order-1 md:order-2 flex-1 md:min-h-0 md:overflow-y-auto">
                 <WhiteboardOrCover
                   displayedScene={displayedScene}
-                  activeConcepts={activeConcepts}
+                  sceneConcepts={sceneConcepts}
                   timeline={timeline}
                 />
               </div>
@@ -297,24 +293,25 @@ export default function EnrichedAudioPlayer({
 }
 
 // ──────────────────────────────────────────────────────────────
-// Sous-composant : whiteboard quand une scène doit être affichée
-// (active ou en extension via getActiveOrLastScene), placeholder
-// texte sinon (uniquement le gap initial avant la première scène
-// — Q6 cas 5). T7.3.1 : la cover image n'est plus rendue ici car
-// `<AudioPlayer>` affiche déjà la cover (mobile au-dessus de la
-// carte gradient, desktop à gauche), ce qui produisait une
-// duplication visible en flow user (cf. dette D7-13 résolue T7.3.1).
+// Sous-composant : whiteboard de la scène affichée (active ou en
+// extension via getActiveOrLastScene) + SES concepts regroupés
+// EN DESSOUS. Placeholder texte (3 dots) seulement pour le gap
+// initial avant la première scène (displayedScene === null).
+// T7.3.1 : la cover image n'est plus rendue ici car `<AudioPlayer>`
+// affiche déjà la cover (mobile au-dessus de la carte gradient,
+// desktop à gauche), ce qui produisait une duplication visible en
+// flow user (cf. dette D7-13 résolue T7.3.1).
 // ──────────────────────────────────────────────────────────────
 
 interface WhiteboardOrCoverProps {
   displayedScene: Scene | null
-  activeConcepts: DisplayableConcept[]
+  sceneConcepts: DisplayableConcept[]
   timeline: NonNullable<ReturnType<typeof useEnrichedTimeline>['timeline']>
 }
 
 function WhiteboardOrCover({
   displayedScene,
-  activeConcepts,
+  sceneConcepts,
   timeline,
 }: WhiteboardOrCoverProps) {
   if (displayedScene) {
@@ -327,27 +324,27 @@ function WhiteboardOrCover({
     // `src/components/admin/timeline-editor/TimelinePreviewPanel.tsx`.
     const lockedCurrentTime = displayedScene.start_sec + 0.5
     return (
-      <StructuredWhiteboard
-        scenes={timeline.scenes}
-        currentTime={lockedCurrentTime}
-      />
-    )
-  }
-  // T7-bis : flow continu — quand aucune scène n'est strictement active,
-  // on affiche tous les concepts déclenchés dans le gap courant (triés par
-  // at_sec croissant). Plusieurs concepts peuvent s'afficher simultanément.
-  if (activeConcepts.length > 0) {
-    return (
       <div className="flex flex-col gap-3">
-        {activeConcepts.map((c) => (
-          <ConceptCard key={c.term} term={c.term} definition={c.definition} />
-        ))}
+        <StructuredWhiteboard
+          scenes={timeline.scenes}
+          currentTime={lockedCurrentTime}
+        />
+        {/* Concepts clés de la scène active, regroupés sous le whiteboard
+            (arbitrage 2A : tous d'un coup). Le conteneur parent gère le
+            scroll interne si la hauteur dépasse. */}
+        {sceneConcepts.length > 0 && (
+          <div className="flex flex-col gap-3">
+            {sceneConcepts.map((c) => (
+              <ConceptCard key={c.id} term={c.term} definition={c.definition} />
+            ))}
+          </div>
+        )}
       </div>
     )
   }
-  // POC-T7.4a-E — gap initial sans concept disponible : 3 dots pulsants
-  // staggered (validation Dr Fantin). Couvre le cas où la timeline n'a pas
-  // de concepts T5 (T2 pur) ou aucun n'est encore passé à `currentTime`.
+  // POC-T7.4a-E — gap initial avant la première scène (displayedScene null) :
+  // 3 dots pulsants staggered (validation Dr Fantin). Couvre aussi les
+  // timelines sans scène (`scenes[]` vide).
   return (
     <div className="bg-[color:var(--color-bg-card)]/30 rounded-xl p-6 flex items-center justify-center min-h-[240px]">
       <div className="flex items-center gap-2 text-[color:var(--color-text-muted)]" role="status" aria-label="Visualisation à venir">
