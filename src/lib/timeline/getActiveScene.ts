@@ -3,7 +3,7 @@ import type { Scene, TimelineConcept } from './schema'
 /**
  * Type étroit d'un concept "affichable" : on a la garantie que les champs
  * optionnels du schéma (`term`, `definition`, `at_sec`) sont définis.
- * `getActiveConcept` filtre les concepts incomplets avant de retourner.
+ * `getConceptsForScene` filtre les concepts incomplets avant de retourner.
  */
 export type DisplayableConcept = TimelineConcept & {
   term: string
@@ -145,93 +145,6 @@ export function getActiveOrLastScene(
 }
 
 /**
- * Retourne le concept "affichable" (term + definition + at_sec présents,
- * non masqué) dont `at_sec` est le plus grand parmi ceux ≤ `currentTime`.
- *
- * Utilisé par `<EnrichedAudioPlayer>` (T7-bis) pour combler les gaps du
- * whiteboard quand aucune scène n'est strictement active. Préfère un
- * concept récemment "passé" à la mention d'une scène expirée (priorité
- * concept sur extension de scène — mode hybride T7-bis).
- *
- * Filtres appliqués :
- *  - `at_sec` numérique défini (T2 ne remplit pas ce champ ; T5/Sonnet oui)
- *  - `term` non vide
- *  - `definition` non vide
- *  - `hidden !== true` (admin masquage T6.5.b)
- *  - `at_sec <= currentTime`
- *
- * Tri défensif par `at_sec` ascending (le pipeline T5 livre dans l'ordre,
- * mais on ne dépend pas de cette garantie côté client).
- */
-export function getActiveConcept(
-  currentTime: number,
-  concepts: TimelineConcept[]
-): DisplayableConcept | null {
-  if (!concepts.length) return null
-  if (currentTime < 0) return null
-
-  const passed = concepts.filter(
-    (c): c is DisplayableConcept =>
-      typeof c.at_sec === 'number' &&
-      typeof c.term === 'string' &&
-      c.term.length > 0 &&
-      typeof c.definition === 'string' &&
-      c.definition.length > 0 &&
-      c.hidden !== true &&
-      c.at_sec <= currentTime
-  )
-  if (passed.length === 0) return null
-
-  const sorted = [...passed].sort((a, b) => a.at_sec - b.at_sec)
-  return sorted[sorted.length - 1]
-}
-
-/**
- * Retourne TOUS les concepts affichables du gap courant, triés par `at_sec`
- * croissant. Permet d'afficher simultanément plusieurs concepts qui se
- * succèdent dans un même gap inter-scènes.
- *
- * Logique :
- *  - Le "gap courant" commence à la fin de la dernière scène terminée avant
- *    `currentTime` (ou à 0 s'il n'y a pas encore de scène).
- *  - Sont inclus tous les concepts éligibles dont `at_sec` est compris dans
- *    `[gapStart, currentTime]`.
- */
-export function getActiveConcepts(
-  currentTime: number,
-  concepts: TimelineConcept[],
-  scenes: Scene[]
-): DisplayableConcept[] {
-  if (!concepts.length) return []
-  if (currentTime < 0) return []
-
-  const sortedScenes = isAscByStart(scenes)
-    ? scenes
-    : [...scenes].sort((a, b) => a.start_sec - b.start_sec)
-
-  let gapStart = 0
-  for (const scene of sortedScenes) {
-    if (scene.end_sec <= currentTime) {
-      gapStart = Math.max(gapStart, scene.end_sec)
-    }
-  }
-
-  return concepts
-    .filter(
-      (c): c is DisplayableConcept =>
-        typeof c.at_sec === 'number' &&
-        typeof c.term === 'string' &&
-        c.term.length > 0 &&
-        typeof c.definition === 'string' &&
-        c.definition.length > 0 &&
-        c.hidden !== true &&
-        c.at_sec >= gapStart &&
-        c.at_sec <= currentTime
-    )
-    .sort((a, b) => a.at_sec - b.at_sec)
-}
-
-/**
  * Retourne TOUS les concepts affichables rattachés à `scene`, indépendamment
  * du `currentTime` (arbitrage 2A : pas de révélation progressive).
  *
@@ -250,8 +163,8 @@ export function getActiveConcepts(
  *    de se terminer (la "dernière connue" au sens de `getActiveOrLastScene`),
  *    donc jamais perdu.
  *
- * Filtres d'affichage réutilisés (cohérents avec `getActiveConcept`) :
- * `at_sec` numérique non nul, `term` non vide, `definition` non vide,
+ * Filtres d'affichage : `at_sec` numérique non nul, `term` non vide,
+ * `definition` non vide,
  * `hidden !== true`. Tri `at_sec` croissant.
  *
  * Helper pur, sans dépendance à `currentTime` ni à l'AudioContext. Aucune

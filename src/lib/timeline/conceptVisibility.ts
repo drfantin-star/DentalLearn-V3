@@ -4,14 +4,14 @@ import type { Scene, TimelineConcept } from './schema'
  * Calcule, pour l'éditeur de timeline, où chaque concept se situe par rapport
  * aux scènes et s'il sera réellement affiché pendant la lecture.
  *
- * Rappel du modèle de lecture (cf. `getActiveConcept` / `EnrichedAudioPlayer`) :
+ * Rappel du modèle de lecture (cf. `EnrichedAudioPlayer`) :
  *  - Une scène occupe une fenêtre `[start_sec, end_sec]`. Un concept est un
  *    point unique `at_sec`.
  *  - Pendant la lecture, le whiteboard affiche la scène active ; **hors** de
  *    toute fenêtre de scène (un *gap*), il affiche le concept « passé » le plus
  *    récent (le plus grand `at_sec ≤ t`) parmi les concepts *éligibles*.
  *  - Éligible = `term` et `definition` non vides, `at_sec` numérique,
- *    `hidden !== true` (filtre identique à `getActiveConcept`).
+ *    `hidden !== true` (mêmes filtres que `getConceptsForScene`).
  *
  * Conséquence : un concept n'est affiché que si son « règne » — l'intervalle
  * `[at_sec, at_sec du concept éligible suivant)` — recouvre au moins un gap.
