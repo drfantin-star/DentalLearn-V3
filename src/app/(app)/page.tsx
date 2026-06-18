@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Calendar, CalendarDays, ChevronLeft, ChevronRight, Loader2, LogOut, Sparkles, UserCircle } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
@@ -47,6 +47,9 @@ export default function HomePage() {
   // Feed « Pour vous » — personnalisé sur les intérêts déclarés (cf. /api/for-you)
   const [forYouItems, setForYouItems] = useState<ForYouItem[]>([])
   const [forYouLoading, setForYouLoading] = useState(true)
+  // True si le feed perso a échoué/timeout → « Fraîchement arrivé » bascule en
+  // fallback gracieux (base sans dédup) plutôt que de rester vide/bloqué.
+  const [forYouError, setForYouError] = useState(false)
 
   // Événements — 3 prochains (live_events + live_sessions)
   const [evenements, setEvenements] = useState<EvenementItemData[]>([])
@@ -93,7 +96,7 @@ export default function HomePage() {
     fetch('/api/for-you')
       .then(r => r.json())
       .then(d => setForYouItems(d.items ?? []))
-      .catch(() => setForYouItems([]))
+      .catch(() => { setForYouItems([]); setForYouError(true) })
       .finally(() => setForYouLoading(false))
   }, [])
 
@@ -199,16 +202,48 @@ export default function HomePage() {
     router.refresh()
   }
 
+  // « Fraîchement arrivé » — plancher de cartes affichées avant de tolérer le
+  // doublon avec « Pour vous ». Ajustable. À 3 : si la dédup descend sous 3
+  // cartes, on recomplète avec les formations exclues (cas catalogue maigre).
+  const FRESHLY_ARRIVED_FLOOR = 3
+
   // Dédup : « Pour vous » est prioritaire → on retire de « Fraîchement arrivé »
   // les formations déjà présentes dans le feed perso (id `formation-<uuid>`).
-  const forYouFormationIds = new Set(
-    forYouItems
-      .filter((i) => i.type === 'formation')
-      .map((i) => i.id.replace(/^formation-/, ''))
-  )
-  const dedupedRecentFormations = recentFormations.filter(
-    (f) => !forYouFormationIds.has(f.id)
-  )
+  // Le rendu DOIT dériver de ce calcul (et pas d'un state écrasé en deux temps)
+  // pour ne jamais flasher l'état pré-dédup pendant que « Pour vous » se résout.
+  const freshlyArrivedFormations = useMemo(() => {
+    // base = requête « Fraîchement arrivé » telle quelle (is_published, DESC, 5).
+    const base = recentFormations
+    // Fallback gracieux : « Pour vous » a échoué/timeout → on affiche la base
+    // sans dédup plutôt que de rester vide.
+    if (forYouError) return base.slice(0, 5)
+
+    const excluded = new Set(
+      forYouItems
+        .filter((i) => i.type === 'formation')
+        .map((i) => i.id.replace(/^formation-/, ''))
+    )
+    const deduped = base.filter((f) => !excluded.has(f.id))
+
+    if (deduped.length >= FRESHLY_ARRIVED_FLOOR) {
+      return deduped.slice(0, 5)
+    }
+
+    // Sous le plancher : recompléter avec les exclues (ordre created_at DESC,
+    // déjà l'ordre de `base`) jusqu'à min(plancher, base.length) cartes.
+    const target = Math.min(FRESHLY_ARRIVED_FLOOR, base.length)
+    const result = [...deduped]
+    for (const f of base) {
+      if (result.length >= target) break
+      if (!result.some((r) => r.id === f.id)) result.push(f)
+    }
+    return result.slice(0, 5)
+  }, [recentFormations, forYouItems, forYouError])
+
+  // La liste d'exclusion (« Pour vous ») est résolue dès que son fetch a
+  // abouti (succès, vide, ou erreur → forYouLoading=false). Tant qu'elle ne
+  // l'est pas, on n'affiche aucune carte (skeleton/loader).
+  const freshlyArrivedResolving = recentLoading || forYouLoading
 
   // Catégories par axe
   const axe12Categories = CATEGORIES.filter(c => c.type === 'cp')
@@ -448,10 +483,13 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Fraîchement arrivé */}
+        {/* Fraîchement arrivé — masquée si, exclusion résolue, il ne reste
+            aucune carte (catalogue réellement vide). Tant que « Pour vous »
+            n'est pas résolu : skeleton/loader, jamais l'état pré-dédup. */}
+        {(freshlyArrivedResolving || freshlyArrivedFormations.length > 0) && (
         <section>
           <h2 className="text-base font-bold text-[#e5e5e5] mb-3">⚡ Fraîchement arrivé</h2>
-          {recentLoading ? (
+          {freshlyArrivedResolving ? (
             <div className="flex justify-center py-8">
               <Loader2 className="animate-spin text-gray-400" size={24} />
             </div>
@@ -467,7 +505,7 @@ export default function HomePage() {
                 ref={recentScrollRef}
                 className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
               >
-                {dedupedRecentFormations.map((f) => {
+                {freshlyArrivedFormations.map((f) => {
                   const config = getCategoryConfig(f.category)
                   const from = config.type === 'axe3'
                     ? '/patient'
@@ -495,6 +533,7 @@ export default function HomePage() {
             </div>
           )}
         </section>
+        )}
 
         {/* Explorer */}
         <section>
