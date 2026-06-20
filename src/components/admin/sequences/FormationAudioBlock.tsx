@@ -540,6 +540,11 @@ export function FormationAudioBlock({
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label="Scènes publiées — éditer les scènes"
+                        // inline-flex : sans ça le Badge (span inline) imbriqué
+                        // dans l'<a> n'est pas blockifié comme les badges frères
+                        // (enfants directs du flex) et rend plus petit. Aligne la
+                        // hauteur sur « Timeline disponible » / « Scènes extraites ».
+                        className="inline-flex"
                       >
                         <Badge variant="success">Scènes publiées</Badge>
                       </a>
