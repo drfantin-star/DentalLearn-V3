@@ -50,6 +50,7 @@ interface Sequence {
   course_duration_seconds: number | null;
   infographic_url: string | null;
   timeline_url: string | null;
+  timeline_published: boolean;
 }
 
 interface Formation {
@@ -681,6 +682,7 @@ export default function SequenceDetailPage() {
         sequenceId={sequenceId}
         currentAudioUrl={mediaType === 'audio' ? mediaUrl : null}
         timelineUrl={sequence?.timeline_url ?? null}
+        timelinePublished={sequence?.timeline_published ?? false}
       />
 
       {/* Fiche mémo (Coffre) */}
