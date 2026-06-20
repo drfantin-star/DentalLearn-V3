@@ -69,20 +69,30 @@ _BLANK_RE = re.compile(r"\[BLANC[_ ]?(\d+)\]", re.IGNORECASE)
 # Ligne « [BLANC_n] : mot (CORRECTE) » (dialecte Banque de mots).
 _BLANK_ANSWER_RE = re.compile(r"^\s*\[BLANC[_ ]?(\d+)\]\s*:\s*(.+)$", re.IGNORECASE)
 
-# En-tête de séquence : ===SEQUENCE=== (un éventuel numéro est récupéré).
-_SEQ_HDR_RE = re.compile(r"^=+\s*s[ée]quence", re.IGNORECASE)
-# En-tête de (sous-)question : --- QUESTION n --- / --- SOUS-QUESTION n ---.
-_QBLOCK_RE = re.compile(r"^-+\s*question\s+(\d+)", re.IGNORECASE)
-_SUBQBLOCK_RE = re.compile(r"^-+\s*sous[-\s]?question\s+(\d+)", re.IGNORECASE)
+# Marqueur de section sur sa propre ligne : ===SEQUENCE===, ===QUIZ===,
+# ===SOURCES_UTILISEES===, ===FIN_SEQUENCE===, ===AXE===.
+_SEQ_SPLIT_RE = re.compile(r"(?im)^[ \t]*=+[ \t]*s[ée]quence[ \t]*=+[ \t]*$")
+_QUIZ_RE = re.compile(r"(?im)^[ \t]*=+[ \t]*quiz[ \t]*=+[ \t]*$")
+_SECTION_END_RE = re.compile(
+    r"(?im)^[ \t]*=+[ \t]*(?:sources?_?utilis[ée]es?|fin_?s[ée]quence|axe)[ \t]*=+[ \t]*$"
+)
 
-# Champs d'un bloc. Les clés sont strictes pour ne pas avaler une ligne d'option.
-_FIELD_RE = re.compile(
-    r"^\s*(TYPE|[EÉ]NONC[EÉ]|POINTS|OPTIONS|FEEDBACK|SC[EÉ]NARIO|CONTEXTE)\s*:\s?(.*)$",
+# Marqueur de (sous-)question : --- QUESTION n --- / --- SOUS-QUESTION n ---.
+# Cherché n'IMPORTE OÙ (pas seulement en début de ligne) car certaines séquences
+# sont « aplaties » sur une seule ligne physique.
+_MARKER_RE = re.compile(r"-{2,}\s*(sous[-\s]?question|question)\s+(\d+)\s*-{2,}", re.IGNORECASE)
+
+# Champs d'un bloc, repérés par mot-clé n'importe où (formats multi-lignes ET inline).
+_FIELD_KW_RE = re.compile(
+    r"(TYPE|[EÉ]NONC[EÉ]|POINTS|OPTIONS|FEEDBACK|SC[EÉ]NARIO|CONTEXTE)\s*:",
     re.IGNORECASE,
 )
 
 # Séparateurs « gauche → droite » acceptés pour le type matching.
 _ARROW_RE = re.compile(r"\s*(?:→|->|=>|⇒)\s*")
+
+# Abréviations courantes à protéger du découpage en phrases (« M. Dupont »…).
+_ABBREVS = ["M", "Mme", "Mlle", "MM", "Dr", "Drs", "Pr", "Me", "St", "Ste"]
 
 
 # --------------------------------------------------------------------------- #
@@ -116,10 +126,17 @@ def deterministic_shuffle(seq, seed_text: str):
 
 
 def split_sentences(text: str):
-    """Découpe grossièrement un scénario en phrases (pour patient/chief_complaint)."""
+    """
+    Découpe grossièrement un scénario en phrases (pour patient/chief_complaint).
+
+    Protège les abréviations (« M. Dupont », « Dr Girard »…) pour ne pas couper
+    une phrase au milieu d'un titre de civilité.
+    """
     text = " ".join(text.split())
+    for ab in _ABBREVS:
+        text = re.sub(rf"\b{ab}\.\s", f"{ab}\x00 ", text)
     parts = re.split(r"(?<=[.!?])\s+", text.strip())
-    return [p.strip() for p in parts if p.strip()]
+    return [p.replace("\x00", ".").strip() for p in parts if p.strip()]
 
 
 # --------------------------------------------------------------------------- #
@@ -159,40 +176,79 @@ def normalize_type(raw):
 # --------------------------------------------------------------------------- #
 # Parsing des blocs
 # --------------------------------------------------------------------------- #
-def parse_block_fields(raw_lines):
-    """Transforme les lignes d'un bloc en dict de champs canoniques."""
+def _canonical_field(label):
+    """Mappe un libellé de champ vers sa clé canonique."""
+    key = strip_accents(label).lower()
+    if key in ("scenario", "contexte") or key.startswith("enonc"):
+        return "enonce"
+    return key  # type / points / options / feedback
+
+
+def parse_block_fields(text):
+    """
+    Transforme le texte brut d'un bloc en dict de champs canoniques.
+
+    Repère chaque mot-clé (TYPE/ÉNONCÉ/POINTS/OPTIONS/FEEDBACK…) où qu'il soit
+    dans le texte, puis découpe la valeur jusqu'au mot-clé suivant. Fonctionne
+    aussi bien pour les blocs multi-lignes que pour les blocs « aplatis » sur une
+    seule ligne.
+    """
+    matches = list(_FIELD_KW_RE.finditer(text))
     fields = {}
-    current = None
-    for line in raw_lines:
-        m = _FIELD_RE.match(line)
-        if m:
-            key = strip_accents(m.group(1)).lower()
-            if key == "type":
-                current = "type"
-            elif key in ("scenario", "contexte"):
-                current = "enonce"  # scénario/contexte = énoncé du bloc
-            elif key.startswith("enonc"):
-                current = "enonce"
-            elif key == "points":
-                current = "points"
-            elif key == "options":
-                current = "options"
-            elif key == "feedback":
-                current = "feedback"
-            rest = m.group(2)
-            fields.setdefault(current, [])
-            if rest.strip():
-                fields[current].append(rest)
-        elif current is not None:
-            fields[current].append(line.rstrip("\n"))
-    # Concatène en texte par champ.
-    return {k: "\n".join(v).strip() for k, v in fields.items()}
+    for i, m in enumerate(matches):
+        key = _canonical_field(m.group(1))
+        start = m.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        value = text[start:end].strip()
+        # En cas de doublon de clé, on garde la première occurrence non vide.
+        if key not in fields or not fields[key]:
+            fields[key] = value
+    return fields
 
 
-def option_lines(fields):
-    """Lignes d'option non vides du champ OPTIONS."""
-    raw = fields.get("options", "")
-    return [ln.strip() for ln in raw.splitlines() if ln.strip()]
+def _merge_correct_tokens(tokens):
+    """Recolle un token « (CORRECTE) » isolé au mot qui le précède (inline)."""
+    out = []
+    for t in tokens:
+        if _MARK_RE.fullmatch(t):
+            if out:
+                out[-1] = out[-1] + " " + t
+        else:
+            out.append(t)
+    return out
+
+
+def split_inline_sentence_options(raw):
+    """
+    Découpe une liste d'options « aplatie » sur une ligne (type phrase).
+
+    Frontière d'option = après un « (CORRECTE) » OU à une fin de phrase suivie
+    d'une majuscule. Les abréviations (« M. Dupont »…) sont protégées pour ne pas
+    provoquer de faux découpage.
+    """
+    protected = raw
+    for ab in _ABBREVS:
+        protected = re.sub(rf"\b{ab}\.\s", f"{ab}\x00 ", protected)
+    protected = _MARK_RE.sub(lambda m: m.group(0) + "\x01", protected)
+    protected = re.sub(r"(?<=[.?!])\s+(?=[A-ZÉÈÀ])", "\x01", protected)
+    parts = [p.replace("\x00", ".").strip() for p in protected.split("\x01")]
+    return [p for p in parts if p]
+
+
+def split_options(raw, qtype):
+    """Découpe le champ OPTIONS en liste d'options, selon le format et le type."""
+    raw = (raw or "").strip()
+    if not raw:
+        return []
+    if "\n" in raw:  # format multi-lignes : une option par ligne
+        return [ln.strip() for ln in raw.splitlines() if ln.strip()]
+    # Format inline (une seule ligne physique) :
+    if qtype == "true_false":
+        return [raw]  # build_true_false lit le texte brut
+    if qtype == "fill_blank":
+        # Options = mots simples ; « (CORRECTE) » se recolle au mot précédent.
+        return _merge_correct_tokens(raw.split())
+    return split_inline_sentence_options(raw)
 
 
 def parse_points(fields, default):
@@ -229,17 +285,24 @@ def build_simple_options(lines, invert=False):
     return opts
 
 
-def build_true_false(lines):
-    """true_false : toujours [{A:Vrai}, {B:Faux}] ; le correct vient du marqueur."""
+def build_true_false(raw_text):
+    """
+    true_false : toujours [{A:Vrai}, {B:Faux}].
+
+    Le bon choix est celui (Vrai/Faux) le plus proche AVANT le marqueur
+    « (CORRECTE) » — robuste en multi-lignes (« Vrai\\nFaux (CORRECTE) ») comme en
+    inline (« Vrai Faux (CORRECTE) »).
+    """
+    low = strip_accents(raw_text).lower()
     correct_letter = None
-    for line in lines:
-        clean, marked = split_marker(line)
-        low = strip_accents(clean).lower()
-        if marked:
-            if "vrai" in low:
-                correct_letter = "A"
-            elif "faux" in low:
-                correct_letter = "B"
+    mark = _MARK_RE.search(raw_text)
+    if mark:
+        pos = mark.start()
+        vrai = low.rfind("vrai", 0, pos)
+        faux = low.rfind("faux", 0, pos)
+        if vrai == -1 and faux == -1:  # marqueur avant les mots : on cherche après
+            vrai, faux = low.find("vrai"), low.find("faux")
+        correct_letter = "A" if vrai > faux else "B"
     return [
         {"id": "A", "text": "Vrai", "correct": correct_letter == "A"},
         {"id": "B", "text": "Faux", "correct": correct_letter == "B"},
@@ -358,12 +421,11 @@ def build_fill_blank(enonce, lines, seed_text):
 # --------------------------------------------------------------------------- #
 # Cas clinique : conservation / promotion des sous-questions
 # --------------------------------------------------------------------------- #
-def _subq_choices(fields, sub_type):
+def _subq_choices(raw, sub_type):
     """Choix d'une sous-question conservée (pas d'inversion, même pour highlight)."""
-    lines = option_lines(fields)
     if sub_type == "true_false":
-        return build_true_false(lines)
-    return build_simple_options(lines, invert=False)
+        return build_true_false(raw)
+    return build_simple_options(split_options(raw, sub_type), invert=False)
 
 
 def build_case_study(scenario, subq_blocks, seq_num, base_order, promote_orders):
@@ -388,11 +450,11 @@ def build_case_study(scenario, subq_blocks, seq_num, base_order, promote_orders)
 
     for fields in subq_blocks:
         sub_type = normalize_type(fields.get("type"))
-        lines = option_lines(fields)
-        n_correct = sum(1 for ln in lines if split_marker(ln)[1])
+        raw_options = fields.get("options", "")
         feedback = fields.get("feedback", "").strip()
         enonce = fields.get("enonce", "").strip()
         seed = f"{seq_num}|cs|{kept_id}|{enonce[:40]}"
+        n_correct = sum(1 for o in split_options(raw_options, sub_type or "mcq") if _MARK_RE.search(o))
 
         # Décision conserver / promouvoir (procédure §4).
         conserve = False
@@ -410,7 +472,7 @@ def build_case_study(scenario, subq_blocks, seq_num, base_order, promote_orders)
                 "text": enonce,
                 "order": kept_id,
                 "points": pts,
-                "choices": _subq_choices(fields, sub_type),
+                "choices": _subq_choices(raw_options, sub_type),
                 "feedback": feedback,
             })
             kept_id += 1
@@ -418,7 +480,7 @@ def build_case_study(scenario, subq_blocks, seq_num, base_order, promote_orders)
             # Promotion en question autonome (type natif), scénario préfixé.
             promo_type = sub_type or "checkbox"
             qtext = f"Cas clinique : {scenario.strip()}\n\n{enonce}"
-            opts = _build_options_for_type(promo_type, enonce, lines, seed)
+            opts = _build_options_for_type(promo_type, enonce, raw_options, seed)
             if isinstance(opts, tuple):  # fill_blank renvoie (texte, options)
                 # Pour une promue fill_blank, le texte nettoyé concerne l'énoncé seul.
                 clean_enonce, opts = opts
@@ -452,14 +514,15 @@ def build_case_study(scenario, subq_blocks, seq_num, base_order, promote_orders)
     return case_row, promoted_rows
 
 
-def _build_options_for_type(qtype, enonce, lines, seed):
-    """Aiguille vers le bon constructeur d'options selon le type natif."""
+def _build_options_for_type(qtype, enonce, raw_options, seed):
+    """Aiguille vers le bon constructeur d'options selon le type natif (texte OPTIONS brut)."""
+    if qtype == "true_false":
+        return build_true_false(raw_options)
+    lines = split_options(raw_options, qtype)
     if qtype in ("mcq", "mcq_image", "checkbox"):
         return build_simple_options(lines, invert=False)
     if qtype == "highlight":
         return build_simple_options(lines, invert=True)  # autonome : inversion
-    if qtype == "true_false":
-        return build_true_false(lines)
     if qtype == "ordering":
         return build_ordering(lines, seed)
     if qtype == "matching":
@@ -475,54 +538,61 @@ def _build_options_for_type(qtype, enonce, lines, seed):
 def parse_questions_file(path):
     """Découpe le fichier en séquences puis en (sous-)blocs ; retourne la liste de questions."""
     with open(path, encoding="utf-8") as f:
-        lines = f.readlines()
+        text = f.read()
 
-    # 1) Découpage en sections de séquence.
-    sections = []  # liste de (seq_num_explicite|None, [lignes])
-    current = None
-    auto_idx = 0
-    for raw in lines:
-        line = raw.rstrip("\n")
-        if _SEQ_HDR_RE.match(line.strip()):
-            m = re.search(r"\d+", line)
-            seq_num = int(m.group(0)) if m else auto_idx
-            sections.append((seq_num, []))
-            current = sections[-1][1]
-            auto_idx += 1
-        elif current is not None:
-            current.append(line)
-        # Lignes avant la 1re séquence : ignorées (préambule éventuel).
-
+    # 1) Découpage en sections de séquence (sur la ligne ===SEQUENCE===).
+    chunks = _SEQ_SPLIT_RE.split(text)
     questions = []
-    for seq_num, sec_lines in sections:
-        questions.extend(parse_section(seq_num, sec_lines))
+    auto_idx = 0
+    for chunk in chunks[1:]:  # chunks[0] = préambule avant la 1re séquence
+        # Numéro de séquence : lu sur la 1re ligne non vide (« N — Titre »),
+        # sinon index automatique (0, 1, 2…).
+        seq_num = None
+        for line in chunk.splitlines():
+            s = line.strip()
+            if not s:
+                continue
+            m = re.match(r"(\d+)", s)
+            seq_num = int(m.group(1)) if m else auto_idx
+            break
+        if seq_num is None:
+            seq_num = auto_idx
+        auto_idx += 1
+
+        # Zone quiz : depuis ===QUIZ=== (si présent) jusqu'à un marqueur de fin
+        # (===SOURCES_UTILISEES===, ===FIN_SEQUENCE===, ===AXE===).
+        quiz = chunk
+        qm = _QUIZ_RE.search(quiz)
+        if qm:
+            quiz = quiz[qm.end():]
+        em = _SECTION_END_RE.search(quiz)
+        if em:
+            quiz = quiz[:em.start()]
+
+        questions.extend(parse_section(seq_num, quiz))
     return questions
 
 
-def parse_section(seq_num, sec_lines):
-    """Parse une section de séquence en liste de questions natives."""
-    # 2) Découpage en blocs QUESTION / SOUS-QUESTION.
-    blocks = []  # (kind, order, [lignes])  kind ∈ {"q","sub"}
-    cur = None
-    for line in sec_lines:
-        mq = _QBLOCK_RE.match(line.strip())
-        ms = _SUBQBLOCK_RE.match(line.strip())
-        if mq:
-            blocks.append(["q", int(mq.group(1)), []])
-            cur = blocks[-1][2]
-        elif ms:
-            blocks.append(["sub", int(ms.group(1)), []])
-            cur = blocks[-1][2]
-        elif cur is not None:
-            cur.append(line)
+def parse_section(seq_num, quiz_text):
+    """Parse le texte quiz d'une séquence en liste de questions natives."""
+    # 2) Découpage en blocs via les marqueurs --- QUESTION/SOUS-QUESTION n ---,
+    # repérés n'importe où (gère les séquences aplaties sur une seule ligne).
+    markers = list(_MARKER_RE.finditer(quiz_text))
+    blocks = []  # (kind, order, content_text)
+    for i, m in enumerate(markers):
+        kind = "sub" if "sous" in strip_accents(m.group(1)).lower() else "q"
+        order = int(m.group(2))
+        start = m.end()
+        end = markers[i + 1].start() if i + 1 < len(markers) else len(quiz_text)
+        blocks.append((kind, order, quiz_text[start:end]))
 
     # 3) Regroupe les sous-questions sous leur question-mère (un case_study).
     grouped = []  # (order, fields, [sub_fields])
     i = 0
     while i < len(blocks):
-        kind, order, raw = blocks[i]
+        kind, order, content = blocks[i]
         if kind == "q":
-            fields = parse_block_fields(raw)
+            fields = parse_block_fields(content)
             subs = []
             j = i + 1
             while j < len(blocks) and blocks[j][0] == "sub":
@@ -543,7 +613,7 @@ def parse_section(seq_num, sec_lines):
         qtype = normalize_type(fields.get("type"))
         enonce = fields.get("enonce", "").strip()
         feedback = fields.get("feedback", "").strip()
-        lines = option_lines(fields)
+        raw_options = fields.get("options", "")
         seed = f"{seq_num}|{order}|{enonce[:40]}"
 
         if qtype == "case_study" or subs:
@@ -556,7 +626,7 @@ def parse_section(seq_num, sec_lines):
         if qtype is None:
             qtype = "mcq"  # défaut prudent pour une question simple sans TYPE
 
-        opts = _build_options_for_type(qtype, enonce, lines, seed)
+        opts = _build_options_for_type(qtype, enonce, raw_options, seed)
         text = enonce
         if qtype == "fill_blank":
             text, opts = opts  # (texte nettoyé, options)
