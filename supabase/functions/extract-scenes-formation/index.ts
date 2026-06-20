@@ -50,7 +50,7 @@ const logger = new Logger("extract-scenes-formation");
 // ---------------------------------------------------------------------------
 
 const SONNET_MODEL = "claude-sonnet-4-6";
-const MAX_OUTPUT_TOKENS = 4096;
+const MAX_OUTPUT_TOKENS = 12000;
 const TIMELINE_STORAGE_BUCKET = "audio-timelines";
 const TIMELINE_STORAGE_PREFIX = "poc";
 
