@@ -84,6 +84,12 @@ export function FormationAudioBlock({
   )
   // null = inconnu/en cours de fetch, true = scènes extraites, false = aucune scène
   const [scenesExtracted, setScenesExtracted] = useState<boolean | null>(null)
+  // Suppression manuelle d'une timeline obsolète. `timelineDeleted` masque le
+  // badge sans reload : la colonne `timeline_url` (prop) n'est pas resync côté
+  // parent après le DELETE, on bascule donc l'UI en React state local.
+  const [timelineDeleted, setTimelineDeleted] = useState(false)
+  const [deletingTimeline, setDeletingTimeline] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const router = useRouter()
 
   // Sync prop → state : quand l'admin uploade un MP3, le parent (client
@@ -318,6 +324,38 @@ export function FormationAudioBlock({
     }
   }
 
+  async function handleDeleteTimeline() {
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        'Supprimer définitivement la timeline ? Tous les fichiers JSON associés seront effacés.',
+      )
+    ) {
+      return
+    }
+    setDeleteError(null)
+    setDeletingTimeline(true)
+    try {
+      const res = await fetch(
+        `/api/admin/sequences/${sequenceId}/timeline`,
+        { method: 'DELETE' },
+      )
+      if (!res.ok) {
+        setDeleteError(await extractErrorMessage(res))
+        return
+      }
+      // Succès — on masque le badge et les liens sans reload (React state only).
+      setTimelineDeleted(true)
+      setScenesExtracted(null)
+    } catch (err) {
+      setDeleteError(
+        err instanceof Error ? err.message : 'Erreur réseau',
+      )
+    } finally {
+      setDeletingTimeline(false)
+    }
+  }
+
   async function cancelJob(jobId: string) {
     try {
       await fetch(`/api/admin/sequences/${sequenceId}/audio/cancel`, {
@@ -466,6 +504,9 @@ export function FormationAudioBlock({
   if (state.phase === 'done') {
     const { audioUrl, durationSec } = state
     const durationLabel = formatDuration(durationSec)
+    // `timelineDeleted` bascule l'UI vers le bloc « Uploader une timeline »
+    // immédiatement après une suppression, sans rechargement de page.
+    const hasTimeline = !!timelineUrl && !timelineDeleted
     return (
       <Card variant="flat">
         {header(<Badge variant="success">Audio publié</Badge>)}
@@ -474,34 +515,47 @@ export function FormationAudioBlock({
           {durationLabel && (
             <p className="text-sm text-gray-500">Durée : {durationLabel}</p>
           )}
-          {timelineUrl ? (
-            <div className="flex items-center gap-2">
-              <Badge
-                variant="info"
-                className="bg-white text-ds-turquoise border-ds-turquoise"
-              >
-                Timeline disponible
-              </Badge>
-              {scenesExtracted === true && (
-                <>
-                  <Badge variant="success">Scènes extraites</Badge>
-                  <a
-                    href={`/admin/timelines/formation/${sequenceId}`}
-                    className="text-sm text-primary underline underline-offset-2"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Éditer les scènes →
-                  </a>
-                </>
-              )}
-              {scenesExtracted === false && (
-                <Link
-                  href="/admin/poc/extract-scenes"
-                  className="text-sm text-primary underline underline-offset-2"
+          {hasTimeline ? (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="info"
+                  className="bg-white text-ds-turquoise border-ds-turquoise"
                 >
-                  Extraire les scènes →
-                </Link>
+                  Timeline disponible
+                </Badge>
+                {scenesExtracted === true && (
+                  <>
+                    <Badge variant="success">Scènes extraites</Badge>
+                    <a
+                      href={`/admin/timelines/formation/${sequenceId}`}
+                      className="text-sm text-primary underline underline-offset-2"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Éditer les scènes →
+                    </a>
+                  </>
+                )}
+                {scenesExtracted === false && (
+                  <Link
+                    href="/admin/poc/extract-scenes"
+                    className="text-sm text-primary underline underline-offset-2"
+                  >
+                    Extraire les scènes →
+                  </Link>
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  loading={deletingTimeline}
+                  onClick={() => void handleDeleteTimeline()}
+                >
+                  Supprimer la timeline
+                </Button>
+              </div>
+              {deleteError && (
+                <p className="text-sm text-red-600">{deleteError}</p>
               )}
             </div>
           ) : (
