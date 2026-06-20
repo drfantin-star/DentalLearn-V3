@@ -15,6 +15,10 @@ interface FormationAudioBlockProps {
   sequenceId: string
   currentAudioUrl?: string | null
   timelineUrl?: string | null
+  // Flag réel `sequences.timeline_published` : true => la timeline est visible
+  // côté formation. Bascule le lien « Éditer les scènes → » en badge cliquable
+  // « Scènes publiées ».
+  timelinePublished?: boolean
 }
 
 interface UploadScriptResponse {
@@ -59,6 +63,7 @@ export function FormationAudioBlock({
   sequenceId,
   currentAudioUrl,
   timelineUrl,
+  timelinePublished = false,
 }: FormationAudioBlockProps) {
   const initial: AudioBlockState = currentAudioUrl
     ? { phase: 'done', audioUrl: currentAudioUrl }
@@ -527,14 +532,32 @@ export function FormationAudioBlock({
                 {scenesExtracted === true && (
                   <>
                     <Badge variant="success">Scènes extraites</Badge>
-                    <a
-                      href={`/admin/timelines/formation/${sequenceId}`}
-                      className="text-sm text-primary underline underline-offset-2"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Éditer les scènes →
-                    </a>
+                    {timelinePublished ? (
+                      // Timeline publiée : badge vert cliquable « Scènes
+                      // publiées » à la place du lien, rouvre le même éditeur.
+                      <a
+                        href={`/admin/timelines/formation/${sequenceId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label="Scènes publiées — éditer les scènes"
+                        // inline-flex : sans ça le Badge (span inline) imbriqué
+                        // dans l'<a> n'est pas blockifié comme les badges frères
+                        // (enfants directs du flex) et rend plus petit. Aligne la
+                        // hauteur sur « Timeline disponible » / « Scènes extraites ».
+                        className="inline-flex"
+                      >
+                        <Badge variant="success">Scènes publiées</Badge>
+                      </a>
+                    ) : (
+                      <a
+                        href={`/admin/timelines/formation/${sequenceId}`}
+                        className="text-sm text-primary underline underline-offset-2"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Éditer les scènes →
+                      </a>
+                    )}
                   </>
                 )}
                 {scenesExtracted === false && (
