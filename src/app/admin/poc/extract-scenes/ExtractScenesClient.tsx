@@ -89,6 +89,16 @@ interface StatusResponse {
 const POLL_INTERVAL_MS = 3000
 const POLL_MAX_DURATION_MS = 5 * 60 * 1000 // garde-fou 5 min
 
+// Normalisation pour la recherche : minuscules + suppression des accents
+// (diacritiques). Ex. « Éclaircissement » → « eclaircissement », de sorte que
+// la saisie « eclair » matche le titre accentué.
+function normalizeForSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+}
+
 interface Props {
   sequences: SequenceLite[]
   initialSequenceId?: string | null
@@ -102,6 +112,11 @@ export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
   const [loading, setLoading] = useState<boolean>(false)
   const [result, setResult] = useState<PostResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Recherche de formation dans le menu déroulant. State React uniquement
+  // (jamais localStorage/sessionStorage). Réinitialisé à la sélection d'une
+  // séquence (cf. onChange du <select>).
+  const [formationSearch, setFormationSearch] = useState<string>('')
 
   // T5-bis-B — état polling pour la voie async (dry_run=false)
   const [jobStatus, setJobStatus] = useState<StatusResponse | null>(null)
@@ -324,6 +339,17 @@ export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
     return Object.entries(groups)
   }, [sequences])
 
+  // Filtrage des formations par titre selon le champ de recherche. Recherche
+  // insensible à la casse et aux accents. Champ vide → toutes les formations.
+  // Le tri interne par sequence_number (groupedSequences) est préservé.
+  const filteredGroups = useMemo(() => {
+    const needle = normalizeForSearch(formationSearch.trim())
+    if (!needle) return groupedSequences
+    return groupedSequences.filter(([formationTitle]) =>
+      normalizeForSearch(formationTitle).includes(needle)
+    )
+  }, [groupedSequences, formationSearch])
+
   // §7 handoff — badge mode word_index / approx_sec basé sur le champ
   // `generator` de la Timeline retournée.
   const generatorBadge = useMemo<{
@@ -404,23 +430,45 @@ export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
                   les séquences ont bien un audio source généré.
                 </p>
               ) : (
-                <select
-                  value={selectedId}
-                  onChange={(e) => setSelectedId(e.target.value)}
-                  className="w-full rounded-lg border border-white/10 bg-[color:var(--color-bg-card)] px-3 py-2 text-sm text-white focus:border-ds-turquoise focus:outline-none"
-                  disabled={loading}
-                >
-                  {groupedSequences.map(([formationTitle, seqs]) => (
-                    <optgroup key={formationTitle} label={formationTitle}>
-                      {seqs.map((seq) => (
-                        <option key={seq.id} value={seq.id}>
-                          {seq.timeline_url ? '● ' : '○ '}
-                          {formationTitle} — {seq.sequence_number ? `#${seq.sequence_number} ` : ''}{seq.title}
-                        </option>
+                <div className="space-y-2">
+                  <input
+                    type="search"
+                    value={formationSearch}
+                    onChange={(e) => setFormationSearch(e.target.value)}
+                    placeholder="Rechercher une formation…"
+                    aria-label="Rechercher une formation"
+                    className="w-full rounded-lg border border-white/10 bg-[color:var(--color-bg-card)] px-3 py-2 text-sm text-white placeholder:text-[color:var(--color-text-muted)] focus:border-ds-turquoise focus:outline-none"
+                    disabled={loading}
+                  />
+                  {filteredGroups.length === 0 ? (
+                    <p className="text-sm text-[color:var(--color-text-secondary)]">
+                      Aucune formation ne correspond à «&nbsp;{formationSearch}&nbsp;».
+                    </p>
+                  ) : (
+                    <select
+                      value={selectedId}
+                      onChange={(e) => {
+                        setSelectedId(e.target.value)
+                        // Réinitialise la recherche à la sélection (équivalent
+                        // « fermeture du menu » pour un <select> natif).
+                        setFormationSearch('')
+                      }}
+                      className="w-full rounded-lg border border-white/10 bg-[color:var(--color-bg-card)] px-3 py-2 text-sm text-white focus:border-ds-turquoise focus:outline-none"
+                      disabled={loading}
+                    >
+                      {filteredGroups.map(([formationTitle, seqs]) => (
+                        <optgroup key={formationTitle} label={formationTitle}>
+                          {seqs.map((seq) => (
+                            <option key={seq.id} value={seq.id}>
+                              {seq.timeline_url ? '● ' : '○ '}
+                              {formationTitle} — {seq.sequence_number ? `#${seq.sequence_number} ` : ''}{seq.title}
+                            </option>
+                          ))}
+                        </optgroup>
                       ))}
-                    </optgroup>
-                  ))}
-                </select>
+                    </select>
+                  )}
+                </div>
               )}
             </div>
 
