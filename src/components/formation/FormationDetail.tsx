@@ -233,7 +233,7 @@ export default function FormationDetail({
   const { formation, sequences, loading, error } = useFormation(formationId)
   const { currentSequence, completedSequenceIds, refresh: refetchProgress } = useUserFormationProgress(formationId)
   const { isPremium } = usePremiumAccess()
-  const { totalPoints, earnedPoints } = useFormationPoints(formationId)
+  const { totalPoints, earnedPoints, refresh: refetchPoints } = useFormationPoints(formationId)
   const { completionPercent } = useFormationCompletion(formationId, sequences, completedSequenceIds)
   const {
     isEnrolled,
@@ -265,6 +265,7 @@ export default function FormationDetail({
   const handleEnrolled = () => {
     refetchEnrollment()
     refetchProgress()
+    refetchPoints()
     closePostIntroModal()
   }
 
