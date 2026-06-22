@@ -64,7 +64,11 @@ const CardVariantSchema = z.enum(['highlight', 'warning', 'success'])
 
 const CardContentSchema = z.object({
   text: z.string().max(60),
-  subtitle: z.string().max(40).optional(),
+  // Tolérance portée de 40 → 50 (juin 2026) : le rendu des cards
+  // (Grid/Flowchart/Comparison/Causal) wrap le subtitle sans troncature, donc
+  // 10 caractères de marge n'introduisent aucun overflow visuel. Borne de
+  // *validation* ; l'objectif de *génération* reste 40 côté prompt LLM.
+  subtitle: z.string().max(50).optional(),
   icon: z.string().optional(),
   variant: CardVariantSchema.optional(),
 })

@@ -12,8 +12,8 @@ import { isSuperAdmin } from '@/lib/auth/rbac'
 import {
   TIMELINE_STORAGE_BUCKET,
   buildVersionsFolder,
+  loadTimelineFromUrl,
 } from '@/lib/timeline/admin-table-resolver'
-import { TimelineSchema, type Timeline } from '@/lib/timeline/schema'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
@@ -79,19 +79,8 @@ export default async function FormationTimelineEditorPage({
   const timelineUrl = (seq.timeline_url as string | null) ?? null
   const published = Boolean(seq.timeline_published ?? false)
 
-  let initialTimeline: Timeline | null = null
-  if (timelineUrl) {
-    try {
-      const resp = await fetch(timelineUrl, { cache: 'no-store' })
-      if (resp.ok) {
-        const json = await resp.json()
-        const parsed = TimelineSchema.safeParse(json)
-        if (parsed.success) initialTimeline = parsed.data
-      }
-    } catch {
-      // ignore — la page rendra le bandeau "aucune timeline"
-    }
-  }
+  const { timeline: initialTimeline, loadError } =
+    await loadTimelineFromUrl(timelineUrl)
 
   // Versions Storage (best-effort).
   const folder = buildVersionsFolder('formation', sequence_id)
@@ -114,6 +103,7 @@ export default async function FormationTimelineEditorPage({
       initialPublished={published}
       initialVersions={initialVersions}
       sourceTitle={sourceTitle}
+      loadError={loadError ?? undefined}
       noTimelineMessage="Aucune timeline pour cette séquence. Génère d'abord l'audio depuis la page séquence (bloc Audio du cours) — l'extraction des scènes se déclenche ensuite automatiquement."
     />
   )

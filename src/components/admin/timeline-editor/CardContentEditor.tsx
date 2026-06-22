@@ -7,14 +7,14 @@ import type { CardContent, CardVariant } from '@/lib/timeline/schema'
  *
  * Champs :
  *  - text (required, max 60)
- *  - subtitle (optional, max 40)
+ *  - subtitle (optional, max 50)
  *  - variant (default | highlight | warning | success)
  *
  * Compteurs de caractères avec couleur progressive selon proximité limite.
  */
 
 const TEXT_LIMIT = 60
-const SUBTITLE_LIMIT = 40
+const SUBTITLE_LIMIT = 50
 
 interface Props {
   card: CardContent
