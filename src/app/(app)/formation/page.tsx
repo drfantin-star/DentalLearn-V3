@@ -23,6 +23,7 @@ import {
 
 // Composants
 import FormationDetail from '@/components/formation/FormationDetail'
+import type { IntroSessionResult } from '@/components/formation/EnrollmentCTA'
 import SequencePlayer from '@/components/formation/SequencePlayer'
 import Badge from '@/components/ui/Badge'
 import BibliothequeBanner from '@/components/ui/BibliothequeBanner'
@@ -105,6 +106,9 @@ export default function FormationPage() {
   const { isEnrolled: isEnrolledForSelected } = useEnrollmentStatus(selectedFormationId)
   const wasEnrolledBeforeSequenceRef = useRef<boolean>(false)
   const [pendingPostIntroModal, setPendingPostIntroModal] = useState(false)
+  // Résultat du quiz d'intro joué avant inscription, transmis à EnrollmentCTA
+  // pour réconciliation (points + déblocage) au moment de l'inscription.
+  const [introSessionResult, setIntroSessionResult] = useState<IntroSessionResult | null>(null)
 
   const cpCategories = CATEGORIES.filter((c) => c.type === 'cp')
 
@@ -159,8 +163,9 @@ export default function FormationPage() {
     return enrolled
   }
 
-  const handleSequenceComplete = async (score: number, totalPoints: number) => {
-    console.log('✅ Séquence terminée:', { score, totalPoints })
+  // `score` reçoit en réalité correctCount (cf. SequencePlayer.onComplete).
+  const handleSequenceComplete = async (correctCount: number, totalPoints: number) => {
+    console.log('✅ Séquence terminée:', { correctCount, totalPoints })
 
     const completedSequence = selectedSequence
     if (!completedSequence) {
@@ -173,6 +178,13 @@ export default function FormationPage() {
     const isIntroOfNonEnrolled = !!completedSequence.is_intro && !isCurrentlyEnrolled
 
     if (isIntroOfNonEnrolled) {
+      // Garde inchangée : aucune écriture DB pour un non-inscrit. On mémorise le
+      // résultat pour le réconcilier à l'inscription (points + déblocage).
+      setIntroSessionResult({
+        sequenceId: completedSequence.id,
+        correctCount,
+        totalPoints,
+      })
       setSelectedSequence(null)
       setViewMode('formation')
       setPendingPostIntroModal(true)
@@ -212,6 +224,7 @@ export default function FormationPage() {
         onStartSequence={openSequence}
         triggerPostIntroModal={pendingPostIntroModal}
         onPostIntroModalClose={() => setPendingPostIntroModal(false)}
+        introSessionResult={introSessionResult}
       />
     )
   }
