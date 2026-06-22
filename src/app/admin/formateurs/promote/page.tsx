@@ -146,12 +146,12 @@ export default function PromoteFormateurPage() {
                 Cet utilisateur n'a pas de compte DentalLearn. Demandez-lui de
                 s'inscrire sur{' '}
                 <a
-                  href="https://dental-learn-v3.vercel.app"
+                  href="https://app.dentalschool.fr"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="underline font-medium"
                 >
-                  dental-learn-v3.vercel.app
+                  app.dentalschool.fr
                 </a>{' '}
                 puis revenez ici pour le promouvoir.
               </p>

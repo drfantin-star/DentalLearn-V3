@@ -103,11 +103,15 @@ export default function PWAInstallBanner() {
         {/* Contenu */}
         <div className="px-4 py-4">
           {/* Avantage principal */}
-          <div className="flex items-center gap-2 mb-3 text-sm">
-            <Bell className="w-4 h-4 text-accent" />
-            <span className="text-gray-700">
-              <strong>Recevez les notifications</strong> de rappel quotidien
-            </span>
+          <div className="mb-3 text-sm space-y-1">
+            <p className="flex items-center gap-2 text-gray-700">
+              <span className="text-base">📲</span>
+              <strong>Retrouve DentalLearn sur ton écran d&apos;accueil</strong>
+            </p>
+            <p className="flex items-center gap-2 text-gray-700">
+              <Bell className="w-4 h-4 text-accent" />
+              et reçois tes rappels quotidiens
+            </p>
           </div>
 
           {mode === 'chrome' ? (
@@ -122,7 +126,7 @@ export default function PWAInstallBanner() {
                   <Compass className="w-4 h-4 text-amber-600" />
                 </div>
                 <p className="text-sm text-gray-700">
-                  Ouvrez <strong>Safari</strong> et allez sur dental-learn-v3.vercel.app
+                  Ouvrez <strong>Safari</strong> et allez sur app.dentalschool.fr
                 </p>
               </div>
 
