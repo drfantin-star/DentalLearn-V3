@@ -304,6 +304,26 @@ export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
     return []
   }, [dryRunResult, jobStatus])
 
+  // Regroupement par formation pour le <select>. On conserve l'ordre des
+  // formations tel qu'il arrive (tri serveur par titre de formation, première
+  // apparition) mais, à l'intérieur de chaque groupe, on trie les séquences
+  // par sequence_number croissant : l'intro (sequence_number = 0) passe en
+  // tête, suivie de #1, #2, etc. Tri en mémoire, sans persistance.
+  const groupedSequences = useMemo(() => {
+    const groups = sequences.reduce<Record<string, SequenceLite[]>>(
+      (acc, seq) => {
+        const key = seq.formation_title ?? '(Formation inconnue)'
+        ;(acc[key] ??= []).push(seq)
+        return acc
+      },
+      {}
+    )
+    for (const seqs of Object.values(groups)) {
+      seqs.sort((a, b) => (a.sequence_number ?? 0) - (b.sequence_number ?? 0))
+    }
+    return Object.entries(groups)
+  }, [sequences])
+
   // §7 handoff — badge mode word_index / approx_sec basé sur le champ
   // `generator` de la Timeline retournée.
   const generatorBadge = useMemo<{
@@ -390,13 +410,7 @@ export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
                   className="w-full rounded-lg border border-white/10 bg-[color:var(--color-bg-card)] px-3 py-2 text-sm text-white focus:border-ds-turquoise focus:outline-none"
                   disabled={loading}
                 >
-                  {Object.entries(
-                    sequences.reduce<Record<string, SequenceLite[]>>((acc, seq) => {
-                      const key = seq.formation_title ?? '(Formation inconnue)'
-                      ;(acc[key] ??= []).push(seq)
-                      return acc
-                    }, {})
-                  ).map(([formationTitle, seqs]) => (
+                  {groupedSequences.map(([formationTitle, seqs]) => (
                     <optgroup key={formationTitle} label={formationTitle}>
                       {seqs.map((seq) => (
                         <option key={seq.id} value={seq.id}>
