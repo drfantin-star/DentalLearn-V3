@@ -1,4 +1,5 @@
 import AppShell from '@/components/layout/AppShell'
+import SessionRecoveryGuard from '@/components/SessionRecoveryGuard'
 import { AudioProvider } from '@/context/AudioContext'
 import { AudioPlayerProvider } from '@/context/AudioPlayerContext'
 import { redirect } from 'next/navigation'
@@ -39,6 +40,7 @@ export default async function AppLayout({
   return (
     <AudioProvider>
       <AudioPlayerProvider>
+        <SessionRecoveryGuard />
         <AppShell
           intraRole={intraRole}
           isSuperAdmin={superAdminFlag}
