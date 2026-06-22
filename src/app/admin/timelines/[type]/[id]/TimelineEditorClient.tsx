@@ -49,6 +49,12 @@ interface Props {
   sourceTitle: string
   /** Affiché en haut quand pas de timeline (cas news pré-T8). */
   noTimelineMessage?: string
+  /**
+   * Message d'erreur de chargement (fetch KO ou validation Zod échouée). Quand
+   * présent, on affiche la vraie cause (champ invalide) au lieu du message
+   * « Génère d'abord l'audio », trompeur dans ce cas.
+   */
+  loadError?: string
 }
 
 interface ToastState {
@@ -99,6 +105,7 @@ export function TimelineEditorClient({
   initialVersions,
   sourceTitle,
   noTimelineMessage,
+  loadError,
 }: Props) {
   const [timeline, setTimeline] = useState<Timeline | null>(initialTimeline)
   const [currentTimelineUrl, setCurrentTimelineUrl] = useState<string | null>(
@@ -511,15 +518,33 @@ export function TimelineEditorClient({
       {/* ─── Body ─────────────────────────────────────────────── */}
       {!timeline ? (
         <div className="mx-auto max-w-3xl p-6">
-          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6">
-            <h2 className="mb-2 text-base font-semibold text-amber-300">
-              Aucune timeline générée
-            </h2>
-            <p className="text-sm text-amber-100">
-              {noTimelineMessage ??
-                "Cette source n'a pas encore de timeline. Pour les formations, lance le pipeline T2 puis l'extraction LLM (T5). Pour les news, la timeline déterministe sera disponible après T8."}
-            </p>
-          </div>
+          {loadError ? (
+            <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-6">
+              <h2 className="mb-2 text-base font-semibold text-red-300">
+                Timeline invalide
+              </h2>
+              <p className="text-sm text-red-100">
+                Le fichier timeline existe mais n&apos;a pas pu être chargé. Cause :
+              </p>
+              <p className="mt-2 break-words font-mono text-xs text-red-200">
+                {loadError}
+              </p>
+              <p className="mt-3 text-xs text-red-100/80">
+                Corrige le champ signalé (souvent un libellé trop long), puis
+                recharge cette page.
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-6">
+              <h2 className="mb-2 text-base font-semibold text-amber-300">
+                Aucune timeline générée
+              </h2>
+              <p className="text-sm text-amber-100">
+                {noTimelineMessage ??
+                  "Cette source n'a pas encore de timeline. Pour les formations, lance le pipeline T2 puis l'extraction LLM (T5). Pour les news, la timeline déterministe sera disponible après T8."}
+              </p>
+            </div>
+          )}
         </div>
       ) : (
         <div

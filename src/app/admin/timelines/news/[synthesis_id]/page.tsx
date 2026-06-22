@@ -13,8 +13,8 @@ import { isSuperAdmin } from '@/lib/auth/rbac'
 import {
   TIMELINE_STORAGE_BUCKET,
   buildVersionsFolder,
+  loadTimelineFromUrl,
 } from '@/lib/timeline/admin-table-resolver'
-import { TimelineSchema, type Timeline } from '@/lib/timeline/schema'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
@@ -70,19 +70,8 @@ export default async function NewsTimelineEditorPage({ params }: PageProps) {
   const timelineUrl = (synth.timeline_url as string | null) ?? null
   const published = Boolean(synth.timeline_published ?? false)
 
-  let initialTimeline: Timeline | null = null
-  if (timelineUrl) {
-    try {
-      const resp = await fetch(timelineUrl, { cache: 'no-store' })
-      if (resp.ok) {
-        const json = await resp.json()
-        const parsed = TimelineSchema.safeParse(json)
-        if (parsed.success) initialTimeline = parsed.data
-      }
-    } catch {
-      // ignore
-    }
-  }
+  const { timeline: initialTimeline, loadError } =
+    await loadTimelineFromUrl(timelineUrl)
 
   const folder = buildVersionsFolder('news', synthesis_id)
   const { data: files } = await admin.storage
@@ -104,6 +93,7 @@ export default async function NewsTimelineEditorPage({ params }: PageProps) {
       initialPublished={published}
       initialVersions={initialVersions}
       sourceTitle={sourceTitle}
+      loadError={loadError ?? undefined}
       noTimelineMessage="Aucune timeline générée pour cette synthèse — disponible après T8 (pipeline news déterministe)."
     />
   )

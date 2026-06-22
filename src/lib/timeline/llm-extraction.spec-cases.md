@@ -69,9 +69,12 @@ revue manuelle.
 - **Input** : une `flowchart.cards[0].text` de 80 chars.
 - **Attendu** : tronqué à 57+`...`, warning `text_truncated:scene-1`.
 
-### Cas 13 — Card subtitle de 50 caractères
-- **Input** : une `grid.cards[0].subtitle` de 50 chars.
-- **Attendu** : tronqué à 37+`...`, warning `subtitle_truncated:scene-1`.
+### Cas 13 — Card subtitle de 60 caractères
+- **Input** : une `grid.cards[0].subtitle` de 60 chars.
+- **Attendu** : **non tronqué** (libellé médical conservé intact), warning
+  `subtitle_over_limit:scene-1`. La valeur est laissée telle quelle ; la
+  validation finale (schema `max(50)`) la rejettera et l'éditeur affichera le
+  champ fautif pour reformulation manuelle.
 
 ### Cas 14 — `trigger_at_word_index` hors bornes
 - **Input** : scène avec `trigger_at_word_index: 999999`, transcript de 1500 mots.

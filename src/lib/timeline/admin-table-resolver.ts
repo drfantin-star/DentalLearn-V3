@@ -7,6 +7,8 @@
  * URL et côté Storage path (`audio-timelines/{type}/{source_id}/{ISO}.json`).
  */
 
+import { TimelineSchema, type Timeline } from '@/lib/timeline/schema'
+
 export type TimelineSourceType = 'formation' | 'news'
 
 export interface TimelineTableConfig {
@@ -68,4 +70,54 @@ export function buildVersionsFolder(
  */
 export function isoStampForStorage(): string {
   return new Date().toISOString().replace(/[:.]/g, '-')
+}
+
+export interface LoadedTimeline {
+  timeline: Timeline | null
+  /**
+   * Message d'erreur lisible quand le fetch ou la validation Zod échoue.
+   * `null` = pas de timeline (URL absente) OU chargement réussi. Permet à
+   * l'éditeur d'afficher la vraie cause (champ invalide) au lieu du message
+   * trompeur « Génère d'abord l'audio ».
+   */
+  loadError: string | null
+}
+
+/**
+ * Charge + valide la timeline depuis son URL publique Storage.
+ *
+ * Contrairement à l'ancien chargement inline (qui avalait silencieusement les
+ * échecs `fetch`/Zod, d'où le bandeau « Génère d'abord l'audio » trompeur),
+ * cette fonction renvoie un `loadError` explicite listant les premiers champs
+ * invalides (ex. `scenes.9.template.cards.1.subtitle : …`) pour reformulation.
+ */
+export async function loadTimelineFromUrl(
+  timelineUrl: string | null
+): Promise<LoadedTimeline> {
+  if (!timelineUrl) return { timeline: null, loadError: null }
+  try {
+    const resp = await fetch(timelineUrl, { cache: 'no-store' })
+    if (!resp.ok) {
+      return {
+        timeline: null,
+        loadError: `Échec de chargement du fichier timeline (HTTP ${resp.status}).`,
+      }
+    }
+    const json = await resp.json()
+    const parsed = TimelineSchema.safeParse(json)
+    if (parsed.success) return { timeline: parsed.data, loadError: null }
+    const detail = parsed.error.issues
+      .slice(0, 3)
+      .map((iss) => `${iss.path.join('.') || '(racine)'} : ${iss.message}`)
+      .join(' · ')
+    return {
+      timeline: null,
+      loadError: `Timeline invalide — ${detail || 'schéma non conforme'}`,
+    }
+  } catch {
+    return {
+      timeline: null,
+      loadError: 'Timeline illisible (fetch ou JSON invalide).',
+    }
+  }
 }

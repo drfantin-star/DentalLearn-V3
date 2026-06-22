@@ -77,7 +77,14 @@ export const MAX_DURATION_SEC = 35
  *  d'un champ Sonnet (qui ne contrôle que `at_word_index`). */
 export const CONCEPT_HIGHLIGHT_DURATION_SEC = 4
 
-/** Limites text/subtitle des cards — alignées sur CardContentSchema. */
+/**
+ * Limites des cards.
+ *  - `text` (≤60) : toujours tronqué défensivement.
+ *  - `subtitle` : objectif de *génération* à 40 (cf. prompt LLM). La borne de
+ *    *validation* du schéma est plus large (50). On ne tronque PLUS le subtitle
+ *    (couper un libellé médical en altère le sens) : un dépassement de
+ *    l'objectif est seulement signalé via warning `subtitle_over_limit`.
+ */
 const MAX_CARD_TEXT_LEN = 60
 const MAX_CARD_SUBTITLE_LEN = 40
 
@@ -526,7 +533,8 @@ export interface BuildTimelineArgs {
 /**
  * Pipeline de conversion (ordre exact spec POC §6.3) :
  *  1. Tronque scenes à MAX_SCENES + warning `scenes_truncated`
- *  2. Truncate text/subtitle ≥ limites + warning `text_truncated`
+ *  2. Tronque `text` ≥ limite + warning `text_truncated` ; flague (sans
+ *     tronquer) un `subtitle` trop long + warning `subtitle_over_limit`
  *  3. Conversion `trigger_at_word_index → start_sec` via lookup transcript
  *     (fallback proportionnel si index hors bornes)
  *  4. Calcul end_sec = start_sec + clamp(display_duration_sec, [20,45])
@@ -600,7 +608,7 @@ export function buildTimelineFromRaw(
       warnings.push(`duration_clamped:${safeId}`)
     }
 
-    // Truncate text/subtitle défensif sur tout le template
+    // Tronque le text (défensif) ; flague un subtitle trop long sans le couper
     const safeTemplate = sanitizeTemplate(scene.template, safeId, warnings)
 
     return {
@@ -749,9 +757,11 @@ function generateConceptId(): string {
 }
 
 /**
- * Truncate les `text` (≤60) et `subtitle` (≤40) sur tous les contenus du
- * template. Loggue un warning par scène (pas par card — éviterait la
- * cardinalité explosive si une scène a 5 cards toutes trop longues).
+ * Tronque le `text` (≤60) sur tous les contenus du template. Le `subtitle`
+ * n'est PLUS tronqué (libellé médical) : on flague seulement son dépassement
+ * de l'objectif de génération via `subtitle_over_limit`. Loggue un warning par
+ * scène (pas par card — éviterait la cardinalité explosive si une scène a 5
+ * cards toutes trop longues).
  */
 function sanitizeTemplate(
   template: SonnetRawTemplate,
@@ -763,16 +773,19 @@ function sanitizeTemplate(
 
   const sanitizeCard = (c: SonnetRawCardContent): SonnetRawCardContent => {
     let text = c.text ?? ''
-    let subtitle = c.subtitle
+    const subtitle = c.subtitle
     if (typeof text === 'string' && text.length > MAX_CARD_TEXT_LEN) {
       text = text.slice(0, MAX_CARD_TEXT_LEN - 3) + '...'
       textTouched = true
     }
+    // On NE tronque PLUS le subtitle : couper un libellé médical en altère le
+    // sens. On flague seulement le dépassement de l'objectif de génération ;
+    // la validation finale (schema max 50) + le bandeau d'erreur de l'éditeur
+    // permettent de repérer et reformuler à la main.
     if (
       typeof subtitle === 'string' &&
       subtitle.length > MAX_CARD_SUBTITLE_LEN
     ) {
-      subtitle = subtitle.slice(0, MAX_CARD_SUBTITLE_LEN - 3) + '...'
       subtitleTouched = true
     }
     return { ...c, text, ...(subtitle !== undefined ? { subtitle } : {}) }
@@ -845,6 +858,6 @@ function sanitizeTemplate(
   }
 
   if (textTouched) warnings.push(`text_truncated:${sceneId}`)
-  if (subtitleTouched) warnings.push(`subtitle_truncated:${sceneId}`)
+  if (subtitleTouched) warnings.push(`subtitle_over_limit:${sceneId}`)
   return result
 }
