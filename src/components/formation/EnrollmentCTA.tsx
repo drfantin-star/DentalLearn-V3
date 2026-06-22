@@ -114,7 +114,7 @@ export default function EnrollmentCTA({
           user_id: user.id,
           formation_id: formationId,
           is_active: true,
-          current_sequence: 1,
+          current_sequence: 0,
           access_type: 'full',
           started_at: new Date().toISOString(),
         })

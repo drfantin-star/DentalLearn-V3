@@ -221,7 +221,7 @@ export function useSequenceQuestions(sequenceId: string | null) {
 // ============================================
 
 export function useUserFormationProgress(formationId: string | null) {
-  const [currentSequence, setCurrentSequence] = useState(1)
+  const [currentSequence, setCurrentSequence] = useState(0)
   const [completedSequenceIds, setCompletedSequenceIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -276,7 +276,7 @@ export function useUserFormationProgress(formationId: string | null) {
         .eq('formation_id', formationId)
         .maybeSingle()
 
-      setCurrentSequence(userFormation?.current_sequence || 1)
+      setCurrentSequence(userFormation?.current_sequence ?? 0)
     } catch (err) {
       console.error('Erreur chargement progression:', err)
     } finally {

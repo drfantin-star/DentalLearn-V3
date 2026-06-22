@@ -147,7 +147,7 @@ export async function POST(request: Request) {
         user_id: userId,
         formation_id: formationId,
         is_active: true,
-        current_sequence: 1,
+        current_sequence: 0,
         access_type: 'full'
       })
       .select()
