@@ -28,7 +28,7 @@ import {
 } from '@/lib/supabase'
 import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
 import { useAudio } from '@/context/AudioContext'
-import EnrollmentCTA from '@/components/formation/EnrollmentCTA'
+import EnrollmentCTA, { type IntroSessionResult } from '@/components/formation/EnrollmentCTA'
 import PostIntroEnrollmentModal from '@/components/formation/PostIntroEnrollmentModal'
 import { GenerateAttestationButton } from '@/components/attestations/GenerateAttestationButton'
 import { ColdSurveyEligibilityBadge } from '@/components/satisfaction/ColdSurveyEligibilityBadge'
@@ -45,6 +45,7 @@ interface FormationDetailProps {
   onStartSequence: (sequence: Sequence) => void
   triggerPostIntroModal?: boolean
   onPostIntroModalClose?: () => void
+  introSessionResult?: IntroSessionResult | null
 }
 
 // ============================================
@@ -227,11 +228,12 @@ export default function FormationDetail({
   onStartSequence,
   triggerPostIntroModal,
   onPostIntroModalClose,
+  introSessionResult,
 }: FormationDetailProps) {
   const { formation, sequences, loading, error } = useFormation(formationId)
   const { currentSequence, completedSequenceIds, refresh: refetchProgress } = useUserFormationProgress(formationId)
   const { isPremium } = usePremiumAccess()
-  const { totalPoints, earnedPoints } = useFormationPoints(formationId)
+  const { totalPoints, earnedPoints, refresh: refetchPoints } = useFormationPoints(formationId)
   const { completionPercent } = useFormationCompletion(formationId, sequences, completedSequenceIds)
   const {
     isEnrolled,
@@ -263,6 +265,7 @@ export default function FormationDetail({
   const handleEnrolled = () => {
     refetchEnrollment()
     refetchProgress()
+    refetchPoints()
     closePostIntroModal()
   }
 
@@ -556,6 +559,7 @@ export default function FormationDetail({
               onSuccess={handleEnrolled}
               variant="fixed-bottom"
               gradient={categoryConfig.gradient}
+              introSessionResult={introSessionResult}
             />
           ) : nextSequence ? (
             <button
@@ -610,6 +614,7 @@ export default function FormationDetail({
         formationTitle={formation.title}
         onEnrolled={handleEnrolled}
         gradient={categoryConfig.gradient}
+        introSessionResult={introSessionResult}
       />
     </div>
   )

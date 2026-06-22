@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { GraduationCap } from 'lucide-react'
-import EnrollmentCTA from './EnrollmentCTA'
+import EnrollmentCTA, { type IntroSessionResult } from './EnrollmentCTA'
 
 interface Props {
   isOpen: boolean
@@ -11,6 +11,7 @@ interface Props {
   formationTitle: string
   onEnrolled: () => void
   gradient?: { from: string; to: string }
+  introSessionResult?: IntroSessionResult | null
 }
 
 export default function PostIntroEnrollmentModal({
@@ -20,6 +21,7 @@ export default function PostIntroEnrollmentModal({
   formationTitle,
   onEnrolled,
   gradient,
+  introSessionResult,
 }: Props) {
   if (!isOpen) return null
 
@@ -60,6 +62,7 @@ export default function PostIntroEnrollmentModal({
           variant="inline"
           gradient={grad}
           label="S'inscrire et continuer"
+          introSessionResult={introSessionResult}
         />
 
         <button

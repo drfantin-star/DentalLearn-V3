@@ -221,7 +221,7 @@ export function useSequenceQuestions(sequenceId: string | null) {
 // ============================================
 
 export function useUserFormationProgress(formationId: string | null) {
-  const [currentSequence, setCurrentSequence] = useState(1)
+  const [currentSequence, setCurrentSequence] = useState(0)
   const [completedSequenceIds, setCompletedSequenceIds] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -276,7 +276,7 @@ export function useUserFormationProgress(formationId: string | null) {
         .eq('formation_id', formationId)
         .maybeSingle()
 
-      setCurrentSequence(userFormation?.current_sequence || 1)
+      setCurrentSequence(userFormation?.current_sequence ?? 0)
     } catch (err) {
       console.error('Erreur chargement progression:', err)
     } finally {
@@ -575,55 +575,55 @@ export function useFormationPoints(formationId: string | null) {
   const [earnedPoints, setEarnedPoints] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
+  const refresh = useCallback(async () => {
     if (!formationId) {
       setLoading(false)
       return
     }
 
-    async function fetchPoints() {
-      try {
-        setLoading(true)
+    try {
+      setLoading(true)
 
-        const { data: sequences } = await supabase
-          .from('sequences')
-          .select('id')
-          .eq('formation_id', formationId)
+      const { data: sequences } = await supabase
+        .from('sequences')
+        .select('id')
+        .eq('formation_id', formationId)
 
-        if (sequences && sequences.length > 0) {
-          const sequenceIds = sequences.map(s => s.id)
+      if (sequences && sequences.length > 0) {
+        const sequenceIds = sequences.map(s => s.id)
 
-          const { data: questionsData } = await supabase
-            .from('questions')
-            .select('points')
-            .in('sequence_id', sequenceIds)
+        const { data: questionsData } = await supabase
+          .from('questions')
+          .select('points')
+          .in('sequence_id', sequenceIds)
 
-          const total = questionsData?.reduce((sum, q) => sum + (q.points || 0), 0) || 0
-          setTotalPoints(total)
-        }
-
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
-
-        const { data: userFormation } = await supabase
-          .from('user_formations')
-          .select('total_points')
-          .eq('formation_id', formationId)
-          .eq('user_id', user.id)
-          .single()
-
-        if (userFormation) {
-          setEarnedPoints(userFormation.total_points || 0)
-        }
-      } catch (err) {
-        console.error('Erreur fetchPoints:', err)
-      } finally {
-        setLoading(false)
+        const total = questionsData?.reduce((sum, q) => sum + (q.points || 0), 0) || 0
+        setTotalPoints(total)
       }
-    }
 
-    fetchPoints()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: userFormation } = await supabase
+        .from('user_formations')
+        .select('total_points')
+        .eq('formation_id', formationId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (userFormation) {
+        setEarnedPoints(userFormation.total_points || 0)
+      }
+    } catch (err) {
+      console.error('Erreur fetchPoints:', err)
+    } finally {
+      setLoading(false)
+    }
   }, [formationId])
+
+  useEffect(() => {
+    refresh()
+  }, [refresh])
 
   const addPoints = useCallback((points: number) => {
     setEarnedPoints(prev => prev + points)
@@ -632,7 +632,7 @@ export function useFormationPoints(formationId: string | null) {
 
   const progressPercent = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0
 
-  return { totalPoints, earnedPoints, progressPercent, addPoints, loading }
+  return { totalPoints, earnedPoints, progressPercent, addPoints, loading, refresh }
 }
 
 // ============================================

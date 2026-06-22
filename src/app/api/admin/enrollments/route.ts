@@ -147,7 +147,7 @@ export async function POST(request: Request) {
         user_id: userId,
         formation_id: formationId,
         is_active: true,
-        current_sequence: 1,
+        current_sequence: 0,
         access_type: 'full'
       })
       .select()
@@ -156,6 +156,54 @@ export async function POST(request: Request) {
     if (insertError) {
       console.error('Erreur insertion inscription:', insertError)
       return NextResponse.json({ error: 'Erreur création inscription' }, { status: 500 })
+    }
+
+    // Réconciliation d'une intro-QUIZ déjà complétée AVANT cette inscription
+    // administrative : si toutes les questions de l'intro sont acquises
+    // (user_question_review.consecutive_correct >= 1), on débloque la séquence 1
+    // via current_sequence = GREATEST(actuel, intro.sequence_number + 1).
+    // NOTE : le crédit des points (user_points) est VOLONTAIREMENT OMIS côté
+    // serveur — l'unique chemin d'écriture autorisé est le hook React
+    // useSubmitSequenceResult, indisponible ici. Cas marginal (inscription admin
+    // d'un utilisateur ayant déjà joué l'intro). Best-effort, non bloquant.
+    try {
+      const { data: intros } = await adminSupabase
+        .from('sequences')
+        .select('id, sequence_number')
+        .eq('formation_id', formationId)
+        .eq('is_intro', true)
+
+      for (const intro of intros ?? []) {
+        const { data: questions } = await adminSupabase
+          .from('questions')
+          .select('id')
+          .eq('sequence_id', intro.id)
+        if (!questions?.length) continue // intro audio-only -> hors périmètre
+
+        const qIds = questions.map((q) => q.id)
+        // Intro complétée = toutes ses questions RÉPONDUES (une réponse, bonne ou
+        // ratée, laisse une ligne user_question_review). Déblocage seul ici.
+        const { data: reviewed } = await adminSupabase
+          .from('user_question_review')
+          .select('question_id')
+          .eq('user_id', userId)
+          .in('question_id', qIds)
+        const answeredCount = new Set(
+          (reviewed ?? []).map((r: { question_id: string }) => r.question_id),
+        ).size
+        if (answeredCount < questions.length) continue // intro non terminée
+
+        const current = inserted?.current_sequence ?? 0
+        const desired = Math.max(current, intro.sequence_number + 1)
+        if (desired > current) {
+          await adminSupabase
+            .from('user_formations')
+            .update({ current_sequence: desired })
+            .eq('id', inserted.id)
+        }
+      }
+    } catch (reconcileErr) {
+      console.error('Erreur réconciliation intro (admin):', reconcileErr)
     }
 
     return NextResponse.json({ success: true, enrollment: inserted })
