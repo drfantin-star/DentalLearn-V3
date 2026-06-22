@@ -22,10 +22,12 @@ export default function RootLayout({
     <html lang="fr" className="dark">
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#2D1B96" />
+        <meta name="theme-color" content="#2E9BDB" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <link rel="apple-touch-icon" href="/images/icon-192.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
       </head>
       <body className="antialiased">
         {children}
