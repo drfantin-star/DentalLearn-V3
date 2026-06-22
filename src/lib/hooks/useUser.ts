@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useSyncExternalStore } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { createClient, getUserWithTimeout } from '@/lib/supabase/client'
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js'
 import type { UserInterests } from '@/lib/supabase/types'
 
@@ -69,9 +69,9 @@ async function fetchUser(): Promise<void> {
   inFlight = (async () => {
     const supabase = createClient()
     try {
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser()
+      // Borné par timeout : garantit que `loading` finit toujours par passer à
+      // false, même si l'auth se coince (jamais de spinner infini sur AppShell).
+      const { user: authUser } = await getUserWithTimeout()
 
       if (!authUser) {
         setState({ user: null, profile: null, streak: null, loading: false })
