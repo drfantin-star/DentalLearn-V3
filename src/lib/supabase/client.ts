@@ -54,7 +54,39 @@ async function boundedNavigatorLock<R>(
   }
 }
 
+// Timeout générique appliqué à TOUTE opération d'auth publique (getUser /
+// getSession). Le lock borné ci-dessus garantit que l'ACQUISITION du lock ne
+// bloque pas ; mais une fois le lock obtenu, si l'opération réseau interne
+// d'auth-js se coince (refresh token désynchronisé, onglet Android Chrome PWA
+// throttlé en arrière-plan après le prompt de notif), la promesse partagée
+// in-flight d'auth-js n'est plus bornée. On borne donc ici l'OPÉRATION
+// elle-même.
+const AUTH_OP_TIMEOUT_MS = 10000
+
 let client: ReturnType<typeof createBrowserClient> | null = null
+
+/**
+ * Borne une opération d'auth par un timeout : si elle ne résout pas sous
+ * `AUTH_OP_TIMEOUT_MS`, on renvoie `fallback` (traité comme « non authentifié »)
+ * plutôt que de laisser la promesse pendre indéfiniment → jamais de spinner
+ * infini, quel que soit l'état interne d'auth-js. Préserve la forme de retour
+ * native (`{ data, error }`) pour rester transparent aux appelants.
+ */
+function withAuthTimeout<T>(op: () => Promise<T>, fallback: T): Promise<T> {
+  const fromOp: Promise<T> = (async () => {
+    try {
+      return await op()
+    } catch {
+      return fallback
+    }
+  })()
+
+  const fromTimeout = new Promise<T>((resolve) =>
+    setTimeout(() => resolve(fallback), AUTH_OP_TIMEOUT_MS)
+  )
+
+  return Promise.race([fromOp, fromTimeout])
+}
 
 export function createClient() {
   if (client) return client
@@ -69,35 +101,51 @@ export function createClient() {
     }
   )
 
+  // Enveloppe GLOBALE (une seule fois, le client est un singleton) : chaque
+  // appel à `getUser`/`getSession` venant de l'app est borné par un timeout.
+  // Couvre tous les consommateurs bruts (Formations, Profil, Conformité, …),
+  // pas seulement ceux passant par `getUserWithTimeout`. Les appels INTERNES
+  // d'auth-js (refresh automatique, onAuthStateChange) ne sont pas affectés :
+  // on ne wrappe que les méthodes publiques appelées par le code applicatif.
+  const auth = client.auth
+  const rawGetUser = auth.getUser.bind(auth)
+  const rawGetSession = auth.getSession.bind(auth)
+
+  type GetUserResult = Awaited<ReturnType<typeof rawGetUser>>
+  type GetSessionResult = Awaited<ReturnType<typeof rawGetSession>>
+
+  const timeoutError = (op: string) =>
+    Object.assign(new Error(`auth.${op}() timed out`), { name: 'AuthRetryableFetchError' })
+
+  auth.getUser = ((...args: Parameters<typeof rawGetUser>) =>
+    withAuthTimeout<GetUserResult>(
+      () => rawGetUser(...args),
+      { data: { user: null }, error: timeoutError('getUser') } as GetUserResult
+    )) as typeof auth.getUser
+
+  auth.getSession = (() =>
+    withAuthTimeout<GetSessionResult>(
+      () => rawGetSession(),
+      { data: { session: null }, error: timeoutError('getSession') } as GetSessionResult
+    )) as typeof auth.getSession
+
   return client
 }
 
 /**
- * `getUser()` borné par un timeout généreux. Filet defense-in-depth pour les
- * chemins critiques au boot : garantit que la promesse résout même si l'auth se
- * coince, pour ne jamais laisser un écran en chargement infini. En cas de
- * timeout, on retourne `user: null` (l'UI traite comme « non authentifié »
- * plutôt que de tourner dans le vide).
+ * `getUser()` borné par un timeout généreux. Conservé pour compatibilité des
+ * appelants existants (`useUser`). Désormais redondant avec l'enveloppe globale
+ * de `createClient()`, mais on garde l'API : il renvoie directement
+ * `{ user }`. En cas de timeout/erreur, `user: null` (« non authentifié »).
  */
 export async function getUserWithTimeout(
-  timeoutMs = 10000
+  _timeoutMs = AUTH_OP_TIMEOUT_MS
 ): Promise<{ user: User | null }> {
   const supabase = createClient()
-
-  const fromAuth: Promise<{ user: User | null }> = (async () => {
-    try {
-      const res = await supabase.auth.getUser()
-      return { user: (res?.data?.user ?? null) as User | null }
-    } catch {
-      return { user: null }
-    }
-  })()
-
-  const fromTimeout = new Promise<{ user: null }>((resolve) =>
-    setTimeout(() => resolve({ user: null }), timeoutMs)
-  )
-
-  return Promise.race([fromAuth, fromTimeout])
+  // `supabase.auth.getUser` est déjà borné globalement et ne rejette jamais
+  // (fallback `user: null`), donc pas de race supplémentaire nécessaire ici.
+  const res = await supabase.auth.getUser()
+  return { user: (res?.data?.user ?? null) as User | null }
 }
 
 export default createClient
