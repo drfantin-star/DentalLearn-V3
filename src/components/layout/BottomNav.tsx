@@ -112,18 +112,18 @@ export default function BottomNav({
                 href={tab.href}
                 className={`flex flex-col items-center justify-center px-2 py-1.5 rounded-2xl transition-all ${
                   active
-                    ? 'bg-gradient-to-b from-primary/10 to-accent/10'
+                    ? 'bg-accent/30'
                     : 'hover:bg-white/5'
                 }`}
               >
                 <Icon
                   size={22}
-                  className={active ? 'text-primary' : 'text-[#9ca3af]'}
+                  className={active ? 'text-white' : 'text-white/70'}
                   strokeWidth={active ? 2.5 : 2}
                 />
                 <span
                   className={`text-[10px] mt-1 font-medium ${
-                    active ? 'text-primary' : 'text-[#9ca3af]'
+                    active ? 'text-white' : 'text-white/70'
                   }`}
                 >
                   {tab.label}
@@ -139,13 +139,13 @@ export default function BottomNav({
           href="/recherche"
           aria-label="Recherche"
           className={`pointer-events-auto flex items-center justify-center aspect-square rounded-full backdrop-blur-xl shadow-2xl transition-all ${
-            searchActive ? 'bg-gradient-to-b from-primary/10 to-accent/10' : ''
+            searchActive ? 'bg-accent/30' : ''
           }`}
           style={glassStyle}
         >
           <Search
             size={24}
-            className={searchActive ? 'text-primary' : 'text-[#9ca3af]'}
+            className="text-white"
             strokeWidth={2}
           />
         </Link>
