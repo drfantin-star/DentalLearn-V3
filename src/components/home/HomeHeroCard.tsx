@@ -8,21 +8,18 @@ interface HomeHeroCardProps {
   icon: ReactNode
   eyebrow: string
   title: string
-  /** @deprecated ignoré — sous-titre supprimé du nouveau modèle visuel */
+  /** @deprecated ignore — sous-titre supprime du modele visuel */
   subtitle?: string
   surface: 'gradient' | 'neutral'
-  /** Valeur CSS du gradient (ex. "linear-gradient(160deg,#5B21B6,#8B5CF6)"), surface 'gradient' uniquement. */
   gradient?: string
-  /** @deprecated ignoré — le CTA est uniformisé sur toutes les tuiles */
+  /** @deprecated ignore — CTA uniformise sur toutes les tuiles */
   size?: 'md' | 'lg'
   cta: {
     label: string
     icon: ReactNode
     onClick: () => void
-    /** État verrouillé/terminé : CTA non cliquable (ex. quiz du jour déjà fait). */
     disabled?: boolean
   }
-  /** Bouton ℹ️ secondaire (ex. détails du Journal). */
   infoAction?: {
     onClick: () => void
     ariaLabel: string
@@ -30,10 +27,9 @@ interface HomeHeroCardProps {
 }
 
 /**
- * Carte générique de la 1ʳᵉ ligne de l'accueil (Quiz / Classement / Journal / Événements).
- * Modèle unifié : grande icône décorative en filigrane bas-droite → eyebrow majuscule →
- * titre pleine largeur → spacer → CTA pleine largeur collé en bas.
- * Toutes les tuiles atteignent la même hauteur via grid-auto-rows:1fr sur la grille parent.
+ * Carte generique hero (Quiz / Classement / Journal / Evenements).
+ * 3 zones : eyebrow haut | titre centre (flex-1) | CTA bas.
+ * Icone decorative filigrane bas-droite.
  */
 export function HomeHeroCard({
   icon,
@@ -55,7 +51,7 @@ export function HomeHeroCard({
           : { background: gradient }
       }
     >
-      {/* Icône décorative de fond — filigrane bas-droite */}
+      {/* Icone decorative filigrane bas-droite */}
       <div
         className="absolute pointer-events-none"
         style={{
@@ -69,7 +65,7 @@ export function HomeHeroCard({
         {icon}
       </div>
 
-      {/* Bouton ℹ️ optionnel — haut-droite absolu */}
+      {/* Bouton info optionnel — haut-droite absolu */}
       {infoAction && (
         <button
           type="button"
@@ -87,32 +83,35 @@ export function HomeHeroCard({
         </button>
       )}
 
+      {/* Zone 1 : eyebrow en haut */}
       <p
         className={cn(
-          'mt-2 font-bold uppercase tracking-wide text-[11px]',
-          isNeutral ? 'text-neutral-400' : 'text-white/80'
+          'text-xs font-bold uppercase tracking-widest',
+          isNeutral ? 'text-neutral-400' : 'text-white/70'
         )}
       >
         {eyebrow}
       </p>
-      <h3
-        className={cn(
-          'mt-1 font-bold leading-tight text-base',
-          isNeutral ? 'text-neutral-100' : 'text-white'
-        )}
-      >
-        {title}
-      </h3>
 
-      {/* Spacer : pousse le CTA en bas */}
-      <div className="flex-1" />
+      {/* Zone 2 : titre centre verticalement dans l'espace disponible */}
+      <div className="flex flex-1 items-center">
+        <h3
+          className={cn(
+            'text-2xl font-semibold leading-tight',
+            isNeutral ? 'text-neutral-100' : 'text-white'
+          )}
+        >
+          {title}
+        </h3>
+      </div>
 
+      {/* Zone 3 : CTA colle en bas */}
       <button
         type="button"
         onClick={cta.onClick}
         disabled={cta.disabled}
         className={cn(
-          'mt-3 w-full rounded-xl flex items-center justify-center gap-1.5 font-bold transition-colors py-3 text-sm',
+          'w-full rounded-xl flex items-center justify-center gap-1.5 font-bold transition-colors py-3 text-sm',
           isNeutral
             ? 'border border-white/15 text-neutral-100 hover:bg-white/5 active:bg-white/10'
             : 'bg-white/20 text-white hover:bg-white/30 active:bg-white/40',
