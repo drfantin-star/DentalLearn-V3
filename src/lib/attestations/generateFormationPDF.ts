@@ -51,7 +51,7 @@ export async function generateFormationPDF(
   doc.setFontSize(11)
   doc.setFont('helvetica', 'normal')
   doc.text("ATTESTATION DE FORMATION CONTINUE", 105, 20, { align: 'center' })
-  doc.text("Parcours numérique en ligne — DentalLearn", 105, 26, { align: 'center' })
+  doc.text("Parcours numérique en ligne — Certily", 105, 26, { align: 'center' })
 
   const axeLabel = data.formation.axe_cp
     ? AXE_LABELS[data.formation.axe_cp] || `Axe ${data.formation.axe_cp}`

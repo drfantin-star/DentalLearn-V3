@@ -36,7 +36,7 @@ function downloadIcs(props: AddToCalendarButtonProps): void {
   const lines = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//DentalLearn//FR',
+    'PRODID:-//Certily//FR',
     'BEGIN:VEVENT',
     `UID:${uid}`,
     `DTSTAMP:${toCalendarDate(new Date().toISOString())}`,

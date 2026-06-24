@@ -222,7 +222,7 @@ export async function generateBilanPDF(data: BilanData): Promise<Blob> {
     doc.setTextColor(150, 150, 150)
     doc.setFont('helvetica', 'normal')
     doc.text(
-      `Document personnel généré sur votre appareil — non conservé par DentalLearn | Page ${i}/${pageCount}`,
+      `Document personnel généré sur votre appareil — non conservé par Certily | Page ${i}/${pageCount}`,
       105,
       290,
       { align: 'center' }

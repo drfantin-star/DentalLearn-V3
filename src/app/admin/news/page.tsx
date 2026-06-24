@@ -589,7 +589,7 @@ function SynthesisCard({ synthesis }: { synthesis: Synthesis }) {
           {synthesis.ingested_at && (
             <span
               className="inline-flex items-center gap-1"
-              title="Date d'ingestion dans DentalLearn"
+              title="Date d'ingestion dans Certily"
             >
               <Inbox className="w-3 h-3" />
               Ingéré le {formatDate(synthesis.ingested_at)}

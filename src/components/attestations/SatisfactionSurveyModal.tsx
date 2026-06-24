@@ -237,7 +237,7 @@ export function SatisfactionSurveyModal({
           {/* Recommendation */}
           <div>
             <label className="text-sm font-semibold block mb-2" style={{ color: '#e5e5e5' }}>
-              Recommanderiez-vous DentalLearn à un confrère ?
+              Recommanderiez-vous Certily à un confrère ?
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -321,7 +321,7 @@ export function SatisfactionSurveyModal({
 
           {showValidationError && !formValid && (
             <p className="text-red-400 text-sm">
-              Merci de noter les 4 critères et d'indiquer si vous recommanderiez DentalLearn.
+              Merci de noter les 4 critères et d'indiquer si vous recommanderiez Certily.
             </p>
           )}
           {error && <p className="text-red-400 text-sm">{error}</p>}

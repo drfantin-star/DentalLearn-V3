@@ -297,7 +297,7 @@ export default function ColdSurveyPage() {
         <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto mb-3" />
         <h1 className="text-xl font-bold mb-2" style={{ color: '#e5e5e5' }}>Merci pour votre retour !</h1>
         <p className="text-sm mb-5" style={{ color: '#a3a3a3' }}>
-          Vos réponses nous aident à améliorer continuellement DentalLearn.
+          Vos réponses nous aident à améliorer continuellement Certily.
         </p>
         <Link
           href="/"
@@ -401,7 +401,7 @@ export default function ColdSurveyPage() {
         {/* Q3 — Recommend */}
         <section className="rounded-2xl p-5 space-y-3" style={{ background: '#1a1a1a', border: '1px solid #2a2a2a' }}>
           <h2 className="text-base font-semibold" style={{ color: '#e5e5e5' }}>
-            Recommanderiez-vous toujours DentalLearn 3 mois après ?
+            Recommanderiez-vous toujours Certily 3 mois après ?
           </h2>
           <div className="grid grid-cols-2 gap-3">
             <button
