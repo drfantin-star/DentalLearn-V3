@@ -234,7 +234,7 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">DentalLearn</h1>
+          <h1 className="text-3xl font-bold text-primary mb-2">Certily</h1>
           <p className="text-gray-600">Créez votre compte</p>
         </div>
 
@@ -399,7 +399,7 @@ export default function RegisterPage() {
                 <span className="text-sm text-gray-700">
                   <span className="font-semibold">Praticien individuel</span>
                   <span className="block text-xs text-gray-500">
-                    Vous exercez seul, sans cabinet structuré dans DentalLearn.
+                    Vous exercez seul, sans cabinet structuré dans Certily.
                   </span>
                 </span>
               </label>
@@ -462,7 +462,7 @@ export default function RegisterPage() {
               <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
                 <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-red-700">
-                  L&apos;accès à DentalLearn est réservé aux professionnels de santé.
+                  L&apos;accès à Certily est réservé aux professionnels de santé.
                 </p>
               </div>
             )}

@@ -3,7 +3,7 @@ import './globals.css'
 import ServiceWorkerRegistrar from '@/components/ServiceWorkerRegistrar'
 
 export const metadata: Metadata = {
-  title: 'DentalLearn',
+  title: 'Certily',
   description: 'Formation continue gamifiée pour chirurgiens-dentistes',
 }
 

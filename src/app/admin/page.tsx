@@ -104,7 +104,7 @@ export default function AdminDashboard() {
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard Admin</h1>
-        <p className="text-gray-600 mt-1">Vue d'ensemble de DentalLearn</p>
+        <p className="text-gray-600 mt-1">Vue d'ensemble de Certily</p>
       </div>
 
       {/* Stats Cards */}
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
 
       {/* Version Info */}
       <div className="mt-8 text-center text-sm text-gray-500">
-        DentalLearn Admin v3.0
+        Certily Admin v3.0
       </div>
     </div>
   );

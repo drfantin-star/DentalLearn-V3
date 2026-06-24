@@ -46,7 +46,7 @@ export default function VerifyEmailConfirmPage() {
               </div>
               <h1 className="text-2xl font-bold text-primary mb-2">Email vérifié</h1>
               <p className="text-gray-600 text-sm">
-                Votre adresse a bien été confirmée. Bienvenue sur DentalLearn.
+                Votre adresse a bien été confirmée. Bienvenue sur Certily.
               </p>
             </div>
             <button
@@ -54,7 +54,7 @@ export default function VerifyEmailConfirmPage() {
               onClick={() => router.push('/')}
               className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:bg-[#231470] transition-colors flex items-center justify-center gap-2"
             >
-              Accéder à DentalLearn
+              Accéder à Certily
               <ArrowRight className="w-5 h-5" />
             </button>
           </>

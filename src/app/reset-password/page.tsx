@@ -141,7 +141,7 @@ function ResetPasswordContent() {
     <div className="min-h-screen bg-gradient-to-br from-primary to-[#1a1060] flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary mb-2">DentalLearn</h1>
+          <h1 className="text-3xl font-bold text-primary mb-2">Certily</h1>
           <h2 className="text-xl font-semibold text-gray-900 mb-1">Nouveau mot de passe</h2>
           <p className="text-gray-600">Choisissez un mot de passe sécurisé</p>
         </div>

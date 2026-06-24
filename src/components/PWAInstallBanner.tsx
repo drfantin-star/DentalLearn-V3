@@ -127,7 +127,7 @@ export default function PWAInstallBanner() {
             <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
               <span className="text-lg">📱</span>
             </div>
-            <span className="text-white font-semibold">Installer DentalLearn</span>
+            <span className="text-white font-semibold">Installer Certily</span>
           </div>
           <button
             onClick={handleDismiss}
@@ -143,7 +143,7 @@ export default function PWAInstallBanner() {
           <div className="mb-3 text-sm space-y-1">
             <p className="flex items-center gap-2 text-gray-700">
               <span className="text-base">📲</span>
-              <strong>Retrouve DentalLearn sur ton écran d&apos;accueil</strong>
+              <strong>Retrouve Certily sur ton écran d&apos;accueil</strong>
             </p>
             <p className="flex items-center gap-2 text-gray-700">
               <Bell className="w-4 h-4 text-accent" />
@@ -160,7 +160,7 @@ export default function PWAInstallBanner() {
                 className="w-full py-2.5 bg-primary hover:bg-primary/90 text-white font-semibold rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
               >
                 <Download className="w-4 h-4" />
-                Installer DentalLearn
+                Installer Certily
               </button>
             ) : (
               /* Repli : webview (Gmail/Insta) ou SW non enregistré */
