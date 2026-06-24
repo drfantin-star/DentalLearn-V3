@@ -32,7 +32,6 @@ export function JournalWeekCard({ journal }: Props) {
         icon={<Mic size={26} />}
         eyebrow="Journal"
         title="Bientôt disponible"
-        subtitle="Le récap audio de la semaine"
         cta={{
           label: 'Écouter',
           icon: <Headphones size={15} />,
@@ -53,7 +52,6 @@ export function JournalWeekCard({ journal }: Props) {
         icon={<Mic size={26} />}
         eyebrow="Journal"
         title={`Semaine ${weekNum}`}
-        subtitle="Le récap audio de la semaine"
         cta={{
           label: 'Écouter',
           icon: <Headphones size={15} />,

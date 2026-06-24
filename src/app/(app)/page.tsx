@@ -396,7 +396,7 @@ export default function HomePage() {
             puis Journal + Événements en 2 colonnes. Desktop (≥ lg) : 3 colonnes
             égales, identiques au rendu précédent (flex-1 → grid-cols-3). */}
         <section>
-          <div className="grid grid-cols-2 items-stretch gap-3">
+          <div className="grid grid-cols-2 gap-3 [grid-auto-rows:1fr]">
             <DailyQuizButton
               userId={user?.id}
               onStart={() => setShowDailyQuiz(true)}
@@ -409,7 +409,6 @@ export default function HomePage() {
               icon={<Trophy size={26} />}
               eyebrow="Classement"
               title="Voir ta place"
-              subtitle="Hebdo · À vie"
               cta={{
                 label: "Ouvrir",
                 icon: <Trophy size={15} />,
@@ -421,12 +420,7 @@ export default function HomePage() {
               surface="neutral"
               icon={<Calendar size={26} />}
               eyebrow="Événements"
-              title={evenements.length > 0 ? evenements[0].title : "Rien à l’horizon"}
-              subtitle={
-                evenements.length > 0
-                  ? formatEventDate(evenements[0].starts_at)
-                  : "Aucun événement programmé"
-              }
+              title={evenements.length > 0 ? evenements[0].title : "Rien à l'horizon"}
               cta={{
                 label: "Voir le calendrier",
                 icon: <CalendarDays size={15} />,
