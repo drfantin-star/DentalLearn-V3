@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Calendar, CalendarDays, ChevronLeft, ChevronRight, Loader2, LogOut, Sparkles, Trophy } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORIES, getCategoryConfig } from '@/lib/supabase/types'
+import { getCategoryConfig } from '@/lib/supabase/types'
 import type { Formation } from '@/lib/supabase/types'
 import { getAnonymousName, getAnonymousEmoji } from '@/lib/utils/anonymousNames'
 import Link from 'next/link'
@@ -64,9 +64,6 @@ export default function HomePage() {
   // Refs carousels
   const forYouScrollRef = useRef<HTMLDivElement>(null)
   const recentScrollRef = useRef<HTMLDivElement>(null)
-  const axe12ScrollRef = useRef<HTMLDivElement>(null)
-  const axe3ScrollRef = useRef<HTMLDivElement>(null)
-  const axe4ScrollRef = useRef<HTMLDivElement>(null)
 
   const scroll = (ref: React.RefObject<HTMLDivElement>, dir: 'left' | 'right') => {
     ref.current?.scrollBy({ left: dir === 'left' ? -320 : 320, behavior: 'smooth' })
@@ -248,100 +245,6 @@ export default function HomePage() {
   // abouti (succès, vide, ou erreur → forYouLoading=false). Tant qu'elle ne
   // l'est pas, on n'affiche aucune carte (skeleton/loader).
   const freshlyArrivedResolving = recentLoading || forYouLoading
-
-  // Catégories par axe
-  const axe12Categories = CATEGORIES.filter(c => c.type === 'cp')
-  const axe3Categories = CATEGORIES.filter(c => c.type === 'axe3')
-  const axe4Categories = CATEGORIES.filter(c => c.type === 'axe4')
-
-  // Composant carousel catégories réutilisable
-  const CategoryCarousel = ({
-    categories,
-    scrollRef,
-  }: {
-    categories: typeof CATEGORIES
-    scrollRef: React.RefObject<HTMLDivElement>
-  }) => (
-    <div className="-mx-4">
-      {/* Zone cards */}
-      <div className="py-2 relative" style={{ paddingLeft: '16px', paddingRight: '0' }}>
-        <button
-          onClick={() => scroll(scrollRef, 'left')}
-          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
-        >
-          <ChevronLeft size={18} />
-        </button>
-
-        <div
-          ref={scrollRef}
-          className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory pr-4"
-        >
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => {
-                const from = cat.type === 'axe3'
-                  ? '/patient'
-                  : cat.type === 'axe4'
-                  ? '/sante'
-                  : '/formation'
-                window.location.href = `/formation/${cat.id}?from=${from}`
-              }}
-              className="flex-shrink-0 snap-start rounded-2xl overflow-hidden"
-              style={{
-                width: 'calc(50vw - 24px)',
-                maxWidth: '220px',
-                minWidth: '148px',
-                aspectRatio: '3/2',
-                position: 'relative',
-                border: 'none',
-                flexShrink: 0,
-              }}
-            >
-              {/* Image de fond pleine */}
-              {cat.labelImageUrl ? (
-                <img
-                  src={cat.labelImageUrl}
-                  alt={cat.name}
-                  className="w-full h-full object-cover absolute inset-0"
-                />
-              ) : (
-                <div
-                  className="w-full h-full absolute inset-0"
-                  style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
-                />
-              )}
-              {/* Overlay gradient pour lisibilité texte */}
-              <div
-                className="absolute inset-0"
-                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
-              />
-              {/* Label texte */}
-              <span
-                className="absolute font-bold text-white leading-tight"
-                style={{
-                  bottom: '10px',
-                  left: '10px',
-                  fontSize: '15px',
-                  textShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                  maxWidth: 'calc(100% - 20px)',
-                }}
-              >
-                {cat.name}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <button
-          onClick={() => scroll(scrollRef, 'right')}
-          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
-    </div>
-  )
 
   return (
     <>
@@ -546,57 +449,6 @@ export default function HomePage() {
         </section>
         )}
 
-        {/* Explorer */}
-        <section>
-          <h2 className="text-xl font-black text-white mb-4 flex items-center gap-2">
-            🔍 Explorer
-          </h2>
-          <Link
-            href="/formation"
-            className="group mb-3 flex w-fit items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          >
-            <h3 className="text-base font-bold text-white">Pratiques cliniques</h3>
-            <ChevronRight
-              size={18}
-              aria-hidden="true"
-              className="text-white/60 transition-all group-hover:translate-x-0.5 group-hover:text-white"
-            />
-          </Link>
-          <CategoryCarousel
-            categories={axe12Categories}
-            scrollRef={axe12ScrollRef}
-          />
-          <Link
-            href="/patient"
-            className="group mt-6 mb-3 flex w-fit items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          >
-            <h3 className="text-base font-bold text-white">Relation Patient</h3>
-            <ChevronRight
-              size={18}
-              aria-hidden="true"
-              className="text-white/60 transition-all group-hover:translate-x-0.5 group-hover:text-white"
-            />
-          </Link>
-          <CategoryCarousel
-            categories={axe3Categories}
-            scrollRef={axe3ScrollRef}
-          />
-          <Link
-            href="/sante"
-            className="group mt-6 mb-3 flex w-fit items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          >
-            <h3 className="text-base font-bold text-white">Santé Praticien</h3>
-            <ChevronRight
-              size={18}
-              aria-hidden="true"
-              className="text-white/60 transition-all group-hover:translate-x-0.5 group-hover:text-white"
-            />
-          </Link>
-          <CategoryCarousel
-            categories={axe4Categories}
-            scrollRef={axe4ScrollRef}
-          />
-        </section>
 
       </main>
 
