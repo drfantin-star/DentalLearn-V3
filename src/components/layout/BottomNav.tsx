@@ -7,13 +7,9 @@ import {
   Newspaper,
   UserCircle,
   ShieldCheck,
-  Briefcase,
-  Shield,
-  Presentation,
   Search,
   type LucideIcon,
 } from 'lucide-react'
-import type { IntraRole } from '@/lib/auth/rbac'
 
 interface NavTab {
   href: string
@@ -31,23 +27,7 @@ const BASE_TABS: NavTab[] = [
   { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
 ]
 
-const TENANT_ADMIN_ROLES: ReadonlySet<IntraRole> = new Set<IntraRole>([
-  'titulaire',
-  'admin_rh',
-  'admin_of',
-])
-
-interface BottomNavProps {
-  intraRole?: IntraRole | null
-  isSuperAdmin?: boolean
-  isFormateur?: boolean
-}
-
-export default function BottomNav({
-  intraRole = null,
-  isSuperAdmin = false,
-  isFormateur = false,
-}: BottomNavProps) {
+export default function BottomNav() {
   const pathname = usePathname()
 
   const isActive = (href: string) => {
@@ -65,23 +45,10 @@ export default function BottomNav({
     return null
   }
 
+  // Onglets identiques pour tous les utilisateurs. L'ancien 5e onglet
+  // contextuel (Admin / Formateur / Mon cabinet) a migré vers la section
+  // "Mes espaces" de la page Profil.
   const tabs: NavTab[] = [...BASE_TABS]
-  // 5e onglet contextuel — priorité mutuellement exclusive pour garder la
-  // BottomNav à 5 onglets max (lisibilité mobile). Le rôle le plus large
-  // gagne : un super_admin formateur voit "Admin" et accède à /formateur
-  // via la carte du profil.
-  const contextualTab: NavTab | null = isSuperAdmin
-    ? { href: '/admin', icon: Shield, label: 'Admin' }
-    : isFormateur
-      ? { href: '/formateur/dashboard', icon: Presentation, label: 'Formateur' }
-      : intraRole && TENANT_ADMIN_ROLES.has(intraRole)
-        ? { href: '/tenant/admin', icon: Briefcase, label: 'Mon cabinet' }
-        : null
-
-  if (contextualTab) {
-    // Inséré en avant-dernier (avant Conformité) pour rester proche de Profil.
-    tabs.splice(3, 0, contextualTab)
-  }
 
   const searchActive = isActive('/recherche')
 

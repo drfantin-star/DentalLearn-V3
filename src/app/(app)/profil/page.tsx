@@ -84,7 +84,7 @@ export default function ProfilPage() {
 
   const showTenantLink = intraRole && TENANT_ADMIN_ROLES.has(intraRole)
   const showUpgradeCard = !loading && orgless && !intraRole
-  const showEspacesSection = isSuperAdmin || isFormateur
+  const showEspacesSection = isSuperAdmin || isFormateur || showTenantLink
 
   const handleCabinetCreated = async () => {
     setShowCabinetModal(false)
@@ -123,18 +123,9 @@ export default function ProfilPage() {
             {/*
               D2-T3.5-01 — les liens header "Administration" et "Espace formateur"
               ont été retirés (doublon avec la section "Mes espaces" du body).
-              Le lien "Mon cabinet" T8 est conservé tel quel : la refonte UX
-              unifiée (header vs section) est planifiée pour Sprint 3.
+              Le lien "Mon cabinet" les rejoint : il est désormais une carte de
+              la section "Mes espaces" (unification header → body).
             */}
-            {showTenantLink && (
-              <Link
-                href="/tenant/admin"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-colors"
-              >
-                <Briefcase className="w-4 h-4 text-white" />
-                <span className="text-xs font-semibold text-white">Mon cabinet</span>
-              </Link>
-            )}
             <Link
               href="/profil/edit"
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-colors"
@@ -291,6 +282,28 @@ export default function ProfilPage() {
                       </div>
                       <div className="text-xs text-[#6b7280]">
                         Suivez vos formations animées, masterclass et profil public.
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-[#6b7280]" />
+                  </div>
+                </Link>
+              )}
+              {showTenantLink && (
+                <Link
+                  href="/tenant/admin"
+                  className="block p-4 hover:border-primary transition-colors"
+                  style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+                      <Briefcase className="w-5 h-5 text-[#8B5CF6]" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-[#e5e5e5] text-sm">
+                        Mon cabinet
+                      </div>
+                      <div className="text-xs text-[#6b7280]">
+                        Gérez votre cabinet, vos collaborateurs et leurs accès.
                       </div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-[#6b7280]" />
