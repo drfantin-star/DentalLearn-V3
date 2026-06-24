@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, CalendarDays, ChevronLeft, ChevronRight, Loader2, LogOut, Sparkles, UserCircle } from 'lucide-react'
+import { Calendar, CalendarDays, ChevronLeft, ChevronRight, Loader2, LogOut, Sparkles, Trophy } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES, getCategoryConfig } from '@/lib/supabase/types'
@@ -21,6 +21,8 @@ import { mediaCardSizeStyle } from '@/components/home/MediaCard'
 import type { JournalEpisode, NewsCard } from '@/types/news'
 import type { ForYouItem } from '@/types/forYou'
 import type { EvenementItemData } from '@/types/evenements'
+import LeaderboardModal from '@/components/leaderboard/LeaderboardModal'
+import { useLeaderboard } from '@/lib/hooks/useLeaderboard'
 
 function formatEventDate(iso: string): string {
   const d = new Date(iso)
@@ -32,8 +34,10 @@ function formatEventDate(iso: string): string {
 export default function HomePage() {
   const [showDailyQuiz, setShowDailyQuiz] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
 
   const { user, profile, streak, loading: userLoading, refetch: refetchUser } = useUser()
+  const { userRank: lifetimeRank } = useLeaderboard(user?.id, 'lifetime')
 
   const [newsItems, setNewsItems] = useState<NewsCard[]>([])
   const [modalNewsId, setModalNewsId] = useState<string | null>(null)
@@ -344,7 +348,7 @@ export default function HomePage() {
       {/* Header */}
       <header className="bg-gradient-to-br from-primary to-accent px-5 py-4">
         <div className="flex items-center justify-between gap-3">
-          <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/30 flex-shrink-0">
+          <Link href="/profil" className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/30 flex-shrink-0 hover:ring-white/60 transition-all">
             {profile?.profile_photo_url ? (
               <img src={profile.profile_photo_url} alt="avatar" className="w-full h-full object-cover" />
             ) : (
@@ -354,7 +358,7 @@ export default function HomePage() {
                 </span>
               </div>
             )}
-          </div>
+          </Link>
           <div className="flex-1 min-w-0">
             <p className="text-white font-black uppercase truncate" style={{ fontSize: '18px', lineHeight: '1.3' }}>
               Bonjour, {profile?.first_name || 'Utilisateur'}
@@ -366,9 +370,11 @@ export default function HomePage() {
               {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
             </p>
           </div>
-          <Link href="/profil" className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors">
-            <UserCircle size={24} className="text-white" />
-          </Link>
+          <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1.5 flex-shrink-0">
+            <span className="text-white text-xs font-bold">🔥 {streak?.current_streak ?? 0}</span>
+            <span className="text-white/40 text-xs">·</span>
+            <span className="text-white text-xs font-bold">{lifetimeRank?.points ?? 0} pts</span>
+          </div>
           {user && (
             <button
               type="button"
@@ -390,30 +396,41 @@ export default function HomePage() {
             puis Journal + Événements en 2 colonnes. Desktop (≥ lg) : 3 colonnes
             égales, identiques au rendu précédent (flex-1 → grid-cols-3). */}
         <section>
-          <div className="grid grid-cols-2 lg:grid-cols-3 items-stretch gap-3">
-            <div className="col-span-2 lg:col-span-1 flex">
-              <DailyQuizButton
-                userId={user?.id}
-                onStart={() => setShowDailyQuiz(true)}
-                refreshTrigger={refreshTrigger}
-                variant="square"
-              />
-            </div>
+          <div className="grid grid-cols-2 items-stretch gap-3">
+            <DailyQuizButton
+              userId={user?.id}
+              onStart={() => setShowDailyQuiz(true)}
+              refreshTrigger={refreshTrigger}
+              variant="square"
+            />
+            <HomeHeroCard
+              surface="gradient"
+              gradient="linear-gradient(160deg, #0F766E, #0D9488)"
+              icon={<Trophy size={26} />}
+              eyebrow="Classement"
+              title="Voir ta place"
+              subtitle="Hebdo · À vie"
+              cta={{
+                label: "Ouvrir",
+                icon: <Trophy size={15} />,
+                onClick: () => setShowLeaderboard(true),
+              }}
+            />
             <JournalWeekCard journal={journal} />
             <HomeHeroCard
               surface="neutral"
               icon={<Calendar size={26} />}
               eyebrow="Événements"
-              title={evenements.length > 0 ? evenements[0].title : 'Rien à l’horizon'}
+              title={evenements.length > 0 ? evenements[0].title : ‘Rien à l’horizon’}
               subtitle={
                 evenements.length > 0
                   ? formatEventDate(evenements[0].starts_at)
-                  : 'Aucun événement programmé'
+                  : ‘Aucun événement programmé’
               }
               cta={{
-                label: 'Voir le calendrier',
+                label: ‘Voir le calendrier’,
                 icon: <CalendarDays size={15} />,
-                onClick: () => router.push('/evenements'),
+                onClick: () => router.push(‘/evenements’),
               }}
             />
           </div>
@@ -598,6 +615,12 @@ export default function HomePage() {
       )}
 
       <NewsModal newsId={modalNewsId} onClose={() => setModalNewsId(null)} />
+
+      <LeaderboardModal
+        open={showLeaderboard}
+        onClose={() => setShowLeaderboard(false)}
+        userId={user?.id}
+      />
     </>
   )
 }
