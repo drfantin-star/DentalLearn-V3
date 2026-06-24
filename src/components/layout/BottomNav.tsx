@@ -10,6 +10,7 @@ import {
   Briefcase,
   Shield,
   Presentation,
+  Search,
   type LucideIcon,
 } from 'lucide-react'
 import type { IntraRole } from '@/lib/auth/rbac'
@@ -22,8 +23,11 @@ interface NavTab {
 
 const BASE_TABS: NavTab[] = [
   { href: '/', icon: Home, label: 'Accueil' },
-  { href: '/news', icon: Newspaper, label: 'Actus' },
-  { href: '/profil', icon: UserCircle, label: 'Profil' },
+  // « Shorts » = ex-onglet « Actus » : label seul renommé, route /news inchangée.
+  { href: '/news', icon: Newspaper, label: 'Shorts' },
+  // « Ma Certif » = ex-onglet « Profil » : route TEMPORAIRE /profil en attendant
+  // la page dédiée /ma-certif (point suivant). Label seul renommé.
+  { href: '/profil', icon: UserCircle, label: 'Ma Certif' },
   { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
 ]
 
@@ -79,41 +83,72 @@ export default function BottomNav({
     tabs.splice(3, 0, contextualTab)
   }
 
-  return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 px-2 py-2 z-40 safe-bottom"
-      style={{ background: '#1a1a1a', borderTop: '0.5px solid #2a2a2a' }}
-    >
-      <div className="max-w-lg mx-auto flex justify-around">
-        {tabs.map((tab) => {
-          const active = isActive(tab.href)
-          const Icon = tab.icon
+  const searchActive = isActive('/recherche')
 
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={`flex flex-col items-center justify-center px-2 py-1.5 rounded-xl transition-all ${
-                active
-                  ? 'bg-gradient-to-b from-primary/10 to-accent/10'
-                  : 'hover:bg-gray-50'
-              }`}
-            >
-              <Icon
-                size={22}
-                className={active ? 'text-primary' : 'text-[#6b7280]'}
-                strokeWidth={active ? 2.5 : 2}
-              />
-              <span
-                className={`text-[10px] mt-1 font-medium ${
-                  active ? 'text-primary' : 'text-[#6b7280]'
+  // Style sombre translucide partagé pilule + bouton loupe (cohérent #0F0F0F app).
+  const glassStyle = {
+    background: 'rgba(26, 26, 26, 0.78)',
+    border: '0.5px solid rgba(255, 255, 255, 0.10)',
+  } as const
+
+  return (
+    // Barre flottante : le <nav> couvre toute la largeur mais ne capte pas les
+    // clics (pointer-events-none) ; seuls la pilule et la loupe sont cliquables,
+    // pour laisser passer les taps dans les marges autour de la barre.
+    <nav className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 safe-bottom pointer-events-none">
+      <div className="max-w-lg mx-auto flex items-stretch gap-2.5">
+        {/* Pilule flottante arrondie contenant les onglets */}
+        <div
+          className="pointer-events-auto flex-1 flex justify-around items-center px-1.5 py-2 rounded-[26px] backdrop-blur-xl shadow-2xl"
+          style={glassStyle}
+        >
+          {tabs.map((tab) => {
+            const active = isActive(tab.href)
+            const Icon = tab.icon
+
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={`flex flex-col items-center justify-center px-2 py-1.5 rounded-2xl transition-all ${
+                  active
+                    ? 'bg-gradient-to-b from-primary/10 to-accent/10'
+                    : 'hover:bg-white/5'
                 }`}
               >
-                {tab.label}
-              </span>
-            </Link>
-          )
-        })}
+                <Icon
+                  size={22}
+                  className={active ? 'text-primary' : 'text-[#9ca3af]'}
+                  strokeWidth={active ? 2.5 : 2}
+                />
+                <span
+                  className={`text-[10px] mt-1 font-medium ${
+                    active ? 'text-primary' : 'text-[#9ca3af]'
+                  }`}
+                >
+                  {tab.label}
+                </span>
+              </Link>
+            )
+          })}
+        </div>
+
+        {/* Bouton recherche : rond, détaché à droite de la pilule.
+            Route /recherche (page créée ultérieurement). Icône seule → aria-label. */}
+        <Link
+          href="/recherche"
+          aria-label="Recherche"
+          className={`pointer-events-auto flex items-center justify-center aspect-square rounded-full backdrop-blur-xl shadow-2xl transition-all ${
+            searchActive ? 'bg-gradient-to-b from-primary/10 to-accent/10' : ''
+          }`}
+          style={glassStyle}
+        >
+          <Search
+            size={24}
+            className={searchActive ? 'text-primary' : 'text-[#9ca3af]'}
+            strokeWidth={2}
+          />
+        </Link>
       </div>
     </nav>
   )

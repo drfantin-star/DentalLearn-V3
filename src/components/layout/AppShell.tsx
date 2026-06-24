@@ -71,7 +71,7 @@ export default function AppShell({
   }
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
+    <div className="min-h-screen pb-28" style={{ background: '#0F0F0F' }}>
       {children}
       <PWAInstallBanner />
       <MiniPlayer />

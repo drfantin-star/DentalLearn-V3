@@ -57,7 +57,7 @@ export default function AudioQueuePlayer() {
   const isJournal = currentTrack.type === 'journal'
 
   return (
-    <div className="fixed bottom-16 left-0 right-0 z-40 mx-4">
+    <div className="fixed bottom-24 left-0 right-0 z-40 mx-4">
       <div
         className="bg-gray-900 border border-gray-700 rounded-2xl px-4 py-3
                    flex items-center gap-3 shadow-2xl"
