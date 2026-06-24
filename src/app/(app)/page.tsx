@@ -421,16 +421,16 @@ export default function HomePage() {
               surface="neutral"
               icon={<Calendar size={26} />}
               eyebrow="Événements"
-              title={evenements.length > 0 ? evenements[0].title : ‘Rien à l’horizon’}
+              title={evenements.length > 0 ? evenements[0].title : "Rien à l’horizon"}
               subtitle={
                 evenements.length > 0
                   ? formatEventDate(evenements[0].starts_at)
-                  : ‘Aucun événement programmé’
+                  : "Aucun événement programmé"
               }
               cta={{
-                label: ‘Voir le calendrier’,
+                label: "Voir le calendrier",
                 icon: <CalendarDays size={15} />,
-                onClick: () => router.push(‘/evenements’),
+                onClick: () => router.push('/evenements'),
               }}
             />
           </div>
