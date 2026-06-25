@@ -31,9 +31,10 @@ export function JournalWeekCard({ journal }: Props) {
         gradient={JOURNAL_GRADIENT}
         icon={<Mic size={26} />}
         eyebrow="Journal"
-        title="Bientôt disponible"
+        title="Bientot disponible"
+        compact
         cta={{
-          label: 'Écouter',
+          label: 'Ecouter',
           icon: <Headphones size={15} />,
           onClick: () => {},
           disabled: true,
@@ -52,8 +53,9 @@ export function JournalWeekCard({ journal }: Props) {
         icon={<Mic size={26} />}
         eyebrow="Journal"
         title={`Semaine ${weekNum}`}
+        compact
         cta={{
-          label: 'Écouter',
+          label: 'Ecouter',
           icon: <Headphones size={15} />,
           onClick: () =>
             playTrack({
@@ -66,7 +68,7 @@ export function JournalWeekCard({ journal }: Props) {
         }}
         infoAction={{
           onClick: () => setShowModal(true),
-          ariaLabel: 'Détails du journal',
+          ariaLabel: 'Details du journal',
         }}
       />
 

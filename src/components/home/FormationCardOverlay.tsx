@@ -4,12 +4,14 @@ import React from 'react'
 import { getCategoryConfig } from '@/lib/supabase/types'
 import type { Formation } from '@/lib/supabase/types'
 import MediaCard from './MediaCard'
+import type { MediaCardAspect } from './MediaCard'
 
 interface FormationCardOverlayProps {
   formation: Formation
   progress?: { isStarted: boolean; isCompleted: boolean }
   onClick: () => void
   accentGradient?: string
+  aspect?: MediaCardAspect
 }
 
 export default function FormationCardOverlay({
@@ -17,6 +19,7 @@ export default function FormationCardOverlay({
   progress,
   onClick,
   accentGradient,
+  aspect = 'portrait',
 }: FormationCardOverlayProps) {
   const config = getCategoryConfig(formation.category)
   const ctaLabel = progress?.isCompleted
@@ -31,6 +34,7 @@ export default function FormationCardOverlay({
   return (
     <MediaCard
       onClick={onClick}
+      aspect={aspect}
       cover={formation.cover_image_url}
       coverAlt={formation.title}
       fallback={
@@ -78,7 +82,7 @@ export default function FormationCardOverlay({
           color: 'white',
           lineHeight: 1.3,
           display: '-webkit-box',
-          WebkitLineClamp: 3,
+          WebkitLineClamp: aspect === 'landscape' ? 2 : 3,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
           textShadow: '0 1px 3px rgba(0,0,0,0.5)',

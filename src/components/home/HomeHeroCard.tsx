@@ -14,6 +14,8 @@ interface HomeHeroCardProps {
   gradient?: string
   /** @deprecated ignore — CTA uniformise sur toutes les tuiles */
   size?: 'md' | 'lg'
+  /** Mode compact : hauteur reduite (120px), titre plus petit. Defaut false. */
+  compact?: boolean
   cta: {
     label: string
     icon: ReactNode
@@ -37,6 +39,7 @@ export function HomeHeroCard({
   title,
   surface,
   gradient,
+  compact = false,
   cta,
   infoAction,
 }: HomeHeroCardProps) {
@@ -44,7 +47,7 @@ export function HomeHeroCard({
 
   return (
     <div
-      className="relative flex flex-col min-w-0 min-h-[200px] rounded-2xl p-4 shadow-md overflow-hidden h-full"
+      className={`relative flex flex-col min-w-0 rounded-2xl p-4 shadow-md overflow-hidden h-full ${compact ? 'min-h-[120px]' : 'min-h-[200px]'}`}
       style={
         isNeutral
           ? { background: '#1C1C1E', border: '0.5px solid rgba(255,255,255,0.08)' }
@@ -58,7 +61,7 @@ export function HomeHeroCard({
           bottom: '-4px',
           right: '-4px',
           opacity: 0.13,
-          transform: 'scale(3.8)',
+          transform: compact ? 'scale(2.8)' : 'scale(3.8)',
           transformOrigin: 'bottom right',
         }}
       >
@@ -97,7 +100,8 @@ export function HomeHeroCard({
       <div className="flex flex-1 items-center">
         <h3
           className={cn(
-            'text-2xl font-semibold leading-tight',
+            compact ? 'text-xl' : 'text-2xl',
+            'font-semibold leading-tight',
             isNeutral ? 'text-neutral-100' : 'text-white'
           )}
         >

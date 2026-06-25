@@ -320,6 +320,11 @@ export default function HomePage() {
           />
         </section>
 
+        {/* Journal hebdo */}
+        <section>
+          <JournalWeekCard journal={journal} />
+        </section>
+
         {/* Reprendre — formations commencees non terminees */}
         {!inProgressLoading && inProgressFormations.length > 0 && (
           <section>
@@ -351,6 +356,7 @@ export default function HomePage() {
                       key={f.id}
                       formation={f}
                       progress={inProgressProgress[f.id]}
+                      aspect="landscape"
                       onClick={() => {
                         window.location.href = `/formation/${f.category}?formation=${f.slug}&from=${from}`
                       }}
@@ -368,11 +374,6 @@ export default function HomePage() {
             </div>
           </section>
         )}
-
-        {/* Journal hebdo */}
-        <section>
-          <JournalWeekCard journal={journal} />
-        </section>
 
         {/* Pour toi — formations + EPP */}
         {!forYouLoading && !recentLoading && pourToiItems.length > 0 && (
@@ -448,6 +449,7 @@ export default function HomePage() {
               icon={<Calendar size={26} />}
               eyebrow="Evenements"
               title={evenements[0].title}
+              compact
               cta={{
                 label: 'Voir le calendrier',
                 icon: <CalendarDays size={15} />,

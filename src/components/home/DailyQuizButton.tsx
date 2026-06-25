@@ -58,7 +58,7 @@ export default function DailyQuizButton({
     if (isSquare) {
       return (
         <div
-          className="flex flex-1 min-w-0 min-h-[180px] rounded-2xl items-center justify-center"
+          className="flex flex-1 min-w-0 min-h-[120px] rounded-2xl items-center justify-center"
           style={{ background: '#1C1C1E', border: '0.5px solid rgba(255,255,255,0.08)' }}
         >
           <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
@@ -80,7 +80,8 @@ export default function DailyQuizButton({
           gradient="linear-gradient(160deg, #10B981, #14B8A6)"
           icon={<CheckCircle size={30} />}
           eyebrow="Quiz du jour"
-          title="Terminé !"
+          title="Termine !"
+          compact
           cta={{
             label: `Score ${score}/10`,
             icon: <CheckCircle size={16} />,
@@ -113,6 +114,7 @@ export default function DailyQuizButton({
         icon={<Target size={30} />}
         eyebrow="Quiz du jour"
         title="Teste tes connaissances"
+        compact
         cta={{
           label: 'Commencer',
           icon: <Play size={16} fill="currentColor" />,
