@@ -22,6 +22,7 @@ export default function FormationCardOverlay({
   aspect = 'portrait',
 }: FormationCardOverlayProps) {
   const config = getCategoryConfig(formation.category)
+  const coverBg = `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
   const ctaLabel = progress?.isCompleted
     ? '✓ Terminé'
     : progress?.isStarted
@@ -37,6 +38,8 @@ export default function FormationCardOverlay({
       aspect={aspect}
       cover={formation.cover_image_url}
       coverAlt={formation.title}
+      coverFit="contain"
+      coverBackground={coverBg}
       fallback={
         <div
           style={{
