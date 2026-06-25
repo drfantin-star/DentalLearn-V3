@@ -50,8 +50,8 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
       <button
         type="button"
         onClick={() => onClick(news)}
-        className="w-full flex items-center gap-3 rounded-xl bg-gray-800/50 p-3 text-left
-                   hover:bg-gray-800 transition"
+        className="w-full flex items-center gap-3 rounded-xl glass-card p-3 text-left
+                   hover:border-white/20 transition-premium"
       >
         <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
           {news.cover_image_url ? (
@@ -80,7 +80,7 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
               </Badge>
             ) : null}
             {date ? (
-              <span className="text-xs text-gray-400">{date}</span>
+              <span className="text-xs text-white/55">{date}</span>
             ) : null}
           </div>
         </div>

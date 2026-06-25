@@ -15,7 +15,7 @@ const CATEGORY_BADGE_CLASSES: Record<string, string> = {
   scientifique: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
   pratique: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
 }
-const CATEGORY_BADGE_FALLBACK = 'bg-gray-500/20 text-gray-300 border-gray-400/30'
+const CATEGORY_BADGE_FALLBACK = 'bg-gray-500/20 text-white/70 border-gray-400/30'
 
 export default function NewsModal({ newsId, onClose }: Props) {
   const [loading, setLoading] = useState(false)
@@ -89,7 +89,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
       aria-modal="true"
     >
       <div
-        className="bg-gray-900 w-full md:w-full md:max-w-2xl rounded-t-2xl md:rounded-2xl
+        className="glass-panel w-full md:w-full md:max-w-2xl rounded-t-2xl md:rounded-2xl
                    max-h-[85vh] overflow-y-auto relative"
         onClick={(e) => e.stopPropagation()}
       >
@@ -115,7 +115,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
               Impossible de charger l’actualité ({error}).
             </p>
           ) : !synthesis ? (
-            <p className="text-sm text-gray-400">Aucune donnée.</p>
+            <p className="text-sm text-white/55">Aucune donnee.</p>
           ) : (
             <>
               <h2 className="text-xl font-bold text-white pr-10">
@@ -141,7 +141,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
               </div>
 
               {synthesis.published_at ? (
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-white/55 mt-2">
                   {formatDate(synthesis.published_at)}
                 </p>
               ) : null}
@@ -161,12 +161,12 @@ export default function NewsModal({ newsId, onClose }: Props) {
                     Votre navigateur ne supporte pas l’audio.
                   </audio>
                   {durationMin !== null ? (
-                    <p className="text-xs text-gray-400 mt-1">{durationMin} min</p>
+                    <p className="text-xs text-white/55 mt-1">{durationMin} min</p>
                   ) : null}
                 </div>
               ) : null}
 
-              <p className="text-sm text-gray-300 mt-4 whitespace-pre-line">
+              <p className="text-sm text-white/70 mt-4 whitespace-pre-line">
                 {synthesis.summary_fr}
               </p>
 
@@ -175,7 +175,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
                   <h3 className="text-xs uppercase tracking-wide text-violet-400 font-semibold">
                     Impact clinique
                   </h3>
-                  <p className="text-sm text-gray-300 mt-1 whitespace-pre-line">
+                  <p className="text-sm text-white/70 mt-1 whitespace-pre-line">
                     {synthesis.clinical_impact}
                   </p>
                 </section>
@@ -183,10 +183,10 @@ export default function NewsModal({ newsId, onClose }: Props) {
 
               {synthesis.key_figures && synthesis.key_figures.length > 0 ? (
                 <section className="mt-5">
-                  <h3 className="text-xs uppercase tracking-wide text-gray-400 font-semibold">
-                    Chiffres clés
+                  <h3 className="text-xs uppercase tracking-wide text-white/55 font-semibold">
+                    Chiffres cles
                   </h3>
-                  <ul className="list-disc list-inside text-sm text-gray-300 mt-1 space-y-1">
+                  <ul className="list-disc list-inside text-sm text-white/70 mt-1 space-y-1">
                     {synthesis.key_figures.map((figure, i) => (
                       <li key={i}>{figure}</li>
                     ))}
@@ -196,13 +196,13 @@ export default function NewsModal({ newsId, onClose }: Props) {
 
               {synthesis.evidence_level ? (
                 <section className="mt-5">
-                  <h3 className="text-xs uppercase tracking-wide text-gray-400 font-semibold">
+                  <h3 className="text-xs uppercase tracking-wide text-white/55 font-semibold">
                     Niveau de preuve
                   </h3>
                   <div className="mt-1 flex items-center gap-2">
                     <span
                       className="px-2 py-0.5 rounded-full text-[11px] font-medium
-                                 bg-gray-700 text-gray-200"
+                                 bg-gray-700 text-white/80"
                     >
                       {synthesis.evidence_level}
                     </span>
@@ -215,7 +215,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
                   <h3 className="text-xs uppercase tracking-wide text-amber-400 font-semibold">
                     Limites
                   </h3>
-                  <p className="text-sm text-gray-300 mt-1 whitespace-pre-line">
+                  <p className="text-sm text-white/70 mt-1 whitespace-pre-line">
                     {synthesis.caveats}
                   </p>
                 </section>
