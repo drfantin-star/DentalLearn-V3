@@ -357,6 +357,8 @@ export default function HomePage() {
                       formation={f}
                       progress={inProgressProgress[f.id]}
                       aspect="landscape"
+                      hideBadge
+                      bgOpacity={0.8}
                       onClick={() => {
                         window.location.href = `/formation/${f.category}?formation=${f.slug}&from=${from}`
                       }}

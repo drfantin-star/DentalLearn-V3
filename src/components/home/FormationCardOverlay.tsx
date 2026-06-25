@@ -14,6 +14,8 @@ interface FormationCardOverlayProps {
   aspect?: MediaCardAspect
   size?: MediaCardSize
   hero?: boolean
+  hideBadge?: boolean
+  bgOpacity?: number
 }
 
 export default function FormationCardOverlay({
@@ -24,6 +26,8 @@ export default function FormationCardOverlay({
   aspect = 'portrait',
   size = 'default',
   hero,
+  hideBadge = false,
+  bgOpacity,
 }: FormationCardOverlayProps) {
   const config = getCategoryConfig(formation.category)
   const coverBg = `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
@@ -37,6 +41,7 @@ export default function FormationCardOverlay({
     : accentGradient || `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
 
   const isHero = hero ?? size === 'large'
+  const opacity = bgOpacity ?? (isHero ? 0.7 : 1)
 
   return (
     <MediaCard
@@ -47,7 +52,7 @@ export default function FormationCardOverlay({
       coverAlt={formation.title}
       coverFit="contain"
       coverBackground={coverBg}
-      coverOpacity={isHero ? 0.7 : 1}
+      coverOpacity={opacity}
       fallback={
         <div
           style={{
@@ -58,13 +63,13 @@ export default function FormationCardOverlay({
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '48px',
-            opacity: isHero ? 0.7 : 1,
+            opacity,
           }}
         >
           {config.emoji}
         </div>
       }
-      topLeft={
+      topLeft={hideBadge ? undefined : (
         <div
           style={{
             width: '32px',
@@ -76,7 +81,7 @@ export default function FormationCardOverlay({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            opacity: isHero ? 0.7 : 1,
+            opacity,
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -86,7 +91,7 @@ export default function FormationCardOverlay({
             <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
           </svg>
         </div>
-      }
+      )}
     >
       <p
         style={{
