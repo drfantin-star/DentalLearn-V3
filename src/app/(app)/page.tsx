@@ -47,7 +47,8 @@ export default function HomePage() {
   const { user, profile, streak, refetch: refetchUser } = useUser()
   const { userRank: lifetimeRank } = useLeaderboard(user?.id, 'lifetime')
 
-  const [newsItems, setNewsItems] = useState<NewsCard[]>([])
+  const [recentNews, setRecentNews] = useState<NewsCard[]>([])
+  const [themeRows, setThemeRows] = useState<{ key: string; label: string; items: NewsCard[] }[]>([])
   const [modalNewsId, setModalNewsId] = useState<string | null>(null)
   const [journal, setJournal] = useState<JournalEpisode | null>(null)
   const router = useRouter()
@@ -130,9 +131,12 @@ export default function HomePage() {
   }, [user?.id])
 
   useEffect(() => {
-    fetch('/api/news/syntheses?limit=5')
+    fetch('/api/news/by-theme')
       .then((r) => r.json())
-      .then((d) => setNewsItems(d.data ?? []))
+      .then((d) => {
+        setRecentNews(d.recent ?? [])
+        setThemeRows(d.rows ?? [])
+      })
       .catch(() => {})
   }, [])
 
@@ -244,6 +248,43 @@ export default function HomePage() {
   const ressourcesItems = useMemo(
     () => forYouItems.filter((i) => i.type === 'fiche' || i.type === 'autoeval'),
     [forYouItems],
+  )
+
+  const renderNewsRow = (
+    title: string,
+    items: NewsCard[],
+    showSeeAll: boolean,
+  ) => (
+    <section key={title}>
+      <div className="flex items-center mb-4">
+        <h2 className="text-base font-bold text-white flex items-center gap-2">
+          📰 {title}
+        </h2>
+      </div>
+      <div className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide -mx-4 px-4 pb-2">
+        {items.map((item) => (
+          <NewsCardItem
+            key={item.id}
+            news={item}
+            variant="carousel"
+            onClick={(n) => setModalNewsId(n.id)}
+          />
+        ))}
+        {showSeeAll && (
+          <div
+            className="flex-shrink-0 rounded-2xl bg-gradient-to-br from-primary to-primary
+                       flex flex-col items-center justify-center cursor-pointer
+                       hover:scale-[1.02] transition-premium glow-accent"
+            style={mediaCardSizeStyle('landscape')}
+            onClick={() => router.push('/news')}
+          >
+            <span className="text-white text-sm font-medium text-center px-4">
+              Voir toutes les actus →
+            </span>
+          </div>
+        )}
+      </div>
+    </section>
   )
 
   return (
@@ -461,35 +502,11 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* Actualites — inchange */}
-        <section>
-          <div className="flex items-center mb-4">
-            <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2">
-              📰 Actualites
-            </h2>
-          </div>
-          <div className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide -mx-4 px-4 pb-2">
-            {newsItems.map((item) => (
-              <NewsCardItem
-                key={item.id}
-                news={item}
-                variant="carousel"
-                onClick={(n) => setModalNewsId(n.id)}
-              />
-            ))}
-            <div
-              className="flex-shrink-0 rounded-2xl bg-gradient-to-br
-                         from-violet-600 to-violet-900 flex flex-col items-center
-                         justify-center cursor-pointer hover:scale-[1.02] transition"
-              style={mediaCardSizeStyle('landscape')}
-              onClick={() => router.push('/news')}
-            >
-              <span className="text-white text-sm font-medium text-center px-4">
-                Voir toutes les actus →
-              </span>
-            </div>
-          </div>
-        </section>
+        {/* Actualites — eclatees par theme (Session 1bis) */}
+        {recentNews.length > 0 && renderNewsRow('Les dernieres actus', recentNews, true)}
+        {themeRows.map((row) =>
+          renderNewsRow(`Parce que tu t'interesses a ${row.label}`, row.items, false),
+        )}
       </main>
 
       {showDailyQuiz && user && (

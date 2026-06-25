@@ -163,3 +163,29 @@ export const NEWS_SPECIALITE_LABELS: Record<string, string> = {
   'gero': 'Gérodontologie',
   'actu-pro': 'Actualité professionnelle',
 }
+
+// ── Rangées « Actus par thème » de la Home (Session 1bis) ──────────────────
+// Chaque préférence d'intérêt (user_profiles.interests.categories) pointe vers
+// SON meilleur champ de thème news (1 seul → pas de doublon de news entre rangées).
+// La plupart des spécialités cliniques sont denses sur `specialite` ; `numerique`
+// n'existe que sur `formation_category_match`. Une rangée ne s'ouvre que si elle
+// atteint THEME_ROW_MIN news actives (cf. /api/news/by-theme). Les préférences
+// absentes de cette map (management, organisation, radiologie, Axe 3/4…) n'ont
+// pas d'équivalent news exploitable → elles restent couvertes par « dernières actus ».
+export const INTEREST_TO_NEWS_THEME: Record<
+  string,
+  { field: 'specialite' | 'formation_category_match'; value: string }
+> = {
+  chirurgie:      { field: 'specialite', value: 'chir-orale' },
+  restauratrice:  { field: 'specialite', value: 'dent-resto' },
+  endodontie:     { field: 'specialite', value: 'endo' },
+  implant:        { field: 'specialite', value: 'implanto' },
+  parodontologie: { field: 'specialite', value: 'paro' },
+  prothese:       { field: 'specialite', value: 'proth' },
+  numerique:      { field: 'formation_category_match', value: 'numerique' },
+  esthetique:     { field: 'formation_category_match', value: 'esthetique' },
+  'soft-skills':  { field: 'formation_category_match', value: 'soft-skills' },
+}
+export const THEME_ROW_MIN = 20
+export const THEME_ROW_CAP = 3
+export const THEME_ROW_ITEMS = 10
