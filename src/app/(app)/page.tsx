@@ -357,7 +357,6 @@ export default function HomePage() {
                       formation={f}
                       progress={inProgressProgress[f.id]}
                       aspect="landscape"
-                      hero
                       onClick={() => {
                         window.location.href = `/formation/${f.category}?formation=${f.slug}&from=${from}`
                       }}
