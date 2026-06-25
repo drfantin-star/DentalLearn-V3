@@ -1,11 +1,12 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import type { NewsCard } from '@/types/news'
 import { describeCardDate } from '@/lib/news-display'
 import NewsCardSVG, { SPECIALITE_COLORS, NEWS_DEFAULT_COLOR } from './NewsCardSVG'
 import Badge, { type BadgeVariant } from '@/components/ui/Badge'
 import MediaCard from '@/components/home/MediaCard'
+import { getNewsCoverChain } from '@/lib/news-cover'
 
 interface Props {
   news: NewsCard
@@ -30,9 +31,9 @@ function dateLabel(publishedAt: string | null): string | null {
   return describeCardDate(publishedAt, '').label
 }
 
-// Assombrit un hex de ~`amount` (0-1) en multipliant chaque canal — règle
-// UNIQUE et déterministe pour dériver le dégradé news (base → base assombri),
-// dans la direction 135° des cartes catégories.
+// Assombrit un hex de ~`amount` (0-1) en multipliant chaque canal — regle
+// UNIQUE et deterministe pour deriver le degrade news (base -> base assombri),
+// dans la direction 135 des cartes categories.
 function darkenHex(hex: string, amount: number): string {
   const m = hex.replace('#', '')
   const n = m.length === 3 ? m.split('').map((c) => c + c).join('') : m
@@ -45,6 +46,14 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
   const category = news.category_editorial
   const date = dateLabel(news.published_at)
 
+  // Cascade de couverture : cover_image_url -> theme -> specialite -> SVG
+  const chain = getNewsCoverChain(news)
+  const [coverIdx, setCoverIdx] = useState(0)
+  const coverSrc = chain[coverIdx] // undefined = toutes les URLs ont echoue
+
+  // Degrade de fond par specialite — filet ultime quand toutes les URLs echouent.
+  const accent = (news.specialite && SPECIALITE_COLORS[news.specialite]) || NEWS_DEFAULT_COLOR
+
   if (variant === 'grid') {
     return (
       <button
@@ -54,12 +63,14 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
                    hover:border-white/20 transition-premium"
       >
         <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
-          {news.cover_image_url ? (
+          {coverSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={news.cover_image_url}
+              src={coverSrc}
               alt={news.display_title}
+              loading="lazy"
               className="w-full h-full object-cover"
+              onError={() => setCoverIdx((i) => i + 1)}
             />
           ) : (
             <NewsCardSVG
@@ -88,32 +99,49 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
     )
   }
 
-  // Dégradé de fond par spécialité (mapping news existant `SPECIALITE_COLORS`) —
-  // base → base assombri ~35 %, direction 135°. Utilisé sans cover uniquement.
-  const accent = (news.specialite && SPECIALITE_COLORS[news.specialite]) || NEWS_DEFAULT_COLOR
-
+  // Variant carousel : on gere la cascade dans le fallback de MediaCard.
+  // cover={undefined} -> MediaCard affiche toujours `fallback`.
+  // On switche entre l'img chargeable et le degrade SVG selon coverSrc.
   return (
     <MediaCard
       aspect="landscape"
       onClick={() => onClick(news)}
       ariaLabel={news.display_title}
-      cover={news.cover_image_url}
-      coverAlt={news.display_title}
+      cover={undefined}
       fallback={
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: `linear-gradient(135deg, ${accent}, ${darkenHex(accent, 0.35)})`,
-          }}
-        >
-          <span
-            aria-hidden
-            style={{ position: 'absolute', top: '8px', right: '10px', fontSize: '22px', opacity: 0.2 }}
+        coverSrc ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={coverSrc}
+              alt={news.display_title}
+              loading="lazy"
+              onError={() => setCoverIdx((i) => i + 1)}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+              }}
+            />
+          </>
+        ) : (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: `linear-gradient(135deg, ${accent}, ${darkenHex(accent, 0.35)})`,
+            }}
           >
-            📰
-          </span>
-        </div>
+            <span
+              aria-hidden
+              style={{ position: 'absolute', top: '8px', right: '10px', fontSize: '22px', opacity: 0.2 }}
+            >
+              📰
+            </span>
+          </div>
+        )
       }
       topLeft={
         category ? (

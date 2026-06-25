@@ -16,6 +16,8 @@ interface HomeHeroCardProps {
   size?: 'md' | 'lg'
   /** Mode compact : hauteur reduite (120px), titre plus petit. Defaut false. */
   compact?: boolean
+  /** Image de fond optionnelle (webp). Rendue sous le contenu avec un scrim sombre. */
+  backgroundImage?: string
   cta: {
     label: string
     icon: ReactNode
@@ -40,6 +42,7 @@ export function HomeHeroCard({
   surface,
   gradient,
   compact = false,
+  backgroundImage,
   cta,
   infoAction,
 }: HomeHeroCardProps) {
@@ -54,6 +57,33 @@ export function HomeHeroCard({
           : { background: gradient }
       }
     >
+      {/* Image de fond optionnelle + scrim sombre pour lisibilite */}
+      {backgroundImage && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={backgroundImage}
+            alt=""
+            aria-hidden
+            loading="lazy"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(0,0,0,0.48)',
+            }}
+          />
+        </>
+      )}
+
       {/* Icone decorative filigrane bas-droite */}
       <div
         className="absolute pointer-events-none"
@@ -86,45 +116,48 @@ export function HomeHeroCard({
         </button>
       )}
 
-      {/* Zone 1 : eyebrow en haut */}
-      <p
-        className={cn(
-          'text-xs font-bold uppercase tracking-widest',
-          isNeutral ? 'text-neutral-400' : 'text-white/70'
-        )}
-      >
-        {eyebrow}
-      </p>
-
-      {/* Zone 2 : titre centre verticalement dans l'espace disponible */}
-      <div className="flex flex-1 items-center">
-        <h3
+      {/* Contenu textuel — z-[1] pour s'afficher au-dessus de backgroundImage + scrim */}
+      <div className="relative z-[1] flex flex-col flex-1">
+        {/* Zone 1 : eyebrow en haut */}
+        <p
           className={cn(
-            compact ? 'text-xl' : 'text-2xl',
-            'font-semibold leading-tight',
-            isNeutral ? 'text-neutral-100' : 'text-white'
+            'text-xs font-bold uppercase tracking-widest',
+            isNeutral ? 'text-neutral-400' : 'text-white/70'
           )}
         >
-          {title}
-        </h3>
-      </div>
+          {eyebrow}
+        </p>
 
-      {/* Zone 3 : CTA colle en bas */}
-      <button
-        type="button"
-        onClick={cta.onClick}
-        disabled={cta.disabled}
-        className={cn(
-          'w-full rounded-xl flex items-center justify-center gap-1.5 font-bold transition-colors py-3 text-sm',
-          isNeutral
-            ? 'border border-white/15 text-neutral-100 hover:bg-white/5 active:bg-white/10'
-            : 'bg-white/20 text-white hover:bg-white/30 active:bg-white/40',
-          cta.disabled && 'opacity-60 cursor-not-allowed hover:bg-white/20 active:bg-white/20'
-        )}
-      >
-        {cta.icon}
-        {cta.label}
-      </button>
+        {/* Zone 2 : titre centre verticalement dans l'espace disponible */}
+        <div className="flex flex-1 items-center">
+          <h3
+            className={cn(
+              compact ? 'text-xl' : 'text-2xl',
+              'font-semibold leading-tight',
+              isNeutral ? 'text-neutral-100' : 'text-white'
+            )}
+          >
+            {title}
+          </h3>
+        </div>
+
+        {/* Zone 3 : CTA colle en bas */}
+        <button
+          type="button"
+          onClick={cta.onClick}
+          disabled={cta.disabled}
+          className={cn(
+            'w-full rounded-xl flex items-center justify-center gap-1.5 font-bold transition-colors py-3 text-sm',
+            isNeutral
+              ? 'border border-white/15 text-neutral-100 hover:bg-white/5 active:bg-white/10'
+              : 'bg-white/20 text-white hover:bg-white/30 active:bg-white/40',
+            cta.disabled && 'opacity-60 cursor-not-allowed hover:bg-white/20 active:bg-white/20'
+          )}
+        >
+          {cta.icon}
+          {cta.label}
+        </button>
+      </div>
     </div>
   )
 }

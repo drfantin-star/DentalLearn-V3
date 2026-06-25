@@ -16,19 +16,20 @@ function getWeekNumber(week_iso: string): string {
   return week_iso.split('-W')[1] ?? ''
 }
 
-// Gradient teal du Journal — conservé (non concerné par les couleurs interdites).
 const JOURNAL_GRADIENT = 'linear-gradient(160deg, #0F766E, #0D9488)'
+const JOURNAL_COVER = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ui-assets/home-card-journal-hebdo.webp`
 
 export function JournalWeekCard({ journal }: Props) {
   const [showModal, setShowModal] = useState(false)
   const { playTrack } = useAudioPlayer()
 
-  // État vide — pas de journal publié
+  // Etat vide — pas de journal publie
   if (!journal) {
     return (
       <HomeHeroCard
         surface="gradient"
         gradient={JOURNAL_GRADIENT}
+        backgroundImage={JOURNAL_COVER}
         icon={<Mic size={26} />}
         eyebrow="Journal"
         title="Bientot disponible"
@@ -50,6 +51,7 @@ export function JournalWeekCard({ journal }: Props) {
       <HomeHeroCard
         surface="gradient"
         gradient={JOURNAL_GRADIENT}
+        backgroundImage={JOURNAL_COVER}
         icon={<Mic size={26} />}
         eyebrow="Journal"
         title={`Semaine ${weekNum}`}

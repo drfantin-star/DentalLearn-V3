@@ -5,6 +5,8 @@ import { CheckCircle, Loader2, Play, Target } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { HomeHeroCard } from './HomeHeroCard'
 
+const QUIZ_COVER = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ui-assets/home-card-quiz-jour.webp`
+
 interface DailyQuizButtonProps {
   userId?: string
   onStart: () => void
@@ -78,6 +80,7 @@ export default function DailyQuizButton({
         <HomeHeroCard
           surface="gradient"
           gradient="linear-gradient(160deg, #10B981, #14B8A6)"
+          backgroundImage={QUIZ_COVER}
           icon={<CheckCircle size={30} />}
           eyebrow="Quiz du jour"
           title="Termine !"
@@ -111,6 +114,7 @@ export default function DailyQuizButton({
       <HomeHeroCard
         surface="gradient"
         gradient="linear-gradient(160deg, #5B21B6, #8B5CF6)"
+        backgroundImage={QUIZ_COVER}
         icon={<Target size={30} />}
         eyebrow="Quiz du jour"
         title="Teste tes connaissances"

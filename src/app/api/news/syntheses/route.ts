@@ -16,6 +16,7 @@ const NEWS_CARD_COLUMNS = [
   'formation_category_match',
   'published_at',
   'cover_image_url',
+  'themes',
   'summary_fr',
   'clinical_impact',
   'key_figures',

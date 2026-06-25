@@ -6,6 +6,7 @@ export interface NewsCard {
   formation_category_match: string | null
   published_at: string | null
   cover_image_url: string | null
+  themes: string[] | null
   summary_fr: string
   clinical_impact: string | null
   key_figures: string[] | null
@@ -15,7 +16,6 @@ export interface NewsCard {
 
 export interface NewsDetail extends NewsCard {
   method: string | null
-  themes: string[] | null
 }
 
 export interface NewsEpisode {
