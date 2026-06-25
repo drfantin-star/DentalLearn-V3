@@ -63,7 +63,7 @@ export default function ProfilPage() {
         axe3: cp.axe3 || 0, axe4: cp.axe4 || 0
       })
 
-      // Lecture intra_role + flags rôles globaux via API serveur (cache RBAC).
+      // Lecture intra_role + flags roles globaux via API serveur (cache RBAC).
       try {
         const res = await fetch('/api/user/intra-role')
         if (res.ok) {
@@ -74,7 +74,7 @@ export default function ProfilPage() {
           setIsFormateur(Boolean(json.is_formateur))
         }
       } catch {
-        // Fail silencieux : cartes simplement masquées si on ne sait pas.
+        // Fail silencieux : cartes simplement masquees si on ne sait pas.
       }
 
       setLoading(false)
@@ -88,10 +88,10 @@ export default function ProfilPage() {
 
   const handleCabinetCreated = async () => {
     setShowCabinetModal(false)
-    // Refresh session pour propager intra_role + cache RBAC côté serveur
+    // Refresh session pour propager intra_role + cache RBAC cote serveur
     await supabase.auth.refreshSession()
     router.refresh()
-    // Re-fetch local pour mise à jour immédiate sans attendre un rerender SSR
+    // Re-fetch local pour mise a jour immediate sans attendre un rerender SSR
     try {
       const res = await fetch('/api/user/intra-role')
       if (res.ok) {
@@ -122,16 +122,16 @@ export default function ProfilPage() {
           <div className="flex items-center gap-2">
             {/*
               D2-T3.5-01 — les liens header "Administration" et "Espace formateur"
-              ont été retirés (doublon avec la section "Mes espaces" du body).
-              Le lien "Mon cabinet" les rejoint : il est désormais une carte de
-              la section "Mes espaces" (unification header → body).
+              ont ete retires (doublon avec la section "Mes espaces" du body).
+              Le lien "Mon cabinet" les rejoint : il est desormais une carte de
+              la section "Mes espaces" (unification header -> body).
             */}
             <Link
               href="/profil/edit"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-premium"
             >
               <Settings className="w-4 h-4 text-white" />
-              <span className="text-xs font-semibold text-white">Éditer mon profil</span>
+              <span className="text-xs font-semibold text-white">Editer mon profil</span>
             </Link>
           </div>
         </div>
@@ -146,45 +146,44 @@ export default function ProfilPage() {
           refreshTrigger={refreshTrigger}
         />
 
-        {/* Centres d'intérêt (« Pour vous ») — carte + modal d'édition */}
+        {/* Centres d'interet — carte + modal d'edition */}
         <InterestsSection />
 
         {/* Mes attestations */}
         <Link
           href="/profil/attestations"
-          className="block p-4 hover:border-[#444] transition-colors"
-          style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
+          className="glass-card transition-premium block p-4 hover:border-white/20 rounded-2xl"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
               <Award className="w-5 h-5 text-amber-400" />
             </div>
             <div className="flex-1">
-              <div className="font-semibold text-[#e5e5e5] text-sm">
+              <div className="font-semibold text-white text-sm">
                 Mes attestations
               </div>
-              <div className="text-xs text-[#6b7280]">
+              <div className="text-xs text-white/55">
                 Formations et audits EPP
               </div>
             </div>
-            <ChevronRight className="w-5 h-5 text-[#6b7280]" />
+            <ChevronRight className="w-5 h-5 text-white/40" />
           </div>
         </Link>
 
-        {/* Mes démarches en cours */}
+        {/* Mes demarches en cours */}
         <section>
-          <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2 mb-3">
+          <h2 className="text-base font-bold text-white flex items-center gap-2 mb-3">
             <BookOpen size={18} className="text-[#8B5CF6]" />
-            Mes démarches en cours
+            Mes demarches en cours
           </h2>
           {demarchesLoading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="animate-spin text-gray-400" size={24} />
+              <Loader2 className="animate-spin text-white/40" size={24} />
             </div>
           ) : demarches.length > 0 ? (
             <div className="relative">
               <button onClick={scrollLeft}
-                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50">
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full glass-card shadow-md items-center justify-center text-white/70 hover:text-white transition-premium">
                 <ChevronLeft size={20} />
               </button>
               <div ref={demarchesScrollRef}
@@ -192,44 +191,43 @@ export default function ProfilPage() {
                 {demarches.map(d => <DemarcheCard key={d.id} demarche={d} />)}
               </div>
               <button onClick={scrollRight}
-                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50">
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full glass-card shadow-md items-center justify-center text-white/70 hover:text-white transition-premium">
                 <ChevronRight size={20} />
               </button>
             </div>
           ) : (
-            <div className="p-5 text-center" style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}>
-              <p className="text-[#6b7280] text-sm">Aucune démarche en cours</p>
+            <div className="glass-card p-5 text-center rounded-2xl">
+              <p className="text-white/55 text-sm">Aucune demarche en cours</p>
             </div>
           )}
         </section>
 
-        {/* Certification Périodique */}
+        {/* Certification Periodique */}
         <RadarCP
           ordreInscriptionDate={ordreDate}
           actionsParAxe={actionsParAxe}
         />
 
-        {/* Carte upgrade solo → cabinet (uniquement si orgless) */}
+        {/* Carte upgrade solo -> cabinet (uniquement si orgless) */}
         {showUpgradeCard && (
           <button
             type="button"
             onClick={() => setShowCabinetModal(true)}
-            className="w-full p-4 text-left hover:border-primary transition-colors"
-            style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
+            className="glass-card transition-premium w-full p-4 text-left hover:border-white/20 rounded-2xl"
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
                 <Building2 className="w-5 h-5 text-[#8B5CF6]" />
               </div>
               <div className="flex-1">
-                <div className="font-semibold text-[#e5e5e5] text-sm">
-                  Créer mon cabinet
+                <div className="font-semibold text-white text-sm">
+                  Creer mon cabinet
                 </div>
-                <div className="text-xs text-[#6b7280]">
+                <div className="text-xs text-white/55">
                   Devenez titulaire et invitez vos collaborateurs.
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-[#6b7280]" />
+              <ChevronRight className="w-5 h-5 text-white/40" />
             </div>
           </button>
         )}
@@ -237,76 +235,73 @@ export default function ProfilPage() {
         {/* Mes espaces — visible si super_admin et/ou formateur (cumul OK) */}
         {showEspacesSection && (
           <section>
-            <h2 className="text-base font-bold text-[#e5e5e5] mb-1">
+            <h2 className="text-base font-bold text-white mb-1">
               Mes espaces
             </h2>
-            <p className="text-xs text-[#6b7280] mb-3">
-              Accédez à vos espaces dédiés selon vos rôles.
+            <p className="text-xs text-white/55 mb-3">
+              Accedez a vos espaces dedies selon vos roles.
             </p>
             <div className="space-y-3">
               {isSuperAdmin && (
                 <Link
                   href="/admin"
-                  className="block p-4 hover:border-amber-500/60 transition-colors"
-                  style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
+                  className="glass-card transition-premium block p-4 hover:border-amber-500/40 rounded-2xl"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
                       <Shield className="w-5 h-5 text-amber-400" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-[#e5e5e5] text-sm">
+                      <div className="font-semibold text-white text-sm">
                         Administration
                       </div>
-                      <div className="text-xs text-[#6b7280]">
+                      <div className="text-xs text-white/55">
                         Gestion de la plateforme, formateurs, organisations.
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-[#6b7280]" />
+                    <ChevronRight className="w-5 h-5 text-white/40" />
                   </div>
                 </Link>
               )}
               {isFormateur && (
                 <Link
                   href="/formateur/dashboard"
-                  className="block p-4 hover:border-primary transition-colors"
-                  style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
+                  className="glass-card transition-premium block p-4 hover:border-white/20 rounded-2xl"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
                       <Presentation className="w-5 h-5 text-[#8B5CF6]" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-[#e5e5e5] text-sm">
+                      <div className="font-semibold text-white text-sm">
                         Espace Formateur
                       </div>
-                      <div className="text-xs text-[#6b7280]">
-                        Suivez vos formations animées, masterclass et profil public.
+                      <div className="text-xs text-white/55">
+                        Suivez vos formations animees, masterclass et profil public.
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-[#6b7280]" />
+                    <ChevronRight className="w-5 h-5 text-white/40" />
                   </div>
                 </Link>
               )}
               {showTenantLink && (
                 <Link
                   href="/tenant/admin"
-                  className="block p-4 hover:border-primary transition-colors"
-                  style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px' }}
+                  className="glass-card transition-premium block p-4 hover:border-white/20 rounded-2xl"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
                       <Briefcase className="w-5 h-5 text-[#8B5CF6]" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-[#e5e5e5] text-sm">
+                      <div className="font-semibold text-white text-sm">
                         Mon cabinet
                       </div>
-                      <div className="text-xs text-[#6b7280]">
-                        Gérez votre cabinet, vos collaborateurs et leurs accès.
+                      <div className="text-xs text-white/55">
+                        Gerez votre cabinet, vos collaborateurs et leurs acces.
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-[#6b7280]" />
+                    <ChevronRight className="w-5 h-5 text-white/40" />
                   </div>
                 </Link>
               )}

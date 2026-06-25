@@ -15,13 +15,13 @@ interface RadarCPProps {
 
 export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCPProps) {
 
-  // Calcul de la période de certification
+  // Calcul de la periode de certification
   const periode = useMemo(() => {
     const ordreDate = ordreInscriptionDate ? new Date(ordreInscriptionDate) : null;
     const seuil2023 = new Date('2023-01-01');
 
     if (!ordreDate || ordreDate < seuil2023) {
-      // Inscrit avant 2023 → dérogation 9 ans (2023-2032)
+      // Inscrit avant 2023 -> derogation 9 ans (2023-2032)
       return {
         debut: new Date('2023-01-01'),
         fin: new Date('2032-12-31'),
@@ -29,7 +29,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
         isDerogation: true
       };
     } else {
-      // Inscrit après 2023 → 6 ans à partir de l'inscription
+      // Inscrit apres 2023 -> 6 ans a partir de l'inscription
       const fin = new Date(ordreDate);
       fin.setFullYear(fin.getFullYear() + 6);
       return {
@@ -66,23 +66,23 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
   const OBJECTIF_PAR_AXE = 2;
 
   const axes = [
-    { id: 'axe1', label: 'Compétences', color: axeHex(1), icon: '📚', count: actionsParAxe.axe1 },
-    { id: 'axe2', label: 'Qualité pratiques', color: axeHex(2), icon: '📋', count: actionsParAxe.axe2 },
+    { id: 'axe1', label: 'Competences', color: axeHex(1), icon: '📚', count: actionsParAxe.axe1 },
+    { id: 'axe2', label: 'Qualite pratiques', color: axeHex(2), icon: '📋', count: actionsParAxe.axe2 },
     { id: 'axe3', label: 'Relation patient', color: axeHex(3), icon: '🤝', count: actionsParAxe.axe3 },
-    { id: 'axe4', label: 'Santé praticien', color: axeHex(4), icon: '❤️', count: actionsParAxe.axe4 },
+    { id: 'axe4', label: 'Sante praticien', color: axeHex(4), icon: '❤️', count: actionsParAxe.axe4 },
   ];
 
   const totalActions = Object.values(actionsParAxe).reduce((a, b) => a + b, 0);
   const totalObjectif = OBJECTIF_PAR_AXE * 4; // 8 actions minimum
 
   return (
-    <div style={{ background: '#242424', border: '0.5px solid #333', borderRadius: '16px', overflow: 'hidden' }}>
+    <div className="glass-card rounded-2xl overflow-hidden">
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary to-accent px-4 py-3">
-        <h3 className="text-white font-bold text-sm">Certification Périodique</h3>
+      <div className="bg-gradient-to-r from-primary to-accent px-4 py-3 glow-accent">
+        <h3 className="text-white font-bold text-sm">Certification Periodique</h3>
         <p className="text-white/70 text-xs">
-          {periode.isDerogation ? 'Premier cycle (dérogation 9 ans)' : 'Cycle standard (6 ans)'}
+          {periode.isDerogation ? 'Premier cycle (derogation 9 ans)' : 'Cycle standard (6 ans)'}
         </p>
       </div>
 
@@ -90,16 +90,16 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
 
         {/* Barre de progression temporelle */}
         <div>
-          <div className="flex justify-between text-xs text-[#6b7280] mb-1.5">
+          <div className="flex justify-between text-xs text-white/55 mb-1.5">
             <span>{periode.debut.getFullYear()}</span>
-            <span className="font-semibold text-[#a3a3a3]">
+            <span className="font-semibold text-white/70">
               {tempsRestant.ans > 0
                 ? `${tempsRestant.ans} an${tempsRestant.ans > 1 ? 's' : ''}${tempsRestant.moisRestants > 0 ? ` et ${tempsRestant.moisRestants} mois` : ''} restants`
                 : `${tempsRestant.mois} mois restants`}
             </span>
             <span>{periode.fin.getFullYear()}</span>
           </div>
-          <div className="h-1.5 bg-[#333] rounded-full overflow-hidden">
+          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
               style={{ width: `${tempsRestant.pourcentageEcoule}%` }}
@@ -108,7 +108,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
         </div>
 
         {/* Liste compacte axes */}
-        <div className="rounded-xl overflow-hidden" style={{ border: '0.5px solid #333' }}>
+        <div className="rounded-xl overflow-hidden" style={{ border: '0.5px solid rgba(255,255,255,0.08)' }}>
           {axes.map((axe, index) => {
             const isComplete = axe.count >= OBJECTIF_PAR_AXE
             const dots = Array.from({ length: OBJECTIF_PAR_AXE }, (_, i) => i < axe.count)
@@ -122,8 +122,9 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
               <div
                 key={axe.id}
                 className={`flex items-center gap-3 px-3 py-2.5 ${
-                  index < axes.length - 1 ? 'border-b border-[#333]' : ''
+                  index < axes.length - 1 ? 'border-b' : ''
                 }`}
+                style={index < axes.length - 1 ? { borderColor: 'rgba(255,255,255,0.08)' } : {}}
               >
                 {/* Pastille */}
                 <div
@@ -134,7 +135,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
                 </div>
 
                 {/* Label */}
-                <span className="flex-1 text-sm font-medium text-[#e5e5e5]">
+                <span className="flex-1 text-sm font-medium text-white">
                   {axe.label}
                 </span>
 
@@ -166,8 +167,8 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
 
         {/* Total */}
         <div className="flex justify-between items-center pt-1">
-          <span className="text-xs text-[#6b7280]">Total validées</span>
-          <span className="text-sm font-bold text-[#e5e5e5]">
+          <span className="text-xs text-white/55">Total validees</span>
+          <span className="text-sm font-bold text-white">
             {totalActions} / {totalObjectif} actions min.
           </span>
         </div>
@@ -176,8 +177,8 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
         {tempsRestant.pourcentageEcoule > 50 && totalActions < totalObjectif / 2 && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
             <p className="text-xs text-amber-700">
-              ⚠️ <strong>Attention :</strong> Plus de la moitié de la période est écoulée.
-              Pensez à valider vos actions restantes.
+              ⚠️ <strong>Attention :</strong> Plus de la moitie de la periode est ecoulee.
+              Pensez a valider vos actions restantes.
             </p>
           </div>
         )}

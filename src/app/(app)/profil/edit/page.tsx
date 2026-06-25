@@ -38,7 +38,7 @@ export default function EditProfilPage() {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [passwordSaving, setPasswordSaving] = useState(false)
 
-  // Préférences notifications
+  // Preferences notifications
   const [liveSessionReminders, setLiveSessionReminders] = useState(true)
   const [formateurPublications, setFormateurPublications] = useState(true)
   const [savingPrefs, setSavingPrefs] = useState(false)
@@ -108,7 +108,7 @@ export default function EditProfilPage() {
         .update({ profile_photo_url: publicUrl, updated_at: new Date().toISOString() })
         .eq('id', user.id)
       setPhotoUrl(publicUrl)
-      showMessage('success', 'Photo mise à jour !')
+      showMessage('success', 'Photo mise a jour !')
     } catch (err: any) {
       showMessage('error', err.message || 'Erreur upload')
     } finally {
@@ -127,7 +127,7 @@ export default function EditProfilPage() {
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' })
       if (error) throw error
-      showMessage('success', 'Profil mis à jour !')
+      showMessage('success', 'Profil mis a jour !')
     } catch {
       showMessage('error', 'Erreur lors de la sauvegarde')
     } finally {
@@ -143,22 +143,22 @@ export default function EditProfilPage() {
         .update({ ordre_inscription_date: ordreDate || null, updated_at: new Date().toISOString() })
         .eq('id', user.id)
       if (error) throw error
-      showMessage('success', 'Date mise à jour !')
+      showMessage('success', 'Date mise a jour !')
     } catch {
-      showMessage('error', 'Erreur lors de la mise à jour')
+      showMessage('error', 'Erreur lors de la mise a jour')
     } finally {
       setSavingOrdre(false)
     }
   }
 
   const handleChangePassword = async () => {
-    if (newPassword !== confirmPassword) { showMessage('error', 'Mots de passe différents'); return }
-    if (newPassword.length < 8) { showMessage('error', 'Minimum 8 caractères'); return }
+    if (newPassword !== confirmPassword) { showMessage('error', 'Mots de passe differents'); return }
+    if (newPassword.length < 8) { showMessage('error', 'Minimum 8 caracteres'); return }
     setPasswordSaving(true)
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword })
       if (error) throw error
-      showMessage('success', 'Mot de passe modifié !')
+      showMessage('success', 'Mot de passe modifie !')
       setShowPasswordForm(false)
       setNewPassword('')
       setConfirmPassword('')
@@ -177,7 +177,7 @@ export default function EditProfilPage() {
       if (!res.ok) throw new Error(data.error)
       setDeletionRequestedAt(data.deletion_date)
       setShowDeleteConfirm(false)
-      showMessage('success', 'Demande de suppression enregistrée')
+      showMessage('success', 'Demande de suppression enregistree')
     } catch (err: any) {
       showMessage('error', err.message || 'Erreur')
     } finally {
@@ -211,9 +211,9 @@ export default function EditProfilPage() {
       const res = await fetch('/api/user/delete', { method: 'DELETE' })
       if (!res.ok) throw new Error()
       setDeletionRequestedAt(null)
-      showMessage('success', 'Suppression annulée')
+      showMessage('success', 'Suppression annulee')
     } catch {
-      showMessage('error', 'Erreur lors de l\'annulation')
+      showMessage('error', "Erreur lors de l'annulation")
     } finally {
       setDeletionLoading(false)
     }
@@ -240,10 +240,10 @@ export default function EditProfilPage() {
       {/* Header */}
       <header className="sticky top-0 z-10" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
-          <button onClick={() => router.back()} className="p-2 -ml-2 hover:bg-[#242424] rounded-xl transition-colors">
-            <ChevronLeft className="w-5 h-5 text-gray-300" />
+          <button onClick={() => router.back()} className="p-2 -ml-2 hover:bg-white/10 rounded-xl transition-premium">
+            <ChevronLeft className="w-5 h-5 text-white/70" />
           </button>
-          <h1 className="text-lg font-bold text-[#e5e5e5]">Éditer mon profil</h1>
+          <h1 className="text-lg font-bold text-white">Editer mon profil</h1>
         </div>
       </header>
 
@@ -265,16 +265,16 @@ export default function EditProfilPage() {
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
 
-        {/* Bandeau suppression planifiée */}
+        {/* Bandeau suppression planifiee */}
         {deletionRequestedAt && (
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
             <Trash2 className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-red-800">
-                Suppression planifiée le {formatDate(deletionRequestedAt)}
+                Suppression planifiee le {formatDate(deletionRequestedAt)}
               </p>
               <p className="text-xs text-red-600 mt-0.5">
-                Toutes vos données seront supprimées définitivement.
+                Toutes vos donnees seront supprimees definitivement.
               </p>
               <button
                 onClick={handleCancelDeletion}
@@ -287,9 +287,9 @@ export default function EditProfilPage() {
           </div>
         )}
 
-        {/* Photo + Nom + Prénom */}
-        <div className="rounded-2xl p-5 space-y-4" style={{ background: '#242424', border: '0.5px solid #333' }}>
-          <h3 className="font-semibold text-[#e5e5e5]">Informations personnelles</h3>
+        {/* Photo + Nom + Prenom */}
+        <div className="glass-card rounded-2xl p-5 space-y-4">
+          <h3 className="font-semibold text-white">Informations personnelles</h3>
 
           {/* Photo */}
           <div className="flex items-center gap-4">
@@ -312,30 +312,30 @@ export default function EditProfilPage() {
               </button>
             </div>
             <div>
-              <p className="text-sm font-medium text-[#e5e5e5]">Photo de profil</p>
-              <p className="text-xs text-[#6b7280]">JPG, PNG — max 2 MB</p>
+              <p className="text-sm font-medium text-white">Photo de profil</p>
+              <p className="text-xs text-white/55">JPG, PNG — max 2 MB</p>
             </div>
           </div>
 
-          {/* Prénom + Nom */}
+          {/* Prenom + Nom */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-[#6b7280] mb-1">Prénom</label>
+              <label className="block text-xs font-medium text-white/55 mb-1">Prenom</label>
               <input
                 type="text" value={firstName}
                 onChange={e => setFirstName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
-                style={{ background: '#1a1a1a', borderColor: '#333', color: '#e5e5e5' }}
-                placeholder="Prénom"
+                className="w-full px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
+                placeholder="Prenom"
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-[#6b7280] mb-1">Nom</label>
+              <label className="block text-xs font-medium text-white/55 mb-1">Nom</label>
               <input
                 type="text" value={lastName}
                 onChange={e => setLastName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
-                style={{ background: '#1a1a1a', borderColor: '#333', color: '#e5e5e5' }}
+                className="w-full px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
                 placeholder="Nom"
               />
             </div>
@@ -343,10 +343,10 @@ export default function EditProfilPage() {
 
           {/* Email lecture seule */}
           <div>
-            <label className="block text-xs font-medium text-[#6b7280] mb-1">Email</label>
+            <label className="block text-xs font-medium text-white/55 mb-1">Email</label>
             <div className="flex items-center gap-2 px-3 py-2" style={{ background: '#1a1a1a', border: '0.5px solid #333', borderRadius: '12px' }}>
-              <Mail className="w-4 h-4 text-[#6b7280]" />
-              <span className="text-sm text-[#6b7280]">{email}</span>
+              <Mail className="w-4 h-4 text-white/40" />
+              <span className="text-sm text-white/55">{email}</span>
             </div>
           </div>
 
@@ -360,22 +360,22 @@ export default function EditProfilPage() {
           </button>
         </div>
 
-        {/* Inscription à l'Ordre */}
-        <div className="rounded-2xl p-5 space-y-3" style={{ background: '#242424', border: '0.5px solid #333' }}>
-          <h3 className="font-semibold text-[#e5e5e5]">Inscription à l'Ordre</h3>
+        {/* Inscription a l'Ordre */}
+        <div className="glass-card rounded-2xl p-5 space-y-3">
+          <h3 className="font-semibold text-white">Inscription a l'Ordre</h3>
           <div>
-            <label className="block text-xs font-medium text-[#6b7280] mb-1">Date d'inscription</label>
+            <label className="block text-xs font-medium text-white/55 mb-1">Date d'inscription</label>
             <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-[#6b7280] shrink-0" />
+              <Calendar className="w-4 h-4 text-white/40 shrink-0" />
               <input
                 type="date" value={ordreDate}
                 onChange={e => setOrdreDate(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm"
-                style={{ background: '#1a1a1a', borderColor: '#333', color: '#e5e5e5' }}
+                className="flex-1 px-3 py-2 rounded-xl text-sm"
+                style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
               />
             </div>
-            <p className="text-xs text-[#6b7280] mt-1.5">
-              Détermine votre période de certification périodique.
+            <p className="text-xs text-white/55 mt-1.5">
+              Determine votre periode de certification periodique.
             </p>
           </div>
           <button
@@ -389,21 +389,21 @@ export default function EditProfilPage() {
         </div>
 
         {/* Notifications */}
-        <div className="rounded-2xl p-5" style={{ background: '#242424', border: '0.5px solid #333' }}>
+        <div className="glass-card rounded-2xl p-5">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-blue-50 rounded-xl">
               <Bell className="w-4 h-4 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-[#e5e5e5]">Notifications</h3>
-              <p className="text-xs text-[#6b7280]">Rappels et résultats</p>
+              <h3 className="font-semibold text-white">Notifications</h3>
+              <p className="text-xs text-white/55">Rappels et resultats</p>
             </div>
           </div>
           <PushNotificationToggle />
 
-          {/* Préférences de contenu */}
+          {/* Preferences de contenu */}
           <div className="mt-4 space-y-3 pt-4" style={{ borderTop: '0.5px solid #333' }}>
-            <p className="text-xs font-medium text-[#6b7280]">Préférences de contenu</p>
+            <p className="text-xs font-medium text-white/55">Preferences de contenu</p>
 
             <button
               onClick={() => { void handleTogglePref('live_session_reminders', !liveSessionReminders) }}
@@ -434,39 +434,39 @@ export default function EditProfilPage() {
         </div>
 
         {/* Mot de passe */}
-        <div className="rounded-2xl p-5" style={{ background: '#242424', border: '0.5px solid #333' }}>
+        <div className="glass-card rounded-2xl p-5">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-gray-100 rounded-xl">
               <Lock className="w-4 h-4 text-[#6b7280]" />
             </div>
-            <h3 className="font-semibold text-[#e5e5e5]">Sécurité</h3>
+            <h3 className="font-semibold text-white">Securite</h3>
           </div>
 
           {showPasswordForm ? (
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-[#6b7280] mb-1">Nouveau mot de passe</label>
+                <label className="block text-xs font-medium text-white/55 mb-1">Nouveau mot de passe</label>
                 <div className="relative">
                   <input
                     type={showNewPassword ? 'text' : 'password'}
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm pr-10"
-                    style={{ background: '#1a1a1a', borderColor: '#333', color: '#e5e5e5' }}
-                    placeholder="Minimum 8 caractères"
+                    className="w-full px-3 py-2 rounded-xl text-sm pr-10"
+                    style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
+                    placeholder="Minimum 8 caracteres"
                   />
                   <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6b7280]">
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40">
                     {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-[#6b7280] mb-1">Confirmer</label>
+                <label className="block text-xs font-medium text-white/55 mb-1">Confirmer</label>
                 <input type="password" value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm"
-                  style={{ background: '#1a1a1a', borderColor: '#333', color: '#e5e5e5' }} />
+                  className="w-full px-3 py-2 rounded-xl text-sm"
+                  style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }} />
               </div>
               <div className="flex gap-2">
                 <button onClick={handleChangePassword} disabled={passwordSaving || !newPassword || !confirmPassword}
@@ -475,31 +475,31 @@ export default function EditProfilPage() {
                   Changer
                 </button>
                 <button onClick={() => { setShowPasswordForm(false); setNewPassword(''); setConfirmPassword('') }}
-                  className="px-4 py-2.5 text-sm text-[#6b7280] hover:bg-gray-100 rounded-xl">
+                  className="px-4 py-2.5 text-sm text-white/55 hover:bg-gray-100 hover:text-gray-900 rounded-xl transition-premium">
                   Annuler
                 </button>
               </div>
             </div>
           ) : (
             <button onClick={() => setShowPasswordForm(true)}
-              className="flex items-center justify-between w-full py-2 text-left hover:bg-gray-50 rounded-xl px-2 -mx-2">
-              <span className="text-sm text-[#a3a3a3]">Changer mon mot de passe</span>
-              <ChevronLeft className="w-4 h-4 text-[#6b7280] rotate-180" />
+              className="flex items-center justify-between w-full py-2 text-left hover:bg-gray-50 hover:text-gray-900 rounded-xl px-2 -mx-2 transition-premium">
+              <span className="text-sm text-white/70">Changer mon mot de passe</span>
+              <ChevronLeft className="w-4 h-4 text-white/40 rotate-180" />
             </button>
           )}
         </div>
 
         {/* Zone danger — Suppression compte */}
-        <div className="rounded-2xl border border-red-100 p-5" style={{ background: '#242424' }}>
-          <h3 className="font-semibold text-red-700 mb-1">Zone dangereuse</h3>
-          <p className="text-xs text-[#6b7280] mb-4">
-            La suppression est irréversible après 30 jours. Toutes vos données seront effacées.
+        <div className="glass-card rounded-2xl p-5" style={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+          <h3 className="font-semibold text-red-500 mb-1">Zone dangereuse</h3>
+          <p className="text-xs text-white/55 mb-4">
+            La suppression est irreversible apres 30 jours. Toutes vos donnees seront effacees.
           </p>
 
           {!deletionRequestedAt && !showDeleteConfirm && (
             <button
               onClick={() => setShowDeleteConfirm(true)}
-              className="flex items-center gap-2 text-sm text-red-500 font-medium hover:text-red-700 transition-colors"
+              className="flex items-center gap-2 text-sm text-red-500 font-medium hover:text-red-400 transition-premium"
             >
               <Trash2 className="w-4 h-4" />
               Supprimer mon compte
@@ -508,8 +508,8 @@ export default function EditProfilPage() {
 
           {showDeleteConfirm && !deletionRequestedAt && (
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-red-800">
-                Êtes-vous sûr ? Cette action planifie la suppression dans 30 jours.
+              <p className="text-sm font-semibold text-red-400">
+                Etes-vous sur ? Cette action planifie la suppression dans 30 jours.
               </p>
               <div className="flex gap-2">
                 <button
@@ -522,7 +522,7 @@ export default function EditProfilPage() {
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="px-4 py-2.5 text-sm text-[#6b7280] hover:bg-gray-100 rounded-xl"
+                  className="px-4 py-2.5 text-sm text-white/55 hover:bg-gray-100 hover:text-gray-900 rounded-xl transition-premium"
                 >
                   Annuler
                 </button>
