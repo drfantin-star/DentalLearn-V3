@@ -81,6 +81,8 @@ export default function DailyQuizButton({
           surface="gradient"
           gradient="#10B981"
           backgroundImage={QUIZ_COVER}
+          imageAnimation="pulse-scale"
+          imageGlowClass="glow-primary"
           icon={<CheckCircle size={30} />}
           eyebrow="Quiz du jour"
           title="Termine !"
@@ -115,6 +117,8 @@ export default function DailyQuizButton({
         surface="gradient"
         gradient="#5B21B6"
         backgroundImage={QUIZ_COVER}
+        imageAnimation="pulse-scale"
+        imageGlowClass="glow-primary"
         icon={<Target size={30} />}
         eyebrow="Quiz du jour"
         title="Teste tes connaissances"

@@ -22,6 +22,10 @@ interface HomeHeroCardProps {
    * Les cartes hero sans ce prop restent strictement inchangees.
    */
   backgroundImage?: string
+  /** Animation CSS appliquee a l image de droite (branche backgroundImage uniquement). */
+  imageAnimation?: 'pulse-scale' | 'sway'
+  /** Classe de halo fixe appliquee derriere l image (ex: glow-primary, glow-accent). */
+  imageGlowClass?: string
   cta: {
     label: string
     icon: ReactNode
@@ -47,6 +51,8 @@ export function HomeHeroCard({
   gradient,
   compact = false,
   backgroundImage,
+  imageAnimation,
+  imageGlowClass,
   cta,
   infoAction,
 }: HomeHeroCardProps) {
@@ -117,7 +123,7 @@ export function HomeHeroCard({
           </button>
         </div>
 
-        {/* Droite : objet flottant + halo pulse */}
+        {/* Droite : objet anime + halo fixe */}
         <div
           style={{
             flex: '0 0 42%',
@@ -128,24 +134,25 @@ export function HomeHeroCard({
             padding: '8px 8px 8px 0',
           }}
         >
-          {/* Halo radial derive de la couleur de fond de la carte */}
-          <div
-            aria-hidden
-            className="home-card-glow"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: `radial-gradient(ellipse at center, ${gradient}55 0%, transparent 70%)`,
-              pointerEvents: 'none',
-            }}
-          />
+          {imageGlowClass && (
+            <div
+              aria-hidden
+              className={imageGlowClass}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '50%',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={backgroundImage}
             alt=""
             aria-hidden
             loading="lazy"
-            className="home-card-float"
+            className={imageAnimation ? `home-card-${imageAnimation}` : undefined}
             style={{
               position: 'relative',
               width: '100%',

@@ -30,6 +30,8 @@ export function JournalWeekCard({ journal }: Props) {
         surface="gradient"
         gradient={JOURNAL_GRADIENT}
         backgroundImage={JOURNAL_COVER}
+        imageAnimation="sway"
+        imageGlowClass="glow-accent"
         icon={<Mic size={26} />}
         eyebrow="Journal"
         title="Bientot disponible"
@@ -52,6 +54,8 @@ export function JournalWeekCard({ journal }: Props) {
         surface="gradient"
         gradient={JOURNAL_GRADIENT}
         backgroundImage={JOURNAL_COVER}
+        imageAnimation="sway"
+        imageGlowClass="glow-accent"
         icon={<Mic size={26} />}
         eyebrow="Journal"
         title={`Semaine ${weekNum}`}
