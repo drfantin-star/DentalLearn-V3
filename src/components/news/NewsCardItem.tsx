@@ -6,12 +6,18 @@ import { describeCardDate } from '@/lib/news-display'
 import NewsCardSVG, { SPECIALITE_COLORS, NEWS_DEFAULT_COLOR } from './NewsCardSVG'
 import Badge, { type BadgeVariant } from '@/components/ui/Badge'
 import MediaCard from '@/components/home/MediaCard'
-import { getNewsCoverChain } from '@/lib/news-cover'
+import { getNewsCoverChain, getSpecialiteGradient } from '@/lib/news-cover'
 
 interface Props {
   news: NewsCard
   onClick: (news: NewsCard) => void
   variant: 'carousel' | 'grid'
+  /**
+   * Quand true (carousel uniquement) : pas d'image, fond = degrade specialite ~70%
+   * + titre en grand. N'est passe QUE par les rangees thematiques de la Home.
+   * /news et la rangee "Dernieres actus" ne le passent PAS -> comportement inchange.
+   */
+  hideCover?: boolean
 }
 
 const CATEGORY_VARIANT: Record<string, BadgeVariant> = {
@@ -31,29 +37,19 @@ function dateLabel(publishedAt: string | null): string | null {
   return describeCardDate(publishedAt, '').label
 }
 
-// Assombrit un hex de ~`amount` (0-1) en multipliant chaque canal — regle
-// UNIQUE et deterministe pour deriver le degrade news (base -> base assombri),
-// dans la direction 135 des cartes categories.
-function darkenHex(hex: string, amount: number): string {
-  const m = hex.replace('#', '')
-  const n = m.length === 3 ? m.split('').map((c) => c + c).join('') : m
-  const ch = (i: number) => Math.round(parseInt(n.slice(i, i + 2), 16) * (1 - amount))
-  const h = (v: number) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')
-  return `#${h(ch(0))}${h(ch(2))}${h(ch(4))}`
-}
-
-export default function NewsCardItem({ news, onClick, variant }: Props) {
+export default function NewsCardItem({ news, onClick, variant, hideCover = false }: Props) {
   const category = news.category_editorial
   const date = dateLabel(news.published_at)
 
-  // Cascade de couverture : cover_image_url -> theme -> specialite -> SVG
+  // Cascade de couverture — hooks toujours initialises, quelle que soit la branche.
   const chain = getNewsCoverChain(news)
   const [coverIdx, setCoverIdx] = useState(0)
-  const coverSrc = chain[coverIdx] // undefined = toutes les URLs ont echoue
+  const coverSrc = chain[coverIdx]
 
-  // Degrade de fond par specialite — filet ultime quand toutes les URLs echouent.
+  // Degrade de fond par specialite — filet ultime (cascade epuisee) ou hideCover.
   const accent = (news.specialite && SPECIALITE_COLORS[news.specialite]) || NEWS_DEFAULT_COLOR
 
+  // ── Variant grid (/news) — comportement par defaut INCHANGE ──────────────
   if (variant === 'grid') {
     return (
       <button
@@ -99,9 +95,54 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
     )
   }
 
-  // Variant carousel : on gere la cascade dans le fallback de MediaCard.
-  // cover={undefined} -> MediaCard affiche toujours `fallback`.
-  // On switche entre l'img chargeable et le degrade SVG selon coverSrc.
+  // ── Variant carousel + hideCover (rangees thematiques Home uniquement) ────
+  // Pas d'image : fond = degrade specialite a 70% d'opacite + titre en grand.
+  if (hideCover) {
+    return (
+      <MediaCard
+        aspect="landscape"
+        onClick={() => onClick(news)}
+        ariaLabel={news.display_title}
+        cover={undefined}
+        fallback={
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: getSpecialiteGradient(news.specialite),
+              opacity: 0.7,
+            }}
+          />
+        }
+        topLeft={
+          category ? (
+            <Badge variant={categoryVariant(category)} size="md">
+              {category}
+            </Badge>
+          ) : undefined
+        }
+      >
+        <p
+          style={{
+            fontSize: '16px',
+            fontWeight: 700,
+            color: 'white',
+            lineHeight: 1.25,
+            display: '-webkit-box',
+            WebkitLineClamp: 4,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            textShadow: '0 1px 4px rgba(0,0,0,0.7)',
+          }}
+        >
+          {news.display_title}
+        </p>
+      </MediaCard>
+    )
+  }
+
+  // ── Variant carousel par defaut (rangee "Dernieres actus" et Home normale) ─
+  // Cascade avec onError chaine : cover_image_url -> theme -> specialite -> SVG.
   return (
     <MediaCard
       aspect="landscape"
@@ -131,7 +172,7 @@ export default function NewsCardItem({ news, onClick, variant }: Props) {
             style={{
               position: 'absolute',
               inset: 0,
-              background: `linear-gradient(135deg, ${accent}, ${darkenHex(accent, 0.35)})`,
+              background: `linear-gradient(135deg, ${accent}, ${accent}88)`,
             }}
           >
             <span

@@ -25,6 +25,7 @@ import LeaderboardModal from '@/components/leaderboard/LeaderboardModal'
 import { useLeaderboard } from '@/lib/hooks/useLeaderboard'
 import ThemeQuizModal from '@/components/quiz/ThemeQuizModal'
 import { INTEREST_TO_NEWS_THEME, NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
+import { NEWS_COVERS_BASE, getSpecialiteGradient } from '@/lib/news-cover'
 
 function formationToForYouItem(f: Formation): ForYouItem {
   const config = getCategoryConfig(f.category)
@@ -263,6 +264,8 @@ export default function HomePage() {
     title: string,
     items: NewsCard[],
     showSeeAll: boolean,
+    headerCard?: React.ReactNode,
+    hideCover?: boolean,
   ) => (
     <section key={title}>
       <div className="flex items-center mb-4">
@@ -271,12 +274,14 @@ export default function HomePage() {
         </h2>
       </div>
       <div className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide -mx-4 px-4 pb-2">
+        {headerCard}
         {items.map((item) => (
           <NewsCardItem
             key={item.id}
             news={item}
             variant="carousel"
             onClick={(n) => setModalNewsId(n.id)}
+            hideCover={hideCover}
           />
         ))}
         {showSeeAll && (
@@ -514,10 +519,52 @@ export default function HomePage() {
         {/* Actualites — eclatees par theme (Session 1bis) */}
         {recentNews.length > 0 && renderNewsRow('Les dernieres actus', recentNews, true)}
         {themeRows.map((row) => {
+          const themeMap = INTEREST_TO_NEWS_THEME[row.key]
+          const specialiteSlug = themeMap?.field === 'specialite' ? themeMap.value : null
+          const headerGradient = getSpecialiteGradient(specialiteSlug)
+          const headerImageUrl = specialiteSlug
+            ? `${NEWS_COVERS_BASE}/news-spec-${specialiteSlug}.webp`
+            : null
+
+          const headerCard = (
+            <div
+              key={`header-${row.key}`}
+              className="flex-shrink-0 snap-start rounded-2xl overflow-hidden relative flex flex-col justify-end"
+              style={{ ...mediaCardSizeStyle('landscape'), background: headerGradient }}
+            >
+              {headerImageUrl && (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={headerImageUrl}
+                    alt=""
+                    aria-hidden
+                    loading="lazy"
+                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 60%)' }} />
+                </>
+              )}
+              <p
+                style={{
+                  position: 'relative',
+                  zIndex: 1,
+                  color: 'white',
+                  fontWeight: 800,
+                  fontSize: '15px',
+                  lineHeight: 1.2,
+                  padding: '0 10px 10px',
+                }}
+              >
+                {row.label}
+              </p>
+            </div>
+          )
+
           const quiz = quizSpecialiteFor(row.key)
           return (
             <React.Fragment key={row.key}>
-              {renderNewsRow(`Parce que tu t'interesses a ${row.label}`, row.items, false)}
+              {renderNewsRow(`Parce que tu t'interesses a ${row.label}`, row.items, false, headerCard, true)}
               {quiz && (
                 <button
                   type="button"
