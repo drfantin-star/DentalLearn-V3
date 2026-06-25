@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, CalendarDays, ChevronLeft, ChevronRight, Loader2, LogOut, Sparkles, Trophy } from 'lucide-react'
+import { BookOpen, Calendar, CalendarDays, ChevronLeft, ChevronRight, LogOut, Sparkles } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
 import { getCategoryConfig } from '@/lib/supabase/types'
@@ -24,11 +24,19 @@ import type { EvenementItemData } from '@/types/evenements'
 import LeaderboardModal from '@/components/leaderboard/LeaderboardModal'
 import { useLeaderboard } from '@/lib/hooks/useLeaderboard'
 
-function formatEventDate(iso: string): string {
-  const d = new Date(iso)
-  const date = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
-  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  return `${date} à ${time}`
+function formationToForYouItem(f: Formation): ForYouItem {
+  const config = getCategoryConfig(f.category)
+  const from =
+    config.type === 'axe3' ? '/patient' : config.type === 'axe4' ? '/sante' : '/formation'
+  return {
+    id: `formation-${f.id}`,
+    type: 'formation',
+    title: f.title,
+    href: `/formation/${f.category}?formation=${f.slug}&from=${from}`,
+    axe: (f.axe_cp as 1 | 2 | 3 | 4 | null) ?? null,
+    category: f.category,
+    cover: f.cover_image_url,
+  }
 }
 
 export default function HomePage() {
@@ -36,7 +44,7 @@ export default function HomePage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
 
-  const { user, profile, streak, loading: userLoading, refetch: refetchUser } = useUser()
+  const { user, profile, streak, refetch: refetchUser } = useUser()
   const { userRank: lifetimeRank } = useLeaderboard(user?.id, 'lifetime')
 
   const [newsItems, setNewsItems] = useState<NewsCard[]>([])
@@ -44,26 +52,28 @@ export default function HomePage() {
   const [journal, setJournal] = useState<JournalEpisode | null>(null)
   const router = useRouter()
 
-  // Formations "Fraîchement arrivé" — 5 dernières tous axes
+  // Formations recentes — source pour completer "Pour toi"
   const [recentFormations, setRecentFormations] = useState<Formation[]>([])
   const [recentLoading, setRecentLoading] = useState(true)
 
-  // Feed « Pour vous » — personnalisé sur les intérêts déclarés (cf. /api/for-you)
-  const [forYouItems, setForYouItems] = useState<ForYouItem[]>([])
-  const [forYouLoading, setForYouLoading] = useState(true)
-  // True si le feed perso a échoué/timeout → « Fraîchement arrivé » bascule en
-  // fallback gracieux (base sans dédup) plutôt que de rester vide/bloqué.
-  const [forYouError, setForYouError] = useState(false)
-
-  // Événements — 3 prochains (live_events + live_sessions)
-  const [evenements, setEvenements] = useState<EvenementItemData[]>([])
-  const [formationProgress, setFormationProgress] = useState<
+  // Formations commencees non terminees (section "Reprendre")
+  const [inProgressFormations, setInProgressFormations] = useState<Formation[]>([])
+  const [inProgressProgress, setInProgressProgress] = useState<
     Record<string, { isStarted: boolean; isCompleted: boolean }>
   >({})
+  const [inProgressLoading, setInProgressLoading] = useState(true)
+
+  // Feed "Pour vous"
+  const [forYouItems, setForYouItems] = useState<ForYouItem[]>([])
+  const [forYouLoading, setForYouLoading] = useState(true)
+
+  // Evenements
+  const [evenements, setEvenements] = useState<EvenementItemData[]>([])
 
   // Refs carousels
   const forYouScrollRef = useRef<HTMLDivElement>(null)
-  const recentScrollRef = useRef<HTMLDivElement>(null)
+  const ressourcesScrollRef = useRef<HTMLDivElement>(null)
+  const reprendreScrollRef = useRef<HTMLDivElement>(null)
 
   const scroll = (ref: React.RefObject<HTMLDivElement>, dir: 'left' | 'right') => {
     ref.current?.scrollBy({ left: dir === 'left' ? -320 : 320, behavior: 'smooth' })
@@ -77,7 +87,7 @@ export default function HomePage() {
         .select('*')
         .eq('is_published', true)
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(8)
       if (data) setRecentFormations(data)
       setRecentLoading(false)
     }
@@ -85,52 +95,61 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
+    if (!user?.id) {
+      setInProgressLoading(false)
+      return
+    }
+    async function fetchInProgress() {
+      const supabase = createClient()
+      const { data: ufRows } = await supabase
+        .from('user_formations')
+        .select('formation_id')
+        .eq('user_id', user!.id)
+        .is('completed_at', null)
+      if (!ufRows || ufRows.length === 0) {
+        setInProgressLoading(false)
+        return
+      }
+      const ids = ufRows.map((r) => r.formation_id)
+      const { data: formations } = await supabase
+        .from('formations')
+        .select('*')
+        .in('id', ids)
+        .eq('is_published', true)
+      if (formations) {
+        setInProgressFormations(formations)
+        const map: Record<string, { isStarted: boolean; isCompleted: boolean }> = {}
+        formations.forEach((f) => {
+          map[f.id] = { isStarted: true, isCompleted: false }
+        })
+        setInProgressProgress(map)
+      }
+      setInProgressLoading(false)
+    }
+    fetchInProgress()
+  }, [user?.id])
+
+  useEffect(() => {
     fetch('/api/news/syntheses?limit=5')
-      .then(r => r.json())
-      .then(d => setNewsItems(d.data ?? []))
+      .then((r) => r.json())
+      .then((d) => setNewsItems(d.data ?? []))
       .catch(() => {})
   }, [])
 
-  // Feed « Pour vous » — la route renvoie { items: [] } si l'utilisateur n'a
-  // pas d'intérêts (onboarding skippé) → la section ne sera pas rendue.
   useEffect(() => {
     fetch('/api/for-you')
-      .then(r => r.json())
-      .then(d => setForYouItems(d.items ?? []))
-      .catch(() => { setForYouItems([]); setForYouError(true) })
+      .then((r) => r.json())
+      .then((d) => setForYouItems(d.items ?? []))
+      .catch(() => setForYouItems([]))
       .finally(() => setForYouLoading(false))
   }, [])
 
-  // T11 : journal hebdo publié — l'API renvoie 200 + null si aucun journal
-  // disponible (cf. /api/news/journal/current)
   useEffect(() => {
     fetch('/api/news/journal/current')
       .then((r) => (r.ok ? r.json() : null))
       .then((data: JournalEpisode | null) => setJournal(data))
       .catch(() => setJournal(null))
   }, [])
-
-  useEffect(() => {
-    if (!user?.id || recentFormations.length === 0) return
-    async function fetchProgress() {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('user_formations')
-        .select('formation_id, current_sequence, completed_at')
-        .eq('user_id', user!.id)
-      if (data) {
-        const map: Record<string, { isStarted: boolean; isCompleted: boolean }> = {}
-        data.forEach((uf) => {
-          map[uf.formation_id] = {
-            isStarted: true,
-            isCompleted: !!uf.completed_at,
-          }
-        })
-        setFormationProgress(map)
-      }
-    }
-    fetchProgress()
-  }, [user?.id, recentFormations])
 
   useEffect(() => {
     async function fetchEvenements() {
@@ -155,9 +174,13 @@ export default function HomePage() {
           .order('starts_at', { ascending: true })
           .limit(3),
       ])
-      const allIds = Array.from(new Set(
-        [...(events ?? []), ...(sessions ?? [])].map((e) => e.formateur_user_id).filter(Boolean)
-      ))
+      const allIds = Array.from(
+        new Set(
+          [...(events ?? []), ...(sessions ?? [])]
+            .map((e) => e.formateur_user_id)
+            .filter(Boolean),
+        ),
+      )
       const profileMap: Record<string, string | null> = {}
       if (allIds.length > 0) {
         const { data: profiles } = await supabase
@@ -190,9 +213,9 @@ export default function HomePage() {
     void fetchEvenements()
   }, [])
 
-  const handleDailyQuizComplete = async (score: number, totalPoints: number) => {
+  const handleDailyQuizComplete = async (_score: number, _totalPoints: number) => {
     setShowDailyQuiz(false)
-    setRefreshTrigger(prev => prev + 1)
+    setRefreshTrigger((prev) => prev + 1)
     refetchUser()
   }
 
@@ -203,55 +226,35 @@ export default function HomePage() {
     router.refresh()
   }
 
-  // « Fraîchement arrivé » — plancher de cartes affichées avant de tolérer le
-  // doublon avec « Pour vous ». Ajustable. À 3 : si la dédup descend sous 3
-  // cartes, on recomplète avec les formations exclues (cas catalogue maigre).
-  const FRESHLY_ARRIVED_FLOOR = 3
-
-  // Dédup : « Pour vous » est prioritaire → on retire de « Fraîchement arrivé »
-  // les formations déjà présentes dans le feed perso (id `formation-<uuid>`).
-  // Le rendu DOIT dériver de ce calcul (et pas d'un state écrasé en deux temps)
-  // pour ne jamais flasher l'état pré-dédup pendant que « Pour vous » se résout.
-  const freshlyArrivedFormations = useMemo(() => {
-    // base = requête « Fraîchement arrivé » telle quelle (is_published, DESC, 5).
-    const base = recentFormations
-    // Fallback gracieux : « Pour vous » a échoué/timeout → on affiche la base
-    // sans dédup plutôt que de rester vide.
-    if (forYouError) return base.slice(0, 5)
-
-    const excluded = new Set(
-      forYouItems
+  // "Pour toi" : formations + EPP du feed, completes avec recentFormations jusqu'a ~8 cartes
+  const pourToiItems = useMemo(() => {
+    const feedItems = forYouItems.filter((i) => i.type === 'formation' || i.type === 'epp')
+    const feedFormationIds = new Set(
+      feedItems
         .filter((i) => i.type === 'formation')
-        .map((i) => i.id.replace(/^formation-/, ''))
+        .map((i) => i.id.replace(/^formation-/, '')),
     )
-    const deduped = base.filter((f) => !excluded.has(f.id))
+    const extras = recentFormations
+      .filter((f) => !feedFormationIds.has(f.id))
+      .map(formationToForYouItem)
+    return [...feedItems, ...extras].slice(0, 8)
+  }, [forYouItems, recentFormations])
 
-    if (deduped.length >= FRESHLY_ARRIVED_FLOOR) {
-      return deduped.slice(0, 5)
-    }
-
-    // Sous le plancher : recompléter avec les exclues (ordre created_at DESC,
-    // déjà l'ordre de `base`) jusqu'à min(plancher, base.length) cartes.
-    const target = Math.min(FRESHLY_ARRIVED_FLOOR, base.length)
-    const result = [...deduped]
-    for (const f of base) {
-      if (result.length >= target) break
-      if (!result.some((r) => r.id === f.id)) result.push(f)
-    }
-    return result.slice(0, 5)
-  }, [recentFormations, forYouItems, forYouError])
-
-  // La liste d'exclusion (« Pour vous ») est résolue dès que son fetch a
-  // abouti (succès, vide, ou erreur → forYouLoading=false). Tant qu'elle ne
-  // l'est pas, on n'affiche aucune carte (skeleton/loader).
-  const freshlyArrivedResolving = recentLoading || forYouLoading
+  // "Ressources pour toi" : fiches + autoevals du feed
+  const ressourcesItems = useMemo(
+    () => forYouItems.filter((i) => i.type === 'fiche' || i.type === 'autoeval'),
+    [forYouItems],
+  )
 
   return (
     <>
       {/* Header */}
       <header className="bg-gradient-to-br from-primary to-accent px-5 py-4">
         <div className="flex items-center justify-between gap-3">
-          <Link href="/profil" className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/30 flex-shrink-0 hover:ring-white/60 transition-all">
+          <Link
+            href="/profil"
+            className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/30 flex-shrink-0 hover:ring-white/60 transition-all"
+          >
             {profile?.profile_photo_url ? (
               <img src={profile.profile_photo_url} alt="avatar" className="w-full h-full object-cover" />
             ) : (
@@ -263,9 +266,15 @@ export default function HomePage() {
             )}
           </Link>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-black uppercase truncate" style={{ fontSize: '18px', lineHeight: '1.3' }}>
+            <p
+              className="text-white font-black uppercase truncate"
+              style={{ fontSize: '18px', lineHeight: '1.3' }}
+            >
               Bonjour, {profile?.first_name || 'Utilisateur'}
-              <span className="hidden md:inline ml-2 font-bold" style={{ fontSize: '13px', opacity: 0.6 }}>
+              <span
+                className="hidden md:inline ml-2 font-bold"
+                style={{ fontSize: '13px', opacity: 0.6 }}
+              >
                 {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
               </span>
             </p>
@@ -273,17 +282,22 @@ export default function HomePage() {
               {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
             </p>
           </div>
-          <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1.5 flex-shrink-0">
+          <button
+            type="button"
+            onClick={() => setShowLeaderboard(true)}
+            aria-label="Voir le classement"
+            className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1.5 flex-shrink-0 hover:bg-white/25 transition-colors"
+          >
             <span className="text-white text-xs font-bold">🔥 {streak?.current_streak ?? 0}</span>
             <span className="text-white/40 text-xs">·</span>
             <span className="text-white text-xs font-bold">{lifetimeRank?.points ?? 0} pts</span>
-          </div>
+          </button>
           {user && (
             <button
               type="button"
               onClick={handleSignOut}
-              aria-label="Se déconnecter"
-              title="Se déconnecter"
+              aria-label="Se deconnecter"
+              title="Se deconnecter"
               className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors"
             >
               <LogOut size={20} className="text-white" />
@@ -292,59 +306,85 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen" style={{ background: '#0F0F0F' }}>
-
-        {/* 1ʳᵉ ligne unifiée : Quiz du jour / Journal / Événements (HomeHeroCard).
-            Mobile/tablette (< lg) : pattern hero → Quiz pleine largeur (col-span-2)
-            puis Journal + Événements en 2 colonnes. Desktop (≥ lg) : 3 colonnes
-            égales, identiques au rendu précédent (flex-1 → grid-cols-3). */}
+      <main
+        className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen"
+        style={{ background: '#0F0F0F' }}
+      >
+        {/* Quiz du jour — carte seule pleine largeur */}
         <section>
-          <div className="grid grid-cols-2 gap-3 [grid-auto-rows:1fr]">
-            <DailyQuizButton
-              userId={user?.id}
-              onStart={() => setShowDailyQuiz(true)}
-              refreshTrigger={refreshTrigger}
-              variant="square"
-            />
-            <HomeHeroCard
-              surface="gradient"
-              gradient="linear-gradient(160deg, #0F766E, #0D9488)"
-              icon={<Trophy size={26} />}
-              eyebrow="Classement"
-              title="Voir ta place"
-              cta={{
-                label: "Ouvrir",
-                icon: <Trophy size={15} />,
-                onClick: () => setShowLeaderboard(true),
-              }}
-            />
-            <JournalWeekCard journal={journal} />
-            <HomeHeroCard
-              surface="neutral"
-              icon={<Calendar size={26} />}
-              eyebrow="Événements"
-              title={evenements.length > 0 ? evenements[0].title : "Rien à l'horizon"}
-              cta={{
-                label: "Voir le calendrier",
-                icon: <CalendarDays size={15} />,
-                onClick: () => router.push('/evenements'),
-              }}
-            />
-          </div>
+          <DailyQuizButton
+            userId={user?.id}
+            onStart={() => setShowDailyQuiz(true)}
+            refreshTrigger={refreshTrigger}
+            variant="square"
+          />
         </section>
 
-        {/* Pour vous — rendue seulement si le feed renvoie ≥1 item (un user
-            ayant skippé l'onboarding reçoit { items: [] } → pas de section). */}
-        {!forYouLoading && forYouItems.length > 0 && (
+        {/* Reprendre — formations commencees non terminees */}
+        {!inProgressLoading && inProgressFormations.length > 0 && (
           <section>
             <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
-              <Sparkles size={18} className="text-violet-400" /> Pour vous
+              <BookOpen size={18} className="text-violet-400" /> Reprendre
+            </h2>
+            <div className="relative">
+              <button
+                onClick={() => scroll(reprendreScrollRef, 'left')}
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
+                aria-label="Precedent"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div
+                ref={reprendreScrollRef}
+                className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+              >
+                {inProgressFormations.map((f) => {
+                  const config = getCategoryConfig(f.category)
+                  const from =
+                    config.type === 'axe3'
+                      ? '/patient'
+                      : config.type === 'axe4'
+                      ? '/sante'
+                      : '/formation'
+                  return (
+                    <FormationCardOverlay
+                      key={f.id}
+                      formation={f}
+                      progress={inProgressProgress[f.id]}
+                      onClick={() => {
+                        window.location.href = `/formation/${f.category}?formation=${f.slug}&from=${from}`
+                      }}
+                    />
+                  )
+                })}
+              </div>
+              <button
+                onClick={() => scroll(reprendreScrollRef, 'right')}
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
+                aria-label="Suivant"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Journal hebdo */}
+        <section>
+          <JournalWeekCard journal={journal} />
+        </section>
+
+        {/* Pour toi — formations + EPP */}
+        {!forYouLoading && !recentLoading && pourToiItems.length > 0 && (
+          <section>
+            <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
+              <Sparkles size={18} className="text-violet-400" /> Pour toi
             </h2>
             <div className="relative">
               <button
                 onClick={() => scroll(forYouScrollRef, 'left')}
                 className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
-                aria-label="Précédent"
+                aria-label="Precedent"
               >
                 <ChevronLeft size={20} />
               </button>
@@ -352,7 +392,7 @@ export default function HomePage() {
                 ref={forYouScrollRef}
                 className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
               >
-                {forYouItems.map((item) => (
+                {pourToiItems.map((item) => (
                   <ForYouCard key={item.id} item={item} />
                 ))}
               </div>
@@ -367,11 +407,61 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* News */}
+        {/* Ressources pour toi — fiches + autoevals */}
+        {!forYouLoading && ressourcesItems.length > 0 && (
+          <section>
+            <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
+              📚 Ressources pour toi
+            </h2>
+            <div className="relative">
+              <button
+                onClick={() => scroll(ressourcesScrollRef, 'left')}
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
+                aria-label="Precedent"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div
+                ref={ressourcesScrollRef}
+                className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+              >
+                {ressourcesItems.map((item) => (
+                  <ForYouCard key={item.id} item={item} />
+                ))}
+              </div>
+              <button
+                onClick={() => scroll(ressourcesScrollRef, 'right')}
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
+                aria-label="Suivant"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Evenements — masque si vide */}
+        {evenements.length > 0 && (
+          <section>
+            <HomeHeroCard
+              surface="neutral"
+              icon={<Calendar size={26} />}
+              eyebrow="Evenements"
+              title={evenements[0].title}
+              cta={{
+                label: 'Voir le calendrier',
+                icon: <CalendarDays size={15} />,
+                onClick: () => router.push('/evenements'),
+              }}
+            />
+          </section>
+        )}
+
+        {/* Actualites — inchange */}
         <section>
           <div className="flex items-center mb-4">
             <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2">
-              📰 Actualités
+              📰 Actualites
             </h2>
           </div>
           <div className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide -mx-4 px-4 pb-2">
@@ -396,60 +486,6 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-
-        {/* Fraîchement arrivé — masquée si, exclusion résolue, il ne reste
-            aucune carte (catalogue réellement vide). Tant que « Pour vous »
-            n'est pas résolu : skeleton/loader, jamais l'état pré-dédup. */}
-        {(freshlyArrivedResolving || freshlyArrivedFormations.length > 0) && (
-        <section>
-          <h2 className="text-base font-bold text-[#e5e5e5] mb-3">⚡ Fraîchement arrivé</h2>
-          {freshlyArrivedResolving ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="animate-spin text-gray-400" size={24} />
-            </div>
-          ) : (
-            <div className="relative">
-              <button
-                onClick={() => scroll(recentScrollRef, 'left')}
-                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
-              >
-                <ChevronLeft size={20} />
-              </button>
-              <div
-                ref={recentScrollRef}
-                className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
-              >
-                {freshlyArrivedFormations.map((f) => {
-                  const config = getCategoryConfig(f.category)
-                  const from = config.type === 'axe3'
-                    ? '/patient'
-                    : config.type === 'axe4'
-                    ? '/sante'
-                    : '/formation'
-                  return (
-                    <FormationCardOverlay
-                      key={f.id}
-                      formation={f}
-                      progress={formationProgress[f.id]}
-                      onClick={() => {
-                        window.location.href = `/formation/${f.category}?formation=${f.slug}&from=${from}`
-                      }}
-                    />
-                  )
-                })}
-              </div>
-              <button
-                onClick={() => scroll(recentScrollRef, 'right')}
-                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
-              >
-                <ChevronRight size={20} />
-              </button>
-            </div>
-          )}
-        </section>
-        )}
-
-
       </main>
 
       {showDailyQuiz && user && (
