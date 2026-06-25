@@ -90,12 +90,12 @@ export default function FormationCardOverlay({
     >
       <p
         style={{
-          fontSize: isHero ? '18px' : '13px',
+          fontSize: isHero ? (size === 'large' ? '18px' : '15px') : '13px',
           fontWeight: 700,
           color: 'white',
           lineHeight: 1.25,
           display: '-webkit-box',
-          WebkitLineClamp: isHero ? 5 : (aspect === 'landscape' ? 4 : 3),
+          WebkitLineClamp: isHero ? (size === 'large' ? 5 : 3) : (aspect === 'landscape' ? 4 : 3),
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
           textShadow: '0 2px 6px rgba(0,0,0,0.7)',
