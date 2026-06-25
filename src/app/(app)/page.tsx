@@ -23,6 +23,8 @@ import type { ForYouItem } from '@/types/forYou'
 import type { EvenementItemData } from '@/types/evenements'
 import LeaderboardModal from '@/components/leaderboard/LeaderboardModal'
 import { useLeaderboard } from '@/lib/hooks/useLeaderboard'
+import ThemeQuizModal from '@/components/quiz/ThemeQuizModal'
+import { INTEREST_TO_NEWS_THEME, NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
 
 function formationToForYouItem(f: Formation): ForYouItem {
   const config = getCategoryConfig(f.category)
@@ -43,6 +45,7 @@ export default function HomePage() {
   const [showDailyQuiz, setShowDailyQuiz] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [quizTheme, setQuizTheme] = useState<{ specialite: string; label: string } | null>(null)
 
   const { user, profile, streak, refetch: refetchUser } = useUser()
   const { userRank: lifetimeRank } = useLeaderboard(user?.id, 'lifetime')
@@ -249,6 +252,12 @@ export default function HomePage() {
     () => forYouItems.filter((i) => i.type === 'fiche' || i.type === 'autoeval'),
     [forYouItems],
   )
+
+  const quizSpecialiteFor = (rowKey: string): { specialite: string; label: string } | null => {
+    const map = INTEREST_TO_NEWS_THEME[rowKey]
+    if (!map || map.field !== 'specialite') return null
+    return { specialite: map.value, label: NEWS_SPECIALITE_LABELS[map.value] ?? map.value }
+  }
 
   const renderNewsRow = (
     title: string,
@@ -504,9 +513,29 @@ export default function HomePage() {
 
         {/* Actualites — eclatees par theme (Session 1bis) */}
         {recentNews.length > 0 && renderNewsRow('Les dernieres actus', recentNews, true)}
-        {themeRows.map((row) =>
-          renderNewsRow(`Parce que tu t'interesses a ${row.label}`, row.items, false),
-        )}
+        {themeRows.map((row) => {
+          const quiz = quizSpecialiteFor(row.key)
+          return (
+            <React.Fragment key={row.key}>
+              {renderNewsRow(`Parce que tu t'interesses a ${row.label}`, row.items, false)}
+              {quiz && (
+                <button
+                  type="button"
+                  onClick={() => setQuizTheme(quiz)}
+                  className="w-full glass-card glow-accent transition-premium rounded-2xl
+                             px-4 py-3 flex items-center justify-between text-left
+                             hover:scale-[1.01] mb-6"
+                  aria-label={`Teste-toi en ${quiz.label}`}
+                >
+                  <span className="text-white text-sm font-semibold flex items-center gap-2">
+                    🎯 Teste-toi en {quiz.label}
+                  </span>
+                  <span className="text-white/60 text-xs">10 questions ·</span>
+                </button>
+              )}
+            </React.Fragment>
+          )
+        })}
       </main>
 
       {showDailyQuiz && user && (
@@ -518,6 +547,14 @@ export default function HomePage() {
       )}
 
       <NewsModal newsId={modalNewsId} onClose={() => setModalNewsId(null)} />
+
+      {quizTheme && (
+        <ThemeQuizModal
+          specialite={quizTheme.specialite}
+          label={quizTheme.label}
+          onClose={() => setQuizTheme(null)}
+        />
+      )}
 
       <LeaderboardModal
         open={showLeaderboard}
