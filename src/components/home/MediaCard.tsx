@@ -82,6 +82,8 @@ interface MediaCardProps {
   coverFit?: 'cover' | 'contain'
   /** Fond CSS derrière une cover `contain` (dégradé d'axe / catégorie). */
   coverBackground?: string
+  /** Opacité de la cover (0–1, défaut 1). Permet de mettre l'image en arrière-plan. */
+  coverOpacity?: number
   /** Fond pleine carte quand pas de cover (dégradé + picto/SVG). */
   fallback?: ReactNode
   /** Pastille catégorie / badge type — haut gauche. */
@@ -104,6 +106,7 @@ export default function MediaCard({
   coverAlt,
   coverFit = 'cover',
   coverBackground,
+  coverOpacity = 1,
   fallback,
   topLeft,
   topRight,
@@ -123,7 +126,7 @@ export default function MediaCard({
       {/* Fond pleine carte */}
       {cover ? (
         coverFit === 'contain' ? (
-          <div style={{ position: 'absolute', inset: 0, background: coverBackground }}>
+          <div style={{ position: 'absolute', inset: 0, background: coverBackground, opacity: coverOpacity }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={cover}
@@ -152,6 +155,7 @@ export default function MediaCard({
               width: '100%',
               height: '100%',
               objectFit: 'cover',
+              opacity: coverOpacity,
             }}
           />
         )

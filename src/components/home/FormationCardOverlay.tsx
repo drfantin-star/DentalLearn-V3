@@ -34,6 +34,8 @@ export default function FormationCardOverlay({
     ? 'linear-gradient(135deg, #059669, #10B981)'
     : accentGradient || `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
 
+  const isHero = size === 'large'
+
   return (
     <MediaCard
       onClick={onClick}
@@ -43,6 +45,7 @@ export default function FormationCardOverlay({
       coverAlt={formation.title}
       coverFit="contain"
       coverBackground={coverBg}
+      coverOpacity={isHero ? 0.7 : 1}
       fallback={
         <div
           style={{
@@ -53,6 +56,7 @@ export default function FormationCardOverlay({
             alignItems: 'center',
             justifyContent: 'center',
             fontSize: '48px',
+            opacity: isHero ? 0.7 : 1,
           }}
         >
           {config.emoji}
@@ -70,6 +74,7 @@ export default function FormationCardOverlay({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            opacity: isHero ? 0.7 : 1,
           }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -83,15 +88,15 @@ export default function FormationCardOverlay({
     >
       <p
         style={{
-          fontSize: '13px',
+          fontSize: isHero ? '18px' : '13px',
           fontWeight: 700,
           color: 'white',
-          lineHeight: 1.3,
+          lineHeight: 1.25,
           display: '-webkit-box',
-          WebkitLineClamp: aspect === 'landscape' ? 4 : 3,
+          WebkitLineClamp: isHero ? 5 : (aspect === 'landscape' ? 4 : 3),
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
-          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+          textShadow: '0 2px 6px rgba(0,0,0,0.7)',
         }}
       >
         {formation.title}
@@ -100,7 +105,7 @@ export default function FormationCardOverlay({
         style={{
           background: ctaGradient,
           color: 'white',
-          fontSize: '12px',
+          fontSize: isHero ? '13px' : '12px',
           fontWeight: 600,
           textAlign: 'center',
           padding: '7px',
