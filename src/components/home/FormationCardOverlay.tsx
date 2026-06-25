@@ -13,6 +13,7 @@ interface FormationCardOverlayProps {
   accentGradient?: string
   aspect?: MediaCardAspect
   size?: MediaCardSize
+  hero?: boolean
 }
 
 export default function FormationCardOverlay({
@@ -22,6 +23,7 @@ export default function FormationCardOverlay({
   accentGradient,
   aspect = 'portrait',
   size = 'default',
+  hero,
 }: FormationCardOverlayProps) {
   const config = getCategoryConfig(formation.category)
   const coverBg = `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
@@ -34,7 +36,7 @@ export default function FormationCardOverlay({
     ? 'linear-gradient(135deg, #059669, #10B981)'
     : accentGradient || `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
 
-  const isHero = size === 'large'
+  const isHero = hero ?? size === 'large'
 
   return (
     <MediaCard

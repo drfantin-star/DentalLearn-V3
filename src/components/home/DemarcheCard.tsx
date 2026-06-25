@@ -66,6 +66,7 @@ export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCar
           position: 'absolute',
           inset: 0,
           background: eppGradient,
+          opacity: 0.7,
         }}
       />
 
@@ -77,6 +78,7 @@ export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCar
           top: '50%',
           transform: 'translateY(-50%)',
           zIndex: 1,
+          opacity: 0.7,
           width: `${RING_SIZE}px`,
           height: `${RING_SIZE}px`,
         }}
@@ -171,15 +173,15 @@ export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCar
       >
         <p
           style={{
-            fontSize: '12px',
+            fontSize: '16px',
             fontWeight: 700,
             color: 'white',
-            lineHeight: 1.3,
+            lineHeight: 1.25,
             display: '-webkit-box',
             WebkitLineClamp: 4,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
-            textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+            textShadow: '0 2px 6px rgba(0,0,0,0.7)',
           }}
         >
           {demarche.title}
