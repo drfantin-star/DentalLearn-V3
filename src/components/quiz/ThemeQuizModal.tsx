@@ -33,6 +33,7 @@ interface ThemeQuestion {
   image_url?: string | null
   recommended_time_seconds?: number
   difficulty?: string
+  sourceTitle?: string | null
 }
 
 export interface ThemeQuizModalProps {
@@ -282,6 +283,14 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
         <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold mb-3 bg-white/10 text-white/60">
           {qType === 'true_false' ? 'Vrai / Faux' : qType === 'checkbox' ? 'Choix multiples' : 'QCM'}
         </span>
+
+        {/* Source context */}
+        {q.sourceTitle && (
+          <div className="flex items-start gap-2 mb-3 text-white/60 text-xs">
+            <span aria-hidden>📄</span>
+            <span className="italic leading-snug">{q.sourceTitle}</span>
+          </div>
+        )}
 
         {/* Image */}
         {q.image_url && (

@@ -11,7 +11,7 @@ const MIN_PLAYABLE = 8
 const QUIZ_COLUMNS = [
   'id', 'question_type', 'question_text', 'options',
   'feedback_correct', 'feedback_incorrect', 'image_url',
-  'recommended_time_seconds', 'difficulty',
+  'recommended_time_seconds', 'difficulty', 'news_synthesis_id',
 ].join(', ')
 
 export async function GET(request: Request) {
@@ -30,11 +30,15 @@ export async function GET(request: Request) {
 
     const { data: newsRows, error: nErr } = await admin
       .from('news_syntheses')
-      .select('id')
+      .select('id, display_title')
       .eq('status', 'active')
       .eq('specialite', specialite)
 
     if (nErr) throw nErr
+
+    const titleById = new Map<string, string>(
+      (newsRows ?? []).map((r) => [r.id as string, (r.display_title as string) ?? '']),
+    )
 
     const newsIds = (newsRows ?? []).map((r) => r.id)
 
@@ -61,7 +65,11 @@ export async function GET(request: Request) {
       ;[all[i], all[j]] = [all[j], all[i]]
     }
 
-    return NextResponse.json({ questions: all.slice(0, limit), playable: true })
+    const picked = all.slice(0, limit).map((q) => ({
+      ...q,
+      sourceTitle: titleById.get(q.news_synthesis_id as string) ?? null,
+    }))
+    return NextResponse.json({ questions: picked, playable: true })
   } catch (err) {
     console.error('quiz/by-theme GET error:', err)
     return NextResponse.json({ questions: [], playable: false }, { status: 200 })
