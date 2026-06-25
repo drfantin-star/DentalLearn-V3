@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import NewsModal from '@/components/news/NewsModal'
+import { THEME_QUIZ_COLORS, THEME_QUIZ_FALLBACK } from '@/lib/quiz/themeColors'
 import {
   X,
   CheckCircle2,
@@ -251,6 +252,8 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
   // RENDER: QUESTION SCREEN
   // ============================================
 
+  const tc = THEME_QUIZ_COLORS[specialite] ?? THEME_QUIZ_FALLBACK
+
   const q = questions[index]
   const progress = ((index + 1) / questions.length) * 100
   const qType = q.question_type
@@ -258,18 +261,25 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-[#0F0F0F]">
+      {/* Theme halo */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-64 pointer-events-none"
+        style={{ background: `radial-gradient(120% 100% at 50% 0%, ${tc.dark} 0%, transparent 70%)`, opacity: 0.35 }}
+      />
+
       {/* Progress bar */}
       <div className="h-1.5 bg-white/10 flex-shrink-0">
         <div
-          className="h-full bg-primary transition-all duration-500"
-          style={{ width: `${progress}%` }}
+          className="h-full transition-all duration-500"
+          style={{ width: `${progress}%`, background: tc.light }}
         />
       </div>
 
       {/* Header */}
       <div className="flex-shrink-0 px-4 py-3 flex items-center justify-between border-b border-white/10">
         <span className="text-sm font-bold text-white">{index + 1}/{questions.length}</span>
-        <span className="text-sm font-semibold text-white/60">{label}</span>
+        <span className="text-sm font-semibold" style={{ color: tc.light }}>{label}</span>
         <button
           type="button"
           onClick={onClose}
@@ -333,15 +343,15 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
                         disabled={selectedAnswer !== null}
                         className="w-full p-3.5 rounded-2xl text-left transition-premium flex items-center gap-3"
                         style={{
-                          background: isSelected ? 'rgba(var(--color-primary-rgb, 45 27 150) / 0.25)' : 'rgba(255,255,255,0.05)',
-                          border: `2px solid ${isSelected ? 'rgb(var(--color-primary-rgb, 45 27 150))' : 'rgba(255,255,255,0.1)'}`,
+                          background: isSelected ? `${tc.light}22` : 'rgba(255,255,255,0.07)',
+                          border: `2px solid ${isSelected ? tc.light : 'rgba(255,255,255,0.14)'}`,
                         }}
                       >
                         <span
                           className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0"
                           style={{
-                            background: isSelected ? '#6d28d9' : 'rgba(255,255,255,0.1)',
-                            color: 'white',
+                            background: isSelected ? tc.light : 'rgba(255,255,255,0.1)',
+                            color: isSelected ? tc.dark : 'white',
                           }}
                         >
                           {String.fromCharCode(65 + i)}
@@ -431,13 +441,13 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
                           )}
                           className="w-full p-3.5 rounded-2xl text-left transition-premium flex items-center gap-3"
                           style={{
-                            background: isSelected ? 'rgba(109,40,217,0.25)' : 'rgba(255,255,255,0.05)',
-                            border: `2px solid ${isSelected ? '#6d28d9' : 'rgba(255,255,255,0.1)'}`,
+                            background: isSelected ? `${tc.light}22` : 'rgba(255,255,255,0.07)',
+                            border: `2px solid ${isSelected ? tc.light : 'rgba(255,255,255,0.14)'}`,
                           }}
                         >
                           <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
                             {isSelected
-                              ? <CheckSquare size={24} className="text-violet-400" />
+                              ? <CheckSquare size={24} style={{ color: tc.light }} />
                               : <Square size={24} className="text-white/40" />}
                           </span>
                           <span className="flex-1 font-semibold text-sm text-white">{opt.text}</span>
