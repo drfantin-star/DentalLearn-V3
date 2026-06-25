@@ -104,6 +104,29 @@ body {
   animation: wiggle 0.6s ease-in-out;
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { opacity: 0.22; }
+  50% { opacity: 0.42; }
+}
+
+.home-card-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+.home-card-glow {
+  animation: glow-pulse 4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-card-float { animation: none; }
+  .home-card-glow { animation: none; opacity: 0; }
+}
+
 /* === Cosmetique premium (glassmorphism / transitions) === */
 .glass-card {
   background: rgba(36, 36, 36, 0.55); /* --color-bg-card #242424 @55% */

@@ -117,34 +117,43 @@ export function HomeHeroCard({
           </button>
         </div>
 
-        {/* Droite : vignette arrondie */}
+        {/* Droite : objet flottant + halo pulse */}
         <div
           style={{
             flex: '0 0 42%',
+            position: 'relative',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             padding: '8px 8px 8px 0',
           }}
         >
+          {/* Halo radial derive de la couleur de fond de la carte */}
           <div
-            className="rounded-2xl overflow-hidden bg-white/10 flex items-center justify-center"
-            style={{ width: '100%', height: '100%' }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={backgroundImage}
-              alt=""
-              aria-hidden
-              loading="lazy"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'contain',
-                objectPosition: 'center',
-              }}
-            />
-          </div>
+            aria-hidden
+            className="home-card-glow"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: `radial-gradient(ellipse at center, ${gradient}55 0%, transparent 70%)`,
+              pointerEvents: 'none',
+            }}
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={backgroundImage}
+            alt=""
+            aria-hidden
+            loading="lazy"
+            className="home-card-float"
+            style={{
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              objectPosition: 'center',
+            }}
+          />
         </div>
       </div>
     )
