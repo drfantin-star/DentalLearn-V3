@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import NewsModal from '@/components/news/NewsModal'
 import {
   X,
   CheckCircle2,
@@ -34,6 +35,7 @@ interface ThemeQuestion {
   recommended_time_seconds?: number
   difficulty?: string
   sourceTitle?: string | null
+  news_synthesis_id?: string | null
 }
 
 export interface ThemeQuizModalProps {
@@ -85,6 +87,7 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
   const [selectedAnswers, setSelectedAnswers] = useState<string[]>([])
   const [showFeedback, setShowFeedback] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
+  const [articleNewsId, setArticleNewsId] = useState<string | null>(null)
 
   useEffect(() => {
     loadQuestions()
@@ -286,9 +289,20 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
 
         {/* Source context */}
         {q.sourceTitle && (
-          <div className="flex items-start gap-2 mb-3 text-white/60 text-xs">
-            <span aria-hidden>📄</span>
-            <span className="italic leading-snug">{q.sourceTitle}</span>
+          <div className="mb-4 rounded-xl glass-card px-3 py-2.5 flex items-start gap-2.5">
+            <span aria-hidden className="mt-0.5">📄</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-white/85 text-sm font-medium leading-snug">{q.sourceTitle}</p>
+              {q.news_synthesis_id && (
+                <button
+                  type="button"
+                  onClick={() => setArticleNewsId(q.news_synthesis_id!)}
+                  className="mt-1 text-accent text-xs font-semibold hover:underline transition-premium"
+                >
+                  Voir l'article
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -527,6 +541,7 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
           </div>
         )}
       </div>
+      <NewsModal newsId={articleNewsId} onClose={() => setArticleNewsId(null)} />
     </div>
   )
 }
