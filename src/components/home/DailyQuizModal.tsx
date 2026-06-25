@@ -634,7 +634,7 @@ export default function DailyQuizModal({
           </p>
           <button
             onClick={onClose}
-            className="w-full py-3 rounded-xl font-bold text-sm transition-colors" style={{ background: '#242424', color: '#e5e5e5' }}
+            className="w-full py-3 rounded-xl font-bold text-sm transition-colors" style={{ background: '#242424', color: '#ffffff' }}
           >
             Fermer
           </button>
@@ -749,7 +749,7 @@ export default function DailyQuizModal({
                   ? 'bg-red-900/40 text-red-400'
                   : timeLeft <= 30
                     ? 'bg-amber-900/40 text-amber-400'
-                    : 'text-[#a3a3a3]'
+                    : 'text-white/70'
               }`}
               style={timeLeft > 30 ? { background: '#242424' } : undefined}
             >
@@ -784,7 +784,7 @@ export default function DailyQuizModal({
         )}
 
         {/* Type badge */}
-        <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold mb-3 ml-1" style={{ background: '#242424', color: '#a3a3a3' }}>
+        <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold mb-3 ml-1" style={{ background: '#242424', color: 'rgba(255,255,255,0.7)' }}>
           {typeLabels[qType] || qType.toUpperCase()}
         </span>
 
@@ -936,7 +936,7 @@ export default function DailyQuizModal({
                           <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
                             {isSelected
                               ? <CheckSquare size={24} style={{ color: GRADIENT_FROM }} />
-                              : <Square size={24} className="text-gray-400" />
+                              : <Square size={24} className="text-white/40" />
                             }
                           </span>
                           <span className="flex-1 font-semibold text-sm" style={{ color: '#e5e5e5' }}>{opt.text}</span>
@@ -1007,7 +1007,7 @@ export default function DailyQuizModal({
             {/* === FILL_BLANK === */}
             {normalizedType === 'fill_blank' && (() => {
               const opts = parseFillBlankOptions(q.options)
-              if (!opts) return <p className="text-gray-500">Format de question non supporte</p>
+              if (!opts) return <p className="text-white/55">Format de question non supporte</p>
 
               const hasWordBank = opts.wordBank && opts.wordBank.length > 0
               const usedWords = Object.values(fillBlankAnswers)
@@ -1051,7 +1051,7 @@ export default function DailyQuizModal({
                               onChange={e => setFillBlankAnswers(prev => ({ ...prev, [blank.id]: e.target.value }))}
                               placeholder="Tapez votre reponse..."
                               className="flex-1 min-w-[150px] px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all outline-none"
-                              style={{ borderColor: '#333', background: '#242424', color: '#e5e5e5' }}
+                              style={{ borderColor: '#333', background: '#242424', color: '#ffffff' }}
                             />
                           )}
                         </div>
@@ -1103,7 +1103,7 @@ export default function DailyQuizModal({
             {/* === ORDERING === */}
             {normalizedType === 'ordering' && (() => {
               const opts = parseOrderingOptions(q.options)
-              if (opts.length === 0) return <p className="text-gray-500">Format de question non supporte</p>
+              if (opts.length === 0) return <p className="text-white/55">Format de question non supporte</p>
 
               const moveItem = (from: number, to: number) => {
                 if (to < 0 || to >= orderingOrder.length) return
@@ -1137,14 +1137,14 @@ export default function DailyQuizModal({
                             <button
                               onClick={() => moveItem(index, index - 1)}
                               disabled={index === 0}
-                              className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                              className="p-1 hover:bg-[#2e2e2e] rounded disabled:opacity-30"
                             >
                               <ChevronUp size={16} style={{ color: '#a3a3a3' }} />
                             </button>
                             <button
                               onClick={() => moveItem(index, index + 1)}
                               disabled={index === orderingOrder.length - 1}
-                              className="p-1 hover:bg-gray-100 rounded disabled:opacity-30"
+                              className="p-1 hover:bg-[#2e2e2e] rounded disabled:opacity-30"
                             >
                               <ChevronDown size={16} style={{ color: '#a3a3a3' }} />
                             </button>
@@ -1168,7 +1168,7 @@ export default function DailyQuizModal({
             {q.question_type === 'matching' && (() => {
               const data = parseMatchingData(q.options, q.id)
               if (!data || data.leftItems.length === 0) {
-                return <p className="text-gray-500">Format de question non supporté</p>
+                return <p className="text-white/55">Format de question non supporte</p>
               }
               const rights = shuffledMatchingRights.length > 0 ? shuffledMatchingRights : data.rightOptions
               const matchByLeft = new Map(matchingMatches.map(m => [m.leftKey, m]))
@@ -1300,7 +1300,7 @@ export default function DailyQuizModal({
             {!['mcq', 'true_false', 'mcq_image', 'checkbox', 'highlight', 'fill_blank', 'ordering', 'matching', 'case_study'].includes(normalizedType) && (
               <div className="text-center py-8">
                 <AlertCircle size={48} className="text-amber-500 mx-auto mb-3" />
-                <p className="text-gray-600 mb-4">Type &quot;{qType}&quot; non supporte</p>
+                <p className="text-white/55 mb-4">Type &quot;{qType}&quot; non supporte</p>
                 <button
                   onClick={next}
                   className="px-6 py-3 rounded-xl text-white font-bold"
