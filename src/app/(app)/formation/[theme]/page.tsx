@@ -416,6 +416,7 @@ export default function ThemePage() {
                     key={f.id}
                     formation={f}
                     progress={formationProgress[f.id]}
+                    aspect="landscape"
                     onClick={() => openFormation(f)}
                   />
                 ))}

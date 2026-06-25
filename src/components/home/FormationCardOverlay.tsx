@@ -55,7 +55,7 @@ export default function FormationCardOverlay({
           {config.emoji}
         </div>
       }
-      topRight={
+      topLeft={
         <div
           style={{
             width: '32px',
@@ -85,7 +85,7 @@ export default function FormationCardOverlay({
           color: 'white',
           lineHeight: 1.3,
           display: '-webkit-box',
-          WebkitLineClamp: aspect === 'landscape' ? 2 : 3,
+          WebkitLineClamp: aspect === 'landscape' ? 4 : 3,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
           textShadow: '0 1px 3px rgba(0,0,0,0.5)',
