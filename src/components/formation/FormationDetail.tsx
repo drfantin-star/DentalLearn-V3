@@ -111,7 +111,7 @@ function SequenceCard({
     <button
       onClick={() => canClick && onStart()}
       disabled={!canClick}
-      className="w-full text-left mb-2 transition-all"
+      className="w-full text-left mb-2 transition-premium"
       style={{
         background: bgColor,
         border: `2px solid ${borderColor}`,
@@ -140,7 +140,7 @@ function SequenceCard({
         <div className="flex-1 min-w-0">
           <p
             className={`font-semibold text-[15px] leading-snug ${
-              isLocked || isNotUnlocked || isBlocLocked ? 'text-gray-400' : 'text-[#e5e5e5]'
+              isLocked || isNotUnlocked || isBlocLocked ? 'text-white/40' : 'text-white'
             }`}
           >
             {sequence.title}
@@ -174,7 +174,7 @@ function CompletionModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="rounded-3xl max-w-sm w-full p-6 text-center animate-in fade-in zoom-in duration-300" style={{ background: '#242424' }}>
+      <div className="glass-card rounded-3xl max-w-sm w-full p-6 text-center animate-in fade-in zoom-in duration-300">
         {/* Confettis / Trophy */}
         <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center"
           style={{ background: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})` }}>
@@ -182,17 +182,17 @@ function CompletionModal({
         </div>
 
         {/* Titre */}
-        <h2 className="text-xl font-extrabold text-[#e5e5e5] mb-1">
+        <h2 className="text-xl font-extrabold text-white mb-1">
           🎉 Formation terminée !
         </h2>
-        <p className="text-sm text-[#6b7280] mb-4">{formation.title}</p>
+        <p className="text-sm text-white/55 mb-4">{formation.title}</p>
 
         {/* Score */}
         <div className="rounded-2xl p-4 mb-4" style={{ background: '#2a2010' }}>
           <div className="flex items-center justify-center gap-2 mb-2">
             <Star size={20} className="text-amber-500 fill-amber-500" />
-            <span className="text-2xl font-extrabold text-[#e5e5e5]">{earnedPoints}</span>
-            <span className="text-[#6b7280] font-medium">/ {totalPoints} pts</span>
+            <span className="text-2xl font-extrabold text-white">{earnedPoints}</span>
+            <span className="text-white/55 font-medium">/ {totalPoints} pts</span>
           </div>
           <div className="w-full h-2 bg-amber-200 rounded-full overflow-hidden">
             <div
@@ -317,7 +317,7 @@ export default function FormationDetail({
   if (error || !formation) {
     return (
       <div className="p-4">
-        <button onClick={onBack} className="mb-4 text-gray-500 flex items-center gap-1">
+        <button onClick={onBack} className="mb-4 text-white/55 flex items-center gap-1">
           <ChevronLeft size={18} /> Retour
         </button>
         <p className="text-red-500">
@@ -386,10 +386,10 @@ export default function FormationDetail({
 
       {/* Statistiques de progression */}
       <div className="px-4 pt-4">
-        <div className="rounded-2xl p-4" style={{ background: '#242424', border: '0.5px solid #333' }}>
+        <div className="glass-card glow-accent rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-[#e5e5e5]">Ta progression</span>
-            <span className="text-sm text-[#a3a3a3]">{completedInFormation}/{sequences.length} séquences</span>
+            <span className="text-sm font-semibold text-white">Ta progression</span>
+            <span className="text-sm text-white/70">{completedInFormation}/{sequences.length} séquences</span>
           </div>
 
           {/* Barre de progression */}
@@ -410,8 +410,8 @@ export default function FormationDetail({
                 <Star size={20} className="text-amber-500" fill="#F59E0B" />
               </div>
               <div className="flex items-center gap-2">
-                <p className="text-sm text-[#a3a3a3]">Points gagnés</p>
-                <p className="text-sm font-bold text-[#e5e5e5]">{earnedPoints} <span className="text-sm text-[#a3a3a3] font-normal">/ {totalPoints}</span></p>
+                <p className="text-sm text-white/70">Points gagnés</p>
+                <p className="text-sm font-bold text-white">{earnedPoints} <span className="text-sm text-white/70 font-normal">/ {totalPoints}</span></p>
               </div>
             </div>
             
@@ -432,7 +432,7 @@ export default function FormationDetail({
 
       {/* Liste des séquences */}
       <div className="px-4 pt-5">
-        <h3 className="text-[15px] font-bold text-[#e5e5e5] mb-4">
+        <h3 className="text-[15px] font-bold text-white mb-4">
           Séquences ({sequences.length})
         </h3>
 
@@ -471,9 +471,9 @@ export default function FormationDetail({
                 <div key={`bloc-${blocNum}`} className="mb-4">
                   <div className="flex items-center justify-between mb-2 px-1">
                     <div className="flex items-baseline gap-2 min-w-0">
-                      <span className="text-[13px] font-bold text-[#e5e5e5] shrink-0">Bloc {blocNum}</span>
+                      <span className="text-[13px] font-bold text-white shrink-0">Bloc {blocNum}</span>
                       {b && b.total_questions > 0 && (
-                        <span className="text-[11px] text-[#a3a3a3] truncate">
+                        <span className="text-[11px] text-white/70 truncate">
                           {b.acquired_questions}/{b.total_questions} questions acquises
                         </span>
                       )}
@@ -522,7 +522,7 @@ export default function FormationDetail({
         )}
 
         {sequences.length === 0 && (
-          <p className="text-gray-400 text-sm text-center py-8">
+          <p className="text-white/40 text-sm text-center py-8">
             Aucune séquence disponible
           </p>
         )}
