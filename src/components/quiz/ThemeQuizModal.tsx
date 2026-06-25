@@ -344,14 +344,15 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
                         className="w-full p-3.5 rounded-2xl text-left transition-premium flex items-center gap-3"
                         style={{
                           background: isSelected ? `${tc.light}22` : 'rgba(255,255,255,0.07)',
-                          border: `2px solid ${isSelected ? tc.light : 'rgba(255,255,255,0.14)'}`,
+                          border: `2px solid ${isSelected ? tc.light : `${tc.light}33`}`,
+                          boxShadow: isSelected ? `0 0 26px -6px ${tc.light}` : `0 0 18px -9px ${tc.light}`,
                         }}
                       >
                         <span
                           className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0"
                           style={{
-                            background: isSelected ? tc.light : 'rgba(255,255,255,0.1)',
-                            color: isSelected ? tc.dark : 'white',
+                            background: isSelected ? tc.light : `${tc.light}22`,
+                            color: isSelected ? tc.dark : tc.light,
                           }}
                         >
                           {String.fromCharCode(65 + i)}
@@ -442,7 +443,8 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
                           className="w-full p-3.5 rounded-2xl text-left transition-premium flex items-center gap-3"
                           style={{
                             background: isSelected ? `${tc.light}22` : 'rgba(255,255,255,0.07)',
-                            border: `2px solid ${isSelected ? tc.light : 'rgba(255,255,255,0.14)'}`,
+                            border: `2px solid ${isSelected ? tc.light : `${tc.light}33`}`,
+                            boxShadow: isSelected ? `0 0 26px -6px ${tc.light}` : `0 0 18px -9px ${tc.light}`,
                           }}
                         >
                           <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
