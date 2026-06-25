@@ -79,7 +79,7 @@ export default function DailyQuizButton({
       return (
         <HomeHeroCard
           surface="gradient"
-          gradient="linear-gradient(160deg, #10B981, #14B8A6)"
+          gradient="#10B981"
           backgroundImage={QUIZ_COVER}
           icon={<CheckCircle size={30} />}
           eyebrow="Quiz du jour"
@@ -113,7 +113,7 @@ export default function DailyQuizButton({
     return (
       <HomeHeroCard
         surface="gradient"
-        gradient="linear-gradient(160deg, #5B21B6, #8B5CF6)"
+        gradient="#5B21B6"
         backgroundImage={QUIZ_COVER}
         icon={<Target size={30} />}
         eyebrow="Quiz du jour"

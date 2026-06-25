@@ -529,7 +529,7 @@ export default function HomePage() {
           const headerCard = (
             <div
               key={`header-${row.key}`}
-              className="flex-shrink-0 snap-start rounded-2xl overflow-hidden relative flex flex-col justify-end"
+              className="flex-shrink-0 snap-start rounded-2xl overflow-hidden relative"
               style={{ ...mediaCardSizeStyle('landscape'), background: headerGradient }}
             >
               {headerImageUrl && (
@@ -542,22 +542,8 @@ export default function HomePage() {
                     loading="lazy"
                     style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
                   />
-                  <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 60%)' }} />
                 </>
               )}
-              <p
-                style={{
-                  position: 'relative',
-                  zIndex: 1,
-                  color: 'white',
-                  fontWeight: 800,
-                  fontSize: '15px',
-                  lineHeight: 1.2,
-                  padding: '0 10px 10px',
-                }}
-              >
-                {row.label}
-              </p>
             </div>
           )
 

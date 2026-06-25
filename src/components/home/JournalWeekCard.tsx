@@ -16,7 +16,7 @@ function getWeekNumber(week_iso: string): string {
   return week_iso.split('-W')[1] ?? ''
 }
 
-const JOURNAL_GRADIENT = 'linear-gradient(160deg, #0F766E, #0D9488)'
+const JOURNAL_GRADIENT = '#0F766E'
 const JOURNAL_COVER = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ui-assets/home-card-journal-hebdo.webp`
 
 export function JournalWeekCard({ journal }: Props) {

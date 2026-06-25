@@ -117,7 +117,7 @@ export function HomeHeroCard({
           </button>
         </div>
 
-        {/* Droite : image entiere, non crognee */}
+        {/* Droite : vignette arrondie */}
         <div
           style={{
             flex: '0 0 42%',
@@ -127,19 +127,24 @@ export function HomeHeroCard({
             padding: '8px 8px 8px 0',
           }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={backgroundImage}
-            alt=""
-            aria-hidden
-            loading="lazy"
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'contain',
-              objectPosition: 'center',
-            }}
-          />
+          <div
+            className="rounded-2xl overflow-hidden bg-white/10 flex items-center justify-center"
+            style={{ width: '100%', height: '100%' }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={backgroundImage}
+              alt=""
+              aria-hidden
+              loading="lazy"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                objectPosition: 'center',
+              }}
+            />
+          </div>
         </div>
       </div>
     )
