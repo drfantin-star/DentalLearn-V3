@@ -188,7 +188,7 @@ export default function ProfilPage() {
               </button>
               <div ref={demarchesScrollRef}
                 className="flex gap-3 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4">
-                {demarches.map(d => <DemarcheCard key={d.id} demarche={d} />)}
+                {demarches.map(d => <DemarcheCard key={d.id} demarche={d} size="large" />)}
               </div>
               <button onClick={scrollRight}
                 className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full glass-card shadow-md items-center justify-center text-white/70 hover:text-white transition-premium">

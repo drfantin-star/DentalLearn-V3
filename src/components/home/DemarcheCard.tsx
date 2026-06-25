@@ -3,12 +3,14 @@ import Link from 'next/link'
 import type { DemarcheEnCours } from '@/lib/hooks/useDemarches'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 import { mediaCardSizeStyle } from '@/components/home/MediaCard'
+import type { MediaCardSize } from '@/components/home/MediaCard'
 
 interface DemarcheCardProps {
   demarche: DemarcheEnCours
+  size?: MediaCardSize
 }
 
-export default function DemarcheCard({ demarche }: DemarcheCardProps) {
+export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCardProps) {
   // --- Formation cards: landscape ---
   if (demarche.type === 'formation') {
     const formation = {
@@ -29,6 +31,7 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
         formation={formation}
         progress={progress}
         aspect="landscape"
+        size={size}
         onClick={() => { window.location.href = demarche.ctaUrl }}
       />
     )
@@ -51,7 +54,7 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
       href={demarche.ctaUrl}
       className="flex-shrink-0 snap-start rounded-2xl overflow-hidden block"
       style={{
-        ...mediaCardSizeStyle('landscape'),
+        ...mediaCardSizeStyle('landscape', size),
         position: 'relative',
         border: '0.5px solid #333',
         textDecoration: 'none',

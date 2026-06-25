@@ -4,7 +4,7 @@ import React from 'react'
 import { getCategoryConfig } from '@/lib/supabase/types'
 import type { Formation } from '@/lib/supabase/types'
 import MediaCard from './MediaCard'
-import type { MediaCardAspect } from './MediaCard'
+import type { MediaCardAspect, MediaCardSize } from './MediaCard'
 
 interface FormationCardOverlayProps {
   formation: Formation
@@ -12,6 +12,7 @@ interface FormationCardOverlayProps {
   onClick: () => void
   accentGradient?: string
   aspect?: MediaCardAspect
+  size?: MediaCardSize
 }
 
 export default function FormationCardOverlay({
@@ -20,6 +21,7 @@ export default function FormationCardOverlay({
   onClick,
   accentGradient,
   aspect = 'portrait',
+  size = 'default',
 }: FormationCardOverlayProps) {
   const config = getCategoryConfig(formation.category)
   const coverBg = `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
@@ -36,6 +38,7 @@ export default function FormationCardOverlay({
     <MediaCard
       onClick={onClick}
       aspect={aspect}
+      size={size}
       cover={formation.cover_image_url}
       coverAlt={formation.title}
       coverFit="contain"

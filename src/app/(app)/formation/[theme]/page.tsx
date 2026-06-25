@@ -417,6 +417,7 @@ export default function ThemePage() {
                     formation={f}
                     progress={formationProgress[f.id]}
                     aspect="landscape"
+                    size="large"
                     onClick={() => openFormation(f)}
                   />
                 ))}
@@ -475,6 +476,7 @@ export default function ThemePage() {
                     ctaLabel,
                     category: themeSlug,
                   }}
+                  size="large"
                 />
               )
             })()
