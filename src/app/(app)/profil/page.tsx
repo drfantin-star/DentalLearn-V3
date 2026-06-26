@@ -4,17 +4,13 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import {
-  ChevronLeft, ChevronRight, BookOpen,
-  Loader2, Settings, Briefcase, Building2,
-  Shield, Presentation,
+  ChevronLeft, ChevronRight, Loader2, Briefcase, Building2,
+  Shield, Presentation, Camera, Save, Lock, Eye, EyeOff,
+  Bell, Mail, Calendar, CheckCircle, AlertCircle, Trash2,
 } from 'lucide-react'
-import StatsCards from '@/components/home/StatsCards'
-import DemarcheCard from '@/components/home/DemarcheCard'
 import InterestsSection from '@/components/interests/InterestsSection'
-import RadarCP from '@/components/profile/RadarCP'
 import CreateCabinetModal from '@/components/auth/CreateCabinetModal'
-import { useDemarches } from '@/lib/hooks/useDemarches'
-import { useUser } from '@/lib/hooks/useUser'
+import { PushNotificationToggle } from '@/components/PushNotificationToggle'
 import Link from 'next/link'
 import type { IntraRole } from '@/lib/auth/rbac'
 
@@ -27,43 +23,80 @@ const TENANT_ADMIN_ROLES: ReadonlySet<IntraRole> = new Set<IntraRole>([
 export default function ProfilPage() {
   const router = useRouter()
   const supabase = createClient()
-  const { user, streak } = useUser()
-  const { demarches, loading: demarchesLoading } = useDemarches(user?.id)
-  const [refreshTrigger] = useState(0)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const [loading, setLoading] = useState(true)
-  const [actionsParAxe, setActionsParAxe] = useState({ axe1: 0, axe2: 0, axe3: 0, axe4: 0 })
-  const [ordreDate, setOrdreDate] = useState<string | null>(null)
+  const [user, setUser] = useState<any>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Infos perso
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [email, setEmail] = useState('')
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  // Ordre
+  const [ordreDate, setOrdreDate] = useState<string>('')
+  const [savingOrdre, setSavingOrdre] = useState(false)
+
+  // Mot de passe
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [passwordSaving, setPasswordSaving] = useState(false)
+
+  // Notifications
+  const [liveSessionReminders, setLiveSessionReminders] = useState(true)
+  const [formateurPublications, setFormateurPublications] = useState(true)
+  const [savingPrefs, setSavingPrefs] = useState(false)
+
+  // Suppression compte
+  const [deletionRequestedAt, setDeletionRequestedAt] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deletionLoading, setDeletionLoading] = useState(false)
+
+  // Roles / espaces
   const [intraRole, setIntraRole] = useState<IntraRole | null>(null)
   const [orgless, setOrgless] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [isFormateur, setIsFormateur] = useState(false)
   const [showCabinetModal, setShowCabinetModal] = useState(false)
 
-  const demarchesScrollRef = useRef<HTMLDivElement>(null)
-  const scrollLeft = () => demarchesScrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
-  const scrollRight = () => demarchesScrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })
-
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/login'); return }
+      setUser(session.user)
+      setEmail(session.user.email || '')
 
       const { data } = await supabase
         .from('user_profiles')
-        .select('ordre_inscription_date')
+        .select('first_name, last_name, profile_photo_url, ordre_inscription_date, deletion_requested_at')
         .eq('id', session.user.id)
         .single()
 
-      if (data) setOrdreDate(data.ordre_inscription_date)
+      if (data) {
+        setFirstName(data.first_name || '')
+        setLastName(data.last_name || '')
+        setPhotoUrl(data.profile_photo_url)
+        setOrdreDate(data.ordre_inscription_date || '')
+        setDeletionRequestedAt(data.deletion_requested_at)
+      }
 
-      const { data: cp } = await supabase
-        .rpc('get_user_cp_progress', { p_user_id: session.user.id })
-      if (cp) setActionsParAxe({
-        axe1: cp.axe1 || 0, axe2: cp.axe2 || 0,
-        axe3: cp.axe3 || 0, axe4: cp.axe4 || 0
-      })
+      const { data: prefs } = await supabase
+        .from('user_notification_preferences')
+        .select('live_session_reminders, formateur_publications')
+        .eq('user_id', session.user.id)
+        .maybeSingle()
 
-      // Lecture intra_role + flags roles globaux via API serveur (cache RBAC).
+      if (prefs) {
+        if (prefs.live_session_reminders != null) setLiveSessionReminders(prefs.live_session_reminders)
+        if (prefs.formateur_publications != null) setFormateurPublications(prefs.formateur_publications)
+      }
+
       try {
         const res = await fetch('/api/user/intra-role')
         if (res.ok) {
@@ -74,7 +107,7 @@ export default function ProfilPage() {
           setIsFormateur(Boolean(json.is_formateur))
         }
       } catch {
-        // Fail silencieux : cartes simplement masquees si on ne sait pas.
+        // Fail silencieux : cartes masquees si indisponible
       }
 
       setLoading(false)
@@ -82,16 +115,140 @@ export default function ProfilPage() {
     load()
   }, [])
 
-  const showTenantLink = intraRole && TENANT_ADMIN_ROLES.has(intraRole)
-  const showUpgradeCard = !loading && orgless && !intraRole
-  const showEspacesSection = isSuperAdmin || isFormateur || showTenantLink
+  const showMessage = (type: 'success' | 'error', text: string) => {
+    setMessage({ type, text })
+    setTimeout(() => setMessage(null), 3000)
+  }
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+    if (!file.type.startsWith('image/')) { showMessage('error', 'Image uniquement'); return }
+    if (file.size > 2 * 1024 * 1024) { showMessage('error', 'Max 2 MB'); return }
+    setUploadingPhoto(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`
+      const { error: upErr } = await supabase.storage
+        .from('profile-photos').upload(filePath, file, { cacheControl: '3600', upsert: false })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from('profile-photos').getPublicUrl(filePath)
+      await supabase.from('user_profiles')
+        .update({ profile_photo_url: publicUrl, updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+      setPhotoUrl(publicUrl)
+      showMessage('success', 'Photo mise a jour !')
+    } catch (err: any) {
+      showMessage('error', err.message || 'Erreur upload')
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
+  const handleSaveProfil = async () => {
+    if (!user) return
+    setSaving(true)
+    try {
+      const { error } = await supabase.from('user_profiles').upsert({
+        id: user.id,
+        first_name: firstName || null,
+        last_name: lastName || null,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' })
+      if (error) throw error
+      showMessage('success', 'Profil mis a jour !')
+    } catch {
+      showMessage('error', 'Erreur lors de la sauvegarde')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSaveOrdre = async () => {
+    if (!user) return
+    setSavingOrdre(true)
+    try {
+      const { error } = await supabase.from('user_profiles')
+        .update({ ordre_inscription_date: ordreDate || null, updated_at: new Date().toISOString() })
+        .eq('id', user.id)
+      if (error) throw error
+      showMessage('success', 'Date mise a jour !')
+    } catch {
+      showMessage('error', 'Erreur lors de la mise a jour')
+    } finally {
+      setSavingOrdre(false)
+    }
+  }
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) { showMessage('error', 'Mots de passe differents'); return }
+    if (newPassword.length < 8) { showMessage('error', 'Minimum 8 caracteres'); return }
+    setPasswordSaving(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      showMessage('success', 'Mot de passe modifie !')
+      setShowPasswordForm(false)
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err: any) {
+      showMessage('error', err.message || 'Erreur')
+    } finally {
+      setPasswordSaving(false)
+    }
+  }
+
+  const handleTogglePref = async (
+    key: 'live_session_reminders' | 'formateur_publications',
+    value: boolean,
+  ) => {
+    if (!user) return
+    if (key === 'live_session_reminders') setLiveSessionReminders(value)
+    else setFormateurPublications(value)
+    setSavingPrefs(true)
+    try {
+      await supabase
+        .from('user_notification_preferences')
+        .upsert({ user_id: user.id, [key]: value }, { onConflict: 'user_id' })
+    } finally {
+      setSavingPrefs(false)
+    }
+  }
+
+  const handleRequestDeletion = async () => {
+    setDeletionLoading(true)
+    try {
+      const res = await fetch('/api/user/delete', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setDeletionRequestedAt(data.deletion_date)
+      setShowDeleteConfirm(false)
+      showMessage('success', 'Demande de suppression enregistree')
+    } catch (err: any) {
+      showMessage('error', err.message || 'Erreur')
+    } finally {
+      setDeletionLoading(false)
+    }
+  }
+
+  const handleCancelDeletion = async () => {
+    setDeletionLoading(true)
+    try {
+      const res = await fetch('/api/user/delete', { method: 'DELETE' })
+      if (!res.ok) throw new Error()
+      setDeletionRequestedAt(null)
+      showMessage('success', 'Suppression annulee')
+    } catch {
+      showMessage('error', "Erreur lors de l'annulation")
+    } finally {
+      setDeletionLoading(false)
+    }
+  }
 
   const handleCabinetCreated = async () => {
     setShowCabinetModal(false)
-    // Refresh session pour propager intra_role + cache RBAC cote serveur
     await supabase.auth.refreshSession()
     router.refresh()
-    // Re-fetch local pour mise a jour immediate sans attendre un rerender SSR
     try {
       const res = await fetch('/api/user/intra-role')
       if (res.ok) {
@@ -102,9 +259,21 @@ export default function ProfilPage() {
         setIsFormateur(Boolean(json.is_formateur))
       }
     } catch {
-      // Idem : fail silencieux
+      // Fail silencieux
     }
   }
+
+  const getInitials = () => {
+    if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase()
+    return email[0]?.toUpperCase() || 'U'
+  }
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+
+  const showTenantLink = intraRole && TENANT_ADMIN_ROLES.has(intraRole)
+  const showUpgradeCard = !loading && orgless && !intraRole
+  const showEspacesSection = isSuperAdmin || isFormateur || showTenantLink
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-24">
@@ -114,79 +283,254 @@ export default function ProfilPage() {
 
   return (
     <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
+      <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
 
       {/* Header */}
       <header className="bg-gradient-to-br from-primary to-accent px-5 py-4">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-white/80">Mon espace personnel</p>
-          <div className="flex items-center gap-2">
-            {/*
-              D2-T3.5-01 — les liens header "Administration" et "Espace formateur"
-              ont ete retires (doublon avec la section "Mes espaces" du body).
-              Le lien "Mon cabinet" les rejoint : il est desormais une carte de
-              la section "Mes espaces" (unification header -> body).
-            */}
-            <Link
-              href="/profil/edit"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/15 hover:bg-white/25 rounded-xl transition-premium"
-            >
-              <Settings className="w-4 h-4 text-white" />
-              <span className="text-xs font-semibold text-white">Editer mon profil</span>
-            </Link>
-          </div>
-        </div>
+        <p className="text-sm font-semibold text-white/80">Mon espace personnel</p>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      {/* Message feedback */}
+      {message && (
+        <div className="max-w-2xl mx-auto px-4 pt-4">
+          <div className={`p-3 rounded-xl flex items-center gap-3 ${
+            message.type === 'success'
+              ? 'bg-green-50 border border-green-200 text-green-800'
+              : 'bg-red-50 border border-red-200 text-red-800'
+          }`}>
+            {message.type === 'success'
+              ? <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+              : <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />}
+            <p className="text-sm">{message.text}</p>
+          </div>
+        </div>
+      )}
 
-        {/* Stats */}
-        <StatsCards
-          userId={user?.id}
-          currentStreak={streak?.current_streak || 0}
-          refreshTrigger={refreshTrigger}
-        />
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
 
-        {/* Centres d'interet — carte + modal d'edition */}
-        <InterestsSection />
-
-
-        {/* Mes demarches en cours */}
-        <section>
-          <h2 className="text-base font-bold text-white flex items-center gap-2 mb-3">
-            <BookOpen size={18} className="text-[#8B5CF6]" />
-            Mes demarches en cours
-          </h2>
-          {demarchesLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="animate-spin text-white/40" size={24} />
+        {/* Bandeau suppression planifiee */}
+        {deletionRequestedAt && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+            <Trash2 className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-red-800">
+                Suppression planifiee le {formatDate(deletionRequestedAt)}
+              </p>
+              <p className="text-xs text-red-600 mt-0.5">
+                Toutes vos donnees seront supprimees definitivement.
+              </p>
+              <button
+                onClick={handleCancelDeletion}
+                disabled={deletionLoading}
+                className="mt-2 text-xs font-semibold text-red-700 underline"
+              >
+                {deletionLoading ? 'Annulation...' : 'Annuler la suppression'}
+              </button>
             </div>
-          ) : demarches.length > 0 ? (
+          </div>
+        )}
+
+        {/* Informations personnelles */}
+        <div className="glass-card rounded-2xl p-5 space-y-4">
+          <h3 className="font-semibold text-white">Informations personnelles</h3>
+
+          {/* Photo */}
+          <div className="flex items-center gap-4">
             <div className="relative">
-              <button onClick={scrollLeft}
-                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full glass-card shadow-md items-center justify-center text-white/70 hover:text-white transition-premium">
-                <ChevronLeft size={20} />
-              </button>
-              <div ref={demarchesScrollRef}
-                className="flex gap-3 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4">
-                {demarches.map(d => <DemarcheCard key={d.id} demarche={d} size="large" />)}
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                {photoUrl ? (
+                  <img src={photoUrl} alt="Photo" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-white font-bold text-lg">{getInitials()}</span>
+                )}
               </div>
-              <button onClick={scrollRight}
-                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full glass-card shadow-md items-center justify-center text-white/70 hover:text-white transition-premium">
-                <ChevronRight size={20} />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow border"
+              >
+                {uploadingPhoto
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                  : <Camera className="w-3.5 h-3.5 text-[#6b7280]" />}
               </button>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white">Photo de profil</p>
+              <p className="text-xs text-white/55">JPG, PNG — max 2 MB</p>
+            </div>
+          </div>
+
+          {/* Prenom + Nom */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-white/55 mb-1">Prenom</label>
+              <input
+                type="text" value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
+                placeholder="Prenom"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-white/55 mb-1">Nom</label>
+              <input
+                type="text" value={lastName}
+                onChange={e => setLastName(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
+                placeholder="Nom"
+              />
+            </div>
+          </div>
+
+          {/* Email lecture seule */}
+          <div>
+            <label className="block text-xs font-medium text-white/55 mb-1">Email</label>
+            <div className="flex items-center gap-2 px-3 py-2" style={{ background: '#1a1a1a', border: '0.5px solid #333', borderRadius: '12px' }}>
+              <Mail className="w-4 h-4 text-white/40" />
+              <span className="text-sm text-white/55">{email}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={handleSaveProfil}
+            disabled={saving}
+            className="w-full py-2.5 bg-primary text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Enregistrer
+          </button>
+        </div>
+
+        {/* Inscription a l'Ordre */}
+        <div className="glass-card rounded-2xl p-5 space-y-3">
+          <h3 className="font-semibold text-white">Inscription a l'Ordre</h3>
+          <div>
+            <label className="block text-xs font-medium text-white/55 mb-1">Date d'inscription</label>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-white/40 shrink-0" />
+              <input
+                type="date" value={ordreDate}
+                onChange={e => setOrdreDate(e.target.value)}
+                className="flex-1 px-3 py-2 rounded-xl text-sm"
+                style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
+              />
+            </div>
+            <p className="text-xs text-white/55 mt-1.5">
+              Determine votre periode de certification periodique.
+            </p>
+          </div>
+          <button
+            onClick={handleSaveOrdre}
+            disabled={savingOrdre}
+            className="w-full py-2.5 bg-primary text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {savingOrdre ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Enregistrer
+          </button>
+        </div>
+
+        {/* Notifications */}
+        <div className="glass-card rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-blue-50 rounded-xl">
+              <Bell className="w-4 h-4 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-white">Notifications</h3>
+              <p className="text-xs text-white/55">Rappels et resultats</p>
+            </div>
+          </div>
+          <PushNotificationToggle />
+
+          <div className="mt-4 space-y-3 pt-4" style={{ borderTop: '0.5px solid #333' }}>
+            <p className="text-xs font-medium text-white/55">Preferences de contenu</p>
+            <button
+              onClick={() => { void handleTogglePref('live_session_reminders', !liveSessionReminders) }}
+              disabled={savingPrefs}
+              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                liveSessionReminders
+                  ? 'bg-accent/10 text-accent border border-accent/20'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Bell className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Rappels sessions live</span>
+            </button>
+            <button
+              onClick={() => { void handleTogglePref('formateur_publications', !formateurPublications) }}
+              disabled={savingPrefs}
+              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                formateurPublications
+                  ? 'bg-accent/10 text-accent border border-accent/20'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Bell className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Nouvelles publications formateurs</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Securite */}
+        <div className="glass-card rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-gray-100 rounded-xl">
+              <Lock className="w-4 h-4 text-[#6b7280]" />
+            </div>
+            <h3 className="font-semibold text-white">Securite</h3>
+          </div>
+
+          {showPasswordForm ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-white/55 mb-1">Nouveau mot de passe</label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-sm pr-10"
+                    style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
+                    placeholder="Minimum 8 caracteres"
+                  />
+                  <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40">
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-white/55 mb-1">Confirmer</label>
+                <input type="password" value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-sm"
+                  style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }} />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleChangePassword} disabled={passwordSaving || !newPassword || !confirmPassword}
+                  className="flex-1 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
+                  {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Changer
+                </button>
+                <button onClick={() => { setShowPasswordForm(false); setNewPassword(''); setConfirmPassword('') }}
+                  className="px-4 py-2.5 text-sm text-white/55 hover:bg-gray-100 hover:text-gray-900 rounded-xl transition-premium">
+                  Annuler
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="glass-card p-5 text-center rounded-2xl">
-              <p className="text-white/55 text-sm">Aucune demarche en cours</p>
-            </div>
+            <button onClick={() => setShowPasswordForm(true)}
+              className="flex items-center justify-between w-full py-2 text-left hover:bg-gray-50 hover:text-gray-900 rounded-xl px-2 -mx-2 transition-premium">
+              <span className="text-sm text-white/70">Changer mon mot de passe</span>
+              <ChevronLeft className="w-4 h-4 text-white/40 rotate-180" />
+            </button>
           )}
-        </section>
+        </div>
 
-        {/* Certification Periodique */}
-        <RadarCP
-          ordreInscriptionDate={ordreDate}
-          actionsParAxe={actionsParAxe}
-        />
+        {/* Centres d'interet */}
+        <InterestsSection />
 
         {/* Carte upgrade solo -> cabinet (uniquement si orgless) */}
         {showUpgradeCard && (
@@ -200,86 +544,57 @@ export default function ProfilPage() {
                 <Building2 className="w-5 h-5 text-[#8B5CF6]" />
               </div>
               <div className="flex-1">
-                <div className="font-semibold text-white text-sm">
-                  Creer mon cabinet
-                </div>
-                <div className="text-xs text-white/55">
-                  Devenez titulaire et invitez vos collaborateurs.
-                </div>
+                <div className="font-semibold text-white text-sm">Creer mon cabinet</div>
+                <div className="text-xs text-white/55">Devenez titulaire et invitez vos collaborateurs.</div>
               </div>
               <ChevronRight className="w-5 h-5 text-white/40" />
             </div>
           </button>
         )}
 
-        {/* Mes espaces — visible si super_admin et/ou formateur (cumul OK) */}
+        {/* Mes espaces — visible si super_admin et/ou formateur */}
         {showEspacesSection && (
           <section>
-            <h2 className="text-base font-bold text-white mb-1">
-              Mes espaces
-            </h2>
-            <p className="text-xs text-white/55 mb-3">
-              Accedez a vos espaces dedies selon vos roles.
-            </p>
+            <h2 className="text-base font-bold text-white mb-1">Mes espaces</h2>
+            <p className="text-xs text-white/55 mb-3">Accedez a vos espaces dedies selon vos roles.</p>
             <div className="space-y-3">
               {isSuperAdmin && (
-                <Link
-                  href="/admin"
-                  className="glass-card transition-premium block p-4 hover:border-amber-500/40 rounded-2xl"
-                >
+                <Link href="/admin" className="glass-card transition-premium block p-4 hover:border-amber-500/40 rounded-2xl">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
                       <Shield className="w-5 h-5 text-amber-400" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-white text-sm">
-                        Administration
-                      </div>
-                      <div className="text-xs text-white/55">
-                        Gestion de la plateforme, formateurs, organisations.
-                      </div>
+                      <div className="font-semibold text-white text-sm">Administration</div>
+                      <div className="text-xs text-white/55">Gestion de la plateforme, formateurs, organisations.</div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-white/40" />
                   </div>
                 </Link>
               )}
               {isFormateur && (
-                <Link
-                  href="/formateur/dashboard"
-                  className="glass-card transition-premium block p-4 hover:border-white/20 rounded-2xl"
-                >
+                <Link href="/formateur/dashboard" className="glass-card transition-premium block p-4 hover:border-white/20 rounded-2xl">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
                       <Presentation className="w-5 h-5 text-[#8B5CF6]" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-white text-sm">
-                        Espace Formateur
-                      </div>
-                      <div className="text-xs text-white/55">
-                        Suivez vos formations animees, masterclass et profil public.
-                      </div>
+                      <div className="font-semibold text-white text-sm">Espace Formateur</div>
+                      <div className="text-xs text-white/55">Suivez vos formations animees, masterclass et profil public.</div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-white/40" />
                   </div>
                 </Link>
               )}
               {showTenantLink && (
-                <Link
-                  href="/tenant/admin"
-                  className="glass-card transition-premium block p-4 hover:border-white/20 rounded-2xl"
-                >
+                <Link href="/tenant/admin" className="glass-card transition-premium block p-4 hover:border-white/20 rounded-2xl">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
                       <Briefcase className="w-5 h-5 text-[#8B5CF6]" />
                     </div>
                     <div className="flex-1">
-                      <div className="font-semibold text-white text-sm">
-                        Mon cabinet
-                      </div>
-                      <div className="text-xs text-white/55">
-                        Gerez votre cabinet, vos collaborateurs et leurs acces.
-                      </div>
+                      <div className="font-semibold text-white text-sm">Mon cabinet</div>
+                      <div className="text-xs text-white/55">Gerez votre cabinet, vos collaborateurs et leurs acces.</div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-white/40" />
                   </div>
@@ -288,6 +603,48 @@ export default function ProfilPage() {
             </div>
           </section>
         )}
+
+        {/* Zone dangereuse */}
+        <div className="glass-card rounded-2xl p-5" style={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+          <h3 className="font-semibold text-red-500 mb-1">Zone dangereuse</h3>
+          <p className="text-xs text-white/55 mb-4">
+            La suppression est irreversible apres 30 jours. Toutes vos donnees seront effacees.
+          </p>
+
+          {!deletionRequestedAt && !showDeleteConfirm && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 text-sm text-red-500 font-medium hover:text-red-400 transition-premium"
+            >
+              <Trash2 className="w-4 h-4" />
+              Supprimer mon compte
+            </button>
+          )}
+
+          {showDeleteConfirm && !deletionRequestedAt && (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-red-400">
+                Etes-vous sur ? Cette action planifie la suppression dans 30 jours.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRequestDeletion}
+                  disabled={deletionLoading}
+                  className="flex-1 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {deletionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  Confirmer la suppression
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="px-4 py-2.5 text-sm text-white/55 hover:bg-gray-100 hover:text-gray-900 rounded-xl transition-premium"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
 
       </div>
 

@@ -362,7 +362,7 @@ export function GenerateAttestationButton({
           </div>
         </div>
         <button
-          onClick={() => router.push('/profil/edit')}
+          onClick={() => router.push('/profil')}
           className="w-full bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
         >
           Compléter mon profil

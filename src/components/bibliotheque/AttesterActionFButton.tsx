@@ -365,7 +365,7 @@ export function AttesterActionFButton() {
                   <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
                   <span>
                     Votre numéro RPPS est requis pour générer cette attestation.{' '}
-                    <a href="/profil/edit" className="underline">
+                    <a href="/profil" className="underline">
                       Compléter mon profil
                     </a>
                   </span>
