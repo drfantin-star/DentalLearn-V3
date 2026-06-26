@@ -266,6 +266,7 @@ export default function HomePage() {
     showSeeAll: boolean,
     headerCard?: React.ReactNode,
     hideCover?: boolean,
+    hideBadge?: boolean,
   ) => (
     <section key={title}>
       <div className="flex items-center mb-4">
@@ -282,6 +283,7 @@ export default function HomePage() {
             variant="carousel"
             onClick={(n) => setModalNewsId(n.id)}
             hideCover={hideCover}
+            hideBadge={hideBadge}
           />
         ))}
         {showSeeAll && (
@@ -517,7 +519,7 @@ export default function HomePage() {
         )}
 
         {/* Actualites — eclatees par theme (Session 1bis) */}
-        {recentNews.length > 0 && renderNewsRow('Les dernieres actus', recentNews, true)}
+        {recentNews.length > 0 && renderNewsRow('Les dernieres actus', recentNews, true, undefined, undefined, true)}
         {themeRows.map((row) => {
           const themeMap = INTEREST_TO_NEWS_THEME[row.key]
           const specialiteSlug = themeMap?.field === 'specialite' ? themeMap.value : null

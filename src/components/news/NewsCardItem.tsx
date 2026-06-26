@@ -18,11 +18,15 @@ interface Props {
    * /news et la rangee "Dernieres actus" ne le passent PAS -> comportement inchange.
    */
   hideCover?: boolean
+  /** Quand true : masque la pastille de categorie dans tous les variants. */
+  hideBadge?: boolean
 }
 
 const CATEGORY_VARIANT: Record<string, BadgeVariant> = {
-  scientifique: 'news-scientifique',
-  pratique: 'news-pratique',
+  scientifique:   'news-scientifique',
+  pratique:       'news-pratique',
+  reglementaire:  'news-reglementaire',
+  humour:         'news-humour',
 }
 
 function categoryVariant(category: string | null): BadgeVariant {
@@ -37,7 +41,7 @@ function dateLabel(publishedAt: string | null): string | null {
   return describeCardDate(publishedAt, '').label
 }
 
-export default function NewsCardItem({ news, onClick, variant, hideCover = false }: Props) {
+export default function NewsCardItem({ news, onClick, variant, hideCover = false, hideBadge = false }: Props) {
   const category = news.category_editorial
   const date = dateLabel(news.published_at)
 
@@ -81,7 +85,7 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
             {news.display_title}
           </h3>
           <div className="flex items-center gap-2 flex-wrap">
-            {category ? (
+            {!hideBadge && category ? (
               <Badge variant={categoryVariant(category)} size="md">
                 {category}
               </Badge>
@@ -115,7 +119,7 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
           />
         }
         topLeft={
-          category ? (
+          !hideBadge && category ? (
             <Badge variant={categoryVariant(category)} size="md">
               {category}
             </Badge>
@@ -185,7 +189,7 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
         )
       }
       topLeft={
-        category ? (
+        !hideBadge && category ? (
           <Badge variant={categoryVariant(category)} size="md">
             {category}
           </Badge>
