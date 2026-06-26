@@ -21,9 +21,7 @@ const BASE_TABS: NavTab[] = [
   { href: '/', icon: Home, label: 'Accueil' },
   // « Shorts » = ex-onglet « Actus » : label seul renommé, route /news inchangée.
   { href: '/news', icon: Newspaper, label: 'Shorts' },
-  // « Ma Certif » = ex-onglet « Profil » : route TEMPORAIRE /profil en attendant
-  // la page dédiée /ma-certif (point suivant). Label seul renommé.
-  { href: '/profil', icon: UserCircle, label: 'Ma Certif' },
+  { href: '/ma-certif', icon: UserCircle, label: 'Ma Certif' },
   { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
 ]
 
