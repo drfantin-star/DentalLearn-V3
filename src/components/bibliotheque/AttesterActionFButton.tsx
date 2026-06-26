@@ -249,7 +249,7 @@ export function AttesterActionFButton() {
             Attestation générée : code{' '}
             <span className="font-mono font-semibold">{successCode}</span>. Le PDF a
             été téléchargé et figure désormais dans{' '}
-            <a href="/profil/attestations" className="underline">
+            <a href="/ma-certif/attestations" className="underline">
               Mes attestations
             </a>
             .

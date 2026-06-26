@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, BookOpen,
-  Loader2, Settings, Award, Briefcase, Building2,
+  Loader2, Settings, Briefcase, Building2,
   Shield, Presentation,
 } from 'lucide-react'
 import StatsCards from '@/components/home/StatsCards'
@@ -149,26 +149,6 @@ export default function ProfilPage() {
         {/* Centres d'interet — carte + modal d'edition */}
         <InterestsSection />
 
-        {/* Mes attestations */}
-        <Link
-          href="/profil/attestations"
-          className="glass-card transition-premium block p-4 hover:border-white/20 rounded-2xl"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
-              <Award className="w-5 h-5 text-amber-400" />
-            </div>
-            <div className="flex-1">
-              <div className="font-semibold text-white text-sm">
-                Mes attestations
-              </div>
-              <div className="text-xs text-white/55">
-                Formations et audits EPP
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-white/40" />
-          </div>
-        </Link>
 
         {/* Mes demarches en cours */}
         <section>
