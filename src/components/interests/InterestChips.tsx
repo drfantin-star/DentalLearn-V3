@@ -1,61 +1,55 @@
 'use client'
 
 import { Check } from 'lucide-react'
-import { getCategoryConfig } from '@/lib/supabase/types'
+import { getCategoryConfig, CATEGORY_CONFIG } from '@/lib/supabase/types'
 import type { UserInterests } from '@/lib/supabase/types'
 
-// ── Définition des chips ──────────────────────────────────────────────
-// Source UNIQUE du jeu de chips, partagée entre l'onboarding et la page
-// Profil pour éviter toute divergence (le set de ~14 chips + son mapping
-// doivent rester identiques). Cliniques & bonus → poussent leur slug dans
-// categories[] (libellés/couleurs réutilisés via getCategoryConfig). Chips
-// d'axe → poussent un entier dans axes[] (couleurs canoniques du design
-// system : axe 3 #D97706, axe 4 #EC4899).
+// ── Slugs dérivés de CATEGORY_CONFIG (source unique) ─────────────────
+// Ne pas dupliquer les listes ici : on filtre CATEGORY_CONFIG par type.
 
-export const CLINICAL_SLUGS = [
-  'esthetique',
-  'restauratrice',
-  'chirurgie',
-  'implant',
-  'prothese',
-  'parodontologie',
-  'endodontie',
-  'radiologie',
-  'numerique',
-] as const
+export const CLINICAL_SLUGS = Object.entries(CATEGORY_CONFIG)
+  .filter(([, c]) => c.type === 'cp')
+  .map(([slug]) => slug)
 
-export const BONUS_SLUGS = ['management', 'organisation', 'soft-skills'] as const
+export const AXE3_SLUGS = Object.entries(CATEGORY_CONFIG)
+  .filter(([, c]) => c.type === 'axe3')
+  .map(([slug]) => slug)
 
-export const AXE_CHIPS: { label: string; axe: number; color: string; emoji: string }[] = [
-  { label: 'Relation patient', axe: 3, color: '#D97706', emoji: '🗣️' },
-  { label: 'Santé du praticien', axe: 4, color: '#EC4899', emoji: '🪷' },
-]
+export const AXE4_SLUGS = Object.entries(CATEGORY_CONFIG)
+  .filter(([, c]) => c.type === 'axe4')
+  .map(([slug]) => slug)
+
+export const BONUS_SLUGS = Object.entries(CATEGORY_CONFIG)
+  .filter(([, c]) => c.type === 'bonus')
+  .map(([slug]) => slug)
 
 interface InterestChipsProps {
   value: UserInterests
   onChange: (value: UserInterests) => void
 }
 
-// Composant contrôlé (value/onChange) : ne tient AUCUN état interne. L'appelant
-// possède la valeur (onboarding ou Profil), garantissant un comportement
-// strictement identique des deux côtés.
+// Composant contrôlé (value/onChange) : ne tient AUCUN état interne.
+// axes[] est recalculé à chaque toggle depuis les catégories sélectionnées :
+//   3 ∈ axes  ⟺  au moins une catégorie sélectionnée a type='axe3'
+//   4 ∈ axes  ⟺  au moins une catégorie sélectionnée a type='axe4'
 export default function InterestChips({ value, onChange }: InterestChipsProps) {
   const toggleCategory = (slug: string) => {
     const has = value.categories.includes(slug)
-    onChange({
-      ...value,
-      categories: has
-        ? value.categories.filter((c) => c !== slug)
-        : [...value.categories, slug],
-    })
-  }
+    const nextCategories = has
+      ? value.categories.filter((c) => c !== slug)
+      : [...value.categories, slug]
 
-  const toggleAxe = (axe: number) => {
-    const has = value.axes.includes(axe)
-    onChange({
-      ...value,
-      axes: has ? value.axes.filter((a) => a !== axe) : [...value.axes, axe],
-    })
+    const hasAxe3 = nextCategories.some((c) => CATEGORY_CONFIG[c]?.type === 'axe3')
+    const hasAxe4 = nextCategories.some((c) => CATEGORY_CONFIG[c]?.type === 'axe4')
+
+    const baseAxes = value.axes.filter((a) => a !== 3 && a !== 4)
+    const nextAxes = [
+      ...baseAxes,
+      ...(hasAxe3 ? [3] : []),
+      ...(hasAxe4 ? [4] : []),
+    ]
+
+    onChange({ ...value, categories: nextCategories, axes: nextAxes })
   }
 
   return (
@@ -71,13 +65,24 @@ export default function InterestChips({ value, onChange }: InterestChipsProps) {
         ))}
       </ChipSection>
 
-      <ChipSection title="Parcours CP">
-        {AXE_CHIPS.map((chip) => (
-          <AxeChip
-            key={chip.axe}
-            chip={chip}
-            selected={value.axes.includes(chip.axe)}
-            onToggle={toggleAxe}
+      <ChipSection title="Relation patient (axe 3)">
+        {AXE3_SLUGS.map((slug) => (
+          <CategoryChip
+            key={slug}
+            slug={slug}
+            selected={value.categories.includes(slug)}
+            onToggle={toggleCategory}
+          />
+        ))}
+      </ChipSection>
+
+      <ChipSection title="Ta santé au travail (axe 4)">
+        {AXE4_SLUGS.map((slug) => (
+          <CategoryChip
+            key={slug}
+            slug={slug}
+            selected={value.categories.includes(slug)}
+            onToggle={toggleCategory}
           />
         ))}
       </ChipSection>
@@ -147,42 +152,6 @@ function CategoryChip({
     >
       <span aria-hidden>{config.emoji}</span>
       <span>{config.name}</span>
-      {selected && <Check className="h-4 w-4" />}
-    </button>
-  )
-}
-
-function AxeChip({
-  chip,
-  selected,
-  onToggle,
-}: {
-  chip: { label: string; axe: number; color: string; emoji: string }
-  selected: boolean
-  onToggle: (axe: number) => void
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={() => onToggle(chip.axe)}
-      className="flex items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-medium transition active:scale-[0.97]"
-      style={
-        selected
-          ? {
-              background: chip.color,
-              borderColor: 'transparent',
-              color: '#fff',
-            }
-          : {
-              background: '#242424',
-              borderColor: 'rgba(255,255,255,0.12)',
-              color: '#e5e5e5',
-            }
-      }
-    >
-      <span aria-hidden>{chip.emoji}</span>
-      <span>{chip.label}</span>
       {selected && <Check className="h-4 w-4" />}
     </button>
   )
