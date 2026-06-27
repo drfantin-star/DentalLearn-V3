@@ -126,17 +126,56 @@ export default function ProfilPage() {
     setTimeout(() => setMessage(null), 3000)
   }
 
+  const compressImage = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      const objectUrl = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl)
+        const MAX = 500
+        let { width, height } = img
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = Math.round((height * MAX) / width); width = MAX }
+          else { width = Math.round((width * MAX) / height); height = MAX }
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { reject(new Error('canvas indisponible')); return }
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob(
+          (blob) => { blob ? resolve(blob) : reject(new Error('compression echouee')) },
+          'image/jpeg',
+          0.8
+        )
+      }
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl)
+        reject(new Error('Format non supporte (JPG ou PNG requis)'))
+      }
+      img.src = objectUrl
+    })
+  }
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file || !user) return
-    if (!file.type.startsWith('image/')) { showMessage('error', 'Image uniquement'); return }
-    if (file.size > 2 * 1024 * 1024) { showMessage('error', 'Max 2 MB'); return }
+    if (!file.type.startsWith('image/')) { showMessage('error', 'Image uniquement (JPG ou PNG)'); return }
     setUploadingPhoto(true)
     try {
-      const fileExt = file.name.split('.').pop()
-      const filePath = `${user.id}/${user.id}-${Date.now()}.${fileExt}`
+      let blob: Blob
+      try {
+        blob = await compressImage(file)
+      } catch {
+        showMessage('error', 'Format non supporte — utilise JPG ou PNG')
+        setUploadingPhoto(false)
+        return
+      }
+      if (blob.size > 5 * 1024 * 1024) { showMessage('error', 'Image trop lourde meme apres compression'); setUploadingPhoto(false); return }
+      const filePath = `${user.id}/${user.id}-${Date.now()}.jpg`
       const { error: upErr } = await supabase.storage
-        .from('profile-photos').upload(filePath, file, { cacheControl: '3600', upsert: false })
+        .from('profile-photos').upload(filePath, blob, { contentType: 'image/jpeg', cacheControl: '3600', upsert: false })
       if (upErr) throw upErr
       const { data: { publicUrl } } = supabase.storage.from('profile-photos').getPublicUrl(filePath)
       await supabase.from('user_profiles')
