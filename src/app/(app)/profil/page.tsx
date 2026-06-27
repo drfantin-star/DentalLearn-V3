@@ -39,7 +39,6 @@ export default function ProfilPage() {
 
   // Ordre
   const [ordreDate, setOrdreDate] = useState<string>('')
-  const [savingOrdre, setSavingOrdre] = useState(false)
 
   // Mot de passe
   const [showPasswordForm, setShowPasswordForm] = useState(false)
@@ -153,6 +152,7 @@ export default function ProfilPage() {
         id: user.id,
         first_name: firstName || null,
         last_name: lastName || null,
+        ordre_inscription_date: ordreDate || null,
         updated_at: new Date().toISOString()
       }, { onConflict: 'id' })
       if (error) throw error
@@ -161,22 +161,6 @@ export default function ProfilPage() {
       showMessage('error', 'Erreur lors de la sauvegarde')
     } finally {
       setSaving(false)
-    }
-  }
-
-  const handleSaveOrdre = async () => {
-    if (!user) return
-    setSavingOrdre(true)
-    try {
-      const { error } = await supabase.from('user_profiles')
-        .update({ ordre_inscription_date: ordreDate || null, updated_at: new Date().toISOString() })
-        .eq('id', user.id)
-      if (error) throw error
-      showMessage('success', 'Date mise a jour !')
-    } catch {
-      showMessage('error', 'Erreur lors de la mise a jour')
-    } finally {
-      setSavingOrdre(false)
     }
   }
 
@@ -393,21 +377,9 @@ export default function ProfilPage() {
             </div>
           </div>
 
-          <button
-            onClick={handleSaveProfil}
-            disabled={saving}
-            className="w-full py-2.5 bg-primary text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Enregistrer
-          </button>
-        </div>
-
-        {/* Inscription a l'Ordre */}
-        <div className="glass-card rounded-2xl p-5 space-y-3">
-          <h3 className="font-semibold text-white">Inscription a l'Ordre</h3>
+          {/* Date d'inscription a l'Ordre */}
           <div>
-            <label className="block text-xs font-medium text-white/55 mb-1">Date d'inscription</label>
+            <label className="block text-xs font-medium text-white/55 mb-1">Date d'inscription a l'Ordre</label>
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4 text-white/40 shrink-0" />
               <input
@@ -418,18 +390,22 @@ export default function ProfilPage() {
               />
             </div>
             <p className="text-xs text-white/55 mt-1.5">
-              Determine votre periode de certification periodique.
+              Determine votre cycle de certification periodique.
             </p>
           </div>
+
           <button
-            onClick={handleSaveOrdre}
-            disabled={savingOrdre}
+            onClick={handleSaveProfil}
+            disabled={saving}
             className="w-full py-2.5 bg-primary text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {savingOrdre ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Enregistrer
           </button>
         </div>
+
+        {/* Centres d'interet */}
+        <InterestsSection />
 
         {/* Notifications */}
         <div className="glass-card rounded-2xl p-5">
@@ -472,65 +448,6 @@ export default function ProfilPage() {
             </button>
           </div>
         </div>
-
-        {/* Securite */}
-        <div className="glass-card rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-gray-100 rounded-xl">
-              <Lock className="w-4 h-4 text-[#6b7280]" />
-            </div>
-            <h3 className="font-semibold text-white">Securite</h3>
-          </div>
-
-          {showPasswordForm ? (
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-white/55 mb-1">Nouveau mot de passe</label>
-                <div className="relative">
-                  <input
-                    type={showNewPassword ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl text-sm pr-10"
-                    style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
-                    placeholder="Minimum 8 caracteres"
-                  />
-                  <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40">
-                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-white/55 mb-1">Confirmer</label>
-                <input type="password" value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl text-sm"
-                  style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }} />
-              </div>
-              <div className="flex gap-2">
-                <button onClick={handleChangePassword} disabled={passwordSaving || !newPassword || !confirmPassword}
-                  className="flex-1 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
-                  {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  Changer
-                </button>
-                <button onClick={() => { setShowPasswordForm(false); setNewPassword(''); setConfirmPassword('') }}
-                  className="px-4 py-2.5 text-sm text-white/55 hover:bg-gray-100 hover:text-gray-900 rounded-xl transition-premium">
-                  Annuler
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button onClick={() => setShowPasswordForm(true)}
-              className="flex items-center justify-between w-full py-2 text-left hover:bg-gray-50 hover:text-gray-900 rounded-xl px-2 -mx-2 transition-premium">
-              <span className="text-sm text-white/70">Changer mon mot de passe</span>
-              <ChevronLeft className="w-4 h-4 text-white/40 rotate-180" />
-            </button>
-          )}
-        </div>
-
-        {/* Centres d'interet */}
-        <InterestsSection />
 
         {/* Carte upgrade solo -> cabinet (uniquement si orgless) */}
         {showUpgradeCard && (
@@ -603,6 +520,62 @@ export default function ProfilPage() {
             </div>
           </section>
         )}
+
+        {/* Securite */}
+        <div className="glass-card rounded-2xl p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-gray-100 rounded-xl">
+              <Lock className="w-4 h-4 text-[#6b7280]" />
+            </div>
+            <h3 className="font-semibold text-white">Securite</h3>
+          </div>
+
+          {showPasswordForm ? (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-white/55 mb-1">Nouveau mot de passe</label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl text-sm pr-10"
+                    style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
+                    placeholder="Minimum 8 caracteres"
+                  />
+                  <button type="button" onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40">
+                    {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-white/55 mb-1">Confirmer</label>
+                <input type="password" value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-sm"
+                  style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }} />
+              </div>
+              <div className="flex gap-2">
+                <button onClick={handleChangePassword} disabled={passwordSaving || !newPassword || !confirmPassword}
+                  className="flex-1 py-2.5 bg-primary text-white text-sm font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2">
+                  {passwordSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Changer
+                </button>
+                <button onClick={() => { setShowPasswordForm(false); setNewPassword(''); setConfirmPassword('') }}
+                  className="px-4 py-2.5 text-sm text-white/55 hover:bg-gray-100 hover:text-gray-900 rounded-xl transition-premium">
+                  Annuler
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setShowPasswordForm(true)}
+              className="flex items-center justify-between w-full py-2 text-left hover:bg-gray-50 hover:text-gray-900 rounded-xl px-2 -mx-2 transition-premium">
+              <span className="text-sm text-white/70">Changer mon mot de passe</span>
+              <ChevronLeft className="w-4 h-4 text-white/40 rotate-180" />
+            </button>
+          )}
+        </div>
 
         {/* Zone dangereuse */}
         <div className="glass-card rounded-2xl p-5" style={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}>
