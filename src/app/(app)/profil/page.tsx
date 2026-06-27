@@ -61,6 +61,9 @@ export default function ProfilPage() {
   // Modal infos perso
   const [showProfilModal, setShowProfilModal] = useState(false)
 
+  // Modal notifications
+  const [showNotifModal, setShowNotifModal] = useState(false)
+
   // Roles / espaces
   const [intraRole, setIntraRole] = useState<IntraRole | null>(null)
   const [orgless, setOrgless] = useState(false)
@@ -460,47 +463,87 @@ export default function ProfilPage() {
         {/* Centres d'interet */}
         <InterestsSection />
 
-        {/* Notifications */}
-        <div className="glass-card rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-blue-50 rounded-xl">
-              <Bell className="w-4 h-4 text-blue-600" />
+        {/* Notifications — carte sommaire */}
+        <button
+          type="button"
+          onClick={() => setShowNotifModal(true)}
+          className="glass-card transition-premium w-full p-4 text-left hover:border-white/20 rounded-2xl"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/15 flex items-center justify-center shrink-0">
+              <Bell className="w-5 h-5 text-blue-400" />
             </div>
-            <div>
-              <h3 className="font-semibold text-white">Notifications</h3>
-              <p className="text-xs text-white/55">Rappels et resultats</p>
+            <div className="flex-1">
+              <div className="font-semibold text-white text-sm">Notifications</div>
+              <div className="text-xs text-white/55">Rappels et preferences de contenu</div>
             </div>
+            <ChevronRight className="w-5 h-5 text-white/40 shrink-0" />
           </div>
-          <PushNotificationToggle />
+        </button>
 
-          <div className="mt-4 space-y-3 pt-4" style={{ borderTop: '0.5px solid #333' }}>
-            <p className="text-xs font-medium text-white/55">Preferences de contenu</p>
+        {/* Modal — Notifications */}
+        <Modal
+          open={showNotifModal}
+          onClose={() => setShowNotifModal(false)}
+          variant="dark"
+          size="lg"
+          ariaLabel="Notifications"
+          className="bg-neutral-900 border border-neutral-800"
+        >
+          {/* Header modal */}
+          <div className="flex items-center justify-between gap-3 px-6 py-5" style={{ borderBottom: '0.5px solid #262626' }}>
+            <h2 className="font-bold text-white text-base">Notifications</h2>
             <button
-              onClick={() => { void handleTogglePref('live_session_reminders', !liveSessionReminders) }}
-              disabled={savingPrefs}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
-                liveSessionReminders
-                  ? 'bg-accent/10 text-accent border border-accent/20'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+              onClick={() => setShowNotifModal(false)}
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-premium"
             >
-              <Bell className="w-5 h-5 shrink-0" />
-              <span className="text-sm">Rappels sessions live</span>
-            </button>
-            <button
-              onClick={() => { void handleTogglePref('formateur_publications', !formateurPublications) }}
-              disabled={savingPrefs}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
-                formateurPublications
-                  ? 'bg-accent/10 text-accent border border-accent/20'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <Bell className="w-5 h-5 shrink-0" />
-              <span className="text-sm">Nouvelles publications formateurs</span>
+              <X className="w-4 h-4 text-white/60" />
             </button>
           </div>
-        </div>
+
+          {/* Corps modal */}
+          <div className="px-6 py-5 max-h-[60vh] overflow-y-auto space-y-5">
+            <PushNotificationToggle />
+
+            <div className="space-y-3 pt-4" style={{ borderTop: '0.5px solid #333' }}>
+              <p className="text-xs font-medium text-white/55">Preferences de contenu</p>
+              <button
+                onClick={() => { void handleTogglePref('live_session_reminders', !liveSessionReminders) }}
+                disabled={savingPrefs}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                  liveSessionReminders
+                    ? 'bg-accent/10 text-accent border border-accent/20'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Bell className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Rappels sessions live</span>
+              </button>
+              <button
+                onClick={() => { void handleTogglePref('formateur_publications', !formateurPublications) }}
+                disabled={savingPrefs}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                  formateurPublications
+                    ? 'bg-accent/10 text-accent border border-accent/20'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Bell className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Nouvelles publications formateurs</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Footer modal */}
+          <div className="flex items-center justify-end gap-3 px-6 py-5" style={{ borderTop: '0.5px solid #262626' }}>
+            <button
+              onClick={() => setShowNotifModal(false)}
+              className="px-5 py-2 bg-primary text-white text-sm font-semibold rounded-xl"
+            >
+              Fermer
+            </button>
+          </div>
+        </Modal>
 
         {/* Carte upgrade solo -> cabinet (uniquement si orgless) */}
         {showUpgradeCard && (
