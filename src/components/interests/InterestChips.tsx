@@ -23,16 +23,37 @@ export const BONUS_SLUGS = Object.entries(CATEGORY_CONFIG)
   .filter(([, c]) => c.type === 'bonus')
   .map(([slug]) => slug)
 
+export type InterestSection = 'clinical' | 'axe3' | 'axe4' | 'bonus'
+
+const SECTION_META: Record<
+  InterestSection,
+  { title: string; slugs: string[] }
+> = {
+  clinical: { title: 'Cliniques', slugs: CLINICAL_SLUGS },
+  axe3: { title: 'Relation patient (axe 3)', slugs: AXE3_SLUGS },
+  axe4: { title: 'Ta santé au travail (axe 4)', slugs: AXE4_SLUGS },
+  bonus: { title: 'Gestion de cabinet', slugs: BONUS_SLUGS },
+}
+
+const ALL_SECTIONS: InterestSection[] = ['clinical', 'axe3', 'axe4', 'bonus']
+
 interface InterestChipsProps {
   value: UserInterests
   onChange: (value: UserInterests) => void
+  /** Filtre les sections affichées. Défaut = les 4 (comportement Profil inchangé). */
+  sections?: InterestSection[]
 }
 
 // Composant contrôlé (value/onChange) : ne tient AUCUN état interne.
 // axes[] est recalculé à chaque toggle depuis les catégories sélectionnées :
 //   3 ∈ axes  ⟺  au moins une catégorie sélectionnée a type='axe3'
 //   4 ∈ axes  ⟺  au moins une catégorie sélectionnée a type='axe4'
-export default function InterestChips({ value, onChange }: InterestChipsProps) {
+// La dérivation lit value.categories en entier → non impactée par le filtrage sections.
+export default function InterestChips({
+  value,
+  onChange,
+  sections = ALL_SECTIONS,
+}: InterestChipsProps) {
   const toggleCategory = (slug: string) => {
     const has = value.categories.includes(slug)
     const nextCategories = has
@@ -54,49 +75,21 @@ export default function InterestChips({ value, onChange }: InterestChipsProps) {
 
   return (
     <>
-      <ChipSection title="Cliniques">
-        {CLINICAL_SLUGS.map((slug) => (
-          <CategoryChip
-            key={slug}
-            slug={slug}
-            selected={value.categories.includes(slug)}
-            onToggle={toggleCategory}
-          />
-        ))}
-      </ChipSection>
-
-      <ChipSection title="Relation patient (axe 3)">
-        {AXE3_SLUGS.map((slug) => (
-          <CategoryChip
-            key={slug}
-            slug={slug}
-            selected={value.categories.includes(slug)}
-            onToggle={toggleCategory}
-          />
-        ))}
-      </ChipSection>
-
-      <ChipSection title="Ta santé au travail (axe 4)">
-        {AXE4_SLUGS.map((slug) => (
-          <CategoryChip
-            key={slug}
-            slug={slug}
-            selected={value.categories.includes(slug)}
-            onToggle={toggleCategory}
-          />
-        ))}
-      </ChipSection>
-
-      <ChipSection title="Gestion de cabinet">
-        {BONUS_SLUGS.map((slug) => (
-          <CategoryChip
-            key={slug}
-            slug={slug}
-            selected={value.categories.includes(slug)}
-            onToggle={toggleCategory}
-          />
-        ))}
-      </ChipSection>
+      {sections.map((key) => {
+        const { title, slugs } = SECTION_META[key]
+        return (
+          <ChipSection key={key} title={title}>
+            {slugs.map((slug) => (
+              <CategoryChip
+                key={slug}
+                slug={slug}
+                selected={value.categories.includes(slug)}
+                onToggle={toggleCategory}
+              />
+            ))}
+          </ChipSection>
+        )
+      })}
     </>
   )
 }
