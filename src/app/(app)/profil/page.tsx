@@ -6,11 +6,12 @@ import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, Loader2, Briefcase, Building2,
   Shield, Presentation, Camera, Save, Lock, Eye, EyeOff,
-  Bell, Mail, Calendar, CheckCircle, AlertCircle, Trash2,
+  Bell, Mail, Calendar, CheckCircle, AlertCircle, Trash2, X, User,
 } from 'lucide-react'
 import InterestsSection from '@/components/interests/InterestsSection'
 import CreateCabinetModal from '@/components/auth/CreateCabinetModal'
 import { PushNotificationToggle } from '@/components/PushNotificationToggle'
+import { Modal } from '@/components/ui/Modal'
 import Link from 'next/link'
 import type { IntraRole } from '@/lib/auth/rbac'
 
@@ -56,6 +57,9 @@ export default function ProfilPage() {
   const [deletionRequestedAt, setDeletionRequestedAt] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deletionLoading, setDeletionLoading] = useState(false)
+
+  // Modal infos perso
+  const [showProfilModal, setShowProfilModal] = useState(false)
 
   // Roles / espaces
   const [intraRole, setIntraRole] = useState<IntraRole | null>(null)
@@ -157,6 +161,7 @@ export default function ProfilPage() {
       }, { onConflict: 'id' })
       if (error) throw error
       showMessage('success', 'Profil mis a jour !')
+      setShowProfilModal(false)
     } catch {
       showMessage('error', 'Erreur lors de la sauvegarde')
     } finally {
@@ -314,95 +319,143 @@ export default function ProfilPage() {
           </div>
         )}
 
-        {/* Informations personnelles */}
-        <div className="glass-card rounded-2xl p-5 space-y-4">
-          <h3 className="font-semibold text-white">Informations personnelles</h3>
-
-          {/* Photo */}
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                {photoUrl ? (
-                  <img src={photoUrl} alt="Photo" className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-white font-bold text-lg">{getInitials()}</span>
-                )}
+        {/* Informations personnelles — carte sommaire */}
+        <button
+          type="button"
+          onClick={() => setShowProfilModal(true)}
+          className="glass-card transition-premium w-full p-4 text-left hover:border-white/20 rounded-2xl"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-br from-primary to-accent flex items-center justify-center shrink-0">
+              {photoUrl
+                ? <img src={photoUrl} alt="Photo" className="w-full h-full object-cover" />
+                : <span className="text-white font-bold text-sm">{getInitials()}</span>}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold text-white text-sm truncate">
+                {firstName || lastName ? `${firstName} ${lastName}`.trim() : 'Complétez votre profil'}
               </div>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingPhoto}
-                className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow border"
-              >
-                {uploadingPhoto
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
-                  : <Camera className="w-3.5 h-3.5 text-[#6b7280]" />}
-              </button>
+              <div className="text-xs text-white/55 truncate">{email}</div>
             </div>
+            <ChevronRight className="w-5 h-5 text-white/40 shrink-0" />
+          </div>
+        </button>
+
+        {/* Modal — Informations personnelles */}
+        <Modal
+          open={showProfilModal}
+          onClose={() => setShowProfilModal(false)}
+          variant="dark"
+          size="lg"
+          ariaLabel="Informations personnelles"
+          className="bg-neutral-900 border border-neutral-800"
+        >
+          {/* Header modal */}
+          <div className="flex items-center justify-between gap-3 px-6 py-5" style={{ borderBottom: '0.5px solid #262626' }}>
+            <h2 className="font-bold text-white text-base">Informations personnelles</h2>
+            <button
+              onClick={() => setShowProfilModal(false)}
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-premium"
+            >
+              <X className="w-4 h-4 text-white/60" />
+            </button>
+          </div>
+
+          {/* Corps modal */}
+          <div className="px-6 py-5 max-h-[60vh] overflow-y-auto space-y-4">
+            {/* Photo */}
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                  {photoUrl
+                    ? <img src={photoUrl} alt="Photo" className="w-full h-full object-cover" />
+                    : <span className="text-white font-bold text-lg">{getInitials()}</span>}
+                </div>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="absolute -bottom-1 -right-1 p-1 bg-white rounded-full shadow border"
+                >
+                  {uploadingPhoto
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" />
+                    : <Camera className="w-3.5 h-3.5 text-[#6b7280]" />}
+                </button>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">Photo de profil</p>
+                <p className="text-xs text-white/55">JPG, PNG — max 2 MB</p>
+              </div>
+            </div>
+
+            {/* Prenom + Nom */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-white/55 mb-1">Prenom</label>
+                <input
+                  type="text" value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                  style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
+                  placeholder="Prenom"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-white/55 mb-1">Nom</label>
+                <input
+                  type="text" value={lastName}
+                  onChange={e => setLastName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                  style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
+                  placeholder="Nom"
+                />
+              </div>
+            </div>
+
+            {/* Email lecture seule */}
             <div>
-              <p className="text-sm font-medium text-white">Photo de profil</p>
-              <p className="text-xs text-white/55">JPG, PNG — max 2 MB</p>
+              <label className="block text-xs font-medium text-white/55 mb-1">Email</label>
+              <div className="flex items-center gap-2 px-3 py-2" style={{ background: '#1a1a1a', border: '0.5px solid #333', borderRadius: '12px' }}>
+                <Mail className="w-4 h-4 text-white/40" />
+                <span className="text-sm text-white/55">{email}</span>
+              </div>
             </div>
-          </div>
 
-          {/* Prenom + Nom */}
-          <div className="grid grid-cols-2 gap-3">
+            {/* Date d'inscription a l'Ordre */}
             <div>
-              <label className="block text-xs font-medium text-white/55 mb-1">Prenom</label>
-              <input
-                type="text" value={firstName}
-                onChange={e => setFirstName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
-                style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
-                placeholder="Prenom"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-white/55 mb-1">Nom</label>
-              <input
-                type="text" value={lastName}
-                onChange={e => setLastName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
-                style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
-                placeholder="Nom"
-              />
+              <label className="block text-xs font-medium text-white/55 mb-1">Date d'inscription a l'Ordre</label>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-white/40 shrink-0" />
+                <input
+                  type="date" value={ordreDate}
+                  onChange={e => setOrdreDate(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-xl text-sm"
+                  style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
+                />
+              </div>
+              <p className="text-xs text-white/55 mt-1.5">
+                Determine votre cycle de certification periodique.
+              </p>
             </div>
           </div>
 
-          {/* Email lecture seule */}
-          <div>
-            <label className="block text-xs font-medium text-white/55 mb-1">Email</label>
-            <div className="flex items-center gap-2 px-3 py-2" style={{ background: '#1a1a1a', border: '0.5px solid #333', borderRadius: '12px' }}>
-              <Mail className="w-4 h-4 text-white/40" />
-              <span className="text-sm text-white/55">{email}</span>
-            </div>
+          {/* Footer modal */}
+          <div className="flex items-center justify-end gap-3 px-6 py-5" style={{ borderTop: '0.5px solid #262626' }}>
+            <button
+              onClick={() => setShowProfilModal(false)}
+              className="px-4 py-2 text-sm text-white/55 hover:text-white rounded-xl transition-premium"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleSaveProfil}
+              disabled={saving}
+              className="px-5 py-2 bg-primary text-white text-sm font-semibold rounded-xl flex items-center gap-2 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Enregistrer
+            </button>
           </div>
-
-          {/* Date d'inscription a l'Ordre */}
-          <div>
-            <label className="block text-xs font-medium text-white/55 mb-1">Date d'inscription a l'Ordre</label>
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-white/40 shrink-0" />
-              <input
-                type="date" value={ordreDate}
-                onChange={e => setOrdreDate(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-xl text-sm"
-                style={{ background: '#1a1a1a', border: '1px solid #333', color: 'white' }}
-              />
-            </div>
-            <p className="text-xs text-white/55 mt-1.5">
-              Determine votre cycle de certification periodique.
-            </p>
-          </div>
-
-          <button
-            onClick={handleSaveProfil}
-            disabled={saving}
-            className="w-full py-2.5 bg-primary text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Enregistrer
-          </button>
-        </div>
+        </Modal>
 
         {/* Centres d'interet */}
         <InterestsSection />
