@@ -281,6 +281,8 @@ export default function EnrichedAudioPlayer({
                 <KaraokeTranscript
                   transcript={timeline.transcript}
                   currentTime={state.currentTime}
+                  variant="single"
+                  concepts={timeline.concepts ?? []}
                 />
               </div>
             </div>
