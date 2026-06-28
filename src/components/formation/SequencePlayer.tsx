@@ -1074,18 +1074,18 @@ export default function SequencePlayer({
 
             {/* ─── Pas de média ─── */}
             {(!sequence.course_media_type || !sequence.course_media_url) && (
-              <p className="text-gray-500 italic mb-6">Pas de contenu média pour cette séquence</p>
+              <p className="text-white/55 italic mb-6">Pas de contenu média pour cette séquence</p>
             )}
 
             {hasMedia && !courseCompleted && !demoMode ? (
               <>
                 <button
                   disabled
-                  className="w-full max-w-xs py-4 rounded-2xl font-bold bg-gray-200 text-gray-400 cursor-not-allowed"
+                  className="w-full max-w-xs py-4 rounded-2xl font-bold bg-[#242424] text-white/30 cursor-not-allowed"
                 >
                   Passer au Quiz
                 </button>
-                <p className="text-gray-400 text-xs text-center mt-2">
+                <p className="text-white/55 text-xs text-center mt-2">
                   Écoutez 100% du cours pour débloquer le quiz
                 </p>
               </>
@@ -1256,8 +1256,8 @@ export default function SequencePlayer({
                           disabled={showFeedback} className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
                           style={{ background: bg, border: `2px solid ${border}`, cursor: showFeedback ? 'default' : 'pointer' }}>
                           <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-                            {showFeedback ? (isCorrect ? <CheckSquare size={24} className="text-emerald-500" /> : isSelected ? <X size={24} className="text-red-500" /> : <Square size={24} className="text-gray-300" />)
-                              : isSelected ? <CheckSquare size={24} style={{ color: categoryGradient.from }} /> : <Square size={24} className="text-gray-400" />}
+                            {showFeedback ? (isCorrect ? <CheckSquare size={24} className="text-emerald-500" /> : isSelected ? <X size={24} className="text-red-500" /> : <Square size={24} className="text-white/40" />)
+                              : isSelected ? <CheckSquare size={24} style={{ color: categoryGradient.from }} /> : <Square size={24} className="text-white/40" />}
                           </span>
                           <span className="flex-1 font-semibold text-sm" style={{ color: textColor }}>{opt.text}</span>
                         </button>
@@ -1310,7 +1310,7 @@ export default function SequencePlayer({
               {/* === FILL_BLANK === */}
               {qType === 'fill_blank' && (() => {
                 const opts = parseFillBlankOptions(q.options)
-                if (!opts) return <p className="text-gray-500">Format de question non supporté</p>
+                if (!opts) return <p className="text-white/55">Format de question non supporté</p>
                 
                 const hasWordBank = opts.wordBank && opts.wordBank.length > 0
                 const usedWords = Object.values(fillBlankAnswers)
@@ -1424,7 +1424,7 @@ export default function SequencePlayer({
               {/* === ORDERING (ou drag_drop format ordering) === */}
               {(qType === 'ordering' || (qType === 'drag_drop' && isDragDropOrdering(q.options))) && (() => {
                 const opts = parseOrderingOptions(q.options)
-                if (opts.length === 0) return <p className="text-gray-500">Format de question non supporté</p>
+                if (opts.length === 0) return <p className="text-white/55">Format de question non supporté</p>
 
                 const moveItem = (from: number, to: number) => {
                   if (showFeedback || to < 0 || to >= orderingOrder.length) return
@@ -1456,10 +1456,10 @@ export default function SequencePlayer({
                             <span className="flex-1 text-sm font-semibold" style={{ color: '#e5e5e5' }}>{item.text}</span>
                             {!showFeedback && (
                               <div className="flex flex-col">
-                                <button onClick={() => moveItem(index, index - 1)} disabled={index === 0} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
+                                <button onClick={() => moveItem(index, index - 1)} disabled={index === 0} className="p-1 hover:bg-white/10 rounded disabled:opacity-30">
                                   <ChevronUp size={16} style={{ color: '#a3a3a3' }} />
                                 </button>
-                                <button onClick={() => moveItem(index, index + 1)} disabled={index === orderingOrder.length - 1} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
+                                <button onClick={() => moveItem(index, index + 1)} disabled={index === orderingOrder.length - 1} className="p-1 hover:bg-white/10 rounded disabled:opacity-30">
                                   <ChevronDown size={16} style={{ color: '#a3a3a3' }} />
                                 </button>
                               </div>
@@ -1482,7 +1482,7 @@ export default function SequencePlayer({
               {(qType === 'matching' || (qType === 'drag_drop' && isDragDropMatching(q.options))) && (() => {
                 const data = parseMatchingData(q.options, q.id)
                 if (!data || data.leftItems.length === 0) {
-                  return <p className="text-gray-500">Format de question non supporté</p>
+                  return <p className="text-white/55">Format de question non supporté</p>
                 }
                 const rights = shuffledMatchingRights.length > 0 ? shuffledMatchingRights : data.rightOptions
                 const matchByLeft = new Map(matchingMatches.map(m => [m.leftKey, m]))

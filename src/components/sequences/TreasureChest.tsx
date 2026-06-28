@@ -92,7 +92,7 @@ export default function TreasureChest({ pdfUrl, onOpen }: TreasureChestProps) {
       {/* Texte et CTA */}
       {!isOpened ? (
         <div className="text-center">
-          <p className="text-lg font-bold text-gray-800 mb-1">
+          <p className="text-lg font-bold text-white mb-1">
             Tu as débloqué une récompense !
           </p>
           <button
@@ -105,10 +105,10 @@ export default function TreasureChest({ pdfUrl, onOpen }: TreasureChestProps) {
         </div>
       ) : (
         <div className="text-center animate-fade-in">
-          <p className="text-lg font-bold text-gray-800 mb-1">
+          <p className="text-lg font-bold text-white mb-1">
             &#127881; Bravo ! Voici ta fiche mémo
           </p>
-          <p className="text-sm text-gray-500 mb-3">
+          <p className="text-sm text-white/70 mb-3">
             À garder précieusement !
           </p>
           {pdfUrl && (
