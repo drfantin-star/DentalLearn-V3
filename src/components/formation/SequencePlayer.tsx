@@ -1688,7 +1688,7 @@ export default function SequencePlayer({
         {/* RÉSULTATS */}
         {playerStep === 'results' && (
           <div className="text-center py-5">
-            <div className="w-28 h-28 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: `conic-gradient(${score >= 75 ? '#22C55E' : score >= 50 ? '#FBBF24' : '#EF4444'} ${score * 3.6}deg, #E2E8F0 0deg)` }}>
+            <div className="w-28 h-28 rounded-full mx-auto mb-4 flex items-center justify-center glow-accent" style={{ background: `conic-gradient(${score >= 75 ? '#22C55E' : score >= 50 ? '#FBBF24' : '#EF4444'} ${score * 3.6}deg, #E2E8F0 0deg)` }}>
               <div className="w-[88px] h-[88px] rounded-full flex items-center justify-center" style={{ background: '#0F0F0F' }}>
                 <span className="text-3xl font-extrabold" style={{ color: '#e5e5e5' }}>{score}%</span>
               </div>
@@ -1731,12 +1731,13 @@ export default function SequencePlayer({
       {showOverlay && overlayData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="
+            glass-panel transition-premium
             w-full rounded-3xl overflow-hidden shadow-2xl
             flex flex-col
             max-h-[80vh]
             sm:max-w-2xl sm:max-h-[75vh]
             lg:max-w-3xl
-          " style={{ background: '#1a1a1a' }}>
+          ">
 
             {/* Header coloré — compact sur mobile */}
             <div className={`flex items-center gap-4 px-6 py-4 shrink-0 ${
@@ -1837,7 +1838,7 @@ function EnrichedTabSelector({
             <button
               key={t.id}
               onClick={() => onChange(t.id)}
-              className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
+              className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-premium ${
                 isActive
                   ? 'text-white shadow-sm'
                   : 'text-[#a3a3a3] hover:text-[#e5e5e5] hover:bg-white/5'
