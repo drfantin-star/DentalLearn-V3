@@ -41,8 +41,10 @@ export default function MaCertifPage() {
           .eq('user_id', session.user.id)
           .maybeSingle()
         if (!existing) {
-          const startDate = data.ordre_inscription_date
-          const endDate = new Date(startDate)
+          const ordreRaw = new Date(data.ordre_inscription_date)
+          const cpStart = ordreRaw >= new Date('2023-01-01') ? ordreRaw : new Date('2023-01-01')
+          const startDate = cpStart.toISOString().slice(0, 10)
+          const endDate = new Date(cpStart)
           endDate.setFullYear(endDate.getFullYear() + 6)
           await supabase.from('cp_user_settings').insert({
             user_id: session.user.id,
