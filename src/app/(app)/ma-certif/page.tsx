@@ -33,14 +33,38 @@ export default function MaCertifPage() {
 
       if (data) setOrdreDate(data.ordre_inscription_date)
 
-      const { data: cp } = await supabase
-        .rpc('get_user_cp_progress', { p_user_id: session.user.id })
-      if (cp) setActionsParAxe({
-        axe1: cp.axe1 || 0,
-        axe2: cp.axe2 || 0,
-        axe3: cp.axe3 || 0,
-        axe4: cp.axe4 || 0,
-      })
+      // Lazy-seed cp_user_settings si absent et date disponible
+      if (data?.ordre_inscription_date) {
+        const { data: existing } = await supabase
+          .from('cp_user_settings')
+          .select('user_id')
+          .eq('user_id', session.user.id)
+          .maybeSingle()
+        if (!existing) {
+          const startDate = data.ordre_inscription_date
+          const endDate = new Date(startDate)
+          endDate.setFullYear(endDate.getFullYear() + 6)
+          await supabase.from('cp_user_settings').insert({
+            user_id: session.user.id,
+            cp_start_date: startDate,
+            cp_duration_years: 6,
+            cp_end_date: endDate.toISOString().slice(0, 10),
+          })
+        }
+      }
+
+      // Lire la vue cp_user_progress (socle CP officiel)
+      const { data: cpRows } = await supabase
+        .from('cp_user_progress')
+        .select('axe_id, actions_completed')
+        .eq('user_id', session.user.id)
+
+      const actionsMap = { axe1: 0, axe2: 0, axe3: 0, axe4: 0 }
+      for (const row of cpRows ?? []) {
+        const key = `axe${row.axe_id}` as keyof typeof actionsMap
+        if (key in actionsMap) actionsMap[key] = Number(row.actions_completed)
+      }
+      setActionsParAxe(actionsMap)
 
       setLoading(false)
     }
