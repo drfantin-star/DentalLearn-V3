@@ -473,10 +473,6 @@ export default function FormationDetail({
 
       {/* Liste des séquences */}
       <div className="px-4 pt-5">
-        <h3 className="text-[15px] font-bold text-white mb-4">
-          Séquences ({sequences.length})
-        </h3>
-
         {isCpFormation && blocStatus.length > 0 ? (
           Array.from(new Set(sequences.map(s => s.bloc_number ?? 1)))
             .sort((a, b) => a - b)
@@ -513,11 +509,6 @@ export default function FormationDetail({
                   <div className="flex items-center justify-between mb-2 px-1">
                     <div className="flex items-baseline gap-2 min-w-0">
                       <span className="text-[13px] font-bold text-white shrink-0">Bloc {blocNum}</span>
-                      {b && b.total_questions > 0 && (
-                        <span className="text-[11px] text-white/70 truncate">
-                          {b.acquired_questions}/{b.total_questions} questions acquises
-                        </span>
-                      )}
                     </div>
                     <span
                       className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0"
