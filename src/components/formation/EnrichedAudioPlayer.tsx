@@ -182,24 +182,69 @@ export default function EnrichedAudioPlayer({
   // cette séquence.
   const showPrePlayState = hideLegacyCard && !isCurrentTrack
 
+  // Audio seul mobile : cover-vinyle lanceur (remplace la carte legacy).
+  const isAudioOnly = activeTab === 'audio_only'
+  const vinylSpinning = isCurrentTrack && state.isPlaying
+
   return (
     <div className="w-full">
       {/* Player audio — INCHANGÉ. Aucune prop modifiée. */}
       {!hideLegacyCard && (
-        <AudioPlayer
-          src={src}
-          duration={duration}
-          sequenceId={sequenceId}
-          onComplete={onComplete}
-          onProgress={onProgress}
-          accentColor={accentColor}
-          accentColorSecondary={accentColorSecondary}
-          sequenceTitle={sequenceTitle}
-          formationTitle={formationTitle}
-          learningObjectives={learningObjectives}
-          coverImageUrl={coverImageUrl}
-          userId={userId}
-        />
+        <div className={isAudioOnly ? 'hidden md:block' : undefined}>
+          <AudioPlayer
+            src={src}
+            duration={duration}
+            sequenceId={sequenceId}
+            onComplete={onComplete}
+            onProgress={onProgress}
+            accentColor={accentColor}
+            accentColorSecondary={accentColorSecondary}
+            sequenceTitle={sequenceTitle}
+            formationTitle={formationTitle}
+            learningObjectives={learningObjectives}
+            coverImageUrl={coverImageUrl}
+            userId={userId}
+          />
+        </div>
+      )}
+
+      {/* Audio seul mobile : cover-vinyle lanceur (md:hidden -> desktop garde la carte) */}
+      {isAudioOnly && !error && (
+        <div className="md:hidden flex justify-center mt-2 mb-4">
+          <button
+            type="button"
+            onClick={isCurrentTrack ? undefined : onPlayRequest}
+            className="relative w-44 h-44 rounded-full overflow-hidden shadow-2xl active:scale-[0.98] transition-transform"
+            aria-label={isCurrentTrack ? 'Lecture en cours' : 'Demarrer la lecture audio'}
+          >
+            {/* couche tournante : cover, ou degrade de repli si pas de cover */}
+            <span
+              className={`absolute inset-0 ${vinylSpinning ? 'animate-vinyl-spin' : ''}`}
+              style={
+                coverImageUrl
+                  ? undefined
+                  : { background: `linear-gradient(135deg, ${accentColor ?? '#2D1B96'}, ${accentColorSecondary ?? '#00D1C1'})` }
+              }
+            >
+              {coverImageUrl && (
+                <img src={coverImageUrl} alt="" className="w-full h-full object-cover" />
+              )}
+            </span>
+            {/* trou central vinyle (fixe) */}
+            <span
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full"
+              style={{ background: '#0F0F0F', border: '2px solid rgba(255,255,255,0.25)' }}
+            />
+            {/* overlay play tant que la piste n'est pas lancee (fixe) */}
+            {!isCurrentTrack && (
+              <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                <span className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center">
+                  <Play size={26} fill="#0F0F0F" className="text-[#0F0F0F] ml-0.5" />
+                </span>
+              </span>
+            )}
+          </button>
+        </div>
       )}
 
       {/* POC-T7.4-UX-FAB : pre-play state — large FAB Play centré dans une
