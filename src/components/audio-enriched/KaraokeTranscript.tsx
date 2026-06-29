@@ -29,6 +29,7 @@ import { SpeakerBadge } from './SpeakerBadge'
  *
  * variant='single' : affiche uniquement la phrase en cours, centree, avec
  * surlignage teal des termes-cles de la timeline. Pas de badge locuteur.
+ * Sur mobile : fenetre ~2 lignes avec recentrage automatique (teleprompteur).
  */
 
 interface KaraokeTranscriptProps {
@@ -67,9 +68,12 @@ export function KaraokeTranscript({
   // Mot actif throttle a 4 Hz par useCurrentWord.
   const activeWord = useCurrentWord(flatWords, currentTime)
 
-  // Refs par segment pour scrollIntoView.
+  // Refs par segment pour scrollIntoView (mode full).
   const segmentRefs = useRef<Array<HTMLDivElement | null>>([])
   const containerRef = useRef<HTMLDivElement | null>(null)
+
+  // Ref pour le conteneur du mode single (fenetre teleprompteur mobile).
+  const singleContainerRef = useRef<HTMLDivElement>(null)
 
   // Timestamp du dernier scroll manuel pour suspendre l'auto-scroll
   // pendant MANUAL_SCROLL_PAUSE_MS.
@@ -108,7 +112,7 @@ export function KaraokeTranscript({
   const isWindowedMode = (el: HTMLElement | null): boolean =>
     !!el && el.scrollHeight > el.clientHeight + 1
 
-  // Auto-scroll segment-level (desktop).
+  // Auto-scroll segment-level (desktop, mode full).
   useEffect(() => {
     if (variant === 'single') return
     if (!autoScroll) return
@@ -131,7 +135,7 @@ export function KaraokeTranscript({
     }
   }, [autoScroll, activeSegmentIndex, variant])
 
-  // Auto-scroll mot-level (mobile uniquement, mode fenetre).
+  // Auto-scroll mot-level (mobile uniquement, mode full, fenetre).
   useEffect(() => {
     if (variant === 'single') return
     if (!autoScroll) return
@@ -168,6 +172,32 @@ export function KaraokeTranscript({
       wordRect.height / 2
     containerEl.scrollTo({ top: targetScrollTop, behavior: 'smooth' })
   }, [autoScroll, activeSegmentIndex, activeWordIndex, variant])
+
+  // Auto-scroll mot-level pour le mode single (mobile uniquement, fenetre teleprompteur).
+  // Sur desktop, isWindowedMode() retourne false (md:overflow-visible) -> aucun scroll.
+  useEffect(() => {
+    if (variant !== 'single') return
+    if (activeWordIndex < 0) return
+    const containerEl = singleContainerRef.current
+    if (!isWindowedMode(containerEl)) return
+    if (!containerEl) return
+    const targetEl = Array.from(
+      containerEl.querySelectorAll<HTMLElement>('[data-wstart]')
+    ).find((el) => {
+      const s = Number(el.dataset.wstart)
+      const e = Number(el.dataset.wend)
+      return activeWordIndex >= s && activeWordIndex <= e
+    })
+    if (!targetEl) return
+    const containerRect = containerEl.getBoundingClientRect()
+    const wordRect = targetEl.getBoundingClientRect()
+    const top = wordRect.top - containerRect.top
+    const bottom = wordRect.bottom - containerRect.top
+    if (top >= 0 && bottom <= containerEl.clientHeight) return
+    const targetScrollTop =
+      containerEl.scrollTop + top - containerEl.clientHeight / 2 + wordRect.height / 2
+    containerEl.scrollTo({ top: targetScrollTop, behavior: 'smooth' })
+  }, [variant, activeSegmentIndex, activeWordIndex])
 
   // Sequences de tokens pour chaque terme-cle (recalcule uniquement si concepts change).
   const conceptTokenSequences = useMemo(() => {
@@ -229,7 +259,12 @@ export function KaraokeTranscript({
             .map((w) => w.text)
             .join(' ')
           rendered.push(
-            <span key={`kw-${i}`} className="text-accent font-semibold">
+            <span
+              key={`kw-${i}`}
+              className="text-accent font-semibold"
+              data-wstart={i}
+              data-wend={i + seq.length - 1}
+            >
               {matchedText}
             </span>
           )
@@ -242,7 +277,12 @@ export function KaraokeTranscript({
 
       if (!matched) {
         rendered.push(
-          <span key={`kw-${i}`} className="text-white">
+          <span
+            key={`kw-${i}`}
+            className="text-white"
+            data-wstart={i}
+            data-wend={i}
+          >
             {words[i].text}
           </span>
         )
@@ -252,7 +292,10 @@ export function KaraokeTranscript({
     }
 
     return (
-      <div className="mx-auto max-w-3xl px-4 py-6 text-center text-lg md:text-xl leading-relaxed">
+      <div
+        ref={singleContainerRef}
+        className="mx-auto max-w-3xl px-4 py-2 md:py-6 text-center text-lg md:text-xl leading-relaxed max-h-[4rem] overflow-y-auto scrollbar-hide md:max-h-none md:overflow-visible"
+      >
         {rendered}
       </div>
     )
