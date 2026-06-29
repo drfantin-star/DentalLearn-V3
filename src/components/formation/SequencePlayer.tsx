@@ -854,7 +854,7 @@ export default function SequencePlayer({
           <button onClick={onBack} className="p-1 rounded-lg" style={{ color: '#a3a3a3' }}>
             <ChevronLeft size={20} />
           </button>
-          <p className="flex-1 font-bold text-sm truncate" style={{ color: '#e5e5e5' }}>{sequence.title}</p>
+          <p className="flex-1 font-bold text-sm leading-tight" style={{ color: '#e5e5e5' }}>S{sequence.sequence_number} · {sequence.title}</p>
         </div>
 
         <div className="flex-1 p-4">
@@ -973,7 +973,7 @@ export default function SequencePlayer({
         <button onClick={onBack} className="p-1 rounded-lg" style={{ color: '#a3a3a3' }}>
           <ChevronLeft size={20} />
         </button>
-        <p className="flex-1 font-bold text-sm truncate" style={{ color: '#e5e5e5' }}>{sequence.title}</p>
+        <p className="flex-1 font-bold text-sm leading-tight" style={{ color: '#e5e5e5' }}>S{sequence.sequence_number} · {sequence.title}</p>
         <span className="font-bold text-[13px] text-amber-600">⭐ {totalPoints}</span>
       </div>
 
@@ -996,8 +996,8 @@ export default function SequencePlayer({
                         Objectifs (T7.4-UX-E) qui restitue le contenu objectives
                         de l'ancienne card gradient (supprimée par T7.4-UX-B). */}
                     <div className="md:hidden mb-3 flex items-center gap-2">
-                      <p className="flex-1 font-bold text-base truncate" style={{ color: '#e5e5e5' }}>
-                        {sequence.title}
+                      <p className="flex-1 font-bold text-base leading-tight" style={{ color: '#e5e5e5' }}>
+                        S{sequence.sequence_number} · {sequence.title}
                       </p>
                       <button
                         type="button"
