@@ -227,7 +227,7 @@ export default function EnrichedAudioPlayer({
               }
             >
               {coverImageUrl && (
-                <img src={coverImageUrl} alt="" className="w-full h-full object-cover" />
+                <img src={coverImageUrl} alt="" className="w-full h-full object-contain" />
               )}
             </span>
             {/* trou central vinyle (fixe) */}
