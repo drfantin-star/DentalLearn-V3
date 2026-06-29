@@ -26,6 +26,7 @@ import { useLeaderboard } from '@/lib/hooks/useLeaderboard'
 import ThemeQuizModal from '@/components/quiz/ThemeQuizModal'
 import { INTEREST_TO_NEWS_THEME, NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
 import { NEWS_COVERS_BASE, getSpecialiteGradient } from '@/lib/news-cover'
+import SophieAutopilotCard from '@/components/sophie/SophieAutopilotCard'
 
 function formationToForYouItem(f: Formation): ForYouItem {
   const config = getCategoryConfig(f.category)
@@ -367,6 +368,11 @@ export default function HomePage() {
         className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen"
         style={{ background: '#0F0F0F' }}
       >
+        {/* Sophie — coaching CP (1ere section) */}
+        <section>
+          <SophieAutopilotCard />
+        </section>
+
         {/* Quiz du jour — carte seule pleine largeur */}
         <section>
           <DailyQuizButton
