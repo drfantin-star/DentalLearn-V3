@@ -219,7 +219,7 @@ export default function EnrichedAudioPlayer({
           >
             {/* couche tournante : cover, ou degrade de repli si pas de cover */}
             <span
-              className={`absolute inset-0 ${vinylSpinning ? 'animate-vinyl-spin' : ''}`}
+              className={`absolute inset-0 rounded-full overflow-hidden ${vinylSpinning ? 'animate-vinyl-spin' : ''}`}
               style={
                 coverImageUrl
                   ? undefined
