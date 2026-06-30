@@ -8,6 +8,26 @@ import InterestChips from '@/components/interests/InterestChips'
 import type { InterestSection } from '@/components/interests/InterestChips'
 import type { UserInterests } from '@/lib/supabase/types'
 import { axeHex } from '@/lib/cp/axeColors'
+import AddToCalendarButton from '@/components/AddToCalendarButton'
+
+function fmtLocal(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
+}
+
+function defaultStartLocal(): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  d.setHours(9, 0, 0, 0)
+  return fmtLocal(d)
+}
+
+function defaultEndLocal(estMinutes: number | null): string {
+  const d = new Date()
+  d.setDate(d.getDate() + 1)
+  d.setHours(9, estMinutes ?? 30, 0, 0)
+  return fmtLocal(d)
+}
 
 interface PlanItem {
   id: string
@@ -255,8 +275,8 @@ export default function SophieAutopilotModal({ open, onClose, data, onChange }: 
                     const done = item.status === 'done'
                     const color = axeHex(item.axeId)
                     return (
+                      <div key={item.id}>
                       <div
-                        key={item.id}
                         className="flex items-center gap-3 rounded-2xl p-3 bg-white/5 hover:bg-white/8 transition-colors"
                       >
                         {/* Checkbox */}
@@ -304,11 +324,19 @@ export default function SophieAutopilotModal({ open, onClose, data, onChange }: 
                         {/* Type picto */}
                         <ItemTypeIcon type={item.itemType} />
                       </div>
+
+                      {/* Calendar shortcut */}
+                      <div className="pl-9 pb-1">
+                        <AddToCalendarButton
+                          variant="dark"
+                          title={`Certily — ${item.title}`}
+                          starts_at={defaultStartLocal()}
+                          ends_at={defaultEndLocal(item.estMinutes)}
+                        />
+                      </div>
+                      </div>
                     )
                   })}
-
-                  {/* Placeholder Brief 2 */}
-                  <div className="h-px bg-white/5 mt-4" />
                 </div>
               ) : (
                 <p className="text-sm text-white/50 text-center py-4">

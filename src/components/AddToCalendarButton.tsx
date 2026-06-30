@@ -9,6 +9,7 @@ interface AddToCalendarButtonProps {
   ends_at?: string | null
   location?: string | null
   description?: string | null
+  variant?: 'light' | 'dark'
 }
 
 function toCalendarDate(iso: string): string {
@@ -59,6 +60,7 @@ function downloadIcs(props: AddToCalendarButtonProps): void {
 }
 
 export default function AddToCalendarButton(props: AddToCalendarButtonProps) {
+  const { variant = 'light' } = props
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -71,6 +73,30 @@ export default function AddToCalendarButton(props: AddToCalendarButtonProps) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  if (variant === 'dark') {
+    return (
+      <div className="flex items-center gap-2">
+        <CalendarPlus size={13} className="text-white/30 shrink-0" />
+        <a
+          href={buildGoogleCalendarUrl(props)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[11px] text-white/40 hover:text-white/70 transition-colors"
+        >
+          Google
+        </a>
+        <span className="text-white/20 text-[11px]">·</span>
+        <button
+          type="button"
+          onClick={() => downloadIcs(props)}
+          className="text-[11px] text-white/40 hover:text-white/70 transition-colors"
+        >
+          .ics
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div ref={ref} className="relative inline-block">
