@@ -7,8 +7,17 @@ import { Award, ChevronRight, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import RadarCP from '@/components/profile/RadarCP'
 import DemarchesSection from '@/components/profile/DemarchesSection'
+import ActionsParAxeSection from '@/components/profile/ActionsParAxeSection'
 import { useDemarches } from '@/lib/hooks/useDemarches'
 import { useUser } from '@/lib/hooks/useUser'
+
+interface CpProgress {
+  axe_id: number
+  axe_name: string
+  axe_short_name: string
+  actions_completed: number
+  required_actions: number
+}
 
 export default function MaCertifPage() {
   const router = useRouter()
@@ -19,11 +28,31 @@ export default function MaCertifPage() {
   const [loading, setLoading] = useState(true)
   const [actionsParAxe, setActionsParAxe] = useState({ axe1: 0, axe2: 0, axe3: 0, axe4: 0 })
   const [ordreDate, setOrdreDate] = useState<string | null>(null)
+  const [cpProgress, setCpProgress] = useState<CpProgress[]>([])
+  const [userId, setUserId] = useState<string | null>(null)
+
+  async function loadCpProgress(uid: string) {
+    const { data: cpRows } = await supabase
+      .from('cp_user_progress')
+      .select('axe_id, axe_name, axe_short_name, actions_completed, required_actions')
+      .eq('user_id', uid)
+
+    const rows = cpRows ?? []
+    setCpProgress(rows as CpProgress[])
+
+    const actionsMap = { axe1: 0, axe2: 0, axe3: 0, axe4: 0 }
+    for (const row of rows) {
+      const key = `axe${row.axe_id}` as keyof typeof actionsMap
+      if (key in actionsMap) actionsMap[key] = Number(row.actions_completed)
+    }
+    setActionsParAxe(actionsMap)
+  }
 
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/login'); return }
+      setUserId(session.user.id)
 
       const { data } = await supabase
         .from('user_profiles')
@@ -56,17 +85,7 @@ export default function MaCertifPage() {
       }
 
       // Lire la vue cp_user_progress (socle CP officiel)
-      const { data: cpRows } = await supabase
-        .from('cp_user_progress')
-        .select('axe_id, actions_completed')
-        .eq('user_id', session.user.id)
-
-      const actionsMap = { axe1: 0, axe2: 0, axe3: 0, axe4: 0 }
-      for (const row of cpRows ?? []) {
-        const key = `axe${row.axe_id}` as keyof typeof actionsMap
-        if (key in actionsMap) actionsMap[key] = Number(row.actions_completed)
-      }
-      setActionsParAxe(actionsMap)
+      await loadCpProgress(session.user.id)
 
       setLoading(false)
     }
@@ -115,6 +134,15 @@ export default function MaCertifPage() {
             <ChevronRight className="w-5 h-5 text-white/40" />
           </div>
         </Link>
+
+        {/* Actions par axe (déclarations manuelles) */}
+        {userId && cpProgress.length > 0 && (
+          <ActionsParAxeSection
+            userId={userId}
+            cpProgress={cpProgress}
+            onProgressRefresh={() => loadCpProgress(userId)}
+          />
+        )}
 
         {/* Demarches en cours */}
         <DemarchesSection demarches={demarches} loading={demarchesLoading} />
