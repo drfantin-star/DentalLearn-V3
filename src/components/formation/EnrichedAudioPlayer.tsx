@@ -214,12 +214,13 @@ export default function EnrichedAudioPlayer({
           <button
             type="button"
             onClick={isCurrentTrack ? undefined : onPlayRequest}
-            className="relative w-44 h-44 rounded-full overflow-hidden shadow-2xl active:scale-[0.98] transition-transform"
+            className="relative w-44 h-44 rounded-full shadow-2xl active:scale-[0.98] transition-transform"
+            style={{ clipPath: 'circle(50%)', WebkitClipPath: 'circle(50%)' }}
             aria-label={isCurrentTrack ? 'Lecture en cours' : 'Demarrer la lecture audio'}
           >
             {/* couche tournante : cover, ou degrade de repli si pas de cover */}
             <span
-              className={`absolute inset-0 rounded-full overflow-hidden ${vinylSpinning ? 'animate-vinyl-spin' : ''}`}
+              className={`absolute inset-0 ${vinylSpinning ? 'animate-vinyl-spin' : ''}`}
               style={
                 coverImageUrl
                   ? undefined
