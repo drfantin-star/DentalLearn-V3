@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { CATEGORY_CONFIG } from '@/lib/supabase/types'
 
 export const dynamic = 'force-dynamic'
 
 const ITEMS_BY_MINUTES: Record<number, number> = { 15: 2, 30: 3, 60: 4 }
-const DEFAULT_EST_MINUTES = 20
+const EST: Record<string, number> = { formation: 20, epp: 30, autoeval: 15, attestation: 10 }
 
 function currentMonthKey(): string {
   return new Date().toISOString().slice(0, 7)
@@ -12,188 +13,290 @@ function currentMonthKey(): string {
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>
 
-interface GapRow {
-  axeId: number
-  axeShortName: string
-  actionsCompleted: number
-  requiredActions: number
-  progressPercent: number
-  validated: boolean
-  daysRemaining: number
+// ── Focus derivation ─────────────────────────────────────────────────────────
+
+interface FocusGroups {
+  cpSlugs: string[]
+  axe3Slugs: string[]
+  axe4Slugs: string[]
 }
 
-async function buildGaps(supabase: SupabaseClient, userId: string): Promise<{ gaps: GapRow[]; priorityAxes: GapRow[] }> {
-  const { data } = await supabase
-    .from('cp_user_progress')
-    .select('axe_id, axe_short_name, actions_completed, required_actions, progress_percent, axe_validated, days_remaining')
-    .eq('user_id', userId)
-
-  const rows: GapRow[] = (data ?? []).map((r) => ({
-    axeId: r.axe_id as number,
-    axeShortName: r.axe_short_name as string,
-    actionsCompleted: Number(r.actions_completed),
-    requiredActions: r.required_actions as number,
-    progressPercent: Number(r.progress_percent),
-    validated: r.axe_validated as boolean,
-    daysRemaining: r.days_remaining as number,
-  }))
-
-  const gaps = rows
-    .filter((r) => !r.validated)
-    .sort((a, b) => a.progressPercent - b.progressPercent || a.daysRemaining - b.daysRemaining)
-
-  const priorityAxes =
-    gaps.length > 0
-      ? gaps
-      : [...rows].sort((a, b) => a.progressPercent - b.progressPercent)
-
-  return { gaps, priorityAxes }
+function deriveFocus(focus: string[]): FocusGroups {
+  const cpSlugs: string[] = []
+  const axe3Slugs: string[] = []
+  const axe4Slugs: string[] = []
+  for (const slug of focus) {
+    const cfg = CATEGORY_CONFIG[slug]
+    if (!cfg) continue
+    if (cfg.type === 'cp') cpSlugs.push(slug)
+    else if (cfg.type === 'axe3') axe3Slugs.push(slug)
+    else if (cfg.type === 'axe4') axe4Slugs.push(slug)
+  }
+  return { cpSlugs, axe3Slugs, axe4Slugs }
 }
 
-interface FormationRow {
-  id: string
+// ── Normalized item ───────────────────────────────────────────────────────────
+
+interface NormalizedItem {
+  item_type: 'formation' | 'epp' | 'autoeval' | 'attestation'
+  ref_id: string | null
+  ref_key: string
+  axe_id: number
   title: string
-  slug: string | null
-  category: string | null
-  axe_cp: number | null
+  href: string
+  est_minutes: number
 }
 
-async function generatePlan(
+// ── DB row helpers ────────────────────────────────────────────────────────────
+
+interface UserFormationRow { formation_id: string }
+interface UserEppRow { audit_id: string }
+interface AutoevalCompletionRow { questionnaire_id: string }
+interface UserAttestationRow { axe_cp: number; type: string }
+interface FormationRow { id: string; title: string; slug: string; category: string; axe_cp: number }
+interface EppAuditRow { id: string; title: string; theme_slug: string }
+interface QuestionnaireRow { id: string; titre: string }
+interface AxeRow { id: number; short_name: string }
+interface PlanRow {
+  id: string
+  item_type: string
+  axe_id: number
+  title: string
+  est_minutes: number | null
+  status: string
+  href: string
+  ordre: number
+}
+
+// ── Providers ─────────────────────────────────────────────────────────────────
+
+async function formationProvider(
   supabase: SupabaseClient,
   userId: string,
-  weeklyMinutes: number,
-  mk: string,
-): Promise<void> {
-  const { priorityAxes } = await buildGaps(supabase, userId)
-  const nbItems = ITEMS_BY_MINUTES[weeklyMinutes] ?? 3
-
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('interests')
-    .eq('id', userId)
-    .single()
-  const interests: string[] =
-    (profile?.interests as { categories?: string[] } | null)?.categories ?? []
+  cpSlugs: string[],
+  axe3Slugs: string[],
+  axe4Slugs: string[],
+): Promise<NormalizedItem[]> {
+  const allSlugs = [...cpSlugs, ...axe3Slugs, ...axe4Slugs]
+  if (allSlugs.length === 0) return []
 
   const { data: doneRows } = await supabase
     .from('user_formations')
     .select('formation_id')
     .eq('user_id', userId)
     .not('completed_at', 'is', null)
-  const doneIds = new Set((doneRows ?? []).map((r) => r.formation_id as string))
+  const doneIds = new Set((doneRows as UserFormationRow[] ?? []).map((r) => r.formation_id))
 
-  const { data: planRows } = await supabase
-    .from('autopilot_plan')
-    .select('ref_id')
-    .eq('user_id', userId)
-    .eq('month_key', mk)
-  const planIds = new Set((planRows ?? []).map((r) => r.ref_id as string))
-
-  const { data: rawFormations } = await supabase
+  const { data: formations } = await supabase
     .from('formations')
     .select('id, title, slug, category, axe_cp')
     .eq('is_published', true)
-    .not('axe_cp', 'is', null)
+    .in('category', allSlugs)
 
-  const eligible = (rawFormations as FormationRow[] ?? []).filter(
-    (f) => !doneIds.has(f.id) && !planIds.has(f.id),
-  )
+  return (formations as FormationRow[] ?? [])
+    .filter((f) => !doneIds.has(f.id))
+    .map((f) => ({
+      item_type: 'formation' as const,
+      ref_id: f.id,
+      ref_key: `formation:${f.id}`,
+      axe_id: f.axe_cp ?? 1,
+      title: f.title,
+      href: `/formation/${f.category}?formation=${f.slug}&from=autopilot`,
+      est_minutes: EST.formation,
+    }))
+}
 
-  const byAxe = new Map<number, FormationRow[]>()
-  for (const f of eligible) {
-    const axeId = f.axe_cp as number
-    if (!byAxe.has(axeId)) byAxe.set(axeId, [])
-    byAxe.get(axeId)!.push(f)
+async function eppProvider(
+  supabase: SupabaseClient,
+  userId: string,
+  cpSlugs: string[],
+): Promise<NormalizedItem[]> {
+  if (cpSlugs.length === 0) return []
+
+  const { data: doneRows } = await supabase
+    .from('user_epp_sessions')
+    .select('audit_id')
+    .eq('user_id', userId)
+    .not('completed_at', 'is', null)
+  const doneIds = new Set((doneRows as UserEppRow[] ?? []).map((r) => r.audit_id))
+
+  const { data: audits } = await supabase
+    .from('epp_audits')
+    .select('id, title, theme_slug')
+    .eq('is_published', true)
+    .in('theme_slug', cpSlugs)
+
+  return (audits as EppAuditRow[] ?? [])
+    .filter((a) => !doneIds.has(a.id))
+    .map((a) => ({
+      item_type: 'epp' as const,
+      ref_id: a.id,
+      ref_key: `epp:${a.id}`,
+      axe_id: 2,
+      title: a.title,
+      href: `/formation/${a.theme_slug}/epp`,
+      est_minutes: EST.epp,
+    }))
+}
+
+async function autoevalProvider(
+  supabase: SupabaseClient,
+  userId: string,
+  axe4Slugs: string[],
+): Promise<NormalizedItem[]> {
+  if (axe4Slugs.length === 0) return []
+
+  const { data: doneRows } = await supabase
+    .from('autoeval_completions')
+    .select('questionnaire_id')
+    .eq('user_id', userId)
+  const doneIds = new Set((doneRows as AutoevalCompletionRow[] ?? []).map((r) => r.questionnaire_id))
+
+  const { data: questionnaires } = await supabase
+    .from('questionnaires')
+    .select('id, titre')
+    .eq('axe_cp', 4)
+    .eq('actif', true)
+
+  return (questionnaires as QuestionnaireRow[] ?? [])
+    .filter((q) => !doneIds.has(q.id))
+    .map((q) => ({
+      item_type: 'autoeval' as const,
+      ref_id: q.id,
+      ref_key: `autoeval:${q.id}`,
+      axe_id: 4,
+      title: q.titre || 'Auto-evaluation sante',
+      href: '/sante/auto-evaluation',
+      est_minutes: EST.autoeval,
+    }))
+}
+
+async function attestationProvider(
+  supabase: SupabaseClient,
+  userId: string,
+  axe3Active: boolean,
+  axe4Active: boolean,
+): Promise<NormalizedItem[]> {
+  if (!axe3Active && !axe4Active) return []
+
+  const { data: doneRows } = await supabase
+    .from('user_attestations')
+    .select('axe_cp, type')
+    .eq('user_id', userId)
+    .neq('type', 'formation_online')
+
+  const doneAxes = new Set((doneRows as UserAttestationRow[] ?? []).map((r) => r.axe_cp))
+
+  const items: NormalizedItem[] = []
+  if (axe3Active && !doneAxes.has(3)) {
+    items.push({
+      item_type: 'attestation',
+      ref_id: null,
+      ref_key: 'attestation:axe3',
+      axe_id: 3,
+      title: "Attester ta demarche d'information patient",
+      href: '/patient/bibliotheque',
+      est_minutes: EST.attestation,
+    })
+  }
+  if (axe4Active && !doneAxes.has(4)) {
+    items.push({
+      item_type: 'attestation',
+      ref_id: null,
+      ref_key: 'attestation:axe4',
+      axe_id: 4,
+      title: 'Attester ta demarche sante au travail',
+      href: '/sante/bibliotheque',
+      est_minutes: EST.attestation,
+    })
+  }
+  return items
+}
+
+// ── Generation ────────────────────────────────────────────────────────────────
+
+async function generatePlan(
+  supabase: SupabaseClient,
+  userId: string,
+  weeklyMinutes: number,
+  focus: string[],
+  mk: string,
+): Promise<void> {
+  const { cpSlugs, axe3Slugs, axe4Slugs } = deriveFocus(focus)
+  const axe3Active = axe3Slugs.length > 0
+  const axe4Active = axe4Slugs.length > 0
+  const axe1Active = cpSlugs.length > 0
+  const axe2Active = cpSlugs.length > 0
+
+  const [formations, epps, autoevals, attestations] = await Promise.all([
+    formationProvider(supabase, userId, cpSlugs, axe3Slugs, axe4Slugs),
+    eppProvider(supabase, userId, cpSlugs),
+    autoevalProvider(supabase, userId, axe4Slugs),
+    attestationProvider(supabase, userId, axe3Active, axe4Active),
+  ])
+
+  // Group by axe, priority: formation > epp > autoeval > attestation
+  const byAxe = new Map<number, NormalizedItem[]>()
+  const addToAxe = (item: NormalizedItem) => {
+    if (!byAxe.has(item.axe_id)) byAxe.set(item.axe_id, [])
+    byAxe.get(item.axe_id)!.push(item)
+  }
+  for (const item of [...formations, ...epps, ...autoevals, ...attestations]) {
+    addToAxe(item)
   }
 
-  function pickFromAxe(axeId: number): FormationRow | null {
-    const candidates = byAxe.get(axeId) ?? []
-    if (candidates.length === 0) return null
-    const preferred = candidates.filter((f) => f.category && interests.includes(f.category))
-    const pick = preferred.length > 0 ? preferred[0] : candidates[0]
-    byAxe.set(axeId, byAxe.get(axeId)!.filter((f) => f.id !== pick.id))
-    return pick
-  }
+  const activeAxes: number[] = []
+  if (axe1Active) activeAxes.push(1)
+  if (axe2Active) activeAxes.push(2)
+  if (axe3Active) activeAxes.push(3)
+  if (axe4Active) activeAxes.push(4)
 
-  const selected: FormationRow[] = []
+  const nbItems = ITEMS_BY_MINUTES[weeklyMinutes] ?? 3
+  const selected: NormalizedItem[] = []
   let axeIdx = 0
-  const maxTries = priorityAxes.length * (nbItems + 1)
+  const maxTries = activeAxes.length > 0 ? activeAxes.length * (nbItems + 2) : 0
 
   while (selected.length < nbItems && axeIdx < maxTries) {
-    if (priorityAxes.length === 0) break
-    const axe = priorityAxes[axeIdx % priorityAxes.length]
+    const axeId = activeAxes[axeIdx % activeAxes.length]
     axeIdx++
-    const pick = pickFromAxe(axe.axeId)
-    if (pick) selected.push(pick)
-    if ([...byAxe.values()].every((arr) => arr.length === 0)) break
-  }
-
-  // Fallback: formations in progress
-  if (selected.length < nbItems) {
-    const { data: inProgressRows } = await supabase
-      .from('user_formations')
-      .select('formation_id')
-      .eq('user_id', userId)
-      .is('completed_at', null)
-    const ipIds = (inProgressRows ?? []).map((r) => r.formation_id as string)
-    if (ipIds.length > 0) {
-      const { data: ipFormations } = await supabase
-        .from('formations')
-        .select('id, title, slug, category, axe_cp')
-        .eq('is_published', true)
-        .in('id', ipIds)
-      for (const f of (ipFormations as FormationRow[] ?? [])) {
-        if (selected.length >= nbItems) break
-        if (!planIds.has(f.id) && !selected.find((s) => s.id === f.id)) selected.push(f)
-      }
-    }
-  }
-
-  // Fallback: any published formation
-  if (selected.length < nbItems) {
-    const { data: anyFormations } = await supabase
-      .from('formations')
-      .select('id, title, slug, category, axe_cp')
-      .eq('is_published', true)
-      .limit(20)
-    for (const f of (anyFormations as FormationRow[] ?? [])) {
-      if (selected.length >= nbItems) break
-      if (!planIds.has(f.id) && !doneIds.has(f.id) && !selected.find((s) => s.id === f.id)) {
-        selected.push(f)
-      }
+    const pool = byAxe.get(axeId) ?? []
+    if (pool.length > 0) {
+      selected.push(pool.shift()!)
     }
   }
 
   if (selected.length === 0) return
 
-  const fallbackAxeId = priorityAxes[0]?.axeId ?? 1
-
-  const rows = selected.map((f, i) => ({
+  const rows = selected.map((item, i) => ({
     user_id: userId,
     month_key: mk,
-    axe_id: f.axe_cp ?? fallbackAxeId,
-    item_type: 'formation' as const,
-    ref_id: f.id,
-    title: f.title,
-    est_minutes: DEFAULT_EST_MINUTES,
+    axe_id: item.axe_id,
+    item_type: item.item_type,
+    ref_id: item.ref_id,
+    ref_key: item.ref_key,
+    title: item.title,
+    href: item.href,
+    est_minutes: item.est_minutes,
     status: 'todo' as const,
     ordre: i,
   }))
 
   await supabase
     .from('autopilot_plan')
-    .upsert(rows, { onConflict: 'user_id,month_key,item_type,ref_id' })
+    .upsert(rows, { onConflict: 'user_id,month_key,ref_key' })
 }
+
+// ── Read items ────────────────────────────────────────────────────────────────
 
 interface PlanItem {
   id: string
+  itemType: string
   axeId: number
   axeShortName: string
   title: string
   estMinutes: number | null
   status: string
-  category: string | null
-  slug: string | null
+  href: string
 }
 
 async function readItems(
@@ -203,42 +306,34 @@ async function readItems(
 ): Promise<PlanItem[]> {
   const { data } = await supabase
     .from('autopilot_plan')
-    .select('id, axe_id, title, est_minutes, status, ref_id, ordre')
+    .select('id, item_type, axe_id, title, est_minutes, status, href, ordre')
     .eq('user_id', userId)
     .eq('month_key', mk)
     .order('ordre')
 
   if (!data || data.length === 0) return []
 
-  const refIds = (data.map((r) => r.ref_id).filter(Boolean)) as string[]
-  type FormationMeta = { id: string; category: string | null; slug: string | null }
-  const formationsRes: { data: FormationMeta[] | null } = refIds.length > 0
-    ? await supabase.from('formations').select('id, category, slug').in('id', refIds)
-    : { data: [] }
-
-  const fMap = new Map((formationsRes.data ?? []).map((f) => [f.id, f]))
-
-  const axeIds = [...new Set(data.map((r) => r.axe_id as number))]
+  const rows = data as PlanRow[]
+  const axeIds = [...new Set(rows.map((r) => r.axe_id))]
   const { data: axes } = await supabase
     .from('cp_axes')
     .select('id, short_name')
     .in('id', axeIds)
-  const axeMap = new Map((axes ?? []).map((a) => [a.id as number, a.short_name as string]))
+  const axeMap = new Map((axes as AxeRow[] ?? []).map((a) => [a.id, a.short_name]))
 
-  return data.map((r) => {
-    const f = r.ref_id ? fMap.get(r.ref_id as string) : null
-    return {
-      id: r.id as string,
-      axeId: r.axe_id as number,
-      axeShortName: axeMap.get(r.axe_id as number) ?? '',
-      title: r.title as string,
-      estMinutes: r.est_minutes as number | null,
-      status: r.status as string,
-      category: f?.category ?? null,
-      slug: f?.slug ?? null,
-    }
-  })
+  return rows.map((r) => ({
+    id: r.id,
+    itemType: r.item_type,
+    axeId: r.axe_id,
+    axeShortName: axeMap.get(r.axe_id) ?? '',
+    title: r.title,
+    estMinutes: r.est_minutes,
+    status: r.status,
+    href: r.href,
+  }))
 }
+
+// ── Endpoints ─────────────────────────────────────────────────────────────────
 
 export async function GET() {
   const supabase = await createClient()
@@ -246,28 +341,28 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Non authentifie' }, { status: 401 })
 
   const mk = currentMonthKey()
-  const { gaps } = await buildGaps(supabase, user.id)
 
   const { data: settings } = await supabase
     .from('autopilot_settings')
-    .select('weekly_minutes')
+    .select('weekly_minutes, focus')
     .eq('user_id', user.id)
     .single()
 
   if (!settings) {
-    return NextResponse.json({ needsSetup: true, weeklyMinutes: null, monthKey: mk, gaps, items: [] })
+    return NextResponse.json({ needsSetup: true, weeklyMinutes: null, focus: [], monthKey: mk, items: [] })
   }
 
-  const weeklyMinutes = settings.weekly_minutes as number
+  const weeklyMinutes = (settings as { weekly_minutes: number; focus: string[] }).weekly_minutes
+  const focus = (settings as { weekly_minutes: number; focus: string[] }).focus ?? []
+
   const existing = await readItems(supabase, user.id, mk)
-
   if (existing.length > 0) {
-    return NextResponse.json({ needsSetup: false, weeklyMinutes, monthKey: mk, gaps, items: existing })
+    return NextResponse.json({ needsSetup: false, weeklyMinutes, focus, monthKey: mk, items: existing })
   }
 
-  await generatePlan(supabase, user.id, weeklyMinutes, mk)
+  await generatePlan(supabase, user.id, weeklyMinutes, focus, mk)
   const items = await readItems(supabase, user.id, mk)
-  return NextResponse.json({ needsSetup: false, weeklyMinutes, monthKey: mk, gaps, items })
+  return NextResponse.json({ needsSetup: false, weeklyMinutes, focus, monthKey: mk, items })
 }
 
 export async function POST(request: NextRequest) {
@@ -275,27 +370,29 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non authentifie' }, { status: 401 })
 
-  const body = await request.json()
-  const weeklyMinutes = body.weeklyMinutes as number
+  const body = await request.json() as { weeklyMinutes: number; focus: string[] }
+  const weeklyMinutes = body.weeklyMinutes
+  const focus = body.focus ?? []
+
   if (![15, 30, 60].includes(weeklyMinutes)) {
     return NextResponse.json({ error: 'weeklyMinutes invalide' }, { status: 400 })
   }
 
   await supabase.from('autopilot_settings').upsert(
-    { user_id: user.id, weekly_minutes: weeklyMinutes, updated_at: new Date().toISOString() },
+    { user_id: user.id, weekly_minutes: weeklyMinutes, focus, updated_at: new Date().toISOString() },
     { onConflict: 'user_id' },
   )
 
   const mk = currentMonthKey()
-  const { gaps } = await buildGaps(supabase, user.id)
-  const existing = await readItems(supabase, user.id, mk)
+  await supabase
+    .from('autopilot_plan')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('month_key', mk)
 
-  if (existing.length === 0) {
-    await generatePlan(supabase, user.id, weeklyMinutes, mk)
-  }
-
+  await generatePlan(supabase, user.id, weeklyMinutes, focus, mk)
   const items = await readItems(supabase, user.id, mk)
-  return NextResponse.json({ needsSetup: false, weeklyMinutes, monthKey: mk, gaps, items })
+  return NextResponse.json({ needsSetup: false, weeklyMinutes, focus, monthKey: mk, items })
 }
 
 export async function PATCH(request: NextRequest) {
@@ -303,9 +400,7 @@ export async function PATCH(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Non authentifie' }, { status: 401 })
 
-  const body = await request.json()
-  const { id, status } = body as { id: string; status: 'todo' | 'done' }
-
+  const { id, status } = await request.json() as { id: string; status: 'todo' | 'done' }
   if (!id || !['todo', 'done'].includes(status)) {
     return NextResponse.json({ error: 'Parametres invalides' }, { status: 400 })
   }

@@ -6,31 +6,22 @@ import { HomeHeroCard } from '@/components/home/HomeHeroCard'
 import SophieAvatar from './SophieAvatar'
 import SophieAutopilotModal from './SophieAutopilotModal'
 
-interface GapRow {
-  axeId: number
-  axeShortName: string
-  actionsCompleted: number
-  requiredActions: number
-  progressPercent: number
-  validated: boolean
-}
-
 interface PlanItem {
   id: string
+  itemType: string
   axeId: number
   axeShortName: string
   title: string
   estMinutes: number | null
   status: string
-  category: string | null
-  slug: string | null
+  href: string
 }
 
 interface AutopilotData {
   needsSetup: boolean
   weeklyMinutes: number | null
+  focus: string[]
   monthKey: string
-  gaps: GapRow[]
   items: PlanItem[]
 }
 
@@ -53,7 +44,7 @@ export default function SophieAutopilotCard() {
     fetchData()
   }, [fetchData])
 
-  const todoCount = data?.items?.filter((it) => it.status === 'todo').length ?? 0
+  const todoCount = data?.items?.filter((it: PlanItem) => it.status === 'todo').length ?? 0
   const totalCount = data?.items?.length ?? 0
   const allDone = totalCount > 0 && todoCount === 0
 
@@ -61,11 +52,11 @@ export default function SophieAutopilotCard() {
   if (!data) {
     title = '...'
   } else if (data.needsSetup) {
-    title = 'Fais le point avec Sophie'
+    title = 'Cree ton plan du mois'
   } else if (allDone) {
-    title = 'Ton plan du mois — Termine \u{1F44F}'
+    title = 'Plan du mois termine \u{1F44F}'
   } else {
-    title = `Ton plan du mois — ${todoCount} action${todoCount > 1 ? 's' : ''} a faire`
+    title = `${todoCount} action${todoCount > 1 ? 's' : ''} a faire ce mois-ci`
   }
 
   return (
