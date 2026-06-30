@@ -214,8 +214,8 @@ export default function EnrichedAudioPlayer({
           <button
             type="button"
             onClick={isCurrentTrack ? undefined : onPlayRequest}
-            className="relative w-44 h-44 rounded-full shadow-2xl active:scale-[0.98] transition-transform"
-            style={{ clipPath: 'circle(50%)', WebkitClipPath: 'circle(50%)' }}
+            className="relative w-44 h-44 rounded-full overflow-hidden shadow-2xl active:scale-[0.98] transition-transform"
+            style={{ transform: 'translateZ(0)', WebkitTransform: 'translateZ(0)' }}
             aria-label={isCurrentTrack ? 'Lecture en cours' : 'Demarrer la lecture audio'}
           >
             {/* couche tournante : cover, ou degrade de repli si pas de cover */}
@@ -228,7 +228,7 @@ export default function EnrichedAudioPlayer({
               }
             >
               {coverImageUrl && (
-                <img src={coverImageUrl} alt="" className="w-full h-full object-contain" />
+                <img src={coverImageUrl} alt="" className="w-full h-full object-cover" />
               )}
             </span>
             {/* trou central vinyle (fixe) */}
