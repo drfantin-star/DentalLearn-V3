@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Check, ChevronLeft, ChevronRight, BookOpen, ClipboardList, Heart, FileCheck } from 'lucide-react'
+import { X, Check, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import SophieBubble from './SophieBubble'
 import InterestChips from '@/components/interests/InterestChips'
@@ -15,17 +15,18 @@ function fmtLocal(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`
 }
 
-function defaultStartLocal(): string {
+function defaultStartLocal(ordre: number): string {
   const d = new Date()
-  d.setDate(d.getDate() + 1)
-  d.setHours(9, 0, 0, 0)
+  d.setDate(d.getDate() + 1 + ordre)
+  d.setHours(18, 0, 0, 0)
   return fmtLocal(d)
 }
 
-function defaultEndLocal(estMinutes: number | null): string {
+function defaultEndLocal(ordre: number, estMinutes: number | null): string {
   const d = new Date()
-  d.setDate(d.getDate() + 1)
-  d.setHours(9, estMinutes ?? 30, 0, 0)
+  d.setDate(d.getDate() + 1 + ordre)
+  d.setHours(18, 0, 0, 0)
+  d.setTime(d.getTime() + (estMinutes ?? 30) * 60 * 1000)
   return fmtLocal(d)
 }
 
@@ -85,16 +86,6 @@ const TIME_OPTIONS = [
   { label: '30 min', value: 30 },
   { label: '1 h', value: 60 },
 ]
-
-// ── Item type picto ───────────────────────────────────────────────────────────
-
-function ItemTypeIcon({ type }: { type: string }) {
-  const cls = 'shrink-0 text-white/40'
-  if (type === 'formation') return <BookOpen size={14} className={cls} />
-  if (type === 'epp') return <ClipboardList size={14} className={cls} />
-  if (type === 'autoeval') return <Heart size={14} className={cls} />
-  return <FileCheck size={14} className={cls} />
-}
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
 
@@ -183,7 +174,7 @@ export default function SophieAutopilotModal({ open, onClose, data, onChange }: 
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-white/80 hover:text-white transition-colors"
             aria-label="Fermer"
           >
             <X size={22} />
@@ -233,7 +224,7 @@ export default function SophieAutopilotModal({ open, onClose, data, onChange }: 
                   type="button"
                   onClick={() => setWizardStep((s: number) => Math.max(0, s - 1))}
                   disabled={wizardStep === 0}
-                  className="flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors disabled:opacity-30"
+                  className="flex items-center gap-1 text-sm text-white/80 hover:text-white transition-colors disabled:opacity-30"
                 >
                   <ChevronLeft size={16} /> Precedent
                 </button>
@@ -271,12 +262,12 @@ export default function SophieAutopilotModal({ open, onClose, data, onChange }: 
 
               {displayItems.length > 0 ? (
                 <div className="space-y-2">
-                  {displayItems.map((item: PlanItem) => {
+                  {displayItems.map((item: PlanItem, idx: number) => {
                     const done = item.status === 'done'
                     const color = axeHex(item.axeId)
                     return (
-                      <div key={item.id}>
                       <div
+                        key={item.id}
                         className="flex items-center gap-3 rounded-2xl p-3 bg-white/5 hover:bg-white/8 transition-colors"
                       >
                         {/* Checkbox */}
@@ -301,7 +292,7 @@ export default function SophieAutopilotModal({ open, onClose, data, onChange }: 
                         >
                           <p
                             className={`text-sm font-medium leading-snug ${
-                              done ? 'line-through text-white/35' : 'text-white'
+                              done ? 'line-through text-white/60' : 'text-white'
                             }`}
                           >
                             {item.title}
@@ -314,32 +305,27 @@ export default function SophieAutopilotModal({ open, onClose, data, onChange }: 
                               {item.axeShortName}
                             </span>
                             {item.estMinutes && (
-                              <span className="text-[10px] text-white/35">
+                              <span className="text-[10px] text-white/70">
                                 {item.estMinutes} min
                               </span>
                             )}
                           </div>
                         </button>
 
-                        {/* Type picto */}
-                        <ItemTypeIcon type={item.itemType} />
-                      </div>
-
-                      {/* Calendar shortcut */}
-                      <div className="pl-9 pb-1">
+                        {/* Calendar icon */}
                         <AddToCalendarButton
+                          display="icon"
                           variant="dark"
                           title={`Certily — ${item.title}`}
-                          starts_at={defaultStartLocal()}
-                          ends_at={defaultEndLocal(item.estMinutes)}
+                          starts_at={defaultStartLocal(idx)}
+                          ends_at={defaultEndLocal(idx, item.estMinutes)}
                         />
-                      </div>
                       </div>
                     )
                   })}
                 </div>
               ) : (
-                <p className="text-sm text-white/50 text-center py-4">
+                <p className="text-sm text-white/70 text-center py-4">
                   Aucun item genere — verifie tes lacunes.
                 </p>
               )}
@@ -348,7 +334,7 @@ export default function SophieAutopilotModal({ open, onClose, data, onChange }: 
               <button
                 type="button"
                 onClick={handleResetWizard}
-                className="text-xs text-white/35 hover:text-white/70 transition-colors mt-2"
+                className="text-xs text-white/70 hover:text-accent transition-colors mt-2"
               >
                 Refaire mon plan
               </button>

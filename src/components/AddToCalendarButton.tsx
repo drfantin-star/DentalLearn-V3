@@ -10,6 +10,7 @@ interface AddToCalendarButtonProps {
   location?: string | null
   description?: string | null
   variant?: 'light' | 'dark'
+  display?: 'menu' | 'icon'
 }
 
 function toCalendarDate(iso: string): string {
@@ -60,7 +61,7 @@ function downloadIcs(props: AddToCalendarButtonProps): void {
 }
 
 export default function AddToCalendarButton(props: AddToCalendarButtonProps) {
-  const { variant = 'light' } = props
+  const { variant = 'light', display = 'menu' } = props
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -73,6 +74,19 @@ export default function AddToCalendarButton(props: AddToCalendarButtonProps) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  if (display === 'icon') {
+    return (
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); downloadIcs(props) }}
+        className="shrink-0 text-white hover:text-accent transition-colors"
+        aria-label="Ajouter au calendrier (.ics)"
+      >
+        <CalendarPlus size={16} />
+      </button>
+    )
+  }
 
   if (variant === 'dark') {
     return (
