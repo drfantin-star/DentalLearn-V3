@@ -247,7 +247,7 @@ export default function SophieAutopilotModal({ open, onClose, data, onChange }: 
           {/* ── PLAN ───────────────────────────────────────────────────────── */}
           {showPlan && (
             <div className="space-y-4">
-              <SophieBubble message="Voici ton plan du mois \u{1F447}" />
+              <SophieBubble message="Voici ton plan du mois 👇" />
 
               {displayItems.length > 0 ? (
                 <div className="space-y-2">

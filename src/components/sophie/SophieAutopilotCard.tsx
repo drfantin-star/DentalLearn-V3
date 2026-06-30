@@ -54,7 +54,7 @@ export default function SophieAutopilotCard() {
   } else if (data.needsSetup) {
     title = 'Cree ton plan du mois'
   } else if (allDone) {
-    title = 'Plan du mois termine \u{1F44F}'
+    title = 'Plan du mois terminé 👏'
   } else {
     title = `${todoCount} action${todoCount > 1 ? 's' : ''} a faire ce mois-ci`
   }
