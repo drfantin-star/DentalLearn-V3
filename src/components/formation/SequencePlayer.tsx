@@ -1141,7 +1141,7 @@ export default function SequencePlayer({
               <p className="text-white/55 italic mb-6">Pas de contenu média pour cette séquence</p>
             )}
 
-            {hasMedia && !courseCompleted && !demoMode ? (
+            {hasMedia && !courseCompleted && !demoMode && !isFocus ? (
               <>
                 <button
                   disabled
@@ -1156,7 +1156,8 @@ export default function SequencePlayer({
             ) : (
               <>
                 {/* Barre de navigation basse — mobile uniquement.
-                    En mode focus (avant fin d'audio) : meme mécanique tap-révèle que le header. */}
+                    En mode focus (avant fin d'audio) : meme mécanique tap-révèle que le header.
+                    Bloc verrouille absent en focus (condition superieure avec !isFocus). */}
                 <div className={isFocus && !courseCompleted && !tapVisible ? 'hidden' : 'md:hidden flex gap-3 mt-4'}>
                   {/* Bouton retour */}
                   <button
