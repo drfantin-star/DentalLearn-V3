@@ -162,3 +162,14 @@ body {
   animation: vinyl-spin 8s linear infinite;
   transform-origin: center;
 }
+
+@keyframes wave1 {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+@keyframes wave2 {
+  0%   { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+.animate-wave1 { animation: wave1 2.4s linear infinite; }
+.animate-wave2 { animation: wave2 3.2s linear infinite; }
