@@ -44,7 +44,7 @@ export default function MiniPlayer() {
   // md:hidden garantit que ce rendu ne s'active jamais sur desktop.
   if (isFocus) {
     return (
-      <div className="md:hidden fixed bottom-28 right-4 z-50">
+      <div className="md:hidden fixed z-50" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 12px)', right: '16px' }}>
         <button
           onClick={handleTogglePlay}
           className="relative w-16 h-16 rounded-full overflow-hidden shadow-2xl border border-white/20"

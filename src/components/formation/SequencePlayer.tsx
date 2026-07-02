@@ -282,8 +282,8 @@ export default function SequencePlayer({
   const mediaType = sequence.course_media_type || 'video' // défaut vidéo
   const isAudio = mediaType === 'audio'
 
-  // Mode démo : toujours afficher les 3 étapes pour tester l'interface
-  const demoMode = true // Mettre à false en production
+  // Mode démo : désactivé — la progression réelle conditionne l'accès au quiz.
+  const demoMode = false
   const showVideo = demoMode || hasMedia
   const showPdf = demoMode || hasPdf
 
@@ -355,6 +355,11 @@ export default function SequencePlayer({
     const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
     if (isMobile) setFocus(true)
   }, [audioState.isPlaying, isEnrichedMode, setFocus])
+
+  // Fin d'audio : sortie automatique du focus pour que header + boutons reviennent.
+  useEffect(() => {
+    if (courseCompleted) setFocus(false)
+  }, [courseCompleted, setFocus])
 
   // Cleanup : quitter la séquence remet le focus à false.
   useEffect(() => {
@@ -1014,10 +1019,10 @@ export default function SequencePlayer({
           clear le MiniPlayer global flottant (`bottom-20` = 80px, hauteur ~70px,
           top à 150px du viewport bottom). pb-24 laissait 54px de contenu
           (notamment fenêtre karaoké) recouverts par le MiniPlayer. */}
-      <div className="flex-1 p-4 overflow-auto pb-40">
+      <div className={`flex-1 overflow-auto pb-40 ${isFocus ? 'px-4 pt-0' : 'p-4'}`}>
         {/* COURS (VIDEO ou AUDIO) */}
         {playerStep === 'video' && (
-          <div className="text-center py-6">
+          <div className={`text-center ${isFocus ? 'pt-0 pb-6' : 'py-6'}`}>
             {/* ─── AudioPlayer enrichi (POC-T7.3) ─── */}
             {mediaType === 'audio' && sequence.course_media_url && (
               <div className="mb-6">
@@ -1029,7 +1034,7 @@ export default function SequencePlayer({
                         Objectifs (T7.4-UX-E) qui restitue le contenu objectives
                         de l'ancienne card gradient (supprimée par T7.4-UX-B).
                         En mode focus : masqué sauf pendant 2600 ms après un tap. */}
-                    <div className={`md:hidden mb-3 flex items-center gap-2 transition-opacity duration-300 ${isFocus && !tapVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                    <div className={`md:hidden mb-3 flex items-center gap-2 ${isFocus && !tapVisible ? 'hidden' : ''}`}>
                       <p className="flex-1 font-bold text-base leading-tight" style={{ color: '#e5e5e5' }}>
                         S{sequence.sequence_number} · {sequence.title}
                       </p>
@@ -1066,7 +1071,7 @@ export default function SequencePlayer({
                       ) : null}
                     </div>
                     {/* Onglets masques en mode focus sauf pendant le tap temporaire */}
-                    <div className={`transition-opacity duration-300 ${isFocus && !tapVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                    <div className={isFocus && !tapVisible ? 'hidden' : ''}>
                       <EnrichedTabSelector
                         active={enrichedActiveTab}
                         onChange={setEnrichedActiveTab}
@@ -1150,8 +1155,9 @@ export default function SequencePlayer({
               </>
             ) : (
               <>
-                {/* Barre de navigation basse — mobile uniquement */}
-                <div className="md:hidden flex gap-3 mt-4">
+                {/* Barre de navigation basse — mobile uniquement.
+                    En mode focus (avant fin d'audio) : meme mécanique tap-révèle que le header. */}
+                <div className={isFocus && !courseCompleted && !tapVisible ? 'hidden' : 'md:hidden flex gap-3 mt-4'}>
                   {/* Bouton retour */}
                   <button
                     onClick={onBack}
