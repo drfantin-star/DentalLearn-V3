@@ -10,6 +10,7 @@ import {
   Search,
   type LucideIcon,
 } from 'lucide-react'
+import { useFocusMode } from '@/context/FocusModeContext'
 
 interface NavTab {
   href: string
@@ -27,6 +28,7 @@ const BASE_TABS: NavTab[] = [
 
 export default function BottomNav() {
   const pathname = usePathname()
+  const { isFocus } = useFocusMode()
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
@@ -60,7 +62,7 @@ export default function BottomNav() {
     // Barre flottante : le <nav> couvre toute la largeur mais ne capte pas les
     // clics (pointer-events-none) ; seuls la pilule et la loupe sont cliquables,
     // pour laisser passer les taps dans les marges autour de la barre.
-    <nav className="fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 safe-bottom pointer-events-none">
+    <nav className={`fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 safe-bottom pointer-events-none ${isFocus ? 'hidden md:block' : ''}`}>
       <div className="max-w-lg mx-auto flex items-stretch gap-2.5">
         {/* Pilule flottante arrondie contenant les onglets */}
         <div
