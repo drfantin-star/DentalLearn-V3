@@ -7,6 +7,7 @@ import PWAInstallBanner from '@/components/PWAInstallBanner'
 import MiniPlayer from '@/components/MiniPlayer'
 import AudioQueuePlayer from '@/components/news/AudioQueuePlayer'
 import { useUser } from '@/lib/hooks/useUser'
+import { FocusModeProvider } from '@/context/FocusModeContext'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -64,12 +65,14 @@ export default function AppShell({
   }
 
   return (
-    <div className="min-h-screen pb-28" style={{ background: '#0F0F0F' }}>
-      {children}
-      <PWAInstallBanner />
-      <MiniPlayer />
-      <AudioQueuePlayer />
-      <BottomNav />
-    </div>
+    <FocusModeProvider>
+      <div className="min-h-screen pb-28" style={{ background: '#0F0F0F' }}>
+        {children}
+        <PWAInstallBanner />
+        <MiniPlayer />
+        <AudioQueuePlayer />
+        <BottomNav />
+      </div>
+    </FocusModeProvider>
   )
 }

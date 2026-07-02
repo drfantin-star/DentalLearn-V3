@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   ChevronLeft,
   ArrowLeft,
@@ -17,6 +17,8 @@ import {
   ChevronDown,
   Info,
   Play,
+  Minimize2,
+  Maximize2,
 } from 'lucide-react'
 import {
   createClient,
@@ -31,6 +33,7 @@ import TreasureChest from '@/components/sequences/TreasureChest'
 import CaseStudyQuestion from '@/components/questions/CaseStudyQuestion'
 import { parseCaseStudyData } from '@/lib/questions/parseCaseStudyData'
 import { useAudio } from '@/context/AudioContext'
+import { useFocusMode } from '@/context/FocusModeContext'
 
 // ============================================
 // TYPES (basés sur types/questions.ts)
@@ -261,6 +264,18 @@ export default function SequencePlayer({
   // le FAB overlay du wrapper enrichi (la card legacy étant masquée par
   // T7.4-UX-B). Aucune autre méthode du context n'est consommée ici.
   const { playAudio, state: audioState } = useAudio()
+  const { isFocus, setFocus } = useFocusMode()
+
+  // Tap temporaire : affiche header+onglets 2600 ms puis les re-masque.
+  const [tapVisible, setTapVisible] = useState(false)
+  const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleFocusTap = useCallback(() => {
+    if (!isFocus) return
+    setTapVisible(true)
+    if (tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current)
+    tapTimeoutRef.current = setTimeout(() => setTapVisible(false), 2600)
+  }, [isFocus])
 
   const hasMedia = !!sequence.course_media_url
   const hasPdf = !!sequence.infographic_url
@@ -330,6 +345,24 @@ export default function SequencePlayer({
     audioState.duration,
     sequence.id,
   ])
+
+  // Focus mode : s'active quand l'audio démarre sur mobile en mode enrichi.
+  // Pas de setFocus(false) à la pause — comportement Netflix.
+  const isEnrichedMode = isAudio && !!sequence.timeline_url && sequence.timeline_published
+  useEffect(() => {
+    if (!isEnrichedMode) return
+    if (!audioState.isPlaying) return
+    const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+    if (isMobile) setFocus(true)
+  }, [audioState.isPlaying, isEnrichedMode, setFocus])
+
+  // Cleanup : quitter la séquence remet le focus à false.
+  useEffect(() => {
+    return () => {
+      setFocus(false)
+      if (tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current)
+    }
+  }, [setFocus])
 
   // Écriture SM-2 partagée avec la remédiation de bloc (mécanisme A)
   const supabase = useMemo(() => createClient(), [])
@@ -967,7 +1000,7 @@ export default function SequencePlayer({
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#0F0F0F' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: '#0F0F0F' }} onClick={handleFocusTap}>
       {/* Header */}
       <div className="sticky top-0 z-20 px-4 py-3 hidden md:flex items-center gap-3" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
         <button onClick={onBack} className="p-1 rounded-lg" style={{ color: '#a3a3a3' }}>
@@ -994,26 +1027,52 @@ export default function SequencePlayer({
                         uniquement en mode enriched mobile, le desktop a son
                         propre header sticky ligne ~625. Donne accès au drawer
                         Objectifs (T7.4-UX-E) qui restitue le contenu objectives
-                        de l'ancienne card gradient (supprimée par T7.4-UX-B). */}
-                    <div className="md:hidden mb-3 flex items-center gap-2">
+                        de l'ancienne card gradient (supprimée par T7.4-UX-B).
+                        En mode focus : masqué sauf pendant 2600 ms après un tap. */}
+                    <div className={`md:hidden mb-3 flex items-center gap-2 transition-opacity duration-300 ${isFocus && !tapVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
                       <p className="flex-1 font-bold text-base leading-tight" style={{ color: '#e5e5e5' }}>
                         S{sequence.sequence_number} · {sequence.title}
                       </p>
                       <button
                         type="button"
-                        onClick={() => setObjectivesDrawerOpen(true)}
+                        onClick={(e) => { e.stopPropagation(); setObjectivesDrawerOpen(true) }}
                         className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-colors hover:bg-white/5"
                         style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a', color: '#a3a3a3' }}
-                        aria-label="Objectifs de la séquence"
+                        aria-label="Objectifs de la sequence"
                       >
                         <Info size={20} />
                       </button>
+                      {/* Bouton focus : Minimize2 si focus actif, Maximize2 si audio actif hors focus */}
+                      {isFocus ? (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setFocus(false) }}
+                          className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-colors hover:bg-white/5"
+                          style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a', color: '#a3a3a3' }}
+                          aria-label="Quitter le mode focus"
+                        >
+                          <Minimize2 size={20} />
+                        </button>
+                      ) : audioState.isPlaying ? (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setFocus(true) }}
+                          className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-colors hover:bg-white/5"
+                          style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a', color: '#a3a3a3' }}
+                          aria-label="Entrer en mode focus"
+                        >
+                          <Maximize2 size={20} />
+                        </button>
+                      ) : null}
                     </div>
-                    <EnrichedTabSelector
-                      active={enrichedActiveTab}
-                      onChange={setEnrichedActiveTab}
-                      categoryGradient={categoryGradient}
-                    />
+                    {/* Onglets masques en mode focus sauf pendant le tap temporaire */}
+                    <div className={`transition-opacity duration-300 ${isFocus && !tapVisible ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+                      <EnrichedTabSelector
+                        active={enrichedActiveTab}
+                        onChange={setEnrichedActiveTab}
+                        categoryGradient={categoryGradient}
+                      />
+                    </div>
                   </>
                 )}
                 <EnrichedAudioPlayer
