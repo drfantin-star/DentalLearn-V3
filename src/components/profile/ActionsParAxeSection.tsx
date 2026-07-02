@@ -123,8 +123,6 @@ export default function ActionsParAxeSection({ userId, cpProgress, onProgressRef
 
   return (
     <section>
-      <h2 className="text-base font-bold text-white mb-3">Mes actions par axe</h2>
-
       <div className="space-y-3">
         {axes.map(axe => {
           const color = axeHex(axe.axe_id)
