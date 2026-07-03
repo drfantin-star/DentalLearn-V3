@@ -25,7 +25,8 @@ import LeaderboardModal from '@/components/leaderboard/LeaderboardModal'
 import { useLeaderboard } from '@/lib/hooks/useLeaderboard'
 import ThemeQuizModal from '@/components/quiz/ThemeQuizModal'
 import { INTEREST_TO_NEWS_THEME, NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
-import { NEWS_COVERS_BASE, getSpecialiteGradient } from '@/lib/news-cover'
+import { NEWS_CUTOUTS_BASE, getSpecialiteColor } from '@/lib/news-cover'
+import CutoutCardRender from '@/components/home/CutoutCardRender'
 import SophieAutopilotCard from '@/components/sophie/SophieAutopilotCard'
 
 function formationToForYouItem(f: Formation): ForYouItem {
@@ -536,28 +537,32 @@ export default function HomePage() {
         {themeRows.map((row) => {
           const themeMap = INTEREST_TO_NEWS_THEME[row.key]
           const specialiteSlug = themeMap?.field === 'specialite' ? themeMap.value : null
-          const headerGradient = getSpecialiteGradient(specialiteSlug)
-          const headerImageUrl = specialiteSlug
-            ? `${NEWS_COVERS_BASE}/news-spec-${specialiteSlug}.webp`
+          const cutoutUrl = specialiteSlug
+            ? `${NEWS_CUTOUTS_BASE}/news-spec-${specialiteSlug}.webp`
             : null
+          const headerColor = getSpecialiteColor(specialiteSlug)
 
           const headerCard = (
             <div
               key={`header-${row.key}`}
               className="flex-shrink-0 snap-start rounded-2xl overflow-hidden relative"
-              style={{ ...mediaCardSizeStyle('landscape'), background: headerGradient }}
+              style={{ ...mediaCardSizeStyle('landscape'), position: 'relative', background: '#0d0d1a' }}
             >
-              {headerImageUrl && (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={headerImageUrl}
-                    alt=""
-                    aria-hidden
-                    loading="lazy"
-                    style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                </>
+              {cutoutUrl ? (
+                <CutoutCardRender
+                  cutoutSrc={cutoutUrl}
+                  colorFrom={headerColor}
+                  eyebrow={row.label}
+                  title={row.label}
+                />
+              ) : (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: `linear-gradient(135deg, ${headerColor}, ${headerColor}88)`,
+                  }}
+                />
               )}
             </div>
           )
