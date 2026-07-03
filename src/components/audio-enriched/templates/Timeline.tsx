@@ -270,7 +270,7 @@ function StepFragment({
             className={
               card.variant
                 ? 'text-xs opacity-80'
-                : 'text-xs text-[color:var(--color-text-secondary)]'
+                : 'text-xs text-white/75'
             }
           >
             {card.subtitle}

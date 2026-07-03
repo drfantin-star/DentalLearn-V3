@@ -427,7 +427,7 @@ function GraphDesktop({
                 className={
                   node.variant
                     ? 'text-xs opacity-80'
-                    : 'text-xs text-[color:var(--color-text-secondary)]'
+                    : 'text-xs text-white/75'
                 }
               >
                 {node.subtitle}
@@ -522,7 +522,7 @@ function GraphMobile({
                   className={
                     node.variant
                       ? 'text-xs opacity-80'
-                      : 'text-xs text-[color:var(--color-text-secondary)]'
+                      : 'text-xs text-white/75'
                   }
                 >
                   {node.subtitle}
@@ -616,7 +616,7 @@ function CardBlock({ card, delay }: { card: CardContent; delay: number }) {
           className={
             card.variant
               ? 'text-xs opacity-80'
-              : 'text-xs text-[color:var(--color-text-secondary)]'
+              : 'text-xs text-white/75'
           }
         >
           {card.subtitle}

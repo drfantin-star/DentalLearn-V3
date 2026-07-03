@@ -75,7 +75,7 @@ function Column({
       className="flex flex-col"
       data-side={side}
     >
-      <h4 className="text-[color:var(--color-text-muted)] text-[11px] uppercase tracking-wide font-semibold mb-2 text-center">
+      <h4 className="text-[color:var(--color-text-primary)] text-[11px] uppercase tracking-wide font-semibold mb-2 text-center">
         {column.title}
       </h4>
       <div className="flex flex-col gap-2">
@@ -101,7 +101,7 @@ function Column({
                   className={
                     card.variant
                       ? 'text-xs opacity-80'
-                      : 'text-xs text-[color:var(--color-text-secondary)]'
+                      : 'text-xs text-white/75'
                   }
                 >
                   {card.subtitle}

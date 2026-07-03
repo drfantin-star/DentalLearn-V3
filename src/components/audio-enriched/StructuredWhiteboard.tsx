@@ -70,7 +70,7 @@ export function StructuredWhiteboard({
             transition={ENTER_TRANSITION}
           >
             {activeScene.title && (
-              <h3 className="mb-4 text-[11px] uppercase tracking-wide text-[color:var(--color-text-muted)]">
+              <h3 className="mb-4 text-[11px] uppercase tracking-wide text-[color:var(--color-text-primary)]">
                 {activeScene.title}
               </h3>
             )}

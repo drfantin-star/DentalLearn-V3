@@ -61,7 +61,7 @@ export function Recap({ title, figures, impact, caveats, className }: RecapProps
           {/* Gauche : chiffres clés */}
           {hasFigures && (
             <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider text-[color:var(--color-text-secondary)] font-semibold">
+              <p className="text-[10px] uppercase tracking-wider text-[color:var(--color-text-primary)] font-semibold">
                 Chiffres clés
               </p>
               <div className="space-y-1.5">
@@ -86,7 +86,7 @@ export function Recap({ title, figures, impact, caveats, className }: RecapProps
                         {fig.value}
                       </span>
                       {fig.label && (
-                        <span className="text-xs text-[color:var(--color-text-secondary)] leading-tight">
+                        <span className="text-xs text-white/75 leading-tight">
                           {fig.label}
                         </span>
                       )}
@@ -100,7 +100,7 @@ export function Recap({ title, figures, impact, caveats, className }: RecapProps
           {/* Droite : impact clinique */}
           {hasImpact && (
             <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wider text-[color:var(--color-text-secondary)] font-semibold">
+              <p className="text-[10px] uppercase tracking-wider text-[color:var(--color-text-primary)] font-semibold">
                 Impact clinique
               </p>
               <p className="text-sm text-[color:var(--color-text-primary)] leading-snug">
@@ -117,7 +117,7 @@ export function Recap({ title, figures, impact, caveats, className }: RecapProps
           <p className="text-[10px] uppercase tracking-wider text-axe3 font-semibold mb-1">
             Limites
           </p>
-          <p className="text-xs text-[color:var(--color-text-secondary)] leading-snug">
+          <p className="text-xs text-white/75 leading-snug">
             {caveats}
           </p>
         </footer>

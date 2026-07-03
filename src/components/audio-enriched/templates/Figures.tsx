@@ -78,7 +78,7 @@ export function Figures({ figures, className }: FiguresProps) {
             >
               {item.value}
             </span>
-            <span className="text-xs text-[color:var(--color-text-secondary)] mt-1">
+            <span className="text-xs text-white/75 mt-1">
               {item.label}
             </span>
           </motion.div>
