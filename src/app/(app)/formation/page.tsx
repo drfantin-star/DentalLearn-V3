@@ -15,6 +15,7 @@ import {
   useFormations,
   useUserFormationProgress,
   getCategoryConfig,
+  getLabelCutoutUrl,
   CATEGORIES,
   type Formation,
   type Sequence,
@@ -292,9 +293,9 @@ export default function FormationPage() {
                 className="relative rounded-2xl overflow-hidden"
                 style={{ aspectRatio: '3/2' }}
               >
-                {cat.labelImageUrl ? (
+                {(getLabelCutoutUrl(cat) || cat.labelImageUrl) ? (
                   <img
-                    src={cat.labelImageUrl}
+                    src={getLabelCutoutUrl(cat) || cat.labelImageUrl}
                     alt={cat.name}
                     className="w-full h-full object-cover absolute inset-0"
                   />

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import { Search } from 'lucide-react'
-import { CATEGORIES } from '@/lib/supabase/types'
+import { CATEGORIES, getLabelCutoutUrl } from '@/lib/supabase/types'
 
 const SECTIONS = [
   {
@@ -94,9 +94,9 @@ export default function RecherchePage() {
                       className="relative rounded-2xl overflow-hidden w-full"
                       style={{ aspectRatio: '3/2', border: 'none' }}
                     >
-                      {cat.labelImageUrl ? (
+                      {(getLabelCutoutUrl(cat) || cat.labelImageUrl) ? (
                         <img
-                          src={cat.labelImageUrl}
+                          src={getLabelCutoutUrl(cat) || cat.labelImageUrl}
                           alt={cat.name}
                           className="w-full h-full object-cover absolute inset-0"
                         />

@@ -3,7 +3,7 @@
 import React, { useEffect, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
-import { CATEGORIES } from '@/lib/supabase/types'
+import { CATEGORIES, getLabelCutoutUrl } from '@/lib/supabase/types'
 import BibliothequeBanner from '@/components/ui/BibliothequeBanner'
 import { useRessourceCount } from '@/lib/bibliotheque/useRessourceCount'
 
@@ -54,9 +54,9 @@ function PatientPageContent() {
               className="relative rounded-2xl overflow-hidden"
               style={{ aspectRatio: '3/2' }}
             >
-              {cat.labelImageUrl ? (
+              {(getLabelCutoutUrl(cat) || cat.labelImageUrl) ? (
                 <img
-                  src={cat.labelImageUrl}
+                  src={getLabelCutoutUrl(cat) || cat.labelImageUrl}
                   alt={cat.name}
                   className="w-full h-full object-cover absolute inset-0"
                 />

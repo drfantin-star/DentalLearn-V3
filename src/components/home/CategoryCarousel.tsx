@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { CATEGORIES } from '@/lib/supabase/types'
+import { CATEGORIES, getLabelCutoutUrl } from '@/lib/supabase/types'
 
 interface CategoryCarouselProps {
   categories: typeof CATEGORIES
@@ -50,9 +50,9 @@ export default function CategoryCarousel({ categories, scrollRef }: CategoryCaro
                 flexShrink: 0,
               }}
             >
-              {cat.labelImageUrl ? (
+              {(getLabelCutoutUrl(cat) || cat.labelImageUrl) ? (
                 <img
-                  src={cat.labelImageUrl}
+                  src={getLabelCutoutUrl(cat) || cat.labelImageUrl}
                   alt={cat.name}
                   className="w-full h-full object-cover absolute inset-0"
                 />
