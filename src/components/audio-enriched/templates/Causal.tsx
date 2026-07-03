@@ -536,7 +536,7 @@ function GraphMobile({
               >
                 <div className="bg-white/20 w-px h-3" />
                 {linkingEdge?.label && (
-                  <span className="text-[color:var(--color-text-secondary)] text-xs px-2">
+                  <span className="text-white/75 text-xs px-2">
                     {linkingEdge.label}
                   </span>
                 )}

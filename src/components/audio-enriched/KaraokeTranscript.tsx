@@ -242,61 +242,33 @@ export function KaraokeTranscript({
     }
 
     const words = segment.words
-    const rendered: React.ReactNode[] = []
-    let i = 0
-    while (i < words.length) {
-      let matched = false
-
-      for (const seq of conceptTokenSequences) {
-        if (i + seq.length > words.length) continue
-        const allMatch = seq.every((token, offset) => {
-          const w = words[i + offset]
-          return w !== undefined && normalize(w.text) === token
-        })
-        if (allMatch) {
-          const matchedText = words
-            .slice(i, i + seq.length)
-            .map((w) => w.text)
-            .join(' ')
-          rendered.push(
-            <span
-              key={`kw-${i}`}
-              className="text-accent font-semibold"
-              data-wstart={i}
-              data-wend={i + seq.length - 1}
-            >
-              {matchedText}
-            </span>
-          )
-          i += seq.length
-          if (i < words.length) rendered.push(' ')
-          matched = true
-          break
-        }
-      }
-
-      if (!matched) {
-        rendered.push(
-          <span
-            key={`kw-${i}`}
-            className="text-white"
-            data-wstart={i}
-            data-wend={i}
-          >
-            {words[i].text}
-          </span>
-        )
-        i++
-        if (i < words.length) rendered.push(' ')
-      }
-    }
-
     return (
       <div
         ref={singleContainerRef}
         className="mx-auto max-w-3xl px-4 py-2 md:py-6 text-center text-lg md:text-xl leading-relaxed max-h-[4rem] overflow-y-auto scrollbar-hide md:max-h-none md:overflow-visible"
       >
-        {rendered}
+        {words.map((word, wordIndex) => {
+          const isActive =
+            indexToShow === activeSegmentIndex && wordIndex === activeWordIndex
+          const isPast =
+            indexToShow < activeSegmentIndex ||
+            (indexToShow === activeSegmentIndex && wordIndex < activeWordIndex)
+          return (
+            <span
+              key={wordIndex}
+              data-wstart={wordIndex}
+              data-wend={wordIndex}
+            >
+              <KaraokeWord
+                text={word.text}
+                isActive={isActive}
+                isPast={isPast}
+                startSec={word.start_sec}
+                onSeek={onSeek}
+              />
+            </span>
+          )
+        })}
       </div>
     )
   }
