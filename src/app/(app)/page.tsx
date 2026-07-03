@@ -552,7 +552,7 @@ export default function HomePage() {
                 <CutoutCardRender
                   cutoutSrc={cutoutUrl}
                   colorFrom={headerColor}
-                  eyebrow={row.label}
+
                   title={row.label}
                 />
               ) : (
