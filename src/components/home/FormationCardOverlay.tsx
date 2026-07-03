@@ -5,6 +5,7 @@ import type { Formation } from '@/lib/supabase/types'
 import { getCategoryConfig } from '@/lib/supabase/types'
 import { mediaCardSizeStyle } from './MediaCard'
 import type { MediaCardAspect } from './MediaCard'
+import CutoutCardRender from './CutoutCardRender'
 
 interface FormationCardOverlayProps {
   formation: Formation
@@ -43,112 +44,13 @@ export default function FormationCardOverlay({
     >
       {hasCutout ? (
         /* ── Mode cutout ─────────────────────────────── */
-        <>
-          {/* Fond dégradé radial piloté par la catégorie */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: `radial-gradient(ellipse at 70% 40%, ${catConfig.gradient.from}cc 0%, ${catConfig.gradient.to}55 55%, #0d0d1a 100%)`,
-            }}
-          />
-
-          {/* Voile sombre en bas pour lisibilité du titre */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
-              zIndex: 1,
-            }}
-          />
-
-          {/* Glow doux derrière l'objet */}
-          <div
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              right: '-10%',
-              top: '0%',
-              width: '80%',
-              height: '85%',
-              background: `radial-gradient(ellipse at center, ${catConfig.gradient.from}55 0%, transparent 70%)`,
-              zIndex: 1,
-            }}
-          />
-
-          {/* Objet détouré — flotte à droite, jamais rogné */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={formation.cover_cutout_url!}
-            alt=""
-            aria-hidden="true"
-            style={{
-              position: 'absolute',
-              right: '-4%',
-              top: '2%',
-              width: '72%',
-              height: '88%',
-              objectFit: 'contain',
-              objectPosition: 'center bottom',
-              zIndex: 2,
-              filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.5))',
-            }}
-          />
-
-          {/* Eyebrow — haut gauche */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '10px',
-              left: '10px',
-              zIndex: 4,
-              background: 'rgba(0,0,0,0.45)',
-              backdropFilter: 'blur(6px)',
-              WebkitBackdropFilter: 'blur(6px)',
-              borderRadius: '100px',
-              padding: '3px 8px',
-              border: '0.5px solid rgba(255,255,255,0.15)',
-            }}
-          >
-            <span
-              style={{
-                fontSize: '10px',
-                fontWeight: 600,
-                color: 'rgba(255,255,255,0.8)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.07em',
-              }}
-            >
-              {catConfig.shortName}
-            </span>
-          </div>
-
-          {/* Titre — bas gauche */}
-          <p
-            style={{
-              position: 'absolute',
-              bottom: '14px',
-              left: '10px',
-              right: '48%',
-              zIndex: 4,
-              margin: 0,
-              fontSize: '13px',
-              fontWeight: 700,
-              color: 'white',
-              lineHeight: 1.25,
-              textShadow: '0 2px 6px rgba(0,0,0,0.8)',
-              display: '-webkit-box',
-              WebkitLineClamp: 3,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-            }}
-          >
-            {formation.title}
-          </p>
-        </>
+        <CutoutCardRender
+          cutoutSrc={formation.cover_cutout_url!}
+          colorFrom={catConfig.gradient.from}
+          eyebrow={catConfig.shortName}
+          title={formation.title}
+          progress={pct}
+        />
       ) : (
         /* ── Fallback : rendu image cover existant ───── */
         <>
@@ -208,7 +110,7 @@ export default function FormationCardOverlay({
           <p
             style={{
               position: 'absolute',
-              bottom: '14px',
+              bottom: '18px',
               left: '10px',
               right: '10px',
               zIndex: 3,
@@ -226,30 +128,30 @@ export default function FormationCardOverlay({
           >
             {formation.title}
           </p>
+
+          {/* Barre de progression — fallback */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'rgba(255,255,255,0.18)',
+              zIndex: 5,
+            }}
+          >
+            <div
+              className="bg-accent"
+              style={{
+                height: '100%',
+                width: `${pct}%`,
+                transition: 'width 0.4s ease',
+              }}
+            />
+          </div>
         </>
       )}
-
-      {/* Barre de progression — tout en bas, toujours présente */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          height: '4px',
-          background: 'rgba(255,255,255,0.18)',
-          zIndex: 5,
-        }}
-      >
-        <div
-          className="bg-accent"
-          style={{
-            height: '100%',
-            width: `${pct}%`,
-            transition: 'width 0.4s ease',
-          }}
-        />
-      </div>
     </button>
   )
 }

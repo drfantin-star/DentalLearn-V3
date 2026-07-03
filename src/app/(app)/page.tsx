@@ -40,6 +40,7 @@ function formationToForYouItem(f: Formation): ForYouItem {
     axe: (f.axe_cp as 1 | 2 | 3 | 4 | null) ?? null,
     category: f.category,
     cover: f.cover_image_url,
+    cutout: f.cover_cutout_url,
   }
 }
 

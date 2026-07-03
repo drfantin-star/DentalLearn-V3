@@ -3,7 +3,9 @@
 import React from 'react'
 import type { ForYouItem, ForYouType } from '@/types/forYou'
 import { getCategoryConfig } from '@/lib/supabase/types'
+import { mediaCardSizeStyle } from './MediaCard'
 import MediaCard from './MediaCard'
+import CutoutCardRender from './CutoutCardRender'
 
 // Carte unique du feed « Pour vous » : un seul rendu visuel cohérent (style
 // « feed » uniforme) piloté par `type`, plutôt que d'alterner entre cartes
@@ -43,6 +45,33 @@ function accentFor(axe: ForYouItem['axe']): string {
 
 export default function ForYouCard({ item }: { item: ForYouItem }) {
   const accent = accentFor(item.axe)
+
+  // Formation avec détourage → rendu cutout (sans barre de progression).
+  if (item.type === 'formation' && item.cutout) {
+    const cfg = item.category ? getCategoryConfig(item.category) : null
+    const colorFrom = cfg?.gradient.from ?? accent
+    const eyebrow = cfg?.shortName
+
+    return (
+      <a
+        href={item.href}
+        aria-label={item.title}
+        className="flex-shrink-0 snap-start rounded-2xl overflow-hidden block text-left active:scale-[0.98] transition-transform duration-150"
+        style={{
+          ...mediaCardSizeStyle('landscape'),
+          position: 'relative',
+          border: '0.5px solid #333',
+        }}
+      >
+        <CutoutCardRender
+          cutoutSrc={item.cutout}
+          colorFrom={colorFrom}
+          eyebrow={eyebrow}
+          title={item.title}
+        />
+      </a>
+    )
+  }
 
   // Cover formation : rendue en `contain` (non recadrée) sur un dégradé de fond,
   // les covers admin étant des JPEG arbitraires. Le fond reprend la couleur de

@@ -16,6 +16,7 @@ export interface ForYouItem {
   axe: 1 | 2 | 3 | 4 | null
   category: string | null
   cover?: string | null
+  cutout?: string | null
   estMinutes?: number | null
   publishedAt?: string | null
   // Microcopy UX « Parce que… ». null = pas de raison affichée.
