@@ -238,6 +238,8 @@ function CutoutCompact({
 }
 
 // ── Variante theme — carte 3/2 grille Explorer ────────────────────────────────
+// Ordre DOM strict (pas de z-index) : fond → glow → image → voile → titre.
+// L'image est toujours au-dessus du glow sans risque de stacking context.
 
 function CutoutTheme({
   cutoutSrc,
@@ -250,26 +252,23 @@ function CutoutTheme({
 }) {
   return (
     <>
-      {/* Fond sombre (pas noir pur) */}
+      {/* 1. Fond sombre */}
+      <div
+        aria-hidden="true"
+        style={{ position: 'absolute', inset: 0, background: '#0e0e18' }}
+      />
+
+      {/* 2. Glow coloré — arrière-plan uniquement */}
       <div
         aria-hidden="true"
         style={{
           position: 'absolute',
           inset: 0,
-          background: '#141420',
+          background: `radial-gradient(ellipse at 50% 50%, ${colorFrom}33 0%, transparent 60%)`,
         }}
       />
-      {/* Glow doux centré derrière l'illustration */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute',
-          inset: 0,
-          background: `radial-gradient(ellipse at 50% 40%, ${colorFrom}40 0%, transparent 65%)`,
-          zIndex: 1,
-        }}
-      />
-      {/* Illustration détourée plein fond, centrée, jamais rognée */}
+
+      {/* 3. Image — au-dessus du glow par ordre DOM, jamais colorisée */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={cutoutSrc}
@@ -279,36 +278,38 @@ function CutoutTheme({
           position: 'absolute',
           inset: 0,
           width: '100%',
-          height: '100%',
+          height: '86%',
           objectFit: 'contain',
           objectPosition: 'center',
-          zIndex: 2,
-          filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))',
+          filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.5))',
         }}
       />
-      {/* Voile bas pour lisibilité du titre */}
+
+      {/* 4. Voile bas — lisibilité titre uniquement */}
       <div
         aria-hidden="true"
         style={{
           position: 'absolute',
-          inset: 0,
-          background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 45%, transparent 100%)',
-          zIndex: 3,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '50%',
+          background: 'linear-gradient(to top, rgba(0,0,0,0.82) 0%, transparent 100%)',
         }}
       />
-      {/* Titre bas gauche */}
+
+      {/* 5. Titre */}
       <span
         style={{
           position: 'absolute',
           bottom: '10px',
           left: '12px',
           right: '12px',
-          zIndex: 4,
           fontSize: '15px',
           fontWeight: 700,
           color: 'white',
           lineHeight: 1.2,
-          textShadow: '0 1px 4px rgba(0,0,0,0.6)',
+          textShadow: '0 1px 4px rgba(0,0,0,0.7)',
         }}
       >
         {title}
