@@ -5,7 +5,7 @@ import type { NewsCard } from '@/types/news'
 import { describeCardDate } from '@/lib/news-display'
 import NewsCardSVG, { SPECIALITE_COLORS, NEWS_DEFAULT_COLOR } from './NewsCardSVG'
 import Badge, { type BadgeVariant } from '@/components/ui/Badge'
-import MediaCard from '@/components/home/MediaCard'
+import MediaCard, { mediaCardSizeStyle } from '@/components/home/MediaCard'
 import CutoutCardRender from '@/components/home/CutoutCardRender'
 import { getNewsCoverChain, getSpecialiteGradient, getNewsCutoutUrl, getSpecialiteColor } from '@/lib/news-cover'
 
@@ -104,46 +104,40 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
   // Pas d'image : fond = degrade specialite a 70% d'opacite + titre en grand.
   if (hideCover) {
     return (
-      <MediaCard
-        aspect="landscape"
+      <button
+        type="button"
         onClick={() => onClick(news)}
-        ariaLabel={news.display_title}
-        cover={undefined}
-        fallback={
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: getSpecialiteGradient(news.specialite),
-              opacity: 0.7,
-            }}
-          />
-        }
-        topLeft={
-          !hideBadge && category ? (
-            <Badge variant={categoryVariant(category)} size="md">
-              {category}
-            </Badge>
-          ) : undefined
-        }
+        aria-label={news.display_title}
+        className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform duration-150"
+        style={{
+          ...mediaCardSizeStyle('landscape'),
+          position: 'relative',
+          border: '0.5px solid #333',
+          background: getSpecialiteGradient(news.specialite),
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '14px',
+        }}
       >
         <p
           style={{
-            fontSize: '16px',
+            fontSize: '15px',
             fontWeight: 700,
             color: 'white',
-            lineHeight: 1.25,
+            lineHeight: 1.3,
+            textAlign: 'center',
+            textShadow: '0 1px 4px rgba(0,0,0,0.7)',
             display: '-webkit-box',
             WebkitLineClamp: 4,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
-            textShadow: '0 1px 4px rgba(0,0,0,0.7)',
-            textAlign: 'center',
+            margin: 0,
           }}
         >
           {news.display_title}
         </p>
-      </MediaCard>
+      </button>
     )
   }
 
