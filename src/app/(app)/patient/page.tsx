@@ -55,7 +55,7 @@ function PatientPageContent() {
                 key={cat.id}
                 onClick={() => router.push(`/formation/${cat.id}?from=/patient`)}
                 className="relative rounded-2xl overflow-hidden"
-                style={{ aspectRatio: '3/2' }}
+                style={{ aspectRatio: '3/2', boxShadow: cutoutUrl ? `0 0 0 2px ${cat.gradient.from}` : undefined }}
               >
                 {cutoutUrl ? (
                   <CutoutCardRender

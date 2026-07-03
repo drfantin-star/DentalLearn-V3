@@ -94,7 +94,7 @@ export default function RecherchePage() {
                         window.location.href = `/formation/${cat.id}?from=${from}`
                       }}
                       className="relative rounded-2xl overflow-hidden w-full"
-                      style={{ aspectRatio: '3/2', border: 'none' }}
+                      style={{ aspectRatio: '3/2', border: 'none', boxShadow: cutoutUrl ? `0 0 0 2px ${cat.gradient.from}` : undefined }}
                     >
                       {cutoutUrl ? (
                         <CutoutCardRender

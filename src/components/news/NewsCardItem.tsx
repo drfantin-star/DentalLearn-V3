@@ -65,7 +65,10 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
         className="w-full flex items-center gap-3 rounded-xl glass-card p-3 text-left
                    hover:border-white/20 transition-premium"
       >
-        <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden relative">
+        <div
+          className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden relative"
+          style={gridCutout ? { boxShadow: `0 0 0 2px ${gridColor}` } : undefined}
+        >
           {gridCutout ? (
             <CutoutCardRender
               cutoutSrc={gridCutout}
