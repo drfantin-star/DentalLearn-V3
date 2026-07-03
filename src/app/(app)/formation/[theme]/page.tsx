@@ -317,6 +317,7 @@ export default function ThemePage() {
         sequence={selectedSequence}
         categoryGradient={sequenceGradient}
         coverImageUrl={formations.find(f => f.id === selectedFormationId)?.cover_image_url}
+        formationTitle={formations.find(f => f.id === selectedFormationId)?.title ?? ''}
         onBack={goBack}
         onComplete={handleSequenceComplete}
         shouldSubmitResult={buildShouldSubmitResult(selectedSequence)}

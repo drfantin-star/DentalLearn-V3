@@ -43,6 +43,7 @@ interface SequencePlayerProps {
   sequence: Sequence
   categoryGradient: { from: string; to: string }
   coverImageUrl?: string | null
+  formationTitle?: string
   onBack: () => void
   onComplete: (score: number, totalPoints: number) => void
   shouldSubmitResult?: () => Promise<boolean>
@@ -254,6 +255,7 @@ export default function SequencePlayer({
   sequence,
   categoryGradient,
   coverImageUrl,
+  formationTitle,
   onBack,
   onComplete,
   shouldSubmitResult,
@@ -918,6 +920,8 @@ export default function SequencePlayer({
                 timelinePublished={sequence.timeline_published ?? false}
                 activeTab={enrichedActiveTab}
                 hideLegacyCardWhenEnriched={true}
+                startCardFormationTitle={formationTitle}
+                startCardSequenceLabel={`S${sequence.sequence_number} · ${sequence.title}`}
                 onPlayRequest={() =>
                   playAudio({
                     audioUrl: sequence.course_media_url!,
@@ -1095,6 +1099,8 @@ export default function SequencePlayer({
                   timelinePublished={sequence.timeline_published ?? false}
                   activeTab={enrichedActiveTab}
                   hideLegacyCardWhenEnriched={true}
+                  startCardFormationTitle={formationTitle}
+                  startCardSequenceLabel={`S${sequence.sequence_number} · ${sequence.title}`}
                   onPlayRequest={() =>
                     playAudio({
                       audioUrl: sequence.course_media_url!,

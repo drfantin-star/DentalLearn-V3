@@ -80,6 +80,10 @@ interface EnrichedAudioPlayerProps {
   // et que la track n'a pas encore démarré. Une fois `state.audioUrl === src`,
   // le FAB disparaît et le panneau enrichi prend le relais.
   onPlayRequest?: () => void
+
+  // Carton titre affiché avant la première scène (displayedScene null).
+  startCardFormationTitle?: string
+  startCardSequenceLabel?: string
 }
 
 export default function EnrichedAudioPlayer({
@@ -100,6 +104,8 @@ export default function EnrichedAudioPlayer({
   activeTab,
   hideLegacyCardWhenEnriched = false,
   onPlayRequest,
+  startCardFormationTitle,
+  startCardSequenceLabel,
 }: EnrichedAudioPlayerProps) {
   // Lecture seule — Q5. Aucune méthode d'écriture du context n'est extraite.
   const { state } = useAudio()
@@ -288,6 +294,8 @@ export default function EnrichedAudioPlayer({
                 displayedScene={displayedScene}
                 sceneConcepts={sceneConcepts}
                 timeline={timeline}
+                startCardFormationTitle={startCardFormationTitle}
+                startCardSequenceLabel={startCardSequenceLabel}
               />
             </div>
           ) : (
@@ -321,6 +329,8 @@ export default function EnrichedAudioPlayer({
                   displayedScene={displayedScene}
                   sceneConcepts={sceneConcepts}
                   timeline={timeline}
+                  startCardFormationTitle={startCardFormationTitle}
+                  startCardSequenceLabel={startCardSequenceLabel}
                 />
               </div>
               <div className="order-2 md:order-1 md:min-h-0 md:overflow-y-auto">
@@ -354,12 +364,16 @@ interface WhiteboardOrCoverProps {
   displayedScene: Scene | null
   sceneConcepts: DisplayableConcept[]
   timeline: NonNullable<ReturnType<typeof useEnrichedTimeline>['timeline']>
+  startCardFormationTitle?: string
+  startCardSequenceLabel?: string
 }
 
 function WhiteboardOrCover({
   displayedScene,
   sceneConcepts,
   timeline,
+  startCardFormationTitle,
+  startCardSequenceLabel,
 }: WhiteboardOrCoverProps) {
   if (displayedScene) {
     // Rendu « scène + concepts en dessous » extrait dans un composant
@@ -373,9 +387,25 @@ function WhiteboardOrCover({
       />
     )
   }
-  // POC-T7.4a-E — gap initial avant la première scène (displayedScene null) :
-  // 3 dots pulsants staggered (validation Dr Fantin). Couvre aussi les
-  // timelines sans scène (`scenes[]` vide).
+  // Carton titre avant la première scène — remplace les 3 dots si les labels
+  // sont fournis. Repli : 3 dots si aucun label disponible.
+  if (startCardSequenceLabel || startCardFormationTitle) {
+    return (
+      <div className="bg-[color:var(--color-bg-card)]/30 rounded-xl p-6 flex flex-col items-center justify-center min-h-[240px] gap-2 text-center">
+        {startCardFormationTitle && (
+          <p className="text-xs uppercase tracking-widest text-accent font-medium">
+            {startCardFormationTitle}
+          </p>
+        )}
+        {startCardSequenceLabel && (
+          <p className="text-2xl font-semibold text-white leading-snug">
+            {startCardSequenceLabel}
+          </p>
+        )}
+      </div>
+    )
+  }
+  // Fallback 3 dots (pas de labels fournis).
   return (
     <div className="bg-[color:var(--color-bg-card)]/30 rounded-xl p-6 flex items-center justify-center min-h-[240px]">
       <div className="flex items-center gap-2 text-white/55" role="status" aria-label="Visualisation à venir">
