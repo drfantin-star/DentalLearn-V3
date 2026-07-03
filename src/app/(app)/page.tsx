@@ -570,7 +570,7 @@ export default function HomePage() {
           const quiz = quizSpecialiteFor(row.key)
           return (
             <React.Fragment key={row.key}>
-              {renderNewsRow(`Parce que tu t'interesses a ${row.label}`, row.items, false, headerCard, true)}
+              {renderNewsRow(`Parce que tu t'interesses a ${row.label}`, row.items, false, headerCard, true, true)}
               {quiz && (
                 <button
                   type="button"
