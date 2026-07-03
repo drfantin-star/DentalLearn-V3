@@ -106,7 +106,7 @@ export async function GET() {
     const [formationsRes, eppRes, questRes, ficheRes, news] = await Promise.all([
       supabase
         .from('formations')
-        .select('id, title, slug, category, axe_cp, cover_image_url, created_at')
+        .select('id, title, slug, category, axe_cp, cover_image_url, cover_cutout_url, created_at')
         .eq('is_published', true),
       supabase
         .from('epp_audits')
@@ -149,6 +149,7 @@ export async function GET() {
           axe: (f.axe_cp as ForYouItem['axe']) ?? null,
           category: f.category,
           cover: f.cover_image_url,
+          cutout: f.cover_cutout_url,
           publishedAt: f.created_at,
           matchReason: `Parce que ${reasonLabel} vous intéresse`,
         },
