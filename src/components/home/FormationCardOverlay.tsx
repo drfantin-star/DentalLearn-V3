@@ -1,126 +1,139 @@
 'use client'
 
 import React from 'react'
-import { getCategoryConfig } from '@/lib/supabase/types'
 import type { Formation } from '@/lib/supabase/types'
-import MediaCard from './MediaCard'
-import type { MediaCardAspect, MediaCardSize } from './MediaCard'
+import { mediaCardSizeStyle } from './MediaCard'
+import type { MediaCardAspect } from './MediaCard'
 
 interface FormationCardOverlayProps {
   formation: Formation
-  progress?: { isStarted: boolean; isCompleted: boolean }
+  progressPercent?: number
   onClick: () => void
-  accentGradient?: string
   aspect?: MediaCardAspect
-  size?: MediaCardSize
-  hero?: boolean
-  hideBadge?: boolean
-  bgOpacity?: number
 }
 
 export default function FormationCardOverlay({
   formation,
-  progress,
+  progressPercent = 0,
   onClick,
-  accentGradient,
   aspect = 'portrait',
-  size = 'default',
-  hero,
-  hideBadge = false,
-  bgOpacity,
 }: FormationCardOverlayProps) {
-  const config = getCategoryConfig(formation.category)
-  const coverBg = `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
-  const ctaLabel = progress?.isCompleted
-    ? '✓ Terminé'
-    : progress?.isStarted
-    ? 'Continuer →'
-    : 'Découvrir'
-  const ctaGradient = progress?.isCompleted
-    ? 'linear-gradient(135deg, #059669, #10B981)'
-    : accentGradient || `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
-
-  const isHero = hero ?? size === 'large'
-  const opacity = bgOpacity ?? (isHero ? 0.7 : 1)
+  const pct = Math.min(100, Math.max(0, Math.round(progressPercent)))
+  const ariaLabel = `Reprendre : ${formation.title}, ${pct} %`
 
   return (
-    <MediaCard
+    <button
+      type="button"
       onClick={onClick}
-      aspect={aspect}
-      size={size}
-      cover={formation.cover_image_url}
-      coverAlt={formation.title}
-      coverFit="contain"
-      coverBackground={coverBg}
-      coverOpacity={opacity}
-      fallback={
-        <div
+      aria-label={ariaLabel}
+      className="flex-shrink-0 snap-start block text-left active:scale-[0.98] transition-transform duration-150 overflow-hidden"
+      style={{
+        ...mediaCardSizeStyle(aspect),
+        position: 'relative',
+        borderRadius: '18px',
+        border: '0.5px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+      }}
+    >
+      {/* Image plein cadre */}
+      {formation.cover_image_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={formation.cover_image_url}
+          alt={formation.title}
           style={{
             position: 'absolute',
             inset: 0,
-            background: `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '48px',
-            opacity,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
           }}
-        >
-          {config.emoji}
-        </div>
-      }
-      topLeft={hideBadge ? undefined : (
-        <div
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            background: 'rgba(0,0,0,0.45)',
-            backdropFilter: 'blur(4px)',
-            border: '1.5px solid rgba(255,255,255,0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity,
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
-            <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/>
-            <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
-          </svg>
-        </div>
+        />
+      ) : (
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #1a1a2e, #16213e)' }} />
       )}
-    >
+
+      {/* Voile degrade sombre en bas */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)',
+        }}
+      />
+
+      {/* Chip eyebrow FORMATION — haut gauche */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '10px',
+          left: '10px',
+          zIndex: 2,
+          background: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          borderRadius: '100px',
+          padding: '3px 8px',
+          border: '0.5px solid rgba(255,255,255,0.15)',
+        }}
+      >
+        <span
+          style={{
+            fontSize: '10px',
+            fontWeight: 700,
+            color: 'rgba(255,255,255,0.9)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+          }}
+        >
+          FORMATION
+        </span>
+      </div>
+
+      {/* Titre — bas gauche */}
       <p
         style={{
-          fontSize: isHero ? (size === 'large' ? '18px' : '15px') : '13px',
+          position: 'absolute',
+          bottom: '14px',
+          left: '10px',
+          right: '10px',
+          zIndex: 3,
+          margin: 0,
+          fontSize: '13px',
           fontWeight: 700,
           color: 'white',
           lineHeight: 1.25,
+          textShadow: '0 2px 6px rgba(0,0,0,0.7)',
           display: '-webkit-box',
-          WebkitLineClamp: isHero ? (size === 'large' ? 5 : 3) : (aspect === 'landscape' ? 4 : 3),
+          WebkitLineClamp: 2,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
-          textShadow: '0 2px 6px rgba(0,0,0,0.7)',
         }}
       >
         {formation.title}
       </p>
+
+      {/* Barre de progression — tout en bas */}
       <div
         style={{
-          background: ctaGradient,
-          color: 'white',
-          fontSize: isHero ? '13px' : '12px',
-          fontWeight: 600,
-          textAlign: 'center',
-          padding: '7px',
-          borderRadius: '10px',
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: '4px',
+          background: 'rgba(255,255,255,0.18)',
+          zIndex: 4,
         }}
       >
-        {ctaLabel}
+        <div
+          className="bg-accent"
+          style={{
+            height: '100%',
+            width: `${pct}%`,
+            transition: 'width 0.4s ease',
+          }}
+        />
       </div>
-    </MediaCard>
+    </button>
   )
 }
