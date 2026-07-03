@@ -47,6 +47,7 @@ export default function FormationCardOverlay({
             width: '100%',
             height: '100%',
             objectFit: 'cover',
+            objectPosition: 'center top',
           }}
         />
       ) : (
@@ -80,10 +81,10 @@ export default function FormationCardOverlay({
         <span
           style={{
             fontSize: '10px',
-            fontWeight: 700,
-            color: 'rgba(255,255,255,0.9)',
+            fontWeight: 600,
+            color: 'rgba(255,255,255,0.8)',
             textTransform: 'uppercase',
-            letterSpacing: '0.08em',
+            letterSpacing: '0.07em',
           }}
         >
           FORMATION
