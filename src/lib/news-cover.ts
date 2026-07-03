@@ -1,6 +1,7 @@
 import type { NewsCard } from '@/types/news'
 
 export const NEWS_COVERS_BASE = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ui-assets/news-covers`
+export const NEWS_CUTOUTS_BASE = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ui-assets/news-covers-cutouts`
 
 /**
  * Retourne la liste ordonnee d'URLs de couverture a tenter pour une news.
@@ -16,12 +17,24 @@ export function getNewsCoverChain(
   return chain
 }
 
-// Mapping specialite -> couleur de base (source : SPECIALITE_COLORS de NewsCardSVG)
+/**
+ * Retourne l'URL du detourage pour cette news (theme d'abord, specialite ensuite).
+ * Undefined si ni theme ni specialite disponible.
+ */
+export function getNewsCutoutUrl(
+  news: Pick<NewsCard, 'themes' | 'specialite'>
+): string | undefined {
+  if (news.themes?.[0]) return `${NEWS_CUTOUTS_BASE}/news-theme-${news.themes[0]}.webp`
+  if (news.specialite) return `${NEWS_CUTOUTS_BASE}/news-spec-${news.specialite}.webp`
+  return undefined
+}
+
+// Alignes palette Certily (Option A — 03/07/2026)
 const SPEC_COLORS: Record<string, string> = {
-  'dent-resto': '#2A6EBB', 'paro': '#2E7D32', 'implanto': '#6A1B9A',
-  'chir-orale': '#C62828', 'odf': '#E65100', 'endo': '#00695C',
-  'occluso': '#AD1457', 'proth': '#4527A0', 'sante-pub': '#00838F',
-  'pedo': '#F9A825', 'gero': '#5D4037', 'actu-pro': '#37474F',
+  'dent-resto': '#F59E0B', 'paro': '#EC4899', 'implanto': '#10B981',
+  'chir-orale': '#EF4444', 'odf': '#8B5CF6', 'endo': '#6366F1',
+  'occluso': '#0F7B6C', 'proth': '#F97316', 'sante-pub': '#155E75',
+  'pedo': '#1E2A9A', 'gero': '#A78BFA', 'actu-pro': '#0F7B6C',
 }
 const DEFAULT_SPEC_COLOR = '#1A1A2E'
 
@@ -33,8 +46,13 @@ function darkenHex(hex: string, amount: number): string {
   return `#${h(ch(0))}${h(ch(2))}${h(ch(4))}`
 }
 
-/** Retourne le degrade CSS 135deg base sur la specialite (reutilise les hex existants). */
+/** Retourne le degrade CSS 135deg base sur la specialite. */
 export function getSpecialiteGradient(specialite: string | null): string {
   const accent = (specialite && SPEC_COLORS[specialite]) || DEFAULT_SPEC_COLOR
   return `linear-gradient(135deg, ${accent}, ${darkenHex(accent, 0.35)})`
+}
+
+/** Retourne la couleur de base (from) pour un degrade radial. */
+export function getSpecialiteColor(specialite: string | null): string {
+  return (specialite && SPEC_COLORS[specialite]) || DEFAULT_SPEC_COLOR
 }
