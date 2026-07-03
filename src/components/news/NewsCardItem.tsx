@@ -6,6 +6,7 @@ import { describeCardDate } from '@/lib/news-display'
 import NewsCardSVG, { SPECIALITE_COLORS, NEWS_DEFAULT_COLOR } from './NewsCardSVG'
 import Badge, { type BadgeVariant } from '@/components/ui/Badge'
 import MediaCard from '@/components/home/MediaCard'
+import CutoutCardRender from '@/components/home/CutoutCardRender'
 import { getNewsCoverChain, getSpecialiteGradient, getNewsCutoutUrl, getSpecialiteColor } from '@/lib/news-cover'
 
 interface Props {
@@ -53,8 +54,10 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
   // Degrade de fond par specialite — filet ultime (cascade epuisee) ou hideCover.
   const accent = (news.specialite && SPECIALITE_COLORS[news.specialite]) || NEWS_DEFAULT_COLOR
 
-  // ── Variant grid (/news) — comportement par defaut INCHANGE ──────────────
+  // ── Variant grid (/news) — vignette carrée détourée ──────────────────────
   if (variant === 'grid') {
+    const gridCutout = getNewsCutoutUrl(news)
+    const gridColor = getSpecialiteColor(news.specialite)
     return (
       <button
         type="button"
@@ -62,15 +65,13 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
         className="w-full flex items-center gap-3 rounded-xl glass-card p-3 text-left
                    hover:border-white/20 transition-premium"
       >
-        <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden">
-          {coverSrc ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={coverSrc}
-              alt={news.display_title}
-              loading="lazy"
-              className="w-full h-full object-cover"
-              onError={() => setCoverIdx((i) => i + 1)}
+        <div className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden relative">
+          {gridCutout ? (
+            <CutoutCardRender
+              cutoutSrc={gridCutout}
+              colorFrom={gridColor}
+              title=""
+              variant="compact"
             />
           ) : (
             <NewsCardSVG

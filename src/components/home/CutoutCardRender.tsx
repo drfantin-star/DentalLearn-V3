@@ -14,12 +14,18 @@ interface CutoutCardRenderProps {
    * Utilisé par FormationCardOverlay (Reprendre). Pour toi et Parce que → omettre.
    */
   progress?: number
+  /**
+   * Layout variant :
+   * - "landscape" (défaut) : image flottante droite, titre bas-gauche — cartes paysage Pour toi / Parce que.
+   * - "compact" : carré ~80×80, image centrée object-contain, glow derrière — vignette liste News.
+   * - "theme" : ratio 3/2, illustration plein fond object-contain centrée + glow doux — grilles Explorer.
+   */
+  variant?: 'landscape' | 'compact' | 'theme'
 }
 
 /**
- * Rendu détouré générique : fond radial + glow + objet PNG flottant droite
- * + eyebrow + titre + barre de progression optionnelle.
- *
+ * Rendu détouré générique : fond radial + glow + objet détouré.
+ * Layout piloté par `variant` (landscape / compact / theme).
  * Ne rend que les couches internes (toutes en position absolute).
  * Le consommateur fournit le conteneur `position: relative; overflow: hidden`.
  */
@@ -29,7 +35,17 @@ export default function CutoutCardRender({
   eyebrow,
   title,
   progress,
+  variant = 'landscape',
 }: CutoutCardRenderProps) {
+  if (variant === 'compact') {
+    return <CutoutCompact cutoutSrc={cutoutSrc} colorFrom={colorFrom} />
+  }
+
+  if (variant === 'theme') {
+    return <CutoutTheme cutoutSrc={cutoutSrc} colorFrom={colorFrom} title={title} />
+  }
+
+  // ── variant "landscape" (défaut) ──────────────────────────────────────────
   const showProgress = progress !== undefined
   const pct = showProgress ? Math.min(100, Math.max(0, Math.round(progress))) : 0
 
@@ -166,6 +182,137 @@ export default function CutoutCardRender({
           />
         </div>
       )}
+    </>
+  )
+}
+
+// ── Variante compacte — vignette carrée liste News (~80×80) ──────────────────
+
+function CutoutCompact({
+  cutoutSrc,
+  colorFrom,
+}: {
+  cutoutSrc: string
+  colorFrom: string
+}) {
+  return (
+    <>
+      {/* Fond radial centré */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: `radial-gradient(ellipse at center, ${colorFrom}bb 0%, ${colorFrom}33 60%, #0d0d1a 100%)`,
+        }}
+      />
+      {/* Glow derrière l'objet */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: '-10%',
+          background: `radial-gradient(ellipse at center, ${colorFrom}44 0%, transparent 65%)`,
+          zIndex: 1,
+        }}
+      />
+      {/* Objet détouré centré */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={cutoutSrc}
+        alt=""
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: '4%',
+          width: '92%',
+          height: '92%',
+          objectFit: 'contain',
+          objectPosition: 'center',
+          zIndex: 2,
+          filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.5))',
+        }}
+      />
+    </>
+  )
+}
+
+// ── Variante theme — carte 3/2 grille Explorer ────────────────────────────────
+
+function CutoutTheme({
+  cutoutSrc,
+  colorFrom,
+  title,
+}: {
+  cutoutSrc: string
+  colorFrom: string
+  title: string
+}) {
+  return (
+    <>
+      {/* Fond sombre (pas noir pur) */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: '#141420',
+        }}
+      />
+      {/* Glow doux centré derrière l'illustration */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: `radial-gradient(ellipse at 50% 40%, ${colorFrom}40 0%, transparent 65%)`,
+          zIndex: 1,
+        }}
+      />
+      {/* Illustration détourée plein fond, centrée, jamais rognée */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={cutoutSrc}
+        alt=""
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          objectFit: 'contain',
+          objectPosition: 'center',
+          zIndex: 2,
+          filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.4))',
+        }}
+      />
+      {/* Voile bas pour lisibilité du titre */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 45%, transparent 100%)',
+          zIndex: 3,
+        }}
+      />
+      {/* Titre bas gauche */}
+      <span
+        style={{
+          position: 'absolute',
+          bottom: '10px',
+          left: '12px',
+          right: '12px',
+          zIndex: 4,
+          fontSize: '15px',
+          fontWeight: 700,
+          color: 'white',
+          lineHeight: 1.2,
+          textShadow: '0 1px 4px rgba(0,0,0,0.6)',
+        }}
+      >
+        {title}
+      </span>
     </>
   )
 }
