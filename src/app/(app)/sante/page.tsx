@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { ChevronLeft } from 'lucide-react'
 import { CATEGORIES, getLabelCutoutUrl } from '@/lib/supabase/types'
 import BibliothequeBanner from '@/components/ui/BibliothequeBanner'
+import CutoutCardRender from '@/components/home/CutoutCardRender'
 import AutoEvalCard from '@/components/autoeval/AutoEvalCard'
 import { useRessourceCount } from '@/lib/bibliotheque/useRessourceCount'
 
@@ -49,43 +50,43 @@ function SantePageContent() {
           🔍 Explorer par thème
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          {axe4Categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => router.push(`/formation/${cat.id}?from=/sante`)}
-              className="relative rounded-2xl overflow-hidden"
-              style={{ aspectRatio: '3/2' }}
-            >
-              {(getLabelCutoutUrl(cat) || cat.labelImageUrl) ? (
-                <img
-                  src={getLabelCutoutUrl(cat) || cat.labelImageUrl}
-                  alt={cat.name}
-                  className="w-full h-full object-cover absolute inset-0"
-                />
-              ) : (
-                <div
-                  className="w-full h-full absolute inset-0"
-                  style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
-                />
-              )}
-              <div
-                className="absolute inset-0"
-                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
-              />
-              <span
-                className="absolute font-bold text-white leading-tight"
-                style={{
-                  bottom: '10px',
-                  left: '12px',
-                  fontSize: '16px',
-                  textShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                  maxWidth: 'calc(100% - 24px)',
-                }}
+          {axe4Categories.map((cat) => {
+            const cutoutUrl = getLabelCutoutUrl(cat)
+            return (
+              <button
+                key={cat.id}
+                onClick={() => router.push(`/formation/${cat.id}?from=/sante`)}
+                className="relative rounded-2xl overflow-hidden"
+                style={{ aspectRatio: '3/2' }}
               >
-                {cat.name}
-              </span>
-            </button>
-          ))}
+                {cutoutUrl ? (
+                  <CutoutCardRender
+                    cutoutSrc={cutoutUrl}
+                    colorFrom={cat.gradient.from}
+                    title={cat.name}
+                    variant="theme"
+                  />
+                ) : (
+                  <>
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
+                    />
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
+                    />
+                    <span
+                      className="absolute font-bold text-white leading-tight"
+                      style={{ bottom: '10px', left: '12px', fontSize: '16px', textShadow: '0 1px 3px rgba(0,0,0,0.4)', maxWidth: 'calc(100% - 24px)' }}
+                    >
+                      {cat.name}
+                    </span>
+                  </>
+                )}
+              </button>
+            )
+          })}
         </div>
       </main>
     </>

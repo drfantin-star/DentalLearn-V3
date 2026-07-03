@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import { Search } from 'lucide-react'
 import { CATEGORIES, getLabelCutoutUrl } from '@/lib/supabase/types'
+import CutoutCardRender from '@/components/home/CutoutCardRender'
 
 const SECTIONS = [
   {
@@ -85,6 +86,7 @@ export default function RecherchePage() {
                       : cat.type === 'axe4'
                       ? '/sante'
                       : '/formation'
+                  const cutoutUrl = getLabelCutoutUrl(cat)
                   return (
                     <button
                       key={cat.id}
@@ -94,39 +96,31 @@ export default function RecherchePage() {
                       className="relative rounded-2xl overflow-hidden w-full"
                       style={{ aspectRatio: '3/2', border: 'none' }}
                     >
-                      {(getLabelCutoutUrl(cat) || cat.labelImageUrl) ? (
-                        <img
-                          src={getLabelCutoutUrl(cat) || cat.labelImageUrl}
-                          alt={cat.name}
-                          className="w-full h-full object-cover absolute inset-0"
+                      {cutoutUrl ? (
+                        <CutoutCardRender
+                          cutoutSrc={cutoutUrl}
+                          colorFrom={cat.gradient.from}
+                          title={cat.name}
+                          variant="theme"
                         />
                       ) : (
-                        <div
-                          className="w-full h-full absolute inset-0"
-                          style={{
-                            background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})`,
-                          }}
-                        />
+                        <>
+                          <div
+                            className="absolute inset-0"
+                            style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
+                          />
+                          <div
+                            className="absolute inset-0"
+                            style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
+                          />
+                          <span
+                            className="absolute font-bold text-white leading-tight"
+                            style={{ bottom: '10px', left: '10px', fontSize: '14px', textShadow: '0 1px 3px rgba(0,0,0,0.4)', maxWidth: 'calc(100% - 20px)' }}
+                          >
+                            {cat.name}
+                          </span>
+                        </>
                       )}
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          background:
-                            'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
-                        }}
-                      />
-                      <span
-                        className="absolute font-bold text-white leading-tight"
-                        style={{
-                          bottom: '10px',
-                          left: '10px',
-                          fontSize: '14px',
-                          textShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                          maxWidth: 'calc(100% - 20px)',
-                        }}
-                      >
-                        {cat.name}
-                      </span>
                     </button>
                   )
                 })}
