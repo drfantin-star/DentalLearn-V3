@@ -65,7 +65,7 @@ export default function HomePage() {
   // Formations commencees non terminees (section "Reprendre")
   const [inProgressFormations, setInProgressFormations] = useState<Formation[]>([])
   const [inProgressProgress, setInProgressProgress] = useState<
-    Record<string, { isStarted: boolean; isCompleted: boolean }>
+    Record<string, { progressPercent: number }>
   >({})
   const [inProgressLoading, setInProgressLoading] = useState(true)
 
@@ -117,16 +117,32 @@ export default function HomePage() {
         return
       }
       const ids = ufRows.map((r) => r.formation_id)
-      const { data: formations } = await supabase
-        .from('formations')
-        .select('*')
-        .in('id', ids)
-        .eq('is_published', true)
+      const [{ data: formations }, { data: completedSeqs }] = await Promise.all([
+        supabase
+          .from('formations')
+          .select('*')
+          .in('id', ids)
+          .eq('is_published', true),
+        supabase
+          .from('user_sequences')
+          .select('sequences!inner(formation_id)')
+          .eq('user_id', user!.id)
+          .not('completed_at', 'is', null),
+      ])
       if (formations) {
         setInProgressFormations(formations)
-        const map: Record<string, { isStarted: boolean; isCompleted: boolean }> = {}
+        const completedByFormation: Record<string, number> = {}
+        for (const row of completedSeqs ?? []) {
+          const fid = (row.sequences as { formation_id: string }).formation_id
+          if (ids.includes(fid)) {
+            completedByFormation[fid] = (completedByFormation[fid] ?? 0) + 1
+          }
+        }
+        const map: Record<string, { progressPercent: number }> = {}
         formations.forEach((f) => {
-          map[f.id] = { isStarted: true, isCompleted: false }
+          const completed = completedByFormation[f.id] ?? 0
+          const total = f.total_sequences || 1
+          map[f.id] = { progressPercent: Math.round((completed / total) * 100) }
         })
         setInProgressProgress(map)
       }
@@ -410,10 +426,8 @@ export default function HomePage() {
                     <FormationCardOverlay
                       key={f.id}
                       formation={f}
-                      progress={inProgressProgress[f.id]}
+                      progressPercent={inProgressProgress[f.id]?.progressPercent ?? 0}
                       aspect="landscape"
-                      hideBadge
-                      bgOpacity={0.8}
                       onClick={() => {
                         window.location.href = `/formation/${f.category}?formation=${f.slug}&from=${from}`
                       }}
