@@ -85,6 +85,7 @@ export default function CutoutCardRender({
           objectFit: 'contain',
           objectPosition: 'center bottom',
           zIndex: 2,
+          opacity: 0.88,
           filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.5))',
         }}
       />
