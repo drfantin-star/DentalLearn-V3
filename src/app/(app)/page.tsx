@@ -368,23 +368,15 @@ export default function HomePage() {
         className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen"
         style={{ background: '#0F0F0F' }}
       >
-        {/* Sophie — coaching CP (1ere section) */}
-        <section>
+        {/* Sophie / Quiz / Journal — 3 cartes uniformisees */}
+        <section className="flex flex-col gap-3">
           <SophieAutopilotCard />
-        </section>
-
-        {/* Quiz du jour — carte seule pleine largeur */}
-        <section>
           <DailyQuizButton
             userId={user?.id}
             onStart={() => setShowDailyQuiz(true)}
             refreshTrigger={refreshTrigger}
             variant="square"
           />
-        </section>
-
-        {/* Journal hebdo */}
-        <section>
           <JournalWeekCard journal={journal} />
         </section>
 

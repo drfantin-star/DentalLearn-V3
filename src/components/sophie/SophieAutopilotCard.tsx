@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { Sparkles } from 'lucide-react'
-import { HomeHeroCard } from '@/components/home/HomeHeroCard'
-import SophieAvatar from './SophieAvatar'
+import Image from 'next/image'
+import { HomeFeedCard } from '@/components/home/HomeFeedCard'
 import SophieAutopilotModal from './SophieAutopilotModal'
 
 interface PlanItem {
@@ -24,8 +23,6 @@ interface AutopilotData {
   monthKey: string
   items: PlanItem[]
 }
-
-const SOPHIE_GRADIENT = 'linear-gradient(135deg, #007A70, #00B8A9)'
 
 export default function SophieAutopilotCard() {
   const [open, setOpen] = useState(false)
@@ -54,25 +51,29 @@ export default function SophieAutopilotCard() {
   } else if (data.needsSetup) {
     title = 'Cree ton plan du mois'
   } else if (allDone) {
-    title = 'Plan du mois terminé 👏'
+    title = 'Plan du mois termine 👏'
   } else {
     title = `${todoCount} action${todoCount > 1 ? 's' : ''} a faire ce mois-ci`
   }
 
   return (
     <>
-      <HomeHeroCard
-        surface="gradient"
-        gradient={SOPHIE_GRADIENT}
-        icon={<SophieAvatar size={48} />}
+      <HomeFeedCard
+        accent="teal"
         eyebrow="Sophie"
         title={title}
-        compact
-        cta={{
-          label: 'Ouvrir',
-          icon: <Sparkles size={15} />,
-          onClick: () => setOpen(true),
-        }}
+        icon={
+          <Image
+            src="/images/sophie-avatar.webp"
+            alt="Sophie"
+            width={104}
+            height={104}
+            className="h-full w-full object-cover"
+            priority
+          />
+        }
+        onClick={() => setOpen(true)}
+        ariaLabel="Ouvrir le coaching Sophie"
       />
 
       <SophieAutopilotModal
