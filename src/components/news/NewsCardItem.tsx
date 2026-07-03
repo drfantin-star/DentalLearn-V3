@@ -137,6 +137,7 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
             textShadow: '0 1px 4px rgba(0,0,0,0.7)',
+            textAlign: 'center',
           }}
         >
           {news.display_title}
