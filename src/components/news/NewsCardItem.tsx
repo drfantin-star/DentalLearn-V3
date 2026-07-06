@@ -54,7 +54,7 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
   // Degrade de fond par specialite — filet ultime (cascade epuisee) ou hideCover.
   const accent = (news.specialite && SPECIALITE_COLORS[news.specialite]) || NEWS_DEFAULT_COLOR
 
-  // ── Variant grid (/news) — vignette carrée détourée ──────────────────────
+  // ── Variant grid (/news) — vignette ronde detouree, anneau + halo specialite ──
   if (variant === 'grid') {
     const gridCutout = getNewsCutoutUrl(news)
     const gridColor = getSpecialiteColor(news.specialite)
@@ -65,24 +65,35 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
         className="w-full flex items-center gap-3 rounded-xl glass-card p-3 text-left
                    hover:border-white/20 transition-premium"
       >
-        <div
-          className="w-20 h-20 flex-shrink-0 rounded-lg overflow-hidden relative"
-          style={gridCutout ? { boxShadow: `0 0 0 2px ${gridColor}` } : undefined}
-        >
-          {gridCutout ? (
-            <CutoutCardRender
-              cutoutSrc={gridCutout}
-              colorFrom={gridColor}
-              title=""
-              variant="compact"
-            />
-          ) : (
-            <NewsCardSVG
-              specialite={news.specialite}
-              display_title={news.display_title}
-              className="w-full h-full"
-            />
-          )}
+        <div className="relative w-20 h-20 flex-shrink-0">
+          {/* Halo diffus — frere du cercle clippe, sinon rogne par overflow-hidden.
+              Meme montage que le medaillon HomeFeedCard (alpha ~0.38 = suffixe 61). */}
+          <div
+            aria-hidden
+            className="absolute inset-0 rounded-full blur-xl pointer-events-none"
+            style={{ background: `${gridColor}61`, transform: 'scale(1.15)' }}
+          />
+          {/* Anneau fin + clip rond — couleur dynamique par specialite,
+              d'ou le box-shadow inline (equivalent visuel du ring-2 Home). */}
+          <div
+            className="relative w-full h-full rounded-full overflow-hidden"
+            style={{ boxShadow: `0 0 0 2px ${gridColor}` }}
+          >
+            {gridCutout ? (
+              <CutoutCardRender
+                cutoutSrc={gridCutout}
+                colorFrom={gridColor}
+                title=""
+                variant="compact"
+              />
+            ) : (
+              <NewsCardSVG
+                specialite={news.specialite}
+                display_title={news.display_title}
+                className="w-full h-full"
+              />
+            )}
+          </div>
         </div>
         <div className="flex-1 min-w-0 flex flex-col gap-1">
           <h3 className="text-sm font-medium text-white truncate">
