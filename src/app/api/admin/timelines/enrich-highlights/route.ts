@@ -10,19 +10,31 @@
  *   ids?: string[]                // défaut : toutes les sources publiées
  *                                 // avec timeline_url non nul
  *   dryRun?: boolean              // défaut TRUE — aucune écriture storage
+ *   limit?: number                // défaut 10 — max de timelines ÉCRITES
+ *                                 // par appel (ignoré en dry-run)
  * }
  *
  * Mode dry-run (défaut) : rapport par timeline (items matchés / total,
- * échecs détaillés) SANS écrire. Mode écriture (`dryRun: false`, après
- * validation du rapport) : même mécanique de versionnage que le PUT
- * /api/admin/timelines/[type]/[id] — nouvelle version horodatée
- * `{type}/{source_id}/{ISO}.json` (`upsert: false`, jamais d'écrasement,
- * l'ancien fichier reste en place) + UPDATE de `timeline_url`.
+ * échecs détaillés) SANS écrire, sans limite. Mode écriture
+ * (`dryRun: false`, après validation du rapport) : même mécanique de
+ * versionnage que le PUT /api/admin/timelines/[type]/[id] — nouvelle
+ * version horodatée `{type}/{source_id}/{ISO}.json` (`upsert: false`,
+ * jamais d'écrasement, l'ancien fichier reste en place) + UPDATE de
+ * `timeline_url`.
+ *
+ * Batching + reprise (correctif post-504, juillet 2026) : l'écriture des
+ * ~66 timelines dépassait `maxDuration = 60` en un seul appel. En mode
+ * écriture, au plus `limit` timelines sont écrites par appel (ordre stable
+ * par id) ; une timeline dont le JSON courant est déjà STRICTEMENT
+ * identique au résultat recalculé est skippée (`already_enriched`, pas de
+ * nouvelle version inutile) et ne consomme pas le limit. Relancer le même
+ * appel converge donc naturellement ; `summary.remaining` indique le
+ * nombre de timelines non encore évaluées faute de budget d'écriture.
  *
  * Auth super_admin server-side (RBAC T1), pattern identique aux routes
  * timelines voisines.
  *
- * ⚠️ Vercel Pro : jusqu'à ~70 fetches storage + matching séquentiels par run
+ * ⚠️ Vercel Pro : fetches storage + matching séquentiels par run
  * (`maxDuration = 60`), même pattern que /api/admin/timeline/extract-scenes.
  */
 
@@ -54,6 +66,9 @@ const BodySchema = z.object({
   type: z.enum(['formation', 'news']).default('formation'),
   ids: z.array(z.string().uuid()).optional(),
   dryRun: z.boolean().default(true),
+  // Budget d'écriture par appel (mode écriture uniquement). Les timelines
+  // déjà à jour (already_enriched) ne le consomment pas.
+  limit: z.number().int().min(1).max(200).default(10),
 })
 
 // ─── Auth helper (pattern des routes timelines voisines) ──────────────────
@@ -87,6 +102,7 @@ interface TimelineEnrichResult {
   id: string
   title: string | null
   status: 'enriched' | 'skipped' | 'fetch_error' | 'invalid_schema' | 'write_error'
+  /** `already_enriched` = JSON courant identique au recalcul (reprise). */
   skipReason?: string
   error?: string
   itemsTotal: number
@@ -116,12 +132,14 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     )
   }
-  const { type, ids, dryRun } = bodyParsed.data
+  const { type, ids, dryRun, limit } = bodyParsed.data
   const cfg = resolveTableAndColumn(type)
   const admin = createAdminClient()
 
   // 1. Sources à traiter : publiées avec timeline_url, ou liste explicite.
   //    `title` n'existe que côté sequences — sélection conditionnelle.
+  //    Ordre stable par id : la reprise par appels successifs (limit)
+  //    parcourt toujours la même séquence.
   const columns =
     cfg.table === 'sequences'
       ? `id, title, ${cfg.column}, ${cfg.publishColumn}`
@@ -130,6 +148,7 @@ export async function POST(req: NextRequest) {
     .from(cfg.table)
     .select(columns)
     .not(cfg.column, 'is', null)
+    .order('id', { ascending: true })
   if (ids && ids.length > 0) {
     query = query.in('id', ids)
   } else {
@@ -146,6 +165,8 @@ export async function POST(req: NextRequest) {
   // 2. Traitement séquentiel : fetch -> validation Zod -> enrichissement ->
   //    (mode écriture) nouvelle version storage + UPDATE timeline_url.
   const results: TimelineEnrichResult[] = []
+  let written = 0
+  let remaining = 0
   for (const rowUnknown of rows ?? []) {
     // Le select à colonnes dynamiques empêche l'inférence du type de ligne
     // côté supabase-js — passage par unknown.
@@ -154,6 +175,13 @@ export async function POST(req: NextRequest) {
     const title = typeof row.title === 'string' ? row.title : null
     const timelineUrl = row[cfg.column] as string | null
     if (!timelineUrl) continue
+
+    // Budget d'écriture épuisé : on n'évalue plus les timelines suivantes
+    // (pas de fetch inutile), elles restent à traiter au prochain appel.
+    if (!dryRun && written >= limit) {
+      remaining++
+      continue
+    }
 
     const base: TimelineEnrichResult = {
       id,
@@ -207,6 +235,17 @@ export async function POST(req: NextRequest) {
       continue
     }
 
+    // Reprise : si le JSON courant est déjà strictement identique au
+    // résultat recalculé (typiquement écrit par un appel précédent coupé
+    // en cours de batch), aucune nouvelle version — et le limit n'est pas
+    // consommé, donc relancer le même appel converge naturellement.
+    if (
+      JSON.stringify(enrichResult.timeline) === JSON.stringify(parsed.data)
+    ) {
+      results.push({ ...base, status: 'skipped', skipReason: 'already_enriched' })
+      continue
+    }
+
     // Mode écriture : nouvelle version horodatée, jamais d'écrasement.
     const isoStamp = isoStampForStorage()
     const path = buildTimelinePath(cfg.folderName, id, isoStamp)
@@ -240,10 +279,13 @@ export async function POST(req: NextRequest) {
       results.push({ ...base, status: 'write_error', error: dbError.message })
       continue
     }
+    written++
     results.push({ ...base, newVersion: isoStamp, newUrl: publicUrl })
   }
 
-  // 3. Synthèse globale.
+  // 3. Synthèse globale. `written` = nouvelles versions storage créées ;
+  //    `remaining` = timelines non évaluées faute de budget d'écriture
+  //    (limit) — relancer le même appel jusqu'à remaining = 0.
   const summary = {
     dryRun,
     type,
@@ -256,6 +298,8 @@ export async function POST(req: NextRequest) {
         r.status === 'invalid_schema' ||
         r.status === 'write_error'
     ).length,
+    written,
+    remaining,
     itemsTotal: results.reduce((s, r) => s + r.itemsTotal, 0),
     itemsMatched: results.reduce((s, r) => s + r.itemsMatched, 0),
   }
