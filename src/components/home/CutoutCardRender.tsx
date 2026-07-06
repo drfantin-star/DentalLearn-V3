@@ -250,6 +250,46 @@ function CutoutTheme({
   colorFrom: string
   title: string
 }) {
+  const [imgError, setImgError] = React.useState(false)
+
+  if (imgError) {
+    return (
+      <>
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(135deg, ${colorFrom}cc 0%, ${colorFrom}55 100%)`,
+          }}
+        />
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
+          }}
+        />
+        <span
+          style={{
+            position: 'absolute',
+            bottom: '10px',
+            left: '12px',
+            right: '12px',
+            fontSize: '15px',
+            fontWeight: 700,
+            color: 'white',
+            lineHeight: 1.2,
+            textShadow: '0 1px 4px rgba(0,0,0,0.7)',
+          }}
+        >
+          {title}
+        </span>
+      </>
+    )
+  }
+
   return (
     <>
       {/* 1. Fond sombre */}
@@ -268,12 +308,15 @@ function CutoutTheme({
         }}
       />
 
-      {/* 3. Image — au-dessus du glow par ordre DOM, jamais colorisée */}
+      {/* 3. Image — au-dessus du glow par ordre DOM.
+          Double drop-shadow sombre pour détacher le sujet du fond
+          et éviter que le glow arrière ne semble coloriser l'objet. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={cutoutSrc}
         alt=""
         aria-hidden="true"
+        onError={() => setImgError(true)}
         style={{
           position: 'absolute',
           inset: 0,
@@ -281,7 +324,7 @@ function CutoutTheme({
           height: '86%',
           objectFit: 'contain',
           objectPosition: 'center',
-          filter: 'drop-shadow(0 4px 16px rgba(0,0,0,0.5))',
+          filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.75)) drop-shadow(0 2px 10px rgba(0,0,0,0.9))',
         }}
       />
 
