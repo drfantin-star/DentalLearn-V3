@@ -16,6 +16,27 @@ const FETCH_LIMIT = 50
 
 type SynthesesPayload = { data: NewsCard[]; total: number; page: number }
 
+// Skeleton d'une carte de la liste : pastille ronde 80x80 a la position de la
+// vignette reelle (rounded-full, cf. NewsCardItem variant grid) + lignes de texte.
+function NewsListSkeleton() {
+  return (
+    <>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="w-full flex items-center gap-3 rounded-xl bg-gray-800 animate-pulse p-3"
+        >
+          <div className="w-20 h-20 flex-shrink-0 rounded-full bg-gray-700" />
+          <div className="flex-1 min-w-0 flex flex-col gap-2">
+            <div className="h-4 w-3/4 rounded bg-gray-700" />
+            <div className="h-3 w-1/3 rounded bg-gray-700" />
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
 function buildSyntheseUrl(page: number, filter: string): string {
   const params = new URLSearchParams({
     limit: String(FETCH_LIMIT),
@@ -141,9 +162,7 @@ export default function NewsPage() {
           <div className="px-4 space-y-4">
             <div className="h-5 w-1/3 rounded bg-gray-800 animate-pulse" />
             <div className="flex flex-col gap-3">
-              <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
-              <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
-              <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
+              <NewsListSkeleton />
             </div>
           </div>
         ) : error ? (
@@ -255,9 +274,7 @@ export default function NewsPage() {
 
             {listLoading ? (
               <div className="flex flex-col gap-3 px-4">
-                <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
-                <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
-                <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
+                <NewsListSkeleton />
               </div>
             ) : items.length === 0 ? (
               <p className="px-4 text-sm text-white/55">
