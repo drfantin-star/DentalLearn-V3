@@ -3,7 +3,9 @@
 import { motion } from 'framer-motion'
 import { Fragment } from 'react'
 
-import type { CardContent, CardVariant } from '@/lib/timeline/schema'
+import type { CardContent } from '@/lib/timeline/schema'
+
+import { cardStateClass, isCardAccented } from './dynamic-highlight'
 
 /**
  * Template "causal" : graphe physiopathologique. Cf. spec POC §5.2.
@@ -39,22 +41,20 @@ interface CausalProps {
   // Mode "nodes+edges" (préféré si présent)
   nodes?: Array<CardContent & { id?: string }>
   edges?: Array<{ from: string; to: string; label?: string }>
+  /** Déclencheur de surbrillance actif de la scène (null = rien d'allumé). */
+  activeHighlightAt?: number | null
   className?: string
 }
 
 // ─── Tokens design partagés (alignés sur Grid/Flowchart/Comparison) ─────────
-
-const VARIANT_CLASS: Record<CardVariant, string> = {
-  highlight: 'bg-ds-turquoise/15 border-ds-turquoise/40 text-ds-turquoise',
-  warning: 'bg-axe3/15 border-axe3/40 text-axe3',
-  success: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300',
-}
+// État des cards via `dynamic-highlight.ts` (2A : variant statique
+// `highlight` plus rendu, surbrillance dynamique via `activeHighlightAt`).
 
 const NEUTRAL_CARD_CLASS =
   'bg-[color:var(--color-bg-card)] border-white/10 text-[color:var(--color-text-primary)]'
 
 const BASE_CARD_CLASS =
-  'border rounded-lg p-3 shadow-sm flex flex-col gap-1'
+  'border rounded-lg p-3 shadow-sm flex flex-col gap-1 transition-colors duration-300'
 
 const EDGE_COLOR = '#888780'
 
@@ -187,16 +187,29 @@ export function Causal({
   effects,
   nodes,
   edges,
+  activeHighlightAt,
   className,
 }: CausalProps) {
   // Mode graphe préféré si présent et valide (≥ 2 nodes)
   if (nodes && nodes.length >= 2) {
-    return <GraphMode nodes={nodes} edges={edges ?? []} className={className} />
+    return (
+      <GraphMode
+        nodes={nodes}
+        edges={edges ?? []}
+        activeHighlightAt={activeHighlightAt}
+        className={className}
+      />
+    )
   }
   // Sinon mode étoile legacy
   if (cause && effects && effects.length > 0) {
     return (
-      <StarMode cause={cause} effects={effects} className={className} />
+      <StarMode
+        cause={cause}
+        effects={effects}
+        activeHighlightAt={activeHighlightAt}
+        className={className}
+      />
     )
   }
   return null
@@ -207,19 +220,29 @@ export function Causal({
 function GraphMode({
   nodes,
   edges,
+  activeHighlightAt,
   className,
 }: {
   nodes: Array<CardContent & { id?: string }>
   edges: Array<{ from: string; to: string; label?: string }>
+  activeHighlightAt?: number | null
   className?: string
 }) {
   return (
     <div className={className}>
       <div className="hidden md:block">
-        <GraphDesktop nodes={nodes} edges={edges} />
+        <GraphDesktop
+          nodes={nodes}
+          edges={edges}
+          activeHighlightAt={activeHighlightAt}
+        />
       </div>
       <div className="md:hidden">
-        <GraphMobile nodes={nodes} edges={edges} />
+        <GraphMobile
+          nodes={nodes}
+          edges={edges}
+          activeHighlightAt={activeHighlightAt}
+        />
       </div>
     </div>
   )
@@ -228,9 +251,11 @@ function GraphMode({
 function GraphDesktop({
   nodes,
   edges,
+  activeHighlightAt,
 }: {
   nodes: Array<CardContent & { id?: string }>
   edges: Array<{ from: string; to: string; label?: string }>
+  activeHighlightAt?: number | null
 }) {
   const total = nodes.length
   const positions = nodes.map((_, i) => getNodePosition(i, total))
@@ -401,9 +426,11 @@ function GraphDesktop({
       {/* Couche cards positionnées en absolute */}
       {nodes.map((node, i) => {
         const pos = positions[i]
-        const variantClass = node.variant
-          ? VARIANT_CLASS[node.variant]
-          : NEUTRAL_CARD_CLASS
+        const stateClass = cardStateClass(
+          node,
+          activeHighlightAt,
+          NEUTRAL_CARD_CLASS
+        )
         return (
           <motion.div
             key={node.id ?? i}
@@ -414,7 +441,7 @@ function GraphDesktop({
               delay: i * NODE_STAGGER,
               ease: EASE,
             }}
-            className={`absolute ${BASE_CARD_CLASS} ${variantClass} min-w-[120px] max-w-[160px] text-center`}
+            className={`absolute ${BASE_CARD_CLASS} ${stateClass} min-w-[120px] max-w-[160px] text-center`}
             style={{
               left: `${pos.x}%`,
               top: `${pos.y}%`,
@@ -425,7 +452,7 @@ function GraphDesktop({
             {node.subtitle && (
               <p
                 className={
-                  node.variant
+                  isCardAccented(node, activeHighlightAt)
                     ? 'text-xs opacity-80'
                     : 'text-xs text-white/75'
                 }
@@ -485,16 +512,20 @@ function EdgeLabel({
 function GraphMobile({
   nodes,
   edges,
+  activeHighlightAt,
 }: {
   nodes: Array<CardContent & { id?: string }>
   edges: Array<{ from: string; to: string; label?: string }>
+  activeHighlightAt?: number | null
 }) {
   return (
     <div className="flex flex-col items-stretch gap-0">
       {nodes.map((node, i) => {
-        const variantClass = node.variant
-          ? VARIANT_CLASS[node.variant]
-          : NEUTRAL_CARD_CLASS
+        const stateClass = cardStateClass(
+          node,
+          activeHighlightAt,
+          NEUTRAL_CARD_CLASS
+        )
         const isLast = i === nodes.length - 1
         // Edge entre nodes[i] et nodes[i+1] dans l'ordre du tableau
         const linkingEdge = !isLast
@@ -514,13 +545,13 @@ function GraphMobile({
                 delay: i * NODE_STAGGER,
                 ease: EASE,
               }}
-              className={`${BASE_CARD_CLASS} ${variantClass} text-center self-center min-w-[180px] max-w-[260px]`}
+              className={`${BASE_CARD_CLASS} ${stateClass} text-center self-center min-w-[180px] max-w-[260px]`}
             >
               <p className="text-sm font-medium leading-tight">{node.text}</p>
               {node.subtitle && (
                 <p
                   className={
-                    node.variant
+                    isCardAccented(node, activeHighlightAt)
                       ? 'text-xs opacity-80'
                       : 'text-xs text-white/75'
                   }
@@ -573,15 +604,17 @@ function ChainArrow() {
 function StarMode({
   cause,
   effects,
+  activeHighlightAt,
   className,
 }: {
   cause: CardContent
   effects: CardContent[]
+  activeHighlightAt?: number | null
   className?: string
 }) {
   return (
     <div className={`flex flex-col items-center gap-3 ${className ?? ''}`}>
-      <CardBlock card={cause} delay={0} />
+      <CardBlock card={cause} delay={0} activeHighlightAt={activeHighlightAt} />
       <div
         aria-hidden="true"
         className="bg-white/20 w-px h-4"
@@ -592,6 +625,7 @@ function StarMode({
             key={i}
             card={effect}
             delay={(i + 1) * NODE_STAGGER}
+            activeHighlightAt={activeHighlightAt}
           />
         ))}
       </div>
@@ -599,22 +633,28 @@ function StarMode({
   )
 }
 
-function CardBlock({ card, delay }: { card: CardContent; delay: number }) {
-  const variantClass = card.variant
-    ? VARIANT_CLASS[card.variant]
-    : NEUTRAL_CARD_CLASS
+function CardBlock({
+  card,
+  delay,
+  activeHighlightAt,
+}: {
+  card: CardContent
+  delay: number
+  activeHighlightAt?: number | null
+}) {
+  const stateClass = cardStateClass(card, activeHighlightAt, NEUTRAL_CARD_CLASS)
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: NODE_DURATION, delay, ease: EASE }}
-      className={`${BASE_CARD_CLASS} ${variantClass} text-center min-w-[140px] max-w-[200px] self-center`}
+      className={`${BASE_CARD_CLASS} ${stateClass} text-center min-w-[140px] max-w-[200px] self-center`}
     >
       <p className="text-sm font-medium leading-tight">{card.text}</p>
       {card.subtitle && (
         <p
           className={
-            card.variant
+            isCardAccented(card, activeHighlightAt)
               ? 'text-xs opacity-80'
               : 'text-xs text-white/75'
           }

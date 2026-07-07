@@ -2,7 +2,9 @@
 
 import { motion } from 'framer-motion'
 
-import type { CardContent, CardVariant } from '@/lib/timeline/schema'
+import type { CardContent } from '@/lib/timeline/schema'
+
+import { cardStateClass, isCardAccented } from './dynamic-highlight'
 
 /**
  * Template "comparison" : 2 colonnes côte à côte (titre + cards), avec
@@ -24,33 +26,39 @@ interface ComparisonColumn {
 interface ComparisonProps {
   left: ComparisonColumn
   right: ComparisonColumn
+  /**
+   * Déclencheur de surbrillance actif de la scène (relais 7B). L'ordre du
+   * relais est GLOBAL à la scène (gauche + droite confondues) : la
+   * résolution vit dans `StructuredWhiteboard`, les colonnes ne font que
+   * comparer.
+   */
+  activeHighlightAt?: number | null
   className?: string
-}
-
-const VARIANT_CLASS: Record<CardVariant, string> = {
-  highlight: 'bg-ds-turquoise/15 border-ds-turquoise/40 text-ds-turquoise',
-  warning: 'bg-axe3/15 border-axe3/40 text-axe3',
-  success: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300',
 }
 
 const NEUTRAL_CARD_CLASS =
   'bg-[color:var(--color-bg-card)] border-white/10 text-[color:var(--color-text-primary)]'
 
 const BASE_CARD_CLASS =
-  'border rounded-lg p-3 shadow-sm flex flex-col gap-1'
+  'border rounded-lg p-3 shadow-sm flex flex-col gap-1 transition-colors duration-300'
 
 const COLUMN_DURATION = 0.3
 const CARD_DURATION = 0.25
 const CARD_STAGGER = 0.08
 const EASE: [number, number, number, number] = [0.4, 0, 0.2, 1]
 
-export function Comparison({ left, right, className }: ComparisonProps) {
+export function Comparison({
+  left,
+  right,
+  activeHighlightAt,
+  className,
+}: ComparisonProps) {
   return (
     <div
       className={`relative grid grid-cols-1 md:grid-cols-2 gap-4 ${className ?? ''}`}
     >
-      <Column column={left} side="left" />
-      <Column column={right} side="right" />
+      <Column column={left} side="left" activeHighlightAt={activeHighlightAt} />
+      <Column column={right} side="right" activeHighlightAt={activeHighlightAt} />
       {/* Divider central, desktop only */}
       <div
         aria-hidden="true"
@@ -63,9 +71,11 @@ export function Comparison({ left, right, className }: ComparisonProps) {
 function Column({
   column,
   side,
+  activeHighlightAt,
 }: {
   column: ComparisonColumn
   side: 'left' | 'right'
+  activeHighlightAt?: number | null
 }) {
   return (
     <motion.div
@@ -80,9 +90,11 @@ function Column({
       </h4>
       <div className="flex flex-col gap-2">
         {column.cards.map((card, index) => {
-          const variantClass = card.variant
-            ? VARIANT_CLASS[card.variant]
-            : NEUTRAL_CARD_CLASS
+          const stateClass = cardStateClass(
+            card,
+            activeHighlightAt,
+            NEUTRAL_CARD_CLASS
+          )
           return (
             <motion.div
               key={index}
@@ -93,13 +105,13 @@ function Column({
                 delay: index * CARD_STAGGER,
                 ease: EASE,
               }}
-              className={`${BASE_CARD_CLASS} ${variantClass}`}
+              className={`${BASE_CARD_CLASS} ${stateClass}`}
             >
               <p className="text-sm font-medium leading-tight">{card.text}</p>
               {card.subtitle && (
                 <p
                   className={
-                    card.variant
+                    isCardAccented(card, activeHighlightAt)
                       ? 'text-xs opacity-80'
                       : 'text-xs text-white/75'
                   }

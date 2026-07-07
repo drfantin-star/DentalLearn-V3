@@ -294,6 +294,7 @@ export default function EnrichedAudioPlayer({
                 displayedScene={displayedScene}
                 sceneConcepts={sceneConcepts}
                 timeline={timeline}
+                highlightTime={state.currentTime}
                 startCardFormationTitle={startCardFormationTitle}
                 startCardSequenceLabel={startCardSequenceLabel}
               />
@@ -329,6 +330,7 @@ export default function EnrichedAudioPlayer({
                   displayedScene={displayedScene}
                   sceneConcepts={sceneConcepts}
                   timeline={timeline}
+                  highlightTime={state.currentTime}
                   startCardFormationTitle={startCardFormationTitle}
                   startCardSequenceLabel={startCardSequenceLabel}
                 />
@@ -364,6 +366,10 @@ interface WhiteboardOrCoverProps {
   displayedScene: Scene | null
   sceneConcepts: DisplayableConcept[]
   timeline: NonNullable<ReturnType<typeof useEnrichedTimeline>['timeline']>
+  // Lot 2 : temps audio réel (state.currentTime, lecture seule) pour la
+  // surbrillance dynamique des items — simple plomberie de prop, séparée du
+  // mécanisme figé start_sec + 0.5 de sélection de scène.
+  highlightTime?: number
   startCardFormationTitle?: string
   startCardSequenceLabel?: string
 }
@@ -372,6 +378,7 @@ function WhiteboardOrCover({
   displayedScene,
   sceneConcepts,
   timeline,
+  highlightTime,
   startCardFormationTitle,
   startCardSequenceLabel,
 }: WhiteboardOrCoverProps) {
@@ -384,6 +391,7 @@ function WhiteboardOrCover({
         displayedScene={displayedScene}
         sceneConcepts={sceneConcepts}
         scenes={timeline.scenes}
+        highlightTime={highlightTime}
       />
     )
   }

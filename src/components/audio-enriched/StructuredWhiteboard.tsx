@@ -27,11 +27,25 @@ import { TimelineTemplate } from './templates/Timeline'
  *
  * Templates livrés en T4.1 : `grid`, `figures`. T4.2 ajoute `flowchart`,
  * `comparison`, `timeline`. T4.3 ajoute `causal`. Bibliothèque complète.
+ *
+ * Surbrillance dynamique (Lot 2, juillet 2026) : `highlightTime` est une
+ * prop OPTIONNELLE et SEPAREE de `currentTime`. `currentTime` reste le
+ * mécanisme de sélection de scène (les appelants type
+ * `SceneWhiteboardWithConcepts` le figent volontairement à
+ * `start_sec + 0.5` pour la continuité visuelle) ; `highlightTime` porte le
+ * vrai temps audio (flux karaoké, lecture seule) et pilote uniquement
+ * l'item allumé. Absente (preview admin, pages POC) => aucun highlight
+ * dynamique, comportement strictement inchangé. Relais 7B : le déclencheur
+ * actif est le dernier `highlight_at_sec` <= highlightTime de la scène
+ * rendue, extinction après `end_sec` — résolu ici via
+ * `getActiveHighlightAt`, throttlé à 4 Hz comme le karaoké.
  */
 
 interface StructuredWhiteboardProps {
   scenes: Scene[]
   currentTime: number
+  /** Temps audio réel pour la surbrillance d'items — cf. bloc doc ci-dessus. */
+  highlightTime?: number
   className?: string
 }
 
@@ -47,6 +61,7 @@ const EXIT_TRANSITION = {
 export function StructuredWhiteboard({
   scenes,
   currentTime,
+  highlightTime,
   className,
 }: StructuredWhiteboardProps) {
   // Throttle 2 Hz : la scène active ne se recalcule pas à chaque frame.
@@ -54,6 +69,17 @@ export function StructuredWhiteboard({
     () => getActiveScene(currentTime, scenes),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [Math.floor(currentTime * 2), scenes]
+  )
+
+  // Déclencheur de surbrillance actif de la scène rendue (relais 7B).
+  // Throttle 4 Hz, aligné sur le karaoké (`useCurrentWord`).
+  const activeHighlightAt = useMemo(
+    () =>
+      highlightTime !== undefined && activeScene
+        ? getActiveHighlightAt(activeScene, highlightTime)
+        : null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [Math.floor((highlightTime ?? -1) * 4), activeScene]
   )
 
   return (
@@ -74,7 +100,10 @@ export function StructuredWhiteboard({
                 {activeScene.title}
               </h3>
             )}
-            <SceneRenderer template={activeScene.template} />
+            <SceneRenderer
+              template={activeScene.template}
+              activeHighlightAt={activeHighlightAt}
+            />
           </motion.div>
         ) : (
           <motion.div
@@ -96,31 +125,90 @@ export function StructuredWhiteboard({
 }
 
 /**
+ * Résout le déclencheur de surbrillance actif d'une scène (relais 7B) : le
+ * plus grand `highlight_at_sec` <= highlightTime parmi les items du template,
+ * ou `null` hors de la fenêtre de la scène (extinction en fin de scène).
+ * Les bornes sont collectées par un parcours générique du payload template
+ * (les items vivent à des chemins différents selon le kind : cards, left/
+ * right.cards, nodes, figures, steps, events).
+ */
+function getActiveHighlightAt(scene: Scene, highlightTime: number): number | null {
+  if (highlightTime < scene.start_sec || highlightTime > scene.end_sec) {
+    return null
+  }
+  let best: number | null = null
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const child of node) walk(child)
+      return
+    }
+    if (node && typeof node === 'object') {
+      const at = (node as Record<string, unknown>).highlight_at_sec
+      if (
+        typeof at === 'number' &&
+        at <= highlightTime &&
+        (best === null || at > best)
+      ) {
+        best = at
+      }
+      for (const value of Object.values(node)) walk(value)
+    }
+  }
+  walk(scene.template)
+  return best
+}
+
+/**
  * Sélecteur de template. Bibliothèque complète T4.3 : `grid`, `figures`,
  * `flowchart`, `comparison`, `timeline`, `causal`.
  */
-function SceneRenderer({ template }: { template: SceneTemplate }) {
+function SceneRenderer({
+  template,
+  activeHighlightAt,
+}: {
+  template: SceneTemplate
+  activeHighlightAt: number | null
+}) {
   switch (template.kind) {
     case 'grid': {
       const columns = clampColumns(template.columns)
-      return <Grid cards={template.cards} columns={columns} />
+      return (
+        <Grid
+          cards={template.cards}
+          columns={columns}
+          activeHighlightAt={activeHighlightAt}
+        />
+      )
     }
     case 'figures':
-      return <Figures figures={template.figures} />
+      return (
+        <Figures
+          figures={template.figures}
+          activeHighlightAt={activeHighlightAt}
+        />
+      )
     case 'flowchart':
       return (
         <Flowchart
           cards={template.cards}
           orientation={template.orientation}
+          activeHighlightAt={activeHighlightAt}
         />
       )
     case 'comparison':
-      return <Comparison left={template.left} right={template.right} />
+      return (
+        <Comparison
+          left={template.left}
+          right={template.right}
+          activeHighlightAt={activeHighlightAt}
+        />
+      )
     case 'timeline':
       return (
         <TimelineTemplate
           steps={template.steps}
           events={template.events}
+          activeHighlightAt={activeHighlightAt}
         />
       )
     case 'causal':
@@ -130,6 +218,7 @@ function SceneRenderer({ template }: { template: SceneTemplate }) {
           effects={template.effects}
           nodes={template.nodes}
           edges={template.edges}
+          activeHighlightAt={activeHighlightAt}
         />
       )
   }

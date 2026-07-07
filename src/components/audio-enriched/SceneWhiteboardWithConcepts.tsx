@@ -22,23 +22,34 @@ import type { Scene } from '@/lib/timeline/schema'
  * propre `getActiveScene` interne ; on lui passe une valeur calée à
  * l'intérieur de la fenêtre de la scène (`start_sec + 0.5`) pour garantir
  * qu'elle affiche bien la scène voulue.
+ *
+ * `highlightTime` (Lot 2) : temps audio RÉEL, optionnel et séparé du
+ * `currentTime` figé ci-dessus — il pilote uniquement la surbrillance
+ * dynamique des items. Absent (preview admin `TimelinePreviewPanel`) =>
+ * aucun highlight dynamique, comportement inchangé.
  */
 
 interface Props {
   displayedScene: Scene
   sceneConcepts: DisplayableConcept[]
   scenes: Scene[]
+  highlightTime?: number
 }
 
 export function SceneWhiteboardWithConcepts({
   displayedScene,
   sceneConcepts,
   scenes,
+  highlightTime,
 }: Props) {
   const lockedCurrentTime = displayedScene.start_sec + 0.5
   return (
     <div className="flex flex-col gap-3">
-      <StructuredWhiteboard scenes={scenes} currentTime={lockedCurrentTime} />
+      <StructuredWhiteboard
+        scenes={scenes}
+        currentTime={lockedCurrentTime}
+        highlightTime={highlightTime}
+      />
       {/* Concepts clés de la scène active, regroupés sous le whiteboard
           (arbitrage 2A : tous d'un coup). Le conteneur parent gère le
           scroll interne si la hauteur dépasse. */}
