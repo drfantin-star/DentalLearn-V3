@@ -80,9 +80,13 @@ export async function GET(
     }
 
     let episode: NewsEpisode | null = null
+    // La table de liaison insight/digest est news_episode_items, dont la
+    // colonne d'ordre est `order_idx` (PAS `position`, qui n'existe que sur
+    // news_episode_syntheses côté journal). On la remappe vers le champ de
+    // réponse `position` attendu par NewsModal (cf. types/news.ts).
     const { data: items, error: itemsError } = await supabase
       .from('news_episode_items')
-      .select('episode_id, position')
+      .select('episode_id, order_idx')
       .eq('synthesis_id', id)
 
     if (itemsError) {
@@ -94,7 +98,7 @@ export async function GET(
       for (const it of items) {
         const row = it as Record<string, unknown>
         const epId = row.episode_id as string
-        const pos = row.position as number | null
+        const pos = row.order_idx as number | null
         if (epId && typeof pos === 'number') {
           positionByEpisode.set(epId, pos)
         }
