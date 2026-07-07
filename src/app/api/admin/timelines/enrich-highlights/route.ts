@@ -7,8 +7,12 @@
  *
  * Body : {
  *   type?: 'formation' | 'news'   // défaut 'formation'
- *   ids?: string[]                // défaut : toutes les sources publiées
- *                                 // avec timeline_url non nul
+ *   sourceIds?: string[]          // cible des sources précises et FORCE
+ *                                 // leur re-traitement (bypass du skip
+ *                                 // bon marché par URL — mode recalcul
+ *                                 // après édition de scènes). Défaut :
+ *                                 // toutes les sources publiées avec
+ *                                 // timeline_url non nul
  *   dryRun?: boolean              // défaut TRUE — aucune écriture storage
  *   limit?: number                // défaut 10 — max de timelines ÉCRITES
  *                                 // par appel (ignoré en dry-run)
@@ -22,14 +26,30 @@
  * jamais d'écrasement, l'ancien fichier reste en place) + UPDATE de
  * `timeline_url`.
  *
- * Batching + reprise (correctif post-504, juillet 2026) : l'écriture des
+ * Batching + reprise (correctifs post-504, juillet 2026) : l'écriture des
  * ~66 timelines dépassait `maxDuration = 60` en un seul appel. En mode
  * écriture, au plus `limit` timelines sont écrites par appel (ordre stable
- * par id) ; une timeline dont le JSON courant est déjà STRICTEMENT
- * identique au résultat recalculé est skippée (`already_enriched`, pas de
- * nouvelle version inutile) et ne consomme pas le limit. Relancer le même
- * appel converge donc naturellement ; `summary.remaining` indique le
- * nombre de timelines non encore évaluées faute de budget d'écriture.
+ * par id), et deux niveaux de skip ne consomment pas ce budget :
+ *
+ *  1. Skip BON MARCHÉ (correctif 3, avant tout fetch) : une source dont
+ *     `timeline_url` pointe déjà vers le chemin canonique
+ *     `{type}/{source_id}/...` est considérée déjà enrichie
+ *     (`already_enriched`). Signal gratuit (la colonne est déjà en main,
+ *     zéro téléchargement — c'est le fetch systématique des 64 JSON qui
+ *     causait le 504, pas le calcul) et fiable pour ce backfill : toutes
+ *     les timelines legacy publiées étaient sur l'ancien chemin `poc/...`,
+ *     seuls cette route et le PUT éditeur écrivent le chemin canonique.
+ *     Limitation ASSUMÉE (backfill initial, pas un recalcul permanent) :
+ *     une timeline sauvée par l'éditeur sans enrichissement serait
+ *     faussement skippée — d'où `sourceIds` qui force le re-traitement.
+ *  2. Skip par SIGNATURE (correctif 2, après fetch + recalcul) : bornes
+ *     recalculées identiques item par item au JSON stocké
+ *     (`bounds_unchanged`, ex-`already_enriched`) — pas de nouvelle
+ *     version inutile, y compris en mode forcé `sourceIds`.
+ *
+ * Relancer le même appel converge donc naturellement ;
+ * `summary.remaining` indique le nombre de timelines non évaluées faute
+ * de budget d'écriture.
  *
  * Auth super_admin server-side (RBAC T1), pattern identique aux routes
  * timelines voisines.
@@ -64,10 +84,12 @@ export const maxDuration = 60
 
 const BodySchema = z.object({
   type: z.enum(['formation', 'news']).default('formation'),
-  ids: z.array(z.string().uuid()).optional(),
+  // Cible des sources précises ET force leur re-traitement (bypass du skip
+  // bon marché par URL canonique — le skip par signature reste actif).
+  sourceIds: z.array(z.string().uuid()).optional(),
   dryRun: z.boolean().default(true),
   // Budget d'écriture par appel (mode écriture uniquement). Les timelines
-  // déjà à jour (already_enriched) ne le consomment pas.
+  // skippées (already_enriched / bounds_unchanged) ne le consomment pas.
   limit: z.number().int().min(1).max(200).default(10),
 })
 
@@ -143,7 +165,11 @@ interface TimelineEnrichResult {
   id: string
   title: string | null
   status: 'enriched' | 'skipped' | 'fetch_error' | 'invalid_schema' | 'write_error'
-  /** `already_enriched` = JSON courant identique au recalcul (reprise). */
+  /**
+   * `already_enriched` = URL déjà canonique, skip sans fetch (correctif 3) ;
+   * `bounds_unchanged` = bornes recalculées identiques au JSON stocké ;
+   * sinon skip du module (ex. `no_word_level_transcript`).
+   */
   skipReason?: string
   error?: string
   itemsTotal: number
@@ -173,7 +199,7 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     )
   }
-  const { type, ids, dryRun, limit } = bodyParsed.data
+  const { type, sourceIds, dryRun, limit } = bodyParsed.data
   const cfg = resolveTableAndColumn(type)
   const admin = createAdminClient()
 
@@ -190,8 +216,8 @@ export async function POST(req: NextRequest) {
     .select(columns)
     .not(cfg.column, 'is', null)
     .order('id', { ascending: true })
-  if (ids && ids.length > 0) {
-    query = query.in('id', ids)
+  if (sourceIds && sourceIds.length > 0) {
+    query = query.in('id', sourceIds)
   } else {
     query = query.eq(cfg.publishColumn, true)
   }
@@ -206,6 +232,7 @@ export async function POST(req: NextRequest) {
   // 2. Traitement séquentiel : fetch -> validation Zod -> enrichissement ->
   //    (mode écriture) nouvelle version storage + UPDATE timeline_url.
   const results: TimelineEnrichResult[] = []
+  const forced = new Set(sourceIds ?? [])
   let written = 0
   let remaining = 0
   for (const rowUnknown of rows ?? []) {
@@ -216,6 +243,25 @@ export async function POST(req: NextRequest) {
     const title = typeof row.title === 'string' ? row.title : null
     const timelineUrl = row[cfg.column] as string | null
     if (!timelineUrl) continue
+
+    // Skip bon marché (correctif 3) : URL déjà sur le chemin canonique
+    // `{type}/{id}/...` => timeline déjà enrichie par un appel précédent.
+    // AVANT tout téléchargement/recalcul — c'est le fetch systématique des
+    // ~64 JSON déjà à jour qui faisait dépasser maxDuration. Bypass via
+    // `sourceIds` (recalcul forcé après édition de scènes).
+    const canonicalMarker = `/${TIMELINE_STORAGE_BUCKET}/${cfg.folderName}/${id}/`
+    if (!dryRun && !forced.has(id) && timelineUrl.includes(canonicalMarker)) {
+      results.push({
+        id,
+        title,
+        status: 'skipped',
+        skipReason: 'already_enriched',
+        itemsTotal: 0,
+        itemsMatched: 0,
+        failures: [],
+      })
+      continue
+    }
 
     // Budget d'écriture épuisé : on n'évalue plus les timelines suivantes
     // (pas de fetch inutile), elles restent à traiter au prochain appel.
@@ -276,15 +322,16 @@ export async function POST(req: NextRequest) {
       continue
     }
 
-    // Reprise : si les bornes du JSON courant sont déjà identiques, item par
-    // item, au résultat recalculé (typiquement écrit par un appel précédent
-    // coupé en cours de batch), aucune nouvelle version — et le limit n'est
-    // pas consommé, donc relancer le même appel converge naturellement.
+    // Reprise fine : si les bornes du JSON courant sont déjà identiques,
+    // item par item, au résultat recalculé, aucune nouvelle version — et le
+    // limit n'est pas consommé. Reste utile derrière le skip URL : mode
+    // forcé `sourceIds` sans changement réel, ou URL non canonique dont le
+    // contenu est déjà à jour.
     if (
       highlightSignature(enrichResult.timeline.scenes) ===
       highlightSignature(parsed.data.scenes)
     ) {
-      results.push({ ...base, status: 'skipped', skipReason: 'already_enriched' })
+      results.push({ ...base, status: 'skipped', skipReason: 'bounds_unchanged' })
       continue
     }
 
