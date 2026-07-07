@@ -113,17 +113,27 @@ async function fetchSynthesesForEpisode(
 ): Promise<NewsSynthesisInput[]> {
   const linksTable =
     episodeType === 'journal' ? 'news_episode_syntheses' : 'news_episode_items'
+  // Colonne d'ordre propre à chaque table de liaison : `position` sur
+  // news_episode_syntheses (journal), `order_idx` sur news_episode_items
+  // (insight/digest). Sélectionner l'autre colonne fait échouer la requête
+  // (42703) et donc toute la génération de timeline.
+  const orderColumn = episodeType === 'journal' ? 'position' : 'order_idx'
 
   const { data: links, error: linksErr } = await supabase
     .from(linksTable)
-    .select('synthesis_id, position')
+    .select(`synthesis_id, ${orderColumn}`)
     .eq('episode_id', episodeId)
-    .order('position', { ascending: true })
+    .order(orderColumn, { ascending: true })
 
   if (linksErr) throw linksErr
   if (!links || links.length === 0) return []
 
-  const typedLinksForIds = links as Array<{ synthesis_id: unknown; position: unknown }>
+  const typedLinksForIds = (links as Array<Record<string, unknown>>).map(
+    (l) => ({
+      synthesis_id: l.synthesis_id,
+      position: l[orderColumn],
+    }),
+  )
   const synthesisIds = typedLinksForIds.map((l) => l.synthesis_id as string)
 
   const { data: synRows, error: synErr } = await supabase
