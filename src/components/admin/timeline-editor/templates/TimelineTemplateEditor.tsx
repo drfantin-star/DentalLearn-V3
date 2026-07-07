@@ -2,6 +2,7 @@
 
 import type { SceneTemplate } from '@/lib/timeline/schema'
 
+import { HighlightBoundsEditor } from '../HighlightBoundsEditor'
 import { DragHandle, SortableList } from '../SortableList'
 
 type TimelineTpl = Extract<SceneTemplate, { kind: 'timeline' }>
@@ -10,6 +11,8 @@ type TimelineEvent = NonNullable<TimelineTpl['events']>[number]
 interface Props {
   template: TimelineTpl
   onChange: (next: TimelineTpl) => void
+  /** Fenetre de la scene courante (warnings bornes hors-fenetre). */
+  sceneWindow?: { startSec: number; endSec: number }
 }
 
 /**
@@ -23,9 +26,17 @@ interface Props {
 function migrateLegacyIfNeeded(t: TimelineTpl): TimelineTpl {
   if (t.events && t.events.length > 0) return t
   if (t.steps && t.steps.length > 0) {
+    // Migration legacy steps -> events : on preserve les bornes de
+    // surbrillance eventuellement calculees sur les steps (Lot 1).
     const events: TimelineEvent[] = t.steps.map((s, i) => ({
       at_label: `Étape ${i + 1}`,
       text: s.text,
+      ...(typeof s.highlight_at_sec === 'number'
+        ? { highlight_at_sec: s.highlight_at_sec }
+        : {}),
+      ...(typeof s.highlight_end_sec === 'number'
+        ? { highlight_end_sec: s.highlight_end_sec }
+        : {}),
     }))
     return { kind: 'timeline', events }
   }
@@ -38,6 +49,7 @@ function migrateLegacyIfNeeded(t: TimelineTpl): TimelineTpl {
 export function TimelineTemplateEditor({
   template: rawTemplate,
   onChange,
+  sceneWindow,
 }: Props) {
   const template = migrateLegacyIfNeeded(rawTemplate)
   const events = template.events ?? []
@@ -101,6 +113,20 @@ export function TimelineTemplateEditor({
                 onChange={(e) => setEvent(idx, { ...ev, text: e.target.value })}
                 placeholder="Description"
                 className="w-full rounded-md border border-white/10 bg-[color:var(--color-bg-input)] px-2.5 py-1.5 text-sm text-white focus:border-ds-turquoise focus:outline-none"
+              />
+              <HighlightBoundsEditor
+                value={{
+                  highlight_at_sec: ev.highlight_at_sec,
+                  highlight_end_sec: ev.highlight_end_sec,
+                }}
+                onChange={(bounds) => {
+                  const next = { ...ev }
+                  delete next.highlight_at_sec
+                  delete next.highlight_end_sec
+                  setEvent(idx, { ...next, ...bounds })
+                }}
+                sceneStartSec={sceneWindow?.startSec}
+                sceneEndSec={sceneWindow?.endSec}
               />
               {events.length > 1 && (
                 <button

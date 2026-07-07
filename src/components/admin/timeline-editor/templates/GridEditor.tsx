@@ -10,9 +10,11 @@ type GridTemplate = Extract<SceneTemplate, { kind: 'grid' }>
 interface Props {
   template: GridTemplate
   onChange: (next: GridTemplate) => void
+  /** Fenetre de la scene courante (warnings bornes hors-fenetre). */
+  sceneWindow?: { startSec: number; endSec: number }
 }
 
-export function GridEditor({ template, onChange }: Props) {
+export function GridEditor({ template, onChange, sceneWindow }: Props) {
   function setCard(idx: number, card: CardContent) {
     const cards = template.cards.slice()
     cards[idx] = card
@@ -71,6 +73,7 @@ export function GridEditor({ template, onChange }: Props) {
                 card={card}
                 onChange={(next) => setCard(idx, next)}
                 label={`Card ${idx + 1}`}
+                sceneWindow={sceneWindow}
               />
               {template.cards.length > 1 && (
                 <button

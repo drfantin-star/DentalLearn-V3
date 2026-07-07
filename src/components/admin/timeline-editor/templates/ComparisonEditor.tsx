@@ -11,9 +11,11 @@ type Side = 'left' | 'right'
 interface Props {
   template: ComparisonTemplate
   onChange: (next: ComparisonTemplate) => void
+  /** Fenetre de la scene courante (warnings bornes hors-fenetre). */
+  sceneWindow?: { startSec: number; endSec: number }
 }
 
-export function ComparisonEditor({ template, onChange }: Props) {
+export function ComparisonEditor({ template, onChange, sceneWindow }: Props) {
   function setSideTitle(side: Side, title: string) {
     onChange({
       ...template,
@@ -96,6 +98,7 @@ export function ComparisonEditor({ template, onChange }: Props) {
                     card={card}
                     onChange={(next) => setSideCard(side, idx, next)}
                     label={`Item ${idx + 1}`}
+                    sceneWindow={sceneWindow}
                   />
                   {template[side].cards.length > 1 && (
                     <button
