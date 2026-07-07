@@ -96,6 +96,47 @@ async function requireSuperAdmin(): Promise<
   return { ok: true, userId: user.id }
 }
 
+// ─── Signature des bornes (détection already_enriched) ────────────────────
+
+/**
+ * Signature des bornes de surbrillance d'un tableau de scènes : pour CHAQUE
+ * objet rencontré (ordre des tableaux préservé, clés parcourues triées), on
+ * émet la paire `highlight_at_sec:highlight_end_sec` (`-` si absente). Les
+ * objets sans bornes émettent un placeholder, ce qui garantit l'alignement
+ * positionnel item par item entre les deux versions comparées.
+ *
+ * Pourquoi pas un JSON.stringify global (correctif 2 post-504) : la
+ * comparaison stricte échouait systématiquement — Zod reconstruit les objets
+ * dans l'ordre des clés du schéma alors que le module ré-appende les bornes
+ * en fin d'objet (divergence d'ordre des clés, ex. nodes causal où `id` suit
+ * les bornes côté schéma), donc chaque appel réécrivait les mêmes timelines
+ * en boucle. On ne compare plus QUE les bornes par item, dans l'ordre —
+ * toute métadonnée (horodatage, ordre de clés) est ignorée.
+ */
+function highlightSignature(scenes: unknown): string {
+  const out: string[] = []
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      for (const child of node) walk(child)
+      return
+    }
+    if (node && typeof node === 'object') {
+      const obj = node as Record<string, unknown>
+      const at = obj.highlight_at_sec
+      const end = obj.highlight_end_sec
+      out.push(
+        `${typeof at === 'number' ? at : '-'}:${typeof end === 'number' ? end : '-'}`
+      )
+      for (const key of Object.keys(obj).sort()) {
+        if (key === 'highlight_at_sec' || key === 'highlight_end_sec') continue
+        walk(obj[key])
+      }
+    }
+  }
+  walk(scenes)
+  return out.join('|')
+}
+
 // ─── Rapport par timeline ──────────────────────────────────────────────────
 
 interface TimelineEnrichResult {
@@ -235,12 +276,13 @@ export async function POST(req: NextRequest) {
       continue
     }
 
-    // Reprise : si le JSON courant est déjà strictement identique au
-    // résultat recalculé (typiquement écrit par un appel précédent coupé
-    // en cours de batch), aucune nouvelle version — et le limit n'est pas
-    // consommé, donc relancer le même appel converge naturellement.
+    // Reprise : si les bornes du JSON courant sont déjà identiques, item par
+    // item, au résultat recalculé (typiquement écrit par un appel précédent
+    // coupé en cours de batch), aucune nouvelle version — et le limit n'est
+    // pas consommé, donc relancer le même appel converge naturellement.
     if (
-      JSON.stringify(enrichResult.timeline) === JSON.stringify(parsed.data)
+      highlightSignature(enrichResult.timeline.scenes) ===
+      highlightSignature(parsed.data.scenes)
     ) {
       results.push({ ...base, status: 'skipped', skipReason: 'already_enriched' })
       continue
