@@ -17,6 +17,7 @@ import { HomeHeroCard } from '@/components/home/HomeHeroCard'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
 import ForYouCard from '@/components/home/ForYouCard'
+import ExploreRow from '@/components/home/ExploreRow'
 import { mediaCardSizeStyle } from '@/components/home/MediaCard'
 import type { JournalEpisode, NewsCard } from '@/types/news'
 import type { ForYouItem } from '@/types/forYou'
@@ -513,6 +514,14 @@ export default function HomePage() {
             </div>
           </section>
         )}
+
+        {/* Explorer — acces rapide aux 3 espaces */}
+        <section>
+          <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
+            🧭 Explorer
+          </h2>
+          <ExploreRow />
+        </section>
 
         {/* Evenements — masque si vide */}
         {evenements.length > 0 && (
