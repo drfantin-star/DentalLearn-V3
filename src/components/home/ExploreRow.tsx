@@ -41,7 +41,7 @@ export default function ExploreRow() {
         <Link
           key={card.href}
           href={card.href}
-          className="relative flex min-h-[104px] flex-col items-center justify-center gap-1.5
+          className="relative flex min-h-[128px] flex-col items-center justify-center gap-1.5
                      overflow-hidden rounded-2xl border border-white/[0.07] bg-[#1a1a1a]
                      px-2 py-3 text-center transition-transform hover:scale-[1.02]"
         >
@@ -60,9 +60,9 @@ export default function ExploreRow() {
           <Image
             src={card.image}
             alt=""
-            width={80}
-            height={40}
-            className="relative h-10 w-auto object-contain"
+            width={128}
+            height={64}
+            className="relative h-16 w-auto object-contain"
           />
           <div className="relative">
             <p className="text-sm font-bold text-white">{card.title}</p>
