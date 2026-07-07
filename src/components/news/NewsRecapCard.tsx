@@ -30,13 +30,6 @@ interface NewsRecapCardProps {
   className?: string
 }
 
-function truncate(text: string, max: number): string {
-  if (!text) return ''
-  const trimmed = text.trim()
-  if (trimmed.length <= max) return trimmed
-  return trimmed.slice(0, max - 1).trimEnd() + '…'
-}
-
 /** Parse un raw figure libre vers `{ value, label }` (même heuristique que
  *  buildNewsTimeline, dupliquée ici pour découpler le composant client de
  *  la lib server-side). Contrairement à la timeline, le label est affiché
@@ -69,17 +62,14 @@ export function NewsRecapCard({ synthesis, className }: NewsRecapCardProps) {
         .map((raw, i) => parseFigure(raw, i === 0))
     : undefined
 
-  const title = truncate(
-    `En résumé — ${synthesis.display_title ?? 'Synthèse'}`,
-    80,
-  )
-
   // Impact et limites affichés en entier (wrap multi-lignes, la carte
   // s'allonge verticalement) — seule la variante 'comfortable' du template
-  // porte les tailles lisibles mobile. Le titre reste borné à 80 chars.
+  // porte les tailles lisibles mobile. Titre volontairement vide : le titre
+  // complet est déjà dans le header du modal juste au-dessus, le template ne
+  // rend alors que son kicker « En résumé ».
   return (
     <Recap
-      title={title}
+      title=""
       figures={figures}
       impact={synthesis.clinical_impact?.trim() || undefined}
       caveats={synthesis.caveats?.trim() || undefined}

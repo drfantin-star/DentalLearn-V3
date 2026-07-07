@@ -76,14 +76,18 @@ export function Recap({
       transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       className={`bg-[color:var(--color-bg-card)] border border-white/10 rounded-xl p-4 sm:p-5 ${className ?? ''}`}
     >
-      {/* Header */}
+      {/* Header — le h3 est saute si le titre est vide (NewsRecapCard ne
+          duplique plus le titre du modal juste au-dessus) ; le kicker
+          « En résumé » reste. Les scenes journal passent toujours un titre. */}
       <header className="mb-3 sm:mb-4">
         <p className="text-xs uppercase tracking-wider text-ds-turquoise font-semibold">
           En résumé
         </p>
-        <h3 className={`${titleClass} font-bold text-[color:var(--color-text-primary)] leading-tight mt-1`}>
-          {title}
-        </h3>
+        {title.trim().length > 0 && (
+          <h3 className={`${titleClass} font-bold text-[color:var(--color-text-primary)] leading-tight mt-1`}>
+            {title}
+          </h3>
+        )}
       </header>
 
       {/* Body 2 colonnes */}

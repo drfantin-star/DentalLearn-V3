@@ -2,8 +2,6 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import type { NewsDetailResponse } from '@/types/news'
-import { formatDate } from '@/lib/news-display'
-import { NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
 import { NewsRecapCard } from '@/components/news/NewsRecapCard'
 import WavePlayButton from '@/components/WavePlayButton'
 
@@ -11,12 +9,6 @@ interface Props {
   newsId: string | null
   onClose: () => void
 }
-
-const CATEGORY_BADGE_CLASSES: Record<string, string> = {
-  scientifique: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
-  pratique: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
-}
-const CATEGORY_BADGE_FALLBACK = 'bg-gray-500/20 text-white/70 border-gray-400/30'
 
 export default function NewsModal({ newsId, onClose }: Props) {
   const [loading, setLoading] = useState(false)
@@ -104,20 +96,6 @@ export default function NewsModal({ newsId, onClose }: Props) {
       : source.source_url ?? null
     : null
 
-  const categoryClass =
-    (synthesis?.category_editorial &&
-      CATEGORY_BADGE_CLASSES[synthesis.category_editorial]) ||
-    CATEGORY_BADGE_FALLBACK
-
-  const specialiteLabel = synthesis?.specialite
-    ? NEWS_SPECIALITE_LABELS[synthesis.specialite] ?? synthesis.specialite
-    : null
-
-  const durationMin =
-    episode && typeof episode.duration_s === 'number'
-      ? Math.floor(episode.duration_s / 60)
-      : null
-
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center"
@@ -159,44 +137,11 @@ export default function NewsModal({ newsId, onClose }: Props) {
                 {synthesis.display_title}
               </h2>
 
-              <div className="flex flex-wrap gap-2 mt-3">
-                {specialiteLabel ? (
-                  <span
-                    className="px-2 py-0.5 rounded-full border text-[11px] font-medium
-                               bg-violet-500/20 text-violet-300 border-violet-400/30"
-                  >
-                    {specialiteLabel}
-                  </span>
-                ) : null}
-                {synthesis.category_editorial ? (
-                  <span
-                    className={`px-2 py-0.5 rounded-full border text-[11px] font-medium ${categoryClass}`}
-                  >
-                    {synthesis.category_editorial}
-                  </span>
-                ) : null}
-              </div>
-
-              {synthesis.published_at ? (
-                <p className="text-xs text-white/55 mt-2">
-                  {formatDate(synthesis.published_at)}
-                </p>
-              ) : null}
-
-              {/* T8 — carte récap statique si la synthèse appartient à un
-                  épisode T8-ready (timeline_url présent). Pas de défilement,
-                  pas de couplage audio (Q-T8-1=a bonus). Sinon : statu quo. */}
-              {episode?.timeline_url ? (
-                <div className="mt-4">
-                  <NewsRecapCard synthesis={synthesis} />
-                </div>
-              ) : null}
-
+              {/* Player épuré juste sous le titre : bouton vague seul, glow
+                  teal sur le bouton (token glow-accent), sans conteneur
+                  carte, sans libellé ni durée. */}
               {episode ? (
-                <div
-                  className="mt-4 flex items-center gap-4 rounded-2xl glow-accent
-                             bg-white/5 border border-white/10 p-3"
-                >
+                <div className="mt-4">
                   <WavePlayButton
                     isPlaying={isPlaying}
                     progressPercent={progressPercent}
@@ -206,18 +151,8 @@ export default function NewsModal({ newsId, onClose }: Props) {
                         ? 'Mettre la synthèse audio en pause'
                         : 'Écouter la synthèse audio'
                     }
-                    className="shrink-0"
+                    className="glow-accent"
                   />
-                  <div className="min-w-0">
-                    <p className="text-base font-medium text-white/90">
-                      Écouter la synthèse
-                    </p>
-                    {durationMin !== null ? (
-                      <p className="text-xs text-white/55 mt-0.5">
-                        {durationMin} min
-                      </p>
-                    ) : null}
-                  </div>
                   {/* Élément audio caché : ni contrôles natifs, ni vitesse,
                       ni menu — le WavePlayButton est la seule surface. */}
                   <audio
@@ -237,6 +172,15 @@ export default function NewsModal({ newsId, onClose }: Props) {
                       )
                     }}
                   />
+                </div>
+              ) : null}
+
+              {/* T8 — carte récap statique si la synthèse appartient à un
+                  épisode T8-ready (timeline_url présent). Pas de défilement,
+                  pas de couplage audio (Q-T8-1=a bonus). Sinon : statu quo. */}
+              {episode?.timeline_url ? (
+                <div className="mt-4">
+                  <NewsRecapCard synthesis={synthesis} />
                 </div>
               ) : null}
 
