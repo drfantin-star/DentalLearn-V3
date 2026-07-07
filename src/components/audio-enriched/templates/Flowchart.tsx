@@ -28,6 +28,8 @@ interface FlowchartProps {
   orientation?: 'horizontal' | 'vertical'
   /** Déclencheur de surbrillance actif de la scène (null = rien d'allumé). */
   activeHighlightAt?: number | null
+  /** 8B : rendu statique legacy (variant highlight) — chemin news uniquement. */
+  staticVariantsEnabled?: boolean
   className?: string
 }
 
@@ -48,6 +50,7 @@ export function Flowchart({
   cards,
   orientation = 'horizontal',
   activeHighlightAt,
+  staticVariantsEnabled,
   className,
 }: FlowchartProps) {
   const isForcedVertical = orientation === 'vertical'
@@ -66,7 +69,8 @@ export function Flowchart({
         const stateClass = cardStateClass(
           card,
           activeHighlightAt,
-          NEUTRAL_CARD_CLASS
+          NEUTRAL_CARD_CLASS,
+          staticVariantsEnabled
         )
 
         return (
@@ -85,7 +89,7 @@ export function Flowchart({
               {card.subtitle && (
                 <p
                   className={
-                    isCardAccented(card, activeHighlightAt)
+                    isCardAccented(card, activeHighlightAt, staticVariantsEnabled)
                       ? 'text-xs opacity-80'
                       : 'text-xs text-white/75'
                   }

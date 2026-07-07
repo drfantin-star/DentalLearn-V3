@@ -23,6 +23,8 @@ interface GridProps {
   columns: 2 | 3 | 4
   /** Déclencheur de surbrillance actif de la scène (null = rien d'allumé). */
   activeHighlightAt?: number | null
+  /** 8B : rendu statique legacy (variant highlight) — chemin news uniquement. */
+  staticVariantsEnabled?: boolean
   className?: string
 }
 
@@ -46,6 +48,7 @@ export function Grid({
   cards,
   columns,
   activeHighlightAt,
+  staticVariantsEnabled,
   className,
 }: GridProps) {
   return (
@@ -54,7 +57,8 @@ export function Grid({
         const stateClass = cardStateClass(
           card,
           activeHighlightAt,
-          NEUTRAL_CARD_CLASS
+          NEUTRAL_CARD_CLASS,
+          staticVariantsEnabled
         )
 
         return (
@@ -73,7 +77,7 @@ export function Grid({
             {card.subtitle && (
               <p
                 className={
-                  isCardAccented(card, activeHighlightAt)
+                  isCardAccented(card, activeHighlightAt, staticVariantsEnabled)
                     ? 'text-xs opacity-80'
                     : 'text-xs text-white/75'
                 }

@@ -41,6 +41,8 @@ interface TimelineTemplateProps {
   events?: TimelineEvent[]
   /** Déclencheur de surbrillance actif de la scène (null = rien d'allumé). */
   activeHighlightAt?: number | null
+  /** 8B : rendu statique legacy (variant highlight) — chemin news uniquement. */
+  staticVariantsEnabled?: boolean
   className?: string
 }
 
@@ -60,6 +62,7 @@ export function TimelineTemplate({
   steps,
   events,
   activeHighlightAt,
+  staticVariantsEnabled,
   className,
 }: TimelineTemplateProps) {
   if (events && events.length > 0) {
@@ -76,6 +79,7 @@ export function TimelineTemplate({
       <StepsMode
         steps={steps}
         activeHighlightAt={activeHighlightAt}
+        staticVariantsEnabled={staticVariantsEnabled}
         className={className}
       />
     )
@@ -258,10 +262,12 @@ function EventsVertical({
 function StepsMode({
   steps,
   activeHighlightAt,
+  staticVariantsEnabled,
   className,
 }: {
   steps: CardContent[]
   activeHighlightAt?: number | null
+  staticVariantsEnabled?: boolean
   className?: string
 }) {
   return (
@@ -275,6 +281,7 @@ function StepsMode({
             key={index}
             card={card}
             activeHighlightAt={activeHighlightAt}
+            staticVariantsEnabled={staticVariantsEnabled}
             index={index}
             isLast={isLast}
           />
@@ -287,11 +294,13 @@ function StepsMode({
 function StepFragment({
   card,
   activeHighlightAt,
+  staticVariantsEnabled,
   index,
   isLast,
 }: {
   card: CardContent
   activeHighlightAt?: number | null
+  staticVariantsEnabled?: boolean
   index: number
   isLast: boolean
 }) {
@@ -305,13 +314,13 @@ function StepFragment({
           delay: index * STEP_DELAY,
           ease: EASE,
         }}
-        className={`${BASE_CARD_CLASS} ${cardStateClass(card, activeHighlightAt, NEUTRAL_CARD_CLASS)}`}
+        className={`${BASE_CARD_CLASS} ${cardStateClass(card, activeHighlightAt, NEUTRAL_CARD_CLASS, staticVariantsEnabled)}`}
       >
         <p className="text-sm font-medium leading-tight">{card.text}</p>
         {card.subtitle && (
           <p
             className={
-              isCardAccented(card, activeHighlightAt)
+              isCardAccented(card, activeHighlightAt, staticVariantsEnabled)
                 ? 'text-xs opacity-80'
                 : 'text-xs text-white/75'
             }

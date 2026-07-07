@@ -11,6 +11,11 @@ import type { CardVariant } from '@/lib/timeline/schema'
  *  - 3A : `warning` / `success` restent rendus tels quels (semantiques).
  *  - 4A : `figures[].emphasis` n'est plus rendu non plus (meme sort que le
  *    highlight statique).
+ *  - 8B : 2A/4A ne s'appliquent QU'AU lecteur formation. Le chemin news
+ *    (`NewsVisualSequence`, timelines non enrichies) passe
+ *    `staticVariantsEnabled: true` aux templates pour conserver l'ancien
+ *    rendu statique (variant `highlight` + `emphasis`, pulse compris).
+ *    Defaut `false` = comportement formation (player, preview admin, POC).
  *  - 7B (relais, calcule cote rendu) : l'item allume est celui dont le
  *    `highlight_at_sec` est le dernier declenche (`<= highlightTime`) de la
  *    scene ; il reste allume jusqu'au declenchement du suivant, extinction en
@@ -54,15 +59,20 @@ export function isItemLit(
 
 /**
  * Classe d'etat complete d'une card : allume (teal dynamique) > variant
- * semantique (warning/success) > neutre. `variant: 'highlight'` est ignore
- * (2A).
+ * `highlight` statique (si `staticVariantsEnabled`, chemin news 8B) >
+ * variant semantique (warning/success) > neutre. Par defaut (formation),
+ * `variant: 'highlight'` est ignore (2A).
  */
 export function cardStateClass(
   item: HighlightableItem,
   activeHighlightAt: number | null | undefined,
-  neutralClass: string
+  neutralClass: string,
+  staticVariantsEnabled = false
 ): string {
   if (isItemLit(item, activeHighlightAt)) return LIT_CARD_CLASS
+  if (staticVariantsEnabled && item.variant === 'highlight') {
+    return LIT_CARD_CLASS
+  }
   if (item.variant === 'warning' || item.variant === 'success') {
     return RENDERED_VARIANT_CLASS[item.variant]
   }
@@ -76,10 +86,12 @@ export function cardStateClass(
  */
 export function isCardAccented(
   item: HighlightableItem,
-  activeHighlightAt: number | null | undefined
+  activeHighlightAt: number | null | undefined,
+  staticVariantsEnabled = false
 ): boolean {
   return (
     isItemLit(item, activeHighlightAt) ||
+    (staticVariantsEnabled && item.variant === 'highlight') ||
     item.variant === 'warning' ||
     item.variant === 'success'
   )

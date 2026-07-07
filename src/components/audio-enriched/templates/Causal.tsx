@@ -43,6 +43,8 @@ interface CausalProps {
   edges?: Array<{ from: string; to: string; label?: string }>
   /** Déclencheur de surbrillance actif de la scène (null = rien d'allumé). */
   activeHighlightAt?: number | null
+  /** 8B : rendu statique legacy (variant highlight) — chemin news uniquement. */
+  staticVariantsEnabled?: boolean
   className?: string
 }
 
@@ -188,6 +190,7 @@ export function Causal({
   nodes,
   edges,
   activeHighlightAt,
+  staticVariantsEnabled,
   className,
 }: CausalProps) {
   // Mode graphe préféré si présent et valide (≥ 2 nodes)
@@ -197,6 +200,7 @@ export function Causal({
         nodes={nodes}
         edges={edges ?? []}
         activeHighlightAt={activeHighlightAt}
+        staticVariantsEnabled={staticVariantsEnabled}
         className={className}
       />
     )
@@ -208,6 +212,7 @@ export function Causal({
         cause={cause}
         effects={effects}
         activeHighlightAt={activeHighlightAt}
+        staticVariantsEnabled={staticVariantsEnabled}
         className={className}
       />
     )
@@ -221,11 +226,13 @@ function GraphMode({
   nodes,
   edges,
   activeHighlightAt,
+  staticVariantsEnabled,
   className,
 }: {
   nodes: Array<CardContent & { id?: string }>
   edges: Array<{ from: string; to: string; label?: string }>
   activeHighlightAt?: number | null
+  staticVariantsEnabled?: boolean
   className?: string
 }) {
   return (
@@ -235,6 +242,7 @@ function GraphMode({
           nodes={nodes}
           edges={edges}
           activeHighlightAt={activeHighlightAt}
+          staticVariantsEnabled={staticVariantsEnabled}
         />
       </div>
       <div className="md:hidden">
@@ -242,6 +250,7 @@ function GraphMode({
           nodes={nodes}
           edges={edges}
           activeHighlightAt={activeHighlightAt}
+          staticVariantsEnabled={staticVariantsEnabled}
         />
       </div>
     </div>
@@ -252,10 +261,12 @@ function GraphDesktop({
   nodes,
   edges,
   activeHighlightAt,
+  staticVariantsEnabled,
 }: {
   nodes: Array<CardContent & { id?: string }>
   edges: Array<{ from: string; to: string; label?: string }>
   activeHighlightAt?: number | null
+  staticVariantsEnabled?: boolean
 }) {
   const total = nodes.length
   const positions = nodes.map((_, i) => getNodePosition(i, total))
@@ -429,7 +440,8 @@ function GraphDesktop({
         const stateClass = cardStateClass(
           node,
           activeHighlightAt,
-          NEUTRAL_CARD_CLASS
+          NEUTRAL_CARD_CLASS,
+          staticVariantsEnabled
         )
         return (
           <motion.div
@@ -452,7 +464,7 @@ function GraphDesktop({
             {node.subtitle && (
               <p
                 className={
-                  isCardAccented(node, activeHighlightAt)
+                  isCardAccented(node, activeHighlightAt, staticVariantsEnabled)
                     ? 'text-xs opacity-80'
                     : 'text-xs text-white/75'
                 }
@@ -513,10 +525,12 @@ function GraphMobile({
   nodes,
   edges,
   activeHighlightAt,
+  staticVariantsEnabled,
 }: {
   nodes: Array<CardContent & { id?: string }>
   edges: Array<{ from: string; to: string; label?: string }>
   activeHighlightAt?: number | null
+  staticVariantsEnabled?: boolean
 }) {
   return (
     <div className="flex flex-col items-stretch gap-0">
@@ -524,7 +538,8 @@ function GraphMobile({
         const stateClass = cardStateClass(
           node,
           activeHighlightAt,
-          NEUTRAL_CARD_CLASS
+          NEUTRAL_CARD_CLASS,
+          staticVariantsEnabled
         )
         const isLast = i === nodes.length - 1
         // Edge entre nodes[i] et nodes[i+1] dans l'ordre du tableau
@@ -551,7 +566,7 @@ function GraphMobile({
               {node.subtitle && (
                 <p
                   className={
-                    isCardAccented(node, activeHighlightAt)
+                    isCardAccented(node, activeHighlightAt, staticVariantsEnabled)
                       ? 'text-xs opacity-80'
                       : 'text-xs text-white/75'
                   }
@@ -605,16 +620,23 @@ function StarMode({
   cause,
   effects,
   activeHighlightAt,
+  staticVariantsEnabled,
   className,
 }: {
   cause: CardContent
   effects: CardContent[]
   activeHighlightAt?: number | null
+  staticVariantsEnabled?: boolean
   className?: string
 }) {
   return (
     <div className={`flex flex-col items-center gap-3 ${className ?? ''}`}>
-      <CardBlock card={cause} delay={0} activeHighlightAt={activeHighlightAt} />
+      <CardBlock
+        card={cause}
+        delay={0}
+        activeHighlightAt={activeHighlightAt}
+        staticVariantsEnabled={staticVariantsEnabled}
+      />
       <div
         aria-hidden="true"
         className="bg-white/20 w-px h-4"
@@ -626,6 +648,7 @@ function StarMode({
             card={effect}
             delay={(i + 1) * NODE_STAGGER}
             activeHighlightAt={activeHighlightAt}
+            staticVariantsEnabled={staticVariantsEnabled}
           />
         ))}
       </div>
@@ -637,12 +660,19 @@ function CardBlock({
   card,
   delay,
   activeHighlightAt,
+  staticVariantsEnabled,
 }: {
   card: CardContent
   delay: number
   activeHighlightAt?: number | null
+  staticVariantsEnabled?: boolean
 }) {
-  const stateClass = cardStateClass(card, activeHighlightAt, NEUTRAL_CARD_CLASS)
+  const stateClass = cardStateClass(
+    card,
+    activeHighlightAt,
+    NEUTRAL_CARD_CLASS,
+    staticVariantsEnabled
+  )
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -654,7 +684,7 @@ function CardBlock({
       {card.subtitle && (
         <p
           className={
-            isCardAccented(card, activeHighlightAt)
+            isCardAccented(card, activeHighlightAt, staticVariantsEnabled)
               ? 'text-xs opacity-80'
               : 'text-xs text-white/75'
           }

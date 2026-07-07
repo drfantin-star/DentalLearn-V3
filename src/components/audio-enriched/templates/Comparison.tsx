@@ -33,6 +33,8 @@ interface ComparisonProps {
    * comparer.
    */
   activeHighlightAt?: number | null
+  /** 8B : rendu statique legacy (variant highlight) — chemin news uniquement. */
+  staticVariantsEnabled?: boolean
   className?: string
 }
 
@@ -51,14 +53,25 @@ export function Comparison({
   left,
   right,
   activeHighlightAt,
+  staticVariantsEnabled,
   className,
 }: ComparisonProps) {
   return (
     <div
       className={`relative grid grid-cols-1 md:grid-cols-2 gap-4 ${className ?? ''}`}
     >
-      <Column column={left} side="left" activeHighlightAt={activeHighlightAt} />
-      <Column column={right} side="right" activeHighlightAt={activeHighlightAt} />
+      <Column
+        column={left}
+        side="left"
+        activeHighlightAt={activeHighlightAt}
+        staticVariantsEnabled={staticVariantsEnabled}
+      />
+      <Column
+        column={right}
+        side="right"
+        activeHighlightAt={activeHighlightAt}
+        staticVariantsEnabled={staticVariantsEnabled}
+      />
       {/* Divider central, desktop only */}
       <div
         aria-hidden="true"
@@ -72,10 +85,12 @@ function Column({
   column,
   side,
   activeHighlightAt,
+  staticVariantsEnabled,
 }: {
   column: ComparisonColumn
   side: 'left' | 'right'
   activeHighlightAt?: number | null
+  staticVariantsEnabled?: boolean
 }) {
   return (
     <motion.div
@@ -93,7 +108,8 @@ function Column({
           const stateClass = cardStateClass(
             card,
             activeHighlightAt,
-            NEUTRAL_CARD_CLASS
+            NEUTRAL_CARD_CLASS,
+            staticVariantsEnabled
           )
           return (
             <motion.div
@@ -111,7 +127,7 @@ function Column({
               {card.subtitle && (
                 <p
                   className={
-                    isCardAccented(card, activeHighlightAt)
+                    isCardAccented(card, activeHighlightAt, staticVariantsEnabled)
                       ? 'text-xs opacity-80'
                       : 'text-xs text-white/75'
                   }
