@@ -3,7 +3,7 @@
 > Référence unique des couleurs de l'app. En cas de doute, **c'est ce fichier qui fait foi.**
 > Toute couleur d'axe / catégorie doit venir d'ici (idéalement via les tokens Tailwind), jamais d'un hex tapé au hasard dans un composant.
 >
-> Dernière mise à jour : 3 juillet 2026.
+> Dernière mise à jour : 7 juillet 2026.
 
 ---
 
@@ -70,7 +70,28 @@ Couleur du dégradé de chaque carte formation, selon la valeur `category` en ba
 
 ---
 
-## 6. ⚠️ Points de vigilance (à réconcilier, PAS en urgence)
+## 6. Couleurs quiz news par spécialité
+
+Paires `{ dark, light }` des ambiances du quiz par thème (halo header, barre de progression, titre, cartes réponses). Source code : `src/lib/quiz/themeColors.ts` (consommé par `ThemeQuizModal`). Validées le 07/07/2026.
+
+| `specialite` | dark | light |
+|---|---|---|
+| `dent-resto` | `#F59E0B` | `#FBBF24` |
+| `chir-orale` | `#EF4444` | `#F87171` |
+| `implanto` | `#10B981` | `#34D399` |
+| `proth` | `#F97316` | `#FB923C` |
+| `paro` | `#EC4899` | `#F472B6` |
+| `endo` | `#6366F1` | `#818CF8` |
+| `odf` | `#8B5CF6` | `#A78BFA` |
+| `occluso` | `#0F7B6C` | `#2DD4BF` |
+| `sante-pub` | `#155E75` | `#67E8F9` |
+| `pedo` | `#1E2A9A` | `#3B4FD6` |
+| `gero` | `#A78BFA` | `#C4B5FD` |
+| `actu-pro` | `#0F7B6C` | `#2DD4BF` |
+
+---
+
+## 7. ⚠️ Points de vigilance (à réconcilier, PAS en urgence)
 
 1. **Tokens code ≠ charte.** Dans `tailwind.config.ts`, `axe1 = #2D1B96` (bleu foncé) et non le violet `#8B5CF6` de la charte. À corriger à froid, **après un audit** des endroits qui utilisent ces tokens, pour ne rien casser.
 2. **Orange partagé.** L'orange sert à la fois à l'Axe 3 (communication, consentement…) ET à la catégorie Prothèse (Axe 1). Deux formations d'axes différents peuvent donc être orange — c'est voulu par le système actuel, mais à garder en tête.
