@@ -188,7 +188,12 @@ export default function NewsModal({ newsId, onClose }: Props) {
                 {synthesis.summary_fr}
               </p>
 
-              {synthesis.clinical_impact ? (
+              {/* Impact clinique et Limites : déjà portés par la carte récap
+                  quand elle est affichée (timeline_url présent) — on ne les
+                  rend en sections détail QUE si la carte récap est absente,
+                  pour éviter le doublon sans perdre l'info sur les news
+                  sans épisode audio. */}
+              {!episode?.timeline_url && synthesis.clinical_impact ? (
                 <section className="mt-5">
                   <h3 className="text-xs uppercase tracking-wide text-violet-400 font-semibold">
                     Impact clinique
@@ -228,7 +233,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
                 </section>
               ) : null}
 
-              {synthesis.caveats ? (
+              {!episode?.timeline_url && synthesis.caveats ? (
                 <section className="mt-5">
                   <h3 className="text-xs uppercase tracking-wide text-amber-400 font-semibold">
                     Limites
