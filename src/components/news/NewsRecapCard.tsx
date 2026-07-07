@@ -39,7 +39,8 @@ function truncate(text: string, max: number): string {
 
 /** Parse un raw figure libre vers `{ value, label }` (même heuristique que
  *  buildNewsTimeline, dupliquée ici pour découpler le composant client de
- *  la lib server-side). */
+ *  la lib server-side). Contrairement à la timeline, le label est affiché
+ *  en entier (carte statique : wrap multi-lignes, pas d'ellipse). */
 function parseFigure(
   rawFigure: string,
   emphasis: boolean,
@@ -50,13 +51,13 @@ function parseFigure(
   if (m && m[1] && m[1].length <= 16) {
     return {
       value: m[1].trim(),
-      label: truncate(m[2] ?? '', 40),
+      label: (m[2] ?? '').trim(),
       ...(emphasis ? { emphasis } : {}),
     }
   }
   return {
     value: '—',
-    label: truncate(raw, 40),
+    label: raw,
     ...(emphasis ? { emphasis } : {}),
   }
 }
@@ -73,18 +74,16 @@ export function NewsRecapCard({ synthesis, className }: NewsRecapCardProps) {
     80,
   )
 
+  // Impact et limites affichés en entier (wrap multi-lignes, la carte
+  // s'allonge verticalement) — seule la variante 'comfortable' du template
+  // porte les tailles lisibles mobile. Le titre reste borné à 80 chars.
   return (
     <Recap
       title={title}
       figures={figures}
-      impact={
-        synthesis.clinical_impact
-          ? truncate(synthesis.clinical_impact, 200)
-          : undefined
-      }
-      caveats={
-        synthesis.caveats ? truncate(synthesis.caveats, 160) : undefined
-      }
+      impact={synthesis.clinical_impact?.trim() || undefined}
+      caveats={synthesis.caveats?.trim() || undefined}
+      size="comfortable"
       className={className}
     />
   )

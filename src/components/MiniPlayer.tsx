@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { Play, Pause, SkipBack, SkipForward, X, Music } from 'lucide-react'
 import { useAudio } from '@/context/AudioContext'
 import { useFocusMode } from '@/context/FocusModeContext'
+import WavePlayButton from '@/components/WavePlayButton'
 
 // ============================================
 // MINIPLAYER — Floating Radio France style
@@ -42,48 +43,16 @@ export default function MiniPlayer() {
 
   // Mode focus mobile : verre d'eau — bouton unique play/pause avec niveau de progression.
   // md:hidden garantit que ce rendu ne s'active jamais sur desktop.
+  // Visuel extrait dans <WavePlayButton> (partage avec le detail news) —
+  // rendu strictement identique, la logique audio reste ici.
   if (isFocus) {
     return (
       <div className="md:hidden fixed z-50" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 12px)', right: '16px' }}>
-        <button
-          onClick={handleTogglePlay}
-          className="relative w-16 h-16 rounded-full overflow-hidden shadow-2xl border border-white/20"
-          style={{ background: '#111111' }}
-          aria-label={state.isPlaying ? 'Pause' : 'Play'}
-        >
-          {/* Remplissage liquide qui monte selon la progression */}
-          <div
-            className="absolute bottom-0 left-0 right-0 bg-accent transition-[height] duration-1000"
-            style={{ height: `${progressPercent}%` }}
-          >
-            {/* Vague double animee en haut du liquide — 200% wide pour le translateX infini.
-                text-accent sur le SVG => currentColor = couleur accent => fill-current fonctionne. */}
-            <svg
-              aria-hidden="true"
-              className="absolute -top-3 left-0 w-[200%] text-accent"
-              viewBox="0 0 128 12"
-              preserveAspectRatio="none"
-              height="12"
-            >
-              <path
-                className="fill-current opacity-90 animate-wave1"
-                d="M0 6 Q8 0 16 6 Q24 12 32 6 Q40 0 48 6 Q56 12 64 6 Q72 0 80 6 Q88 12 96 6 Q104 0 112 6 Q120 12 128 6 L128 12 L0 12 Z"
-              />
-              <path
-                className="fill-current opacity-50 animate-wave2"
-                d="M0 6 Q8 12 16 6 Q24 0 32 6 Q40 12 48 6 Q56 0 64 6 Q72 12 80 6 Q88 0 96 6 Q104 12 112 6 Q120 0 128 6 L128 12 L0 12 Z"
-              />
-            </svg>
-          </div>
-
-          {/* Icone play/pause au centre, au-dessus du liquide */}
-          <span className="absolute inset-0 flex items-center justify-center text-white z-10">
-            {state.isPlaying
-              ? <Pause size={22} />
-              : <Play size={22} style={{ marginLeft: '2px' }} />
-            }
-          </span>
-        </button>
+        <WavePlayButton
+          isPlaying={state.isPlaying}
+          progressPercent={progressPercent}
+          onToggle={handleTogglePlay}
+        />
       </div>
     )
   }

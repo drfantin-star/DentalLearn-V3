@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import type { NewsDetailResponse } from '@/types/news'
 import { formatDate } from '@/lib/news-display'
 import { NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
 import { NewsRecapCard } from '@/components/news/NewsRecapCard'
+import WavePlayButton from '@/components/WavePlayButton'
 
 interface Props {
   newsId: string | null
@@ -22,6 +23,40 @@ export default function NewsModal({ newsId, onClose }: Props) {
   const [data, setData] = useState<NewsDetailResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
 
+  // Lecture audio locale au modal (élément <audio> caché, aucun contrôle
+  // natif exposé). Volontairement PAS branché sur AudioContext (réservé aux
+  // formations / logs DPC) ni sur AudioPlayerContext (queue playlist).
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [progressPercent, setProgressPercent] = useState(0)
+
+  const handleTogglePlay = () => {
+    const el = audioRef.current
+    if (!el) return
+    if (el.paused) {
+      void el.play()
+    } else {
+      el.pause()
+    }
+  }
+
+  // Coupe la lecture à la fermeture du modal (le retrait du <audio> du DOM
+  // ne suffit pas dans tous les navigateurs) et au démontage.
+  useEffect(() => {
+    if (!newsId) {
+      audioRef.current?.pause()
+      setIsPlaying(false)
+      setProgressPercent(0)
+    }
+  }, [newsId])
+
+  useEffect(() => {
+    const ref = audioRef
+    return () => {
+      ref.current?.pause()
+    }
+  }, [])
+
   useEffect(() => {
     if (!newsId) return
 
@@ -29,6 +64,8 @@ export default function NewsModal({ newsId, onClose }: Props) {
     setLoading(true)
     setError(null)
     setData(null)
+    setIsPlaying(false)
+    setProgressPercent(0)
 
     fetch(`/api/news/syntheses/${newsId}`)
       .then(async (res) => {
@@ -156,17 +193,54 @@ export default function NewsModal({ newsId, onClose }: Props) {
               ) : null}
 
               {episode ? (
-                <div className="mt-3">
-                  <audio controls src={episode.audio_url} className="w-full">
-                    Votre navigateur ne supporte pas l’audio.
-                  </audio>
-                  {durationMin !== null ? (
-                    <p className="text-xs text-white/55 mt-1">{durationMin} min</p>
-                  ) : null}
+                <div
+                  className="mt-4 flex items-center gap-4 rounded-2xl glow-accent
+                             bg-white/5 border border-white/10 p-3"
+                >
+                  <WavePlayButton
+                    isPlaying={isPlaying}
+                    progressPercent={progressPercent}
+                    onToggle={handleTogglePlay}
+                    ariaLabel={
+                      isPlaying
+                        ? 'Mettre la synthèse audio en pause'
+                        : 'Écouter la synthèse audio'
+                    }
+                    className="shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-base font-medium text-white/90">
+                      Écouter la synthèse
+                    </p>
+                    {durationMin !== null ? (
+                      <p className="text-xs text-white/55 mt-0.5">
+                        {durationMin} min
+                      </p>
+                    ) : null}
+                  </div>
+                  {/* Élément audio caché : ni contrôles natifs, ni vitesse,
+                      ni menu — le WavePlayButton est la seule surface. */}
+                  <audio
+                    ref={audioRef}
+                    src={episode.audio_url}
+                    preload="metadata"
+                    className="hidden"
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onEnded={() => setIsPlaying(false)}
+                    onTimeUpdate={(e) => {
+                      const el = e.currentTarget
+                      setProgressPercent(
+                        el.duration > 0
+                          ? (el.currentTime / el.duration) * 100
+                          : 0,
+                      )
+                    }}
+                  />
                 </div>
               ) : null}
 
-              <p className="text-sm text-white/70 mt-4 whitespace-pre-line">
+              <p className="text-base leading-relaxed text-white/70 mt-4 whitespace-pre-line">
                 {synthesis.summary_fr}
               </p>
 
@@ -175,7 +249,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
                   <h3 className="text-xs uppercase tracking-wide text-violet-400 font-semibold">
                     Impact clinique
                   </h3>
-                  <p className="text-sm text-white/70 mt-1 whitespace-pre-line">
+                  <p className="text-base leading-relaxed text-white/70 mt-1 whitespace-pre-line">
                     {synthesis.clinical_impact}
                   </p>
                 </section>
@@ -186,7 +260,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
                   <h3 className="text-xs uppercase tracking-wide text-white/55 font-semibold">
                     Chiffres cles
                   </h3>
-                  <ul className="list-disc list-inside text-sm text-white/70 mt-1 space-y-1">
+                  <ul className="list-disc list-inside text-base leading-relaxed text-white/70 mt-1 space-y-1">
                     {synthesis.key_figures.map((figure, i) => (
                       <li key={i}>{figure}</li>
                     ))}
@@ -215,7 +289,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
                   <h3 className="text-xs uppercase tracking-wide text-amber-400 font-semibold">
                     Limites
                   </h3>
-                  <p className="text-sm text-white/70 mt-1 whitespace-pre-line">
+                  <p className="text-base leading-relaxed text-white/70 mt-1 whitespace-pre-line">
                     {synthesis.caveats}
                   </p>
                 </section>
