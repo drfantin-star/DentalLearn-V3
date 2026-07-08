@@ -44,7 +44,7 @@ export async function generateAttestationPDF(
   doc.setFontSize(10)
   const intro =
     `Le praticien soussigné atteste avoir réalisé l'auto-évaluation de sa santé ` +
-    `professionnelle proposée par DentalLearn, dans le cadre de l'Action B de l'Axe 4 ` +
+    `professionnelle proposée par Certily, dans le cadre de l'Action B de l'Axe 4 ` +
     `de la Certification Périodique des chirurgiens-dentistes.`
   doc.text(doc.splitTextToSize(intro, 182), 14, 50)
 
@@ -84,7 +84,7 @@ export async function generateAttestationPDF(
   doc.setFontSize(8)
   doc.text(
     doc.splitTextToSize(
-      "Cette attestation ne comporte aucun résultat. Les réponses au questionnaire ne sont pas conservées par DentalLearn.",
+      "Cette attestation ne comporte aucun résultat. Les réponses au questionnaire ne sont pas conservées par Certily.",
       170
     ),
     20,

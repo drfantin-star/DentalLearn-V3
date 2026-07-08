@@ -4,11 +4,11 @@ import { AudioProvider } from '@/context/AudioContext'
 import { AudioPlayerProvider } from '@/context/AudioPlayerContext'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getUserIntraRole, isFormateur, isSuperAdmin } from '@/lib/auth/rbac'
 
 // Guard d'auth sur tout le route group (app). Les users orgless restent
-// autorisés (le 5e onglet BottomNav reste gaté par superAdminFlag/formateurFlag
-// plus bas), seuls les visiteurs non authentifiés sont redirigés vers /login.
+// autorisés ; seuls les visiteurs non authentifiés sont redirigés vers /login.
+// Les rôles ne sont plus calculés ici : la BottomNav n'a plus d'onglet
+// contextuel et la page Profil lit ses rôles via /api/user/intra-role.
 
 export default async function AppLayout({
   children,
@@ -29,23 +29,11 @@ export default async function AppLayout({
     redirect('/login')
   }
 
-  const [intraRole, superAdminFlag, formateurFlag] = user
-    ? await Promise.all([
-        getUserIntraRole(user.id),
-        isSuperAdmin(user.id),
-        isFormateur(user.id),
-      ])
-    : [null, false, false]
-
   return (
     <AudioProvider>
       <AudioPlayerProvider>
         <SessionRecoveryGuard />
-        <AppShell
-          intraRole={intraRole}
-          isSuperAdmin={superAdminFlag}
-          isFormateur={formateurFlag}
-        >
+        <AppShell>
           {children}
         </AppShell>
       </AudioPlayerProvider>

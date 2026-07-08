@@ -25,7 +25,7 @@ export async function POST() {
     }
 
     const testNotification = {
-      title: '🦷 Test DentalLearn',
+      title: '🦷 Test Certily',
       body: 'Les notifications fonctionnent correctement !',
       icon: '/images/iconeDL.png',
       badge: '/images/iconeDL.png',

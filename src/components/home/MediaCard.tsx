@@ -31,11 +31,14 @@ const ASPECT_RATIO: Record<MediaCardAspect, string> = {
 // catégories de « Explorer » (CategoryCarousel dans page.tsx). Exporté pour que
 // les tuiles « hors shell » (ex. tuile « Voir toutes les actus » dans page.tsx)
 // s'alignent exactement sur les cartes — même largeur, même hauteur.
-export function mediaCardSizeStyle(aspect: MediaCardAspect): React.CSSProperties {
+export type MediaCardSize = 'default' | 'large'
+
+export function mediaCardSizeStyle(aspect: MediaCardAspect, size: MediaCardSize = 'default'): React.CSSProperties {
+  const isLarge = size === 'large'
   return {
-    width: 'calc(50vw - 24px)',
-    minWidth: '148px',
-    maxWidth: '220px',
+    width: isLarge ? 'calc(72vw - 24px)' : 'calc(50vw - 24px)',
+    minWidth: isLarge ? '220px' : '148px',
+    maxWidth: isLarge ? '340px' : '220px',
     aspectRatio: ASPECT_RATIO[aspect],
   }
 }
@@ -79,6 +82,8 @@ interface MediaCardProps {
   coverFit?: 'cover' | 'contain'
   /** Fond CSS derrière une cover `contain` (dégradé d'axe / catégorie). */
   coverBackground?: string
+  /** Opacité de la cover (0–1, défaut 1). Permet de mettre l'image en arrière-plan. */
+  coverOpacity?: number
   /** Fond pleine carte quand pas de cover (dégradé + picto/SVG). */
   fallback?: ReactNode
   /** Pastille catégorie / badge type — haut gauche. */
@@ -87,6 +92,8 @@ interface MediaCardProps {
   topRight?: ReactNode
   /** Orientation. Défaut `portrait` (3/4). `landscape` (3/2) pour Pour vous / Actualités. */
   aspect?: MediaCardAspect
+  /** Taille. 'default' = largeur standard (50vw, max 220px). 'large' = 72vw, max 340px. */
+  size?: MediaCardSize
   /** Bloc bas en overlay : titre + sous-titre / CTA. */
   children: ReactNode
 }
@@ -99,21 +106,27 @@ export default function MediaCard({
   coverAlt,
   coverFit = 'cover',
   coverBackground,
+  coverOpacity = 1,
   fallback,
   topLeft,
   topRight,
   aspect = 'portrait',
+  size = 'default',
   children,
 }: MediaCardProps) {
   const className = 'flex-shrink-0 snap-start rounded-2xl overflow-hidden block text-left'
-  const style: React.CSSProperties = { ...MEDIA_CARD_STYLE, aspectRatio: ASPECT_RATIO[aspect] }
+  const style: React.CSSProperties = {
+    ...mediaCardSizeStyle(aspect, size),
+    position: 'relative',
+    border: '0.5px solid #333',
+  }
 
   const inner = (
     <>
       {/* Fond pleine carte */}
       {cover ? (
         coverFit === 'contain' ? (
-          <div style={{ position: 'absolute', inset: 0, background: coverBackground }}>
+          <div style={{ position: 'absolute', inset: 0, background: coverBackground, opacity: coverOpacity }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={cover}
@@ -142,6 +155,7 @@ export default function MediaCard({
               width: '100%',
               height: '100%',
               objectFit: 'cover',
+              opacity: coverOpacity,
             }}
           />
         )
@@ -170,7 +184,7 @@ export default function MediaCard({
           bottom: '10px',
           left: '10px',
           right: '10px',
-          zIndex: 1,
+          zIndex: 3,
           display: 'flex',
           flexDirection: 'column',
           gap: '6px',

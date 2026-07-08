@@ -46,7 +46,7 @@ export default function TenantShell({ org, children }: TenantShellProps) {
     }
     return (
       <div>
-        <h1 className="text-xl font-bold leading-none">DentalLearn</h1>
+        <h1 className="text-xl font-bold leading-none">Certily</h1>
         <p className="text-xs text-white/70 mt-1">Espace tenant</p>
       </div>
     )
@@ -116,7 +116,7 @@ export default function TenantShell({ org, children }: TenantShellProps) {
             Déconnexion
           </button>
           <p className="text-[11px] text-white/60 text-center">
-            Powered by DentalLearn
+            Powered by Certily
           </p>
         </div>
       </aside>

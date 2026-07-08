@@ -2,13 +2,16 @@ import React from 'react'
 import Link from 'next/link'
 import type { DemarcheEnCours } from '@/lib/hooks/useDemarches'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
+import { mediaCardSizeStyle } from '@/components/home/MediaCard'
+import type { MediaCardSize } from '@/components/home/MediaCard'
 
 interface DemarcheCardProps {
   demarche: DemarcheEnCours
+  size?: MediaCardSize
 }
 
-export default function DemarcheCard({ demarche }: DemarcheCardProps) {
-  // --- Formation cards: square card with cover image ---
+export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCardProps) {
+  // --- Formation cards: landscape ---
   if (demarche.type === 'formation') {
     const formation = {
       id: demarche.id,
@@ -27,12 +30,14 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
       <FormationCardOverlay
         formation={formation}
         progress={progress}
+        aspect="landscape"
+        size={size}
         onClick={() => { window.location.href = demarche.ctaUrl }}
       />
     )
   }
 
-  // EPP card — format overlay unifié
+  // EPP card — format paysage 3/2, anneau ancre a droite
   const eppColor = '#0F766E'
   const isValidated = demarche.subtitle?.includes('validé') || false
   const isT2 = demarche.subtitle?.includes('Tour 2') || false
@@ -41,41 +46,44 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
     : `linear-gradient(135deg, ${eppColor}, #2DD4BF)`
   const dashArray = isValidated ? '276 276' : isT2 ? '207 276' : '138 276'
 
+  const RING_SIZE = 72
+  const INNER_SIZE = 46
+
   return (
     <Link
       href={demarche.ctaUrl}
-      className="flex-shrink-0 snap-start rounded-2xl overflow-hidden"
+      className="flex-shrink-0 snap-start rounded-2xl overflow-hidden block"
       style={{
-        width: 'calc(50vw - 24px)',
-        maxWidth: '220px',
-        minWidth: '148px',
-        border: '0.5px solid #333',
+        ...mediaCardSizeStyle('landscape', size),
         position: 'relative',
-        aspectRatio: '3/4',
-        display: 'block',
+        border: '0.5px solid #333',
         textDecoration: 'none',
       }}
     >
-      {/* Fond coloré plein */}
+      {/* Fond colore plein */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
           background: eppGradient,
+          opacity: 0.7,
         }}
       />
 
-      {/* Anneau SVG + cercle centré */}
+      {/* Anneau SVG ancre a droite, centre verticalement */}
       <div
         style={{
           position: 'absolute',
+          right: '10px',
           top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -85%)',
+          transform: 'translateY(-50%)',
           zIndex: 1,
+          opacity: 0.7,
+          width: `${RING_SIZE}px`,
+          height: `${RING_SIZE}px`,
         }}
       >
-        <svg width="108" height="108" viewBox="0 0 108 108">
+        <svg width={RING_SIZE} height={RING_SIZE} viewBox="0 0 108 108">
           <circle cx="54" cy="54" r="44" fill="none"
             stroke="rgba(255,255,255,0.2)" strokeWidth="5"/>
           <circle cx="54" cy="54" r="44" fill="none"
@@ -89,48 +97,52 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
         <div
           style={{
             position: 'absolute',
-            top: '50%', left: '50%',
+            top: '50%',
+            left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: '72px', height: '72px',
+            width: `${INNER_SIZE}px`,
+            height: `${INNER_SIZE}px`,
             borderRadius: '50%',
             background: 'white',
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            gap: '2px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '1px',
             border: isValidated ? '2px solid #10B981' : 'none',
           }}
         >
           {isValidated ? (
             <>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke="#059669" strokeWidth="2.5">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                 <polyline points="22 4 12 14.01 9 11.01"/>
               </svg>
-              <span style={{ fontSize: '9px', fontWeight: 700, color: '#059669',
-                textTransform: 'uppercase' }}>Validée</span>
+              <span style={{ fontSize: '7px', fontWeight: 700, color: '#059669',
+                textTransform: 'uppercase' }}>Validee</span>
             </>
           ) : isT2 ? (
             <>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke={eppColor} strokeWidth="2.5">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/>
               </svg>
-              <span style={{ fontSize: '9px', fontWeight: 700, color: '#6b7280',
+              <span style={{ fontSize: '7px', fontWeight: 700, color: '#6b7280',
                 textTransform: 'uppercase' }}>Tour 2</span>
-              <span style={{ fontSize: '10px', fontWeight: 900, color: eppColor }}>en cours</span>
+              <span style={{ fontSize: '8px', fontWeight: 900, color: eppColor }}>en cours</span>
             </>
           ) : (
             <>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none"
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke={eppColor} strokeWidth="2.5">
                 <path d="M9 11l3 3L22 4"/>
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
               </svg>
-              <span style={{ fontSize: '9px', fontWeight: 700, color: '#6b7280',
+              <span style={{ fontSize: '7px', fontWeight: 700, color: '#6b7280',
                 textTransform: 'uppercase' }}>Tour 1</span>
-              <span style={{ fontSize: '13px', fontWeight: 900, color: eppColor }}>✓</span>
+              <span style={{ fontSize: '10px', fontWeight: 900, color: eppColor }}>✓</span>
             </>
           )}
         </div>
@@ -146,13 +158,13 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
         }}
       />
 
-      {/* Titre + CTA en bas */}
+      {/* Titre + CTA en bas-gauche, laisse place a l'anneau */}
       <div
         style={{
           position: 'absolute',
           bottom: '10px',
           left: '10px',
-          right: '10px',
+          right: `${RING_SIZE + 16}px`,
           zIndex: 3,
           display: 'flex',
           flexDirection: 'column',
@@ -161,15 +173,15 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
       >
         <p
           style={{
-            fontSize: '12px',
+            fontSize: '16px',
             fontWeight: 700,
             color: 'white',
-            lineHeight: 1.3,
+            lineHeight: 1.25,
             display: '-webkit-box',
-            WebkitLineClamp: 3,
+            WebkitLineClamp: 4,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
-            textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+            textShadow: '0 2px 6px rgba(0,0,0,0.7)',
           }}
         >
           {demarche.title}
@@ -178,10 +190,10 @@ export default function DemarcheCard({ demarche }: DemarcheCardProps) {
           style={{
             background: eppGradient,
             color: 'white',
-            fontSize: '12px',
+            fontSize: '11px',
             fontWeight: 600,
             textAlign: 'center',
-            padding: '7px',
+            padding: '5px 7px',
             borderRadius: '10px',
           }}
         >

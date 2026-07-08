@@ -62,6 +62,19 @@ const TimelineConceptSchema = z.object({
 
 const CardVariantSchema = z.enum(['highlight', 'warning', 'success'])
 
+// Lot 1 surbrillance audio (juillet 2026) — bornes temporelles de surbrillance
+// dynamique par item, écrites par l'enrichissement déterministe
+// (`highlight-matching.ts`, matching flou libellé <-> transcript word-level).
+// Strictement additif : optionnelles, aucune timeline antérieure invalidée.
+// Absence de bornes = repli "pas de surbrillance" (pas un état d'erreur).
+// Pas de refine croisé at < end : le module d'enrichissement garantit la
+// cohérence des paires qu'il écrit, et on ne veut pas invalider une édition
+// manuelle partielle dans l'éditeur admin (Lot 3).
+const HighlightBoundsShape = {
+  highlight_at_sec: z.number().nonnegative().optional(),
+  highlight_end_sec: z.number().nonnegative().optional(),
+}
+
 const CardContentSchema = z.object({
   text: z.string().max(60),
   // Tolérance portée de 40 → 50 (juin 2026) : le rendu des cards
@@ -71,6 +84,7 @@ const CardContentSchema = z.object({
   subtitle: z.string().max(50).optional(),
   icon: z.string().optional(),
   variant: CardVariantSchema.optional(),
+  ...HighlightBoundsShape,
 })
 
 // ─── Templates de scène (discriminated union sur `kind`) ────────────────────
@@ -175,6 +189,7 @@ const FiguresTemplateSchema = z.object({
       // `emphasis` (ajouté T4.1) : met en avant le chiffre (couleur turquoise
       // + pulse subtil). Optionnel — payloads T3 restent valides.
       emphasis: z.boolean().optional(),
+      ...HighlightBoundsShape,
     })
   ),
 })
@@ -192,6 +207,7 @@ const TimelineTemplateSchema = z
         z.object({
           at_label: z.string().min(1), // ex : "J0", "J7", "6 mois"
           text: z.string().min(1),
+          ...HighlightBoundsShape,
         })
       )
       .optional(),
@@ -225,6 +241,7 @@ const RecapTemplateSchema = z.object({
         value: z.string(),
         label: z.string(),
         emphasis: z.boolean().optional(),
+        ...HighlightBoundsShape,
       })
     )
     .max(3)

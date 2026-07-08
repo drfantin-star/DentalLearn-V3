@@ -1,104 +1,157 @@
 'use client'
 
 import React from 'react'
-import { getCategoryConfig } from '@/lib/supabase/types'
 import type { Formation } from '@/lib/supabase/types'
-import MediaCard from './MediaCard'
+import { getCategoryConfig } from '@/lib/supabase/types'
+import { mediaCardSizeStyle } from './MediaCard'
+import type { MediaCardAspect } from './MediaCard'
+import CutoutCardRender from './CutoutCardRender'
 
 interface FormationCardOverlayProps {
   formation: Formation
-  progress?: { isStarted: boolean; isCompleted: boolean }
+  progressPercent?: number
   onClick: () => void
-  accentGradient?: string
+  aspect?: MediaCardAspect
 }
 
 export default function FormationCardOverlay({
   formation,
-  progress,
+  progressPercent = 0,
   onClick,
-  accentGradient,
+  aspect = 'portrait',
 }: FormationCardOverlayProps) {
-  const config = getCategoryConfig(formation.category)
-  const ctaLabel = progress?.isCompleted
-    ? '✓ Terminé'
-    : progress?.isStarted
-    ? 'Continuer →'
-    : 'Découvrir'
-  const ctaGradient = progress?.isCompleted
-    ? 'linear-gradient(135deg, #059669, #10B981)'
-    : accentGradient || `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`
+  const pct = Math.min(100, Math.max(0, Math.round(progressPercent)))
+  const ariaLabel = `Reprendre : ${formation.title}, ${pct} %`
+  const hasCutout = Boolean(formation.cover_cutout_url)
+  const catConfig = getCategoryConfig(formation.category)
+
+  const cardStyle: React.CSSProperties = {
+    ...mediaCardSizeStyle(aspect),
+    position: 'relative',
+    borderRadius: '18px',
+    border: '0.5px solid rgba(255,255,255,0.08)',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+    overflow: 'hidden',
+  }
 
   return (
-    <MediaCard
+    <button
+      type="button"
       onClick={onClick}
-      cover={formation.cover_image_url}
-      coverAlt={formation.title}
-      fallback={
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background: `linear-gradient(135deg, ${config.gradient.from}, ${config.gradient.to})`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '48px',
-          }}
-        >
-          {config.emoji}
-        </div>
-      }
-      topRight={
-        <div
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            background: 'rgba(0,0,0,0.45)',
-            backdropFilter: 'blur(4px)',
-            border: '1.5px solid rgba(255,255,255,0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-            stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 18v-6a9 9 0 0 1 18 0v6"/>
-            <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3z"/>
-            <path d="M3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/>
-          </svg>
-        </div>
-      }
+      aria-label={ariaLabel}
+      className="flex-shrink-0 snap-start block text-left active:scale-[0.98] transition-transform duration-150"
+      style={cardStyle}
     >
-      <p
-        style={{
-          fontSize: '13px',
-          fontWeight: 700,
-          color: 'white',
-          lineHeight: 1.3,
-          display: '-webkit-box',
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
-        }}
-      >
-        {formation.title}
-      </p>
-      <div
-        style={{
-          background: ctaGradient,
-          color: 'white',
-          fontSize: '12px',
-          fontWeight: 600,
-          textAlign: 'center',
-          padding: '7px',
-          borderRadius: '10px',
-        }}
-      >
-        {ctaLabel}
-      </div>
-    </MediaCard>
+      {hasCutout ? (
+        /* ── Mode cutout ─────────────────────────────── */
+        <CutoutCardRender
+          cutoutSrc={formation.cover_cutout_url!}
+          colorFrom={catConfig.gradient.from}
+          eyebrow={catConfig.shortName}
+          title={formation.title}
+          progress={pct}
+        />
+      ) : (
+        /* ── Fallback : rendu image cover existant ───── */
+        <>
+          {formation.cover_image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={formation.cover_image_url}
+              alt={formation.title}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center top',
+              }}
+            />
+          ) : (
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, #1a1a2e, #16213e)' }} />
+          )}
+
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)',
+            }}
+          />
+
+          <div
+            style={{
+              position: 'absolute',
+              top: '10px',
+              left: '10px',
+              zIndex: 2,
+              background: 'rgba(0,0,0,0.5)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              borderRadius: '100px',
+              padding: '3px 8px',
+              border: '0.5px solid rgba(255,255,255,0.15)',
+            }}
+          >
+            <span
+              style={{
+                fontSize: '10px',
+                fontWeight: 600,
+                color: 'rgba(255,255,255,0.8)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.07em',
+              }}
+            >
+              FORMATION
+            </span>
+          </div>
+
+          <p
+            style={{
+              position: 'absolute',
+              bottom: '18px',
+              left: '10px',
+              right: '10px',
+              zIndex: 3,
+              margin: 0,
+              fontSize: '13px',
+              fontWeight: 700,
+              color: 'white',
+              lineHeight: 1.25,
+              textShadow: '0 2px 6px rgba(0,0,0,0.7)',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {formation.title}
+          </p>
+
+          {/* Barre de progression — fallback */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'rgba(255,255,255,0.18)',
+              zIndex: 5,
+            }}
+          >
+            <div
+              className="bg-accent"
+              style={{
+                height: '100%',
+                width: `${pct}%`,
+                transition: 'width 0.4s ease',
+              }}
+            />
+          </div>
+        </>
+      )}
+    </button>
   )
 }

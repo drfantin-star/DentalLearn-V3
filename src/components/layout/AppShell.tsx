@@ -7,13 +7,10 @@ import PWAInstallBanner from '@/components/PWAInstallBanner'
 import MiniPlayer from '@/components/MiniPlayer'
 import AudioQueuePlayer from '@/components/news/AudioQueuePlayer'
 import { useUser } from '@/lib/hooks/useUser'
-import type { IntraRole } from '@/lib/auth/rbac'
+import { FocusModeProvider } from '@/context/FocusModeContext'
 
 interface AppShellProps {
   children: React.ReactNode
-  intraRole?: IntraRole | null
-  isSuperAdmin?: boolean
-  isFormateur?: boolean
 }
 
 // Segments rendus plein écran (sans bottom nav ni chrome audio/PWA).
@@ -25,9 +22,6 @@ const FULLSCREEN_SEGMENTS = ['/onboarding']
 
 export default function AppShell({
   children,
-  intraRole,
-  isSuperAdmin,
-  isFormateur,
 }: AppShellProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -71,16 +65,14 @@ export default function AppShell({
   }
 
   return (
-    <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
-      {children}
-      <PWAInstallBanner />
-      <MiniPlayer />
-      <AudioQueuePlayer />
-      <BottomNav
-        intraRole={intraRole}
-        isSuperAdmin={isSuperAdmin}
-        isFormateur={isFormateur}
-      />
-    </div>
+    <FocusModeProvider>
+      <div className="min-h-screen pb-28" style={{ background: '#0F0F0F' }}>
+        {children}
+        <PWAInstallBanner />
+        <MiniPlayer />
+        <AudioQueuePlayer />
+        <BottomNav />
+      </div>
+    </FocusModeProvider>
   )
 }

@@ -3,7 +3,9 @@
 import { motion } from 'framer-motion'
 import { Fragment } from 'react'
 
-import type { CardContent, CardVariant } from '@/lib/timeline/schema'
+import type { CardContent } from '@/lib/timeline/schema'
+
+import { cardStateClass, isCardAccented } from './dynamic-highlight'
 
 /**
  * Template "flowchart" : suite ordonnée de cards reliées par des flèches
@@ -15,27 +17,27 @@ import type { CardContent, CardVariant } from '@/lib/timeline/schema'
  * T7/T8 user-side. `orientation: 'vertical'` reste toujours vertical.
  *
  * Animation : cascade card → flèche → card → flèche, stagger 100ms.
- * Tokens design alignés sur Grid (T4.1) — variants partagés.
+ * Tokens design alignés sur Grid (T4.1) — état des cards partagé via
+ * `dynamic-highlight.ts` (2A : variant statique `highlight` plus rendu,
+ * surbrillance dynamique via `activeHighlightAt`).
  */
 
 interface FlowchartProps {
   cards: CardContent[]
   /** Direction du flowchart. Défaut 'horizontal'. */
   orientation?: 'horizontal' | 'vertical'
+  /** Déclencheur de surbrillance actif de la scène (null = rien d'allumé). */
+  activeHighlightAt?: number | null
+  /** 8B : rendu statique legacy (variant highlight) — chemin news uniquement. */
+  staticVariantsEnabled?: boolean
   className?: string
-}
-
-const VARIANT_CLASS: Record<CardVariant, string> = {
-  highlight: 'bg-ds-turquoise/15 border-ds-turquoise/40 text-ds-turquoise',
-  warning: 'bg-axe3/15 border-axe3/40 text-axe3',
-  success: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300',
 }
 
 const NEUTRAL_CARD_CLASS =
   'bg-[color:var(--color-bg-card)] border-white/10 text-[color:var(--color-text-primary)]'
 
 const BASE_CARD_CLASS =
-  'border rounded-lg p-3 shadow-sm flex flex-col gap-1 min-w-[140px] max-w-[200px]'
+  'border rounded-lg p-3 shadow-sm flex flex-col gap-1 min-w-[140px] max-w-[200px] transition-colors duration-300'
 
 const STEP_DELAY = 0.1
 const CARD_DURATION = 0.25
@@ -47,6 +49,8 @@ const ARROW_COLOR = '#888780'
 export function Flowchart({
   cards,
   orientation = 'horizontal',
+  activeHighlightAt,
+  staticVariantsEnabled,
   className,
 }: FlowchartProps) {
   const isForcedVertical = orientation === 'vertical'
@@ -62,9 +66,12 @@ export function Flowchart({
       {cards.map((card, index) => {
         const cardStepIndex = index * 2
         const arrowStepIndex = cardStepIndex + 1
-        const variantClass = card.variant
-          ? VARIANT_CLASS[card.variant]
-          : NEUTRAL_CARD_CLASS
+        const stateClass = cardStateClass(
+          card,
+          activeHighlightAt,
+          NEUTRAL_CARD_CLASS,
+          staticVariantsEnabled
+        )
 
         return (
           <Fragment key={index}>
@@ -76,15 +83,15 @@ export function Flowchart({
                 delay: cardStepIndex * STEP_DELAY,
                 ease: EASE,
               }}
-              className={`${BASE_CARD_CLASS} ${variantClass}`}
+              className={`${BASE_CARD_CLASS} ${stateClass}`}
             >
               <p className="text-sm font-medium leading-tight">{card.text}</p>
               {card.subtitle && (
                 <p
                   className={
-                    card.variant
+                    isCardAccented(card, activeHighlightAt, staticVariantsEnabled)
                       ? 'text-xs opacity-80'
-                      : 'text-xs text-[color:var(--color-text-secondary)]'
+                      : 'text-xs text-white/75'
                   }
                 >
                   {card.subtitle}

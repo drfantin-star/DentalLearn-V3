@@ -161,21 +161,41 @@ export function NewsVisualSequence({
  */
 function NewsSceneRenderer({ template }: { template: SceneTemplate }) {
   switch (template.kind) {
+    // 8B (juillet 2026) : le chemin news conserve le rendu statique
+    // historique (variant `highlight` + `emphasis`, pulse compris) — les
+    // timelines news ne sont pas enrichies en bornes de surbrillance, la
+    // surbrillance dynamique du lecteur formation ne s'applique pas ici.
     case 'grid': {
       const columns = clampGridColumns(template.columns)
-      return <Grid cards={template.cards} columns={columns} />
+      return (
+        <Grid cards={template.cards} columns={columns} staticVariantsEnabled />
+      )
     }
     case 'figures':
-      return <Figures figures={template.figures} />
+      return <Figures figures={template.figures} staticVariantsEnabled />
     case 'flowchart':
       return (
-        <Flowchart cards={template.cards} orientation={template.orientation} />
+        <Flowchart
+          cards={template.cards}
+          orientation={template.orientation}
+          staticVariantsEnabled
+        />
       )
     case 'comparison':
-      return <Comparison left={template.left} right={template.right} />
+      return (
+        <Comparison
+          left={template.left}
+          right={template.right}
+          staticVariantsEnabled
+        />
+      )
     case 'timeline':
       return (
-        <TimelineTemplate steps={template.steps} events={template.events} />
+        <TimelineTemplate
+          steps={template.steps}
+          events={template.events}
+          staticVariantsEnabled
+        />
       )
     case 'causal':
       return (
@@ -184,6 +204,7 @@ function NewsSceneRenderer({ template }: { template: SceneTemplate }) {
           effects={template.effects}
           nodes={template.nodes}
           edges={template.edges}
+          staticVariantsEnabled
         />
       )
     case 'recap':

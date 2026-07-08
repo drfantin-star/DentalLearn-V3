@@ -8,24 +8,30 @@ interface HomeHeroCardProps {
   icon: ReactNode
   eyebrow: string
   title: string
-  subtitle: string
+  /** @deprecated ignore — sous-titre supprime du modele visuel */
+  subtitle?: string
   surface: 'gradient' | 'neutral'
-  /** Valeur CSS du gradient (ex. "linear-gradient(160deg,#2D1B96,#8B5CF6)"), surface 'gradient' uniquement. */
   gradient?: string
-  /**
-   * Échelle typographique. `md` (défaut) = rendu standard (Journal, Événements).
-   * `lg` = texte d'un cran au-dessus + pastille icône plus grande, pour une
-   * carte qui occupe plus de place (ex. Quiz du jour en pleine largeur mobile).
-   */
+  /** @deprecated ignore — CTA uniformise sur toutes les tuiles */
   size?: 'md' | 'lg'
+  /** Mode compact : hauteur reduite (120px), titre plus petit. Defaut false. */
+  compact?: boolean
+  /**
+   * Image optionnelle affichee a DROITE de la carte (object-contain, non crognee).
+   * Quand present : layout flex-row (texte gauche | image droite), icone decorative masquee.
+   * Les cartes hero sans ce prop restent strictement inchangees.
+   */
+  backgroundImage?: string
+  /** Animation CSS appliquee a l image de droite (branche backgroundImage uniquement). */
+  imageAnimation?: 'pulse-scale' | 'sway'
+  /** Classe de halo fixe appliquee derriere l image (ex: glow-primary, glow-accent). */
+  imageGlowClass?: string
   cta: {
     label: string
     icon: ReactNode
     onClick: () => void
-    /** État verrouillé/terminé : CTA non cliquable (ex. quiz du jour déjà fait). */
     disabled?: boolean
   }
-  /** Bouton ℹ️ secondaire en haut à droite (ex. détails du Journal). Distinct du CTA. */
   infoAction?: {
     onClick: () => void
     ariaLabel: string
@@ -33,118 +39,208 @@ interface HomeHeroCardProps {
 }
 
 /**
- * Carte générique de la 1ʳᵉ ligne de l'accueil (Quiz / Journal / Événements).
- * Anatomie commune : pastille icône 52px → surtitre → titre → sous-titre →
- * spacer → CTA pleine largeur collé en bas. Hauteur égale via `flex-1` +
- * spacer (le parent doit utiliser `items-stretch`, comportement flex par défaut).
- *
- * La carte n'est PAS cliquable globalement : seule l'action passe par le bouton CTA.
+ * Carte generique hero (Quiz / Classement / Journal / Evenements).
+ * Sans backgroundImage : 3 zones flex-col (eyebrow | titre | CTA) + icone filigrane.
+ * Avec backgroundImage : layout flex-row (texte gauche | image droite contenue).
  */
 export function HomeHeroCard({
   icon,
   eyebrow,
   title,
-  subtitle,
   surface,
   gradient,
-  size = 'md',
+  compact = false,
+  backgroundImage,
+  imageAnimation,
+  imageGlowClass,
   cta,
   infoAction,
 }: HomeHeroCardProps) {
   const isNeutral = surface === 'neutral'
-  const lg = size === 'lg'
-  const iconBox = lg ? '60px' : '52px'
+  const minH = compact ? 'min-h-[120px]' : 'min-h-[200px]'
+  const baseStyle = isNeutral
+    ? { background: '#1C1C1E', border: '0.5px solid rgba(255,255,255,0.08)' }
+    : { background: gradient }
 
-  return (
-    <div
-      className="flex flex-1 flex-col min-w-0 min-h-[180px] rounded-2xl p-4 shadow-md"
-      style={
-        isNeutral
-          ? { background: '#1C1C1E', border: '0.5px solid rgba(255,255,255,0.08)' }
-          : { background: gradient }
-      }
-    >
-      {/* Ligne du haut : pastille icône 52px + bouton ℹ️ optionnel à droite */}
-      <div className="flex items-start justify-between">
-        <div
-          className={cn(
-            'flex items-center justify-center rounded-2xl',
-            isNeutral ? 'text-neutral-200' : 'text-white'
-          )}
-          style={{
-            width: iconBox,
-            height: iconBox,
-            background: isNeutral ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.2)',
-          }}
-        >
-          {icon}
-        </div>
-
+  // ── Layout avec image a droite (Quiz / Journal quand backgroundImage est fourni) ──
+  if (backgroundImage) {
+    return (
+      <div
+        className={`relative flex flex-row min-w-0 rounded-2xl shadow-md overflow-hidden h-full ${minH}`}
+        style={baseStyle}
+      >
+        {/* Bouton info optionnel — haut-droite absolu */}
         {infoAction && (
           <button
             type="button"
             onClick={infoAction.onClick}
             aria-label={infoAction.ariaLabel}
             className={cn(
-              'flex items-center justify-center w-8 h-8 rounded-full transition-colors',
-              isNeutral
-                ? 'text-neutral-300 hover:bg-white/5'
-                : 'text-white hover:bg-white/30'
+              'absolute top-3 right-3 flex items-center justify-center w-8 h-8 rounded-full transition-colors z-10',
+              isNeutral ? 'text-neutral-300 hover:bg-white/5' : 'text-white hover:bg-white/30'
             )}
             style={{ background: isNeutral ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.2)' }}
           >
             <Info size={15} />
           </button>
         )}
+
+        {/* Gauche : eyebrow + titre + CTA */}
+        <div className="relative z-[1] flex flex-col p-4" style={{ flex: '1 1 58%', minWidth: 0 }}>
+          <p
+            className={cn(
+              'text-xs font-bold uppercase tracking-widest',
+              isNeutral ? 'text-neutral-400' : 'text-white/70'
+            )}
+          >
+            {eyebrow}
+          </p>
+          <div className="flex flex-1 items-center">
+            <h3
+              className={cn(
+                compact ? 'text-lg' : 'text-2xl',
+                'font-semibold leading-tight',
+                isNeutral ? 'text-neutral-100' : 'text-white'
+              )}
+            >
+              {title}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={cta.onClick}
+            disabled={cta.disabled}
+            className={cn(
+              'w-full rounded-xl flex items-center justify-center gap-1.5 font-bold transition-colors py-3 text-sm',
+              isNeutral
+                ? 'border border-white/15 text-neutral-100 hover:bg-white/5 active:bg-white/10'
+                : 'bg-white/20 text-white hover:bg-white/30 active:bg-white/40',
+              cta.disabled && 'opacity-60 cursor-not-allowed hover:bg-white/20 active:bg-white/20'
+            )}
+          >
+            {cta.icon}
+            {cta.label}
+          </button>
+        </div>
+
+        {/* Droite : objet anime + halo fixe */}
+        <div
+          style={{
+            flex: '0 0 42%',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '8px 8px 8px 0',
+          }}
+        >
+          {imageGlowClass && (
+            <div
+              aria-hidden
+              className={imageGlowClass}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '50%',
+                pointerEvents: 'none',
+              }}
+            />
+          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={backgroundImage}
+            alt=""
+            aria-hidden
+            loading="lazy"
+            className={imageAnimation ? `home-card-${imageAnimation}` : undefined}
+            style={{
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+              objectFit: 'contain',
+              objectPosition: 'center',
+            }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  // ── Layout par defaut (STRICTEMENT INCHANGE pour les cartes sans backgroundImage) ──
+  return (
+    <div
+      className={`relative flex flex-col min-w-0 rounded-2xl p-4 shadow-md overflow-hidden h-full ${minH}`}
+      style={baseStyle}
+    >
+      {/* Icone decorative filigrane bas-droite */}
+      <div
+        className="absolute pointer-events-none"
+        style={{
+          bottom: '-4px',
+          right: '-4px',
+          opacity: 0.13,
+          transform: compact ? 'scale(2.8)' : 'scale(3.8)',
+          transformOrigin: 'bottom right',
+        }}
+      >
+        {icon}
       </div>
 
-      <p
-        className={cn(
-          'mt-3 font-bold uppercase tracking-wide',
-          lg ? 'text-xs' : 'text-[11px]',
-          isNeutral ? 'text-neutral-400' : 'text-white/80'
-        )}
-      >
-        {eyebrow}
-      </p>
-      <h3
-        className={cn(
-          'mt-1 font-bold leading-tight line-clamp-2',
-          lg ? 'text-lg' : 'text-base',
-          isNeutral ? 'text-neutral-100' : 'text-white'
-        )}
-      >
-        {title}
-      </h3>
-      <p
-        className={cn(
-          'mt-0.5 line-clamp-1',
-          lg ? 'text-sm' : 'text-xs',
-          isNeutral ? 'text-neutral-400' : 'text-white/80'
-        )}
-      >
-        {subtitle}
-      </p>
+      {/* Bouton info optionnel — haut-droite absolu */}
+      {infoAction && (
+        <button
+          type="button"
+          onClick={infoAction.onClick}
+          aria-label={infoAction.ariaLabel}
+          className={cn(
+            'absolute top-3 right-3 flex items-center justify-center w-8 h-8 rounded-full transition-colors z-10',
+            isNeutral
+              ? 'text-neutral-300 hover:bg-white/5'
+              : 'text-white hover:bg-white/30'
+          )}
+          style={{ background: isNeutral ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.2)' }}
+        >
+          <Info size={15} />
+        </button>
+      )}
 
-      {/* Spacer : pousse le CTA en bas → hauteur égale entre cartes */}
-      <div className="flex-1" />
-
-      <button
-        type="button"
-        onClick={cta.onClick}
-        disabled={cta.disabled}
-        className={cn(
-          'mt-3 w-full rounded-xl flex items-center justify-center gap-1.5 font-bold transition-colors',
-          lg ? 'py-3 text-base' : 'py-2.5 text-sm',
-          isNeutral
-            ? 'border border-white/15 text-neutral-100 hover:bg-white/5 active:bg-white/10'
-            : 'bg-white/20 text-white hover:bg-white/30 active:bg-white/40',
-          cta.disabled && 'opacity-60 cursor-not-allowed hover:bg-white/20 active:bg-white/20'
-        )}
-      >
-        {cta.icon}
-        {cta.label}
-      </button>
+      {/* Contenu textuel — z-[1] pour s'afficher au-dessus des elements absolus */}
+      <div className="relative z-[1] flex flex-col flex-1">
+        <p
+          className={cn(
+            'text-xs font-bold uppercase tracking-widest',
+            isNeutral ? 'text-neutral-400' : 'text-white/70'
+          )}
+        >
+          {eyebrow}
+        </p>
+        <div className="flex flex-1 items-center">
+          <h3
+            className={cn(
+              compact ? 'text-xl' : 'text-2xl',
+              'font-semibold leading-tight',
+              isNeutral ? 'text-neutral-100' : 'text-white'
+            )}
+          >
+            {title}
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={cta.onClick}
+          disabled={cta.disabled}
+          className={cn(
+            'w-full rounded-xl flex items-center justify-center gap-1.5 font-bold transition-colors py-3 text-sm',
+            isNeutral
+              ? 'border border-white/15 text-neutral-100 hover:bg-white/5 active:bg-white/10'
+              : 'bg-white/20 text-white hover:bg-white/30 active:bg-white/40',
+            cta.disabled && 'opacity-60 cursor-not-allowed hover:bg-white/20 active:bg-white/20'
+          )}
+        >
+          {cta.icon}
+          {cta.label}
+        </button>
+      </div>
     </div>
   )
 }

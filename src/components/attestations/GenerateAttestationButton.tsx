@@ -118,7 +118,7 @@ export function GenerateAttestationButton({
 
       if (existing) {
         onGenerated?.(existing.id)
-        router.push('/profil/attestations')
+        router.push('/ma-certif/attestations')
         return
       }
 
@@ -339,7 +339,7 @@ export function GenerateAttestationButton({
 
       // 6. Redirection
       onGenerated?.(attestationId)
-      setTimeout(() => router.push('/profil/attestations'), 800)
+      setTimeout(() => router.push('/ma-certif/attestations'), 800)
     } catch (err: any) {
       console.error('Erreur génération attestation :', err)
       setError(err.message || 'Erreur inconnue')
@@ -362,7 +362,7 @@ export function GenerateAttestationButton({
           </div>
         </div>
         <button
-          onClick={() => router.push('/profil/edit')}
+          onClick={() => router.push('/profil')}
           className="w-full bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
         >
           Compléter mon profil

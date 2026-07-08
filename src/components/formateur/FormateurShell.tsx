@@ -43,7 +43,7 @@ export default function FormateurShell({ children }: { children: React.ReactNode
     <>
       <div className="p-6 border-b border-white/10 min-h-[88px] flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold leading-none">DentalLearn</h1>
+          <h1 className="text-xl font-bold leading-none">Certily</h1>
           <p className="text-xs text-white/70 mt-1">Espace Formateur</p>
         </div>
         <button
@@ -95,7 +95,7 @@ export default function FormateurShell({ children }: { children: React.ReactNode
           <LogOut className="w-5 h-5" />
           Déconnexion
         </button>
-        <p className="text-[11px] text-white/60 text-center pt-1">DentalLearn · Formateur V1</p>
+        <p className="text-[11px] text-white/60 text-center pt-1">Certily · Formateur V1</p>
       </div>
     </>
   )

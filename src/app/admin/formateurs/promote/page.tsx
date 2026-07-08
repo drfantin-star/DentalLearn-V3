@@ -143,7 +143,7 @@ export default function PromoteFormateurPage() {
             <div>
               <p className="font-semibold mb-1">Aucun compte trouvé</p>
               <p className="text-sm">
-                Cet utilisateur n'a pas de compte DentalLearn. Demandez-lui de
+                Cet utilisateur n'a pas de compte Certily. Demandez-lui de
                 s'inscrire sur{' '}
                 <a
                   href="https://app.dentalschool.fr"

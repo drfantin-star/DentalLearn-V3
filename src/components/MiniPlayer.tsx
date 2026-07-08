@@ -4,6 +4,8 @@ import React from 'react'
 import { usePathname } from 'next/navigation'
 import { Play, Pause, SkipBack, SkipForward, X, Music } from 'lucide-react'
 import { useAudio } from '@/context/AudioContext'
+import { useFocusMode } from '@/context/FocusModeContext'
+import WavePlayButton from '@/components/WavePlayButton'
 
 // ============================================
 // MINIPLAYER — Floating Radio France style
@@ -12,6 +14,7 @@ import { useAudio } from '@/context/AudioContext'
 export default function MiniPlayer() {
   const pathname = usePathname()
   const { state, pauseAudio, resumeAudio, seekTo, closePlayer } = useAudio()
+  const { isFocus } = useFocusMode()
 
   // Hidden pages
   const hiddenPaths = ['/login', '/register', '/admin']
@@ -38,9 +41,26 @@ export default function MiniPlayer() {
     seekTo(state.currentTime + 15)
   }
 
+  // Mode focus mobile : verre d'eau — bouton unique play/pause avec niveau de progression.
+  // md:hidden garantit que ce rendu ne s'active jamais sur desktop.
+  // Visuel extrait dans <WavePlayButton> (partage avec le detail news) —
+  // rendu strictement identique, la logique audio reste ici.
+  if (isFocus) {
+    return (
+      <div className="md:hidden fixed z-50" style={{ bottom: 'calc(env(safe-area-inset-bottom) + 12px)', right: '16px' }}>
+        <WavePlayButton
+          isPlaying={state.isPlaying}
+          progressPercent={progressPercent}
+          onToggle={handleTogglePlay}
+        />
+      </div>
+    )
+  }
+
+  // Rendu normal (hors focus)
   return (
     <div
-      className="fixed bottom-20 left-3 right-3 z-40 rounded-2xl shadow-2xl overflow-hidden"
+      className="fixed bottom-28 left-3 right-3 z-40 rounded-2xl shadow-2xl overflow-hidden"
       style={{ background: `linear-gradient(135deg, ${state.accentColor}EE, ${state.accentColor}99)` }}
     >
       <div className="flex items-center gap-3 px-3 py-2.5">

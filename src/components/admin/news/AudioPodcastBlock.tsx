@@ -103,7 +103,8 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
   const [isGeneratingScript, setIsGeneratingScript] = useState(false)
   const [isGeneratingAudio, setIsGeneratingAudio] = useState(false)
   const [isSavingScript, setIsSavingScript] = useState(false)
-  const [isValidating, setIsValidating] = useState(false)
+  const [isBackingToDraft, setIsBackingToDraft] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
   const [isDeletingDraft, setIsDeletingDraft] = useState(false)
   const [scriptDraft, setScriptDraft] = useState('')
   const [errors, setErrors] = useState<string[]>([])
@@ -255,44 +256,9 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
     }
   }
 
-  const handleValidateScript = async () => {
-    if (!episode) return
-    setIsValidating(true)
-    setErrors([])
-    try {
-      const res = await fetch(`/api/admin/news/episodes/${episode.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          script_md: scriptDraft,
-          status: 'ready',
-        }),
-      })
-      const json = await res.json()
-      if (!res.ok) {
-        const validation = Array.isArray(json.validation_errors)
-          ? json.validation_errors
-          : []
-        setErrors([json.error || `Erreur ${res.status}`, ...validation])
-        return
-      }
-      setEpisode((prev) =>
-        prev
-          ? { ...prev, script_md: scriptDraft, status: 'ready' }
-          : prev,
-      )
-    } catch (e) {
-      setErrors([
-        e instanceof Error ? e.message : 'Erreur de validation',
-      ])
-    } finally {
-      setIsValidating(false)
-    }
-  }
-
   const handleBackToDraft = async () => {
     if (!episode) return
-    setIsValidating(true)
+    setIsBackingToDraft(true)
     setErrors([])
     try {
       const res = await fetch(`/api/admin/news/episodes/${episode.id}`, {
@@ -311,7 +277,32 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
         e instanceof Error ? e.message : 'Erreur de transition',
       ])
     } finally {
-      setIsValidating(false)
+      setIsBackingToDraft(false)
+    }
+  }
+
+  const handlePublish = async () => {
+    if (!episode) return
+    if (!window.confirm('Publier cet épisode ? Il deviendra visible côté praticiens.')) return
+    setIsPublishing(true)
+    setErrors([])
+    try {
+      const res = await fetch(
+        `/api/admin/news/episodes/${episode.id}/publish`,
+        { method: 'POST' },
+      )
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setErrors([json.error || `Erreur ${res.status}`])
+        return
+      }
+      await refreshEpisode()
+    } catch (e) {
+      setErrors([
+        e instanceof Error ? e.message : 'Erreur de publication',
+      ])
+    } finally {
+      setIsPublishing(false)
     }
   }
 
@@ -359,13 +350,49 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
     }
   }
 
-  const handleGenerateAudio = async () => {
+  // Workflow T13 : la génération se lance depuis le statut draft (la route
+  // generate-audio exige status='draft' et sort en 'ready'). Le mode
+  // `regenerate` (statuts ready/published) passe `?regenerate=true` — la
+  // route skippe alors la précondition et préserve status/published_at.
+  const handleGenerateAudio = async (regenerate = false) => {
     if (!episode) return
+    if (
+      !window.confirm(
+        regenerate
+          ? 'Régénérer l\'audio via ElevenLabs (payant) ? Le statut de l\'épisode sera préservé.'
+          : 'Générer l\'audio via ElevenLabs (payant) ? L\'opération peut prendre 30-60 s.',
+      )
+    ) {
+      return
+    }
     setIsGeneratingAudio(true)
     setErrors([])
     try {
+      // En mode normal (draft), persister d'abord les éditions du textarea :
+      // la route génère depuis le script_md stocké en BDD, pas depuis l'état
+      // local. La validation de format (422) tourne ainsi AVANT l'appel
+      // ElevenLabs payant.
+      if (!regenerate && scriptDraft.trim().length > 0 && scriptDraft !== episode.script_md) {
+        const saveRes = await fetch(`/api/admin/news/episodes/${episode.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ script_md: scriptDraft }),
+        })
+        const saveJson = await saveRes.json()
+        if (!saveRes.ok) {
+          const validation = Array.isArray(saveJson.validation_errors)
+            ? saveJson.validation_errors
+            : []
+          setErrors([saveJson.error || `Erreur ${saveRes.status}`, ...validation])
+          return
+        }
+        setEpisode((prev) =>
+          prev ? { ...prev, script_md: scriptDraft } : prev,
+        )
+      }
+
       const res = await fetch(
-        `/api/admin/news/episodes/${episode.id}/generate-audio`,
+        `/api/admin/news/episodes/${episode.id}/generate-audio${regenerate ? '?regenerate=true' : ''}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -424,12 +451,12 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
         scriptDraft={scriptDraft}
         setScriptDraft={setScriptDraft}
         onSave={handleSaveScript}
-        onValidate={handleValidateScript}
+        onGenerateAudio={() => handleGenerateAudio(false)}
         onRegenerate={handleRegenerateScript}
         onCancel={handleCancelReview}
         onDeleteDraft={handleDeleteDraft}
         saving={isSavingScript}
-        validating={isValidating}
+        generatingAudio={isGeneratingAudio}
         deleting={isDeletingDraft}
       />
     )
@@ -437,17 +464,19 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
     body = (
       <CaseCReady
         episode={episode}
-        onGenerateAudio={handleGenerateAudio}
+        onPublish={handlePublish}
+        onRegenerateAudio={() => handleGenerateAudio(true)}
         onBackToDraft={handleBackToDraft}
-        loading={isGeneratingAudio}
-        backLoading={isValidating}
+        publishing={isPublishing}
+        regenerating={isGeneratingAudio}
+        backLoading={isBackingToDraft}
       />
     )
   } else if (status === 'published') {
     body = (
       <CaseDPublished
         episode={episode}
-        onRegenerateAudio={handleGenerateAudio}
+        onRegenerateAudio={() => handleGenerateAudio(true)}
         loading={isGeneratingAudio}
       />
     )
@@ -674,7 +703,8 @@ function CaseAParametrage({
 }
 
 // ---------------------------------------------------------------------------
-// Cas B — Review script
+// Cas B — Review script (draft) : édition + lancement direct de la
+// génération audio (workflow T13 : draft → generate-audio → ready).
 // ---------------------------------------------------------------------------
 
 function CaseBReview({
@@ -682,31 +712,31 @@ function CaseBReview({
   scriptDraft,
   setScriptDraft,
   onSave,
-  onValidate,
+  onGenerateAudio,
   onRegenerate,
   onCancel,
   onDeleteDraft,
   saving,
-  validating,
+  generatingAudio,
   deleting,
 }: {
   episode: NewsEpisode
   scriptDraft: string
   setScriptDraft: (s: string) => void
   onSave: () => void
-  onValidate: () => void
+  onGenerateAudio: () => void
   onRegenerate: () => void
   onCancel: () => void
   onDeleteDraft: () => void
   saving: boolean
-  validating: boolean
+  generatingAudio: boolean
   deleting: boolean
 }) {
   const wordCount = countWords(scriptDraft)
   const estimatedMin = Math.round(wordCount / 150)
   const formatLabel = FORMAT_LABELS[episode.format] ?? episode.format
   const targetMin = episode.target_duration_min ?? null
-  const busy = saving || validating || deleting
+  const busy = saving || generatingAudio || deleting
 
   return (
     <>
@@ -741,20 +771,27 @@ function CaseBReview({
         {wordCount} mots • ~{estimatedMin} min estimées
       </p>
 
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-4">
+        <p className="text-sm text-amber-900">
+          ⚠️ La génération audio est payante (ElevenLabs Creator plan).
+          Assurez-vous que le script est définitif avant de lancer.
+        </p>
+      </div>
+
       <div className="flex flex-wrap gap-2 mt-4">
         <button
           type="button"
-          onClick={onValidate}
+          onClick={onGenerateAudio}
           disabled={busy || scriptDraft.trim().length === 0}
           className={BTN_PRIMARY}
         >
-          {validating ? (
+          {generatingAudio ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Validation…
+              Génération ElevenLabs en cours (~30-60s)…
             </>
           ) : (
-            <>✅ Valider → Prêt pour audio</>
+            <>🎙️ Générer l&apos;audio</>
           )}
         </button>
         <button
@@ -809,20 +846,29 @@ function CaseBReview({
 }
 
 // ---------------------------------------------------------------------------
-// Cas C — Prêt pour audio
+// Cas C — Audio prêt (status='ready') : preview + publication.
+// Workflow T13 : generate-audio sort en 'ready' ; published_at + validated_by
+// sont posés par POST /publish uniquement.
+// Garde-fou : un épisode 'ready' sans audio_url (état hérité de l'ancien
+// workflow « Valider → ready ») ne doit PAS être publiable — la route
+// /publish ne contrôle que le statut, pas la présence de l'audio.
 // ---------------------------------------------------------------------------
 
 function CaseCReady({
   episode,
-  onGenerateAudio,
+  onPublish,
+  onRegenerateAudio,
   onBackToDraft,
-  loading,
+  publishing,
+  regenerating,
   backLoading,
 }: {
   episode: NewsEpisode
-  onGenerateAudio: () => void
+  onPublish: () => void
+  onRegenerateAudio: () => void
   onBackToDraft: () => void
-  loading: boolean
+  publishing: boolean
+  regenerating: boolean
   backLoading: boolean
 }) {
   const formatLabel = FORMAT_LABELS[episode.format] ?? episode.format
@@ -830,10 +876,16 @@ function CaseCReady({
   const toneLabel =
     TONE_LABELS[episode.editorial_tone as EditorialTone] ??
     episode.editorial_tone
+  const hasAudio = Boolean(episode.audio_url)
+  const busy = publishing || regenerating || backLoading
 
   return (
     <>
-      <h2 className={CARD_TITLE}>🎙️ Prêt pour la génération audio</h2>
+      <h2 className={CARD_TITLE}>
+        {hasAudio
+          ? '✓ Audio prêt — en attente de publication'
+          : '🎙️ Épisode en attente d\'audio'}
+      </h2>
 
       <dl className="text-sm text-gray-700 space-y-1 mb-4">
         <div className="flex gap-2">
@@ -859,33 +911,63 @@ function CaseCReady({
         </div>
       </dl>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-        <p className="text-sm text-amber-900">
-          ⚠️ La génération audio est payante (ElevenLabs Creator plan).
-          Assurez-vous que le script est définitif avant de lancer.
-        </p>
-      </div>
+      {hasAudio ? (
+        <div className="mb-4">
+          <audio
+            controls
+            src={episode.audio_url ?? undefined}
+            className="w-full"
+            preload="metadata"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Durée estimée : {formatDuration(episode.duration_s)}
+          </p>
+        </div>
+      ) : (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+          <p className="text-sm text-amber-900">
+            ⚠️ Audio manquant — repasser en draft pour générer.
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={onGenerateAudio}
-          disabled={loading || backLoading}
+          onClick={onPublish}
+          disabled={busy || !hasAudio}
           className={BTN_PRIMARY}
         >
-          {loading ? (
+          {publishing ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Génération ElevenLabs en cours (~30-60s)…
+              Publication…
             </>
           ) : (
-            <>🎙️ Générer l&apos;audio</>
+            <>✅ Publier</>
           )}
         </button>
+        {hasAudio && (
+          <button
+            type="button"
+            onClick={onRegenerateAudio}
+            disabled={busy}
+            className={BTN_SECONDARY}
+          >
+            {regenerating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Régénération en cours (~30-60s)…
+              </>
+            ) : (
+              <>🔄 Régénérer l&apos;audio</>
+            )}
+          </button>
+        )}
         <button
           type="button"
           onClick={onBackToDraft}
-          disabled={loading || backLoading}
+          disabled={busy}
           className={BTN_LINK}
         >
           {backLoading ? (

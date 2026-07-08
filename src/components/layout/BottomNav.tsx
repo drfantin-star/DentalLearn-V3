@@ -7,12 +7,10 @@ import {
   Newspaper,
   UserCircle,
   ShieldCheck,
-  Briefcase,
-  Shield,
-  Presentation,
+  Search,
   type LucideIcon,
 } from 'lucide-react'
-import type { IntraRole } from '@/lib/auth/rbac'
+import { useFocusMode } from '@/context/FocusModeContext'
 
 interface NavTab {
   href: string
@@ -22,29 +20,15 @@ interface NavTab {
 
 const BASE_TABS: NavTab[] = [
   { href: '/', icon: Home, label: 'Accueil' },
-  { href: '/news', icon: Newspaper, label: 'Actus' },
-  { href: '/profil', icon: UserCircle, label: 'Profil' },
+  // « Shorts » = ex-onglet « Actus » : label seul renommé, route /news inchangée.
+  { href: '/news', icon: Newspaper, label: 'Shorts' },
+  { href: '/ma-certif', icon: UserCircle, label: 'Ma Certif' },
   { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
 ]
 
-const TENANT_ADMIN_ROLES: ReadonlySet<IntraRole> = new Set<IntraRole>([
-  'titulaire',
-  'admin_rh',
-  'admin_of',
-])
-
-interface BottomNavProps {
-  intraRole?: IntraRole | null
-  isSuperAdmin?: boolean
-  isFormateur?: boolean
-}
-
-export default function BottomNav({
-  intraRole = null,
-  isSuperAdmin = false,
-  isFormateur = false,
-}: BottomNavProps) {
+export default function BottomNav() {
   const pathname = usePathname()
+  const { isFocus } = useFocusMode()
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/'
@@ -61,59 +45,77 @@ export default function BottomNav({
     return null
   }
 
+  // Onglets identiques pour tous les utilisateurs. L'ancien 5e onglet
+  // contextuel (Admin / Formateur / Mon cabinet) a migré vers la section
+  // "Mes espaces" de la page Profil.
   const tabs: NavTab[] = [...BASE_TABS]
-  // 5e onglet contextuel — priorité mutuellement exclusive pour garder la
-  // BottomNav à 5 onglets max (lisibilité mobile). Le rôle le plus large
-  // gagne : un super_admin formateur voit "Admin" et accède à /formateur
-  // via la carte du profil.
-  const contextualTab: NavTab | null = isSuperAdmin
-    ? { href: '/admin', icon: Shield, label: 'Admin' }
-    : isFormateur
-      ? { href: '/formateur/dashboard', icon: Presentation, label: 'Formateur' }
-      : intraRole && TENANT_ADMIN_ROLES.has(intraRole)
-        ? { href: '/tenant/admin', icon: Briefcase, label: 'Mon cabinet' }
-        : null
 
-  if (contextualTab) {
-    // Inséré en avant-dernier (avant Conformité) pour rester proche de Profil.
-    tabs.splice(3, 0, contextualTab)
-  }
+  const searchActive = isActive('/recherche')
+
+  // Style sombre translucide partagé pilule + bouton loupe (cohérent #0F0F0F app).
+  const glassStyle = {
+    background: 'rgba(26, 26, 26, 0.78)',
+    border: '0.5px solid rgba(255, 255, 255, 0.10)',
+  } as const
 
   return (
-    <nav
-      className="fixed bottom-0 left-0 right-0 px-2 py-2 z-40 safe-bottom"
-      style={{ background: '#1a1a1a', borderTop: '0.5px solid #2a2a2a' }}
-    >
-      <div className="max-w-lg mx-auto flex justify-around">
-        {tabs.map((tab) => {
-          const active = isActive(tab.href)
-          const Icon = tab.icon
+    // Barre flottante : le <nav> couvre toute la largeur mais ne capte pas les
+    // clics (pointer-events-none) ; seuls la pilule et la loupe sont cliquables,
+    // pour laisser passer les taps dans les marges autour de la barre.
+    <nav className={`fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 safe-bottom pointer-events-none ${isFocus ? 'hidden md:block' : ''}`}>
+      <div className="max-w-lg mx-auto flex items-stretch gap-2.5">
+        {/* Pilule flottante arrondie contenant les onglets */}
+        <div
+          className="pointer-events-auto flex-1 flex justify-around items-center px-1.5 py-2 rounded-[26px] backdrop-blur-xl shadow-2xl"
+          style={glassStyle}
+        >
+          {tabs.map((tab) => {
+            const active = isActive(tab.href)
+            const Icon = tab.icon
 
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={`flex flex-col items-center justify-center px-2 py-1.5 rounded-xl transition-all ${
-                active
-                  ? 'bg-gradient-to-b from-primary/10 to-accent/10'
-                  : 'hover:bg-gray-50'
-              }`}
-            >
-              <Icon
-                size={22}
-                className={active ? 'text-primary' : 'text-[#6b7280]'}
-                strokeWidth={active ? 2.5 : 2}
-              />
-              <span
-                className={`text-[10px] mt-1 font-medium ${
-                  active ? 'text-primary' : 'text-[#6b7280]'
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={`flex flex-col items-center justify-center px-2 py-1.5 rounded-2xl transition-all ${
+                  active
+                    ? 'bg-accent/30'
+                    : 'hover:bg-white/5'
                 }`}
               >
-                {tab.label}
-              </span>
-            </Link>
-          )
-        })}
+                <Icon
+                  size={22}
+                  className={active ? 'text-white' : 'text-white/70'}
+                  strokeWidth={active ? 2.5 : 2}
+                />
+                <span
+                  className={`text-[10px] mt-1 font-medium ${
+                    active ? 'text-white' : 'text-white/70'
+                  }`}
+                >
+                  {tab.label}
+                </span>
+              </Link>
+            )
+          })}
+        </div>
+
+        {/* Bouton recherche : rond, détaché à droite de la pilule.
+            Route /recherche (page créée ultérieurement). Icône seule → aria-label. */}
+        <Link
+          href="/recherche"
+          aria-label="Recherche"
+          className={`pointer-events-auto flex items-center justify-center aspect-square rounded-full backdrop-blur-xl shadow-2xl transition-all ${
+            searchActive ? 'bg-accent/30' : ''
+          }`}
+          style={glassStyle}
+        >
+          <Search
+            size={24}
+            className="text-white"
+            strokeWidth={2}
+          />
+        </Link>
       </div>
     </nav>
   )

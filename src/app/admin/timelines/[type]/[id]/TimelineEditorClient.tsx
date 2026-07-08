@@ -16,6 +16,7 @@ import {
   getConceptsForScene,
   type DisplayableConcept,
 } from '@/lib/timeline/getActiveScene'
+import { enrichTimelineHighlights } from '@/lib/timeline/highlight-matching'
 import { getDefaultTemplatePayload } from '@/lib/timeline/template-defaults'
 import type {
   Scene,
@@ -292,6 +293,65 @@ export function TimelineEditorClient({
     setIsDirty(true)
   }, [])
 
+  // Lot 3 — Recalcul deterministe des bornes de surbrillance (module Lot 1,
+  // execute cote client : la timeline complete est deja en memoire, avec
+  // transcript word-level et fenetres de scenes). Remplit les champs SANS
+  // sauvegarder : la dirty flag s'active, Julie relit puis "Enregistrer"
+  // (PUT versionne existant). Equivalent serveur pour un recalcul apres
+  // sauvegarde : POST /api/admin/timelines/enrich-highlights avec
+  // `sourceIds: [id]` et `dryRun: false`.
+  const recalculateHighlights = useCallback(
+    (sceneId: string | null) => {
+      if (!timeline) return
+      const result = enrichTimelineHighlights(timeline)
+      if (result.skipped) {
+        setToast({
+          kind: 'error',
+          message:
+            result.skipReason === 'no_word_level_transcript'
+              ? 'Recalcul impossible : cette timeline n\'a pas de transcript word-level (mode approx).'
+              : 'Recalcul impossible : aucune scene.',
+        })
+        return
+      }
+      if (sceneId) {
+        // Scene courante uniquement : on n'applique que son template.
+        const enrichedScene = result.timeline.scenes.find(
+          (sc) => sc.id === sceneId
+        )
+        const currentScene = timeline.scenes.find((sc) => sc.id === sceneId)
+        if (!enrichedScene || !currentScene) return
+        setTimeline((cur) => {
+          if (!cur) return cur
+          return {
+            ...cur,
+            scenes: cur.scenes.map((sc) =>
+              sc.id === sceneId ? { ...sc, template: enrichedScene.template } : sc
+            ),
+          }
+        })
+        const sceneItems = result.items.filter((i) => i.scene_id === sceneId)
+        const matched = sceneItems.filter((i) => i.matched).length
+        setToast({
+          kind: 'success',
+          message: `Surbrillances recalculees : ${matched}/${sceneItems.length} items de la scene avec bornes. Non sauvegarde.`,
+        })
+      } else {
+        // Timeline entiere.
+        setTimeline((cur) =>
+          cur ? { ...cur, scenes: result.timeline.scenes } : cur
+        )
+        const matched = result.items.filter((i) => i.matched).length
+        setToast({
+          kind: 'success',
+          message: `Surbrillances recalculees sur toute la timeline : ${matched}/${result.items.length} items avec bornes. Non sauvegarde.`,
+        })
+      }
+      setIsDirty(true)
+    },
+    [timeline]
+  )
+
   const updateConcepts = useCallback((next: TimelineConcept[]) => {
     setTimeline((cur) => {
       if (!cur) return cur
@@ -495,6 +555,18 @@ export function TimelineEditorClient({
             disabled={!timeline || editorLocked}
           />
 
+          {timeline && type === 'formation' && (
+            <button
+              type="button"
+              onClick={() => recalculateHighlights(null)}
+              disabled={editorLocked}
+              title="Matching deterministe libelle <-> transcript sur toutes les scenes (module Lot 1, local, sans sauvegarde). Equivalent serveur post-sauvegarde : route enrich-highlights avec sourceIds."
+              className="rounded-lg border border-ds-turquoise/40 px-3 py-1.5 text-xs font-medium text-ds-turquoise hover:bg-ds-turquoise/10 disabled:opacity-50"
+            >
+              Recalculer surbrillances (tout)
+            </button>
+          )}
+
           <button
             type="button"
             onClick={handleSave}
@@ -597,6 +669,11 @@ export function TimelineEditorClient({
                   onChange={updateScene}
                   audioDurationSec={audioDurationSec}
                   siblingScenes={siblingScenes}
+                  onRecalculateHighlights={
+                    type === 'formation'
+                      ? () => recalculateHighlights(selectedScene.id)
+                      : undefined
+                  }
                 />
               ) : (
                 <div className="rounded-xl bg-[color:var(--color-bg-card)]/30 p-6 text-center text-sm italic text-[color:var(--color-text-muted)]">

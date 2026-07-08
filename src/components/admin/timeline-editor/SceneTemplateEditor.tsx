@@ -32,9 +32,23 @@ import { TimelineTemplateEditor } from './templates/TimelineTemplateEditor'
 interface Props {
   scene: Scene
   onChange: (next: Scene) => void
+  /**
+   * Recalcul deterministe des bornes de surbrillance de CETTE scene via le
+   * module Lot 1 (`highlight-matching.ts`), execute cote client par le
+   * parent (qui detient la timeline complete : transcript + fenetres).
+   * Remplit les champs SANS sauvegarder — relecture puis "Enregistrer".
+   * Pour un recalcul complet de la timeline apres edition : bouton global
+   * du header, ou POST /api/admin/timelines/enrich-highlights avec
+   * `sourceIds: [id]` (`dryRun: false`).
+   */
+  onRecalculateHighlights?: () => void
 }
 
-export function SceneTemplateEditor({ scene, onChange }: Props) {
+export function SceneTemplateEditor({
+  scene,
+  onChange,
+  onRecalculateHighlights,
+}: Props) {
   const [pendingKind, setPendingKind] =
     useState<SceneTemplate['kind'] | null>(null)
 
@@ -58,9 +72,21 @@ export function SceneTemplateEditor({ scene, onChange }: Props) {
 
   return (
     <section className="space-y-3">
-      <h3 className="text-xs uppercase tracking-wider text-[color:var(--color-text-muted)]">
-        Template
-      </h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs uppercase tracking-wider text-[color:var(--color-text-muted)]">
+          Template
+        </h3>
+        {onRecalculateHighlights && (
+          <button
+            type="button"
+            onClick={onRecalculateHighlights}
+            title="Matching deterministe libelle <-> transcript sur cette scene. Remplit les bornes sans sauvegarder."
+            className="rounded-lg border border-ds-turquoise/40 px-2.5 py-1 text-[11px] font-medium text-ds-turquoise hover:bg-ds-turquoise/10"
+          >
+            Recalculer les surbrillances
+          </button>
+        )}
+      </div>
 
       <div className="flex items-center gap-2">
         <select
@@ -85,6 +111,7 @@ export function SceneTemplateEditor({ scene, onChange }: Props) {
         <SceneTemplateBody
           template={scene.template}
           onChange={handleTemplateChange}
+          sceneWindow={{ startSec: scene.start_sec, endSec: scene.end_sec }}
         />
       </div>
 
@@ -103,23 +130,61 @@ export function SceneTemplateEditor({ scene, onChange }: Props) {
 function SceneTemplateBody({
   template,
   onChange,
+  sceneWindow,
 }: {
   template: SceneTemplate
   onChange: (next: SceneTemplate) => void
+  sceneWindow: { startSec: number; endSec: number }
 }) {
   switch (template.kind) {
     case 'grid':
-      return <GridEditor template={template} onChange={onChange} />
+      return (
+        <GridEditor
+          template={template}
+          onChange={onChange}
+          sceneWindow={sceneWindow}
+        />
+      )
     case 'flowchart':
-      return <FlowchartEditor template={template} onChange={onChange} />
+      return (
+        <FlowchartEditor
+          template={template}
+          onChange={onChange}
+          sceneWindow={sceneWindow}
+        />
+      )
     case 'comparison':
-      return <ComparisonEditor template={template} onChange={onChange} />
+      return (
+        <ComparisonEditor
+          template={template}
+          onChange={onChange}
+          sceneWindow={sceneWindow}
+        />
+      )
     case 'figures':
-      return <FiguresEditor template={template} onChange={onChange} />
+      return (
+        <FiguresEditor
+          template={template}
+          onChange={onChange}
+          sceneWindow={sceneWindow}
+        />
+      )
     case 'causal':
-      return <CausalEditor template={template} onChange={onChange} />
+      return (
+        <CausalEditor
+          template={template}
+          onChange={onChange}
+          sceneWindow={sceneWindow}
+        />
+      )
     case 'timeline':
-      return <TimelineTemplateEditor template={template} onChange={onChange} />
+      return (
+        <TimelineTemplateEditor
+          template={template}
+          onChange={onChange}
+          sceneWindow={sceneWindow}
+        />
+      )
   }
 }
 

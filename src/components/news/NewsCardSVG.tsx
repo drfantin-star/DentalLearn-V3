@@ -3,18 +3,20 @@
 import React from 'react'
 
 export const SPECIALITE_COLORS: Record<string, string> = {
-  'dent-resto': '#2A6EBB',
-  'paro':       '#2E7D32',
-  'implanto':   '#6A1B9A',
-  'chir-orale': '#C62828',
-  'odf':        '#E65100',
-  'endo':       '#00695C',
-  'occluso':    '#AD1457',
-  'proth':      '#4527A0',
-  'sante-pub':  '#00838F',
-  'pedo':       '#F9A825',
-  'gero':       '#5D4037',
-  'actu-pro':   '#37474F',
+  // Alignés palette Certily (Option A — 03/07/2026)
+  'dent-resto': '#F59E0B',  // amber  — Dentisterie Restauratrice
+  'paro':       '#EC4899',  // rose   — Parodontologie
+  'implanto':   '#10B981',  // vert   — Implantologie
+  'chir-orale': '#EF4444',  // rouge  — Chirurgie Orale
+  'endo':       '#6366F1',  // indigo — Endodontie
+  'proth':      '#F97316',  // orange — Prothèse
+  // Couleurs non utilisées ailleurs dans la palette
+  'odf':        '#8B5CF6',  // violet
+  'occluso':    '#0F7B6C',  // teal Axe 2
+  'sante-pub':  '#155E75',  // cyan foncé
+  'pedo':       '#1E2A9A',  // bleu Klein
+  'gero':       '#A78BFA',  // violet clair
+  'actu-pro':   '#0F7B6C',  // teal Axe 2 (actu pro = pratiques)
 }
 export const NEWS_DEFAULT_COLOR = '#1A1A2E'
 const DEFAULT_COLOR = NEWS_DEFAULT_COLOR

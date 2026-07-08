@@ -13,7 +13,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   BookOpen,
+  Info,
 } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
 import {
   useFormation,
   useUserFormationProgress,
@@ -111,7 +113,7 @@ function SequenceCard({
     <button
       onClick={() => canClick && onStart()}
       disabled={!canClick}
-      className="w-full text-left mb-2 transition-all"
+      className="w-full text-left mb-2 transition-premium"
       style={{
         background: bgColor,
         border: `2px solid ${borderColor}`,
@@ -140,7 +142,7 @@ function SequenceCard({
         <div className="flex-1 min-w-0">
           <p
             className={`font-semibold text-[15px] leading-snug ${
-              isLocked || isNotUnlocked || isBlocLocked ? 'text-gray-400' : 'text-[#e5e5e5]'
+              isLocked || isNotUnlocked || isBlocLocked ? 'text-white/40' : 'text-white'
             }`}
           >
             {sequence.title}
@@ -174,7 +176,7 @@ function CompletionModal({
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="rounded-3xl max-w-sm w-full p-6 text-center animate-in fade-in zoom-in duration-300" style={{ background: '#242424' }}>
+      <div className="glass-card rounded-3xl max-w-sm w-full p-6 text-center animate-in fade-in zoom-in duration-300">
         {/* Confettis / Trophy */}
         <div className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center"
           style={{ background: `linear-gradient(135deg, ${gradient.from}, ${gradient.to})` }}>
@@ -182,17 +184,17 @@ function CompletionModal({
         </div>
 
         {/* Titre */}
-        <h2 className="text-xl font-extrabold text-[#e5e5e5] mb-1">
+        <h2 className="text-xl font-extrabold text-white mb-1">
           🎉 Formation terminée !
         </h2>
-        <p className="text-sm text-[#6b7280] mb-4">{formation.title}</p>
+        <p className="text-sm text-white/55 mb-4">{formation.title}</p>
 
         {/* Score */}
         <div className="rounded-2xl p-4 mb-4" style={{ background: '#2a2010' }}>
           <div className="flex items-center justify-center gap-2 mb-2">
             <Star size={20} className="text-amber-500 fill-amber-500" />
-            <span className="text-2xl font-extrabold text-[#e5e5e5]">{earnedPoints}</span>
-            <span className="text-[#6b7280] font-medium">/ {totalPoints} pts</span>
+            <span className="text-2xl font-extrabold text-white">{earnedPoints}</span>
+            <span className="text-white/55 font-medium">/ {totalPoints} pts</span>
           </div>
           <div className="w-full h-2 bg-amber-200 rounded-full overflow-hidden">
             <div
@@ -250,6 +252,12 @@ export default function FormationDetail({
 
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [showPostIntroModal, setShowPostIntroModal] = useState(false)
+  const [showInfo, setShowInfo] = useState(false)
+  const [spinStar, setSpinStar] = useState(true)
+
+  useEffect(() => {
+    setSpinStar(true)
+  }, [earnedPoints])
 
   useEffect(() => {
     if (triggerPostIntroModal && !isEnrolled && !enrollmentLoading) {
@@ -317,7 +325,7 @@ export default function FormationDetail({
   if (error || !formation) {
     return (
       <div className="p-4">
-        <button onClick={onBack} className="mb-4 text-gray-500 flex items-center gap-1">
+        <button onClick={onBack} className="mb-4 text-white/55 flex items-center gap-1">
           <ChevronLeft size={18} /> Retour
         </button>
         <p className="text-red-500">
@@ -343,6 +351,43 @@ export default function FormationDetail({
         />
       )}
 
+      {/* Modal Infos formation */}
+      <Modal
+        open={showInfo}
+        onClose={() => setShowInfo(false)}
+        variant="dark"
+        size="md"
+        className="!bg-gray-900 border border-white/10"
+        ariaLabel="A propos de cette formation"
+      >
+        <Modal.Header
+          title="A propos de cette formation"
+          onClose={() => setShowInfo(false)}
+          className="border-white/10"
+        />
+        <Modal.Body className="text-white/85 leading-relaxed">
+          {(formation.description_long || formation.description_short) ? (
+            <p className="text-white/85 leading-relaxed text-sm">
+              {formation.description_long || formation.description_short}
+            </p>
+          ) : null}
+        </Modal.Body>
+        {formation.biblio_pdf_url && (
+          <Modal.Footer className="border-white/10" align="center">
+            <a
+              href={formation.biblio_pdf_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm font-semibold hover:bg-white/10 transition-colors"
+              style={{ background: 'rgba(255,255,255,0.12)' }}
+            >
+              <BookOpen size={18} />
+              Biblio
+            </a>
+          </Modal.Footer>
+        )}
+      </Modal>
+
       {/* Header gradient — compact */}
       <div
         className="pt-4 pb-5 px-4 rounded-b-[28px] relative"
@@ -350,46 +395,37 @@ export default function FormationDetail({
           background: `linear-gradient(135deg, ${categoryConfig.gradient.from}, ${categoryConfig.gradient.to})`,
         }}
       >
-        {/* Bouton retour + Titre sur la même ligne */}
-        <div className="flex items-start gap-3 mb-2">
+        {/* Ligne du haut : retour + bouton Infos */}
+        <div className="flex items-center justify-between mb-3">
           <button
             onClick={onBack}
-            className="p-2 rounded-xl text-white hover:bg-white/20 transition-colors shrink-0 mt-0.5"
+            className="p-2 rounded-xl text-white hover:bg-white/20 transition-colors shrink-0"
             style={{ background: 'rgba(255,255,255,0.2)' }}
           >
             <ChevronLeft size={20} />
           </button>
-          <h1 className="text-xl font-extrabold text-white leading-tight">
-            {formation.title}
-          </h1>
-          {formation.biblio_pdf_url && (
-            <a
-              href={formation.biblio_pdf_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-semibold hover:bg-white/20 transition-colors"
-              style={{ background: 'rgba(255,255,255,0.2)' }}
-            >
-              <BookOpen size={18} />
-              Biblio
-            </a>
-          )}
+          <button
+            onClick={() => setShowInfo(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-sm font-semibold hover:bg-white/20 transition-colors shrink-0"
+            style={{ background: 'rgba(255,255,255,0.2)' }}
+          >
+            <Info size={18} />
+            Infos
+          </button>
         </div>
 
-        {/* Descriptif court — indenté sous le titre */}
-        {formation.description_short && (
-          <p className="text-white/85 text-[13px] leading-relaxed" style={{ paddingLeft: '44px' }}>
-            {formation.description_short}
-          </p>
-        )}
+        {/* Titre formation — pleine largeur */}
+        <h1 className="text-2xl font-extrabold text-white leading-tight">
+          {formation.title}
+        </h1>
       </div>
 
       {/* Statistiques de progression */}
       <div className="px-4 pt-4">
-        <div className="rounded-2xl p-4" style={{ background: '#242424', border: '0.5px solid #333' }}>
+        <div className="glass-card glow-accent rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-semibold text-[#e5e5e5]">Ta progression</span>
-            <span className="text-sm text-[#a3a3a3]">{completedInFormation}/{sequences.length} séquences</span>
+            <span className="text-sm font-semibold text-white">Ta progression</span>
+            <span className="text-sm text-white/70">{completedInFormation}/{sequences.length} séquences</span>
           </div>
 
           {/* Barre de progression */}
@@ -407,11 +443,16 @@ export default function FormationDetail({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-lg bg-amber-900/30 flex items-center justify-center shrink-0">
-                <Star size={20} className="text-amber-500" fill="#F59E0B" />
+                <Star
+                  size={20}
+                  className={`text-amber-500 ${spinStar ? 'animate-star-spin' : ''}`}
+                  fill="#F59E0B"
+                  onAnimationEnd={() => setSpinStar(false)}
+                />
               </div>
               <div className="flex items-center gap-2">
-                <p className="text-sm text-[#a3a3a3]">Points gagnés</p>
-                <p className="text-sm font-bold text-[#e5e5e5]">{earnedPoints} <span className="text-sm text-[#a3a3a3] font-normal">/ {totalPoints}</span></p>
+                <p className="text-sm text-white/70">Points gagnés</p>
+                <p className="text-sm font-bold text-white">{earnedPoints} <span className="text-sm text-white/70 font-normal">/ {totalPoints}</span></p>
               </div>
             </div>
             
@@ -432,10 +473,6 @@ export default function FormationDetail({
 
       {/* Liste des séquences */}
       <div className="px-4 pt-5">
-        <h3 className="text-[15px] font-bold text-[#e5e5e5] mb-4">
-          Séquences ({sequences.length})
-        </h3>
-
         {isCpFormation && blocStatus.length > 0 ? (
           Array.from(new Set(sequences.map(s => s.bloc_number ?? 1)))
             .sort((a, b) => a - b)
@@ -471,12 +508,7 @@ export default function FormationDetail({
                 <div key={`bloc-${blocNum}`} className="mb-4">
                   <div className="flex items-center justify-between mb-2 px-1">
                     <div className="flex items-baseline gap-2 min-w-0">
-                      <span className="text-[13px] font-bold text-[#e5e5e5] shrink-0">Bloc {blocNum}</span>
-                      {b && b.total_questions > 0 && (
-                        <span className="text-[11px] text-[#a3a3a3] truncate">
-                          {b.acquired_questions}/{b.total_questions} questions acquises
-                        </span>
-                      )}
+                      <span className="text-[13px] font-bold text-white shrink-0">Bloc {blocNum}</span>
                     </div>
                     <span
                       className="flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0"
@@ -522,7 +554,7 @@ export default function FormationDetail({
         )}
 
         {sequences.length === 0 && (
-          <p className="text-gray-400 text-sm text-center py-8">
+          <p className="text-white/40 text-sm text-center py-8">
             Aucune séquence disponible
           </p>
         )}

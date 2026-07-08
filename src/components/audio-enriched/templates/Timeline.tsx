@@ -2,7 +2,9 @@
 
 import { motion } from 'framer-motion'
 
-import type { CardContent, CardVariant } from '@/lib/timeline/schema'
+import type { CardContent } from '@/lib/timeline/schema'
+
+import { cardStateClass, isCardAccented, isItemLit } from './dynamic-highlight'
 
 /**
  * Template "timeline" : frise chronologique. Cf. spec POC §5.2.
@@ -20,30 +22,35 @@ import type { CardContent, CardVariant } from '@/lib/timeline/schema'
  *  - sinon : render `null` (le wrapper s'occupe du placeholder).
  *
  * Si `events` ET `steps` sont fournis, `events` prime (mode préféré).
+ *
+ * Surbrillance dynamique (Lot 2) : cards du mode steps via
+ * `dynamic-highlight.ts` (2A : variant statique `highlight` plus rendu) ;
+ * en mode events, l'événement allumé passe son texte en teal token
+ * (transition douce), le chrome de frise (dots, at_label) est inchangé.
  */
 
 interface TimelineEvent {
   at_label: string
   text: string
+  highlight_at_sec?: number
+  highlight_end_sec?: number
 }
 
 interface TimelineTemplateProps {
   steps?: CardContent[]
   events?: TimelineEvent[]
+  /** Déclencheur de surbrillance actif de la scène (null = rien d'allumé). */
+  activeHighlightAt?: number | null
+  /** 8B : rendu statique legacy (variant highlight) — chemin news uniquement. */
+  staticVariantsEnabled?: boolean
   className?: string
-}
-
-const VARIANT_CLASS: Record<CardVariant, string> = {
-  highlight: 'bg-ds-turquoise/15 border-ds-turquoise/40 text-ds-turquoise',
-  warning: 'bg-axe3/15 border-axe3/40 text-axe3',
-  success: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300',
 }
 
 const NEUTRAL_CARD_CLASS =
   'bg-[color:var(--color-bg-card)] border-white/10 text-[color:var(--color-text-primary)]'
 
 const BASE_CARD_CLASS =
-  'border rounded-lg p-3 shadow-sm flex flex-col gap-1 min-w-[140px] max-w-[200px]'
+  'border rounded-lg p-3 shadow-sm flex flex-col gap-1 min-w-[140px] max-w-[200px] transition-colors duration-300'
 
 const STEP_DELAY = 0.2
 const MARKER_DURATION = 0.25
@@ -54,13 +61,28 @@ const EASE: [number, number, number, number] = [0.4, 0, 0.2, 1]
 export function TimelineTemplate({
   steps,
   events,
+  activeHighlightAt,
+  staticVariantsEnabled,
   className,
 }: TimelineTemplateProps) {
   if (events && events.length > 0) {
-    return <EventsMode events={events} className={className} />
+    return (
+      <EventsMode
+        events={events}
+        activeHighlightAt={activeHighlightAt}
+        className={className}
+      />
+    )
   }
   if (steps && steps.length > 0) {
-    return <StepsMode steps={steps} className={className} />
+    return (
+      <StepsMode
+        steps={steps}
+        activeHighlightAt={activeHighlightAt}
+        staticVariantsEnabled={staticVariantsEnabled}
+        className={className}
+      />
+    )
   }
   return null
 }
@@ -69,26 +91,34 @@ export function TimelineTemplate({
 
 function EventsMode({
   events,
+  activeHighlightAt,
   className,
 }: {
   events: TimelineEvent[]
+  activeHighlightAt?: number | null
   className?: string
 }) {
   return (
     <div className={className}>
       {/* Desktop : frise horizontale ≥ md */}
       <div className="hidden md:block">
-        <EventsHorizontal events={events} />
+        <EventsHorizontal events={events} activeHighlightAt={activeHighlightAt} />
       </div>
       {/* Mobile : liste verticale < md */}
       <div className="md:hidden">
-        <EventsVertical events={events} />
+        <EventsVertical events={events} activeHighlightAt={activeHighlightAt} />
       </div>
     </div>
   )
 }
 
-function EventsHorizontal({ events }: { events: TimelineEvent[] }) {
+function EventsHorizontal({
+  events,
+  activeHighlightAt,
+}: {
+  events: TimelineEvent[]
+  activeHighlightAt?: number | null
+}) {
   const total = events.length
   return (
     <div className="relative w-full py-12 px-4 min-h-[200px]">
@@ -144,7 +174,13 @@ function EventsHorizontal({ events }: { events: TimelineEvent[] }) {
               <p className="text-ds-turquoise text-xs font-bold uppercase tracking-wide">
                 {event.at_label}
               </p>
-              <p className="text-[color:var(--color-text-primary)] text-sm mt-1 leading-tight">
+              <p
+                className={`text-sm mt-1 leading-tight transition-colors duration-300 ${
+                  isItemLit(event, activeHighlightAt)
+                    ? 'text-ds-turquoise'
+                    : 'text-[color:var(--color-text-primary)]'
+                }`}
+              >
                 {event.text}
               </p>
             </motion.div>
@@ -155,7 +191,13 @@ function EventsHorizontal({ events }: { events: TimelineEvent[] }) {
   )
 }
 
-function EventsVertical({ events }: { events: TimelineEvent[] }) {
+function EventsVertical({
+  events,
+  activeHighlightAt,
+}: {
+  events: TimelineEvent[]
+  activeHighlightAt?: number | null
+}) {
   return (
     <div className="flex flex-col">
       {events.map((event, index) => {
@@ -198,7 +240,13 @@ function EventsVertical({ events }: { events: TimelineEvent[] }) {
               <p className="text-ds-turquoise text-xs font-bold uppercase tracking-wide">
                 {event.at_label}
               </p>
-              <p className="text-[color:var(--color-text-primary)] text-sm mt-1 leading-tight">
+              <p
+                className={`text-sm mt-1 leading-tight transition-colors duration-300 ${
+                  isItemLit(event, activeHighlightAt)
+                    ? 'text-ds-turquoise'
+                    : 'text-[color:var(--color-text-primary)]'
+                }`}
+              >
                 {event.text}
               </p>
             </motion.div>
@@ -213,9 +261,13 @@ function EventsVertical({ events }: { events: TimelineEvent[] }) {
 
 function StepsMode({
   steps,
+  activeHighlightAt,
+  staticVariantsEnabled,
   className,
 }: {
   steps: CardContent[]
+  activeHighlightAt?: number | null
+  staticVariantsEnabled?: boolean
   className?: string
 }) {
   return (
@@ -223,15 +275,13 @@ function StepsMode({
       className={`flex flex-col items-stretch gap-2 md:flex-row md:items-center md:gap-2 md:flex-wrap md:justify-center ${className ?? ''}`}
     >
       {steps.map((card, index) => {
-        const variantClass = card.variant
-          ? VARIANT_CLASS[card.variant]
-          : NEUTRAL_CARD_CLASS
         const isLast = index === steps.length - 1
         return (
           <StepFragment
             key={index}
             card={card}
-            variantClass={variantClass}
+            activeHighlightAt={activeHighlightAt}
+            staticVariantsEnabled={staticVariantsEnabled}
             index={index}
             isLast={isLast}
           />
@@ -243,12 +293,14 @@ function StepsMode({
 
 function StepFragment({
   card,
-  variantClass,
+  activeHighlightAt,
+  staticVariantsEnabled,
   index,
   isLast,
 }: {
   card: CardContent
-  variantClass: string
+  activeHighlightAt?: number | null
+  staticVariantsEnabled?: boolean
   index: number
   isLast: boolean
 }) {
@@ -262,15 +314,15 @@ function StepFragment({
           delay: index * STEP_DELAY,
           ease: EASE,
         }}
-        className={`${BASE_CARD_CLASS} ${variantClass}`}
+        className={`${BASE_CARD_CLASS} ${cardStateClass(card, activeHighlightAt, NEUTRAL_CARD_CLASS, staticVariantsEnabled)}`}
       >
         <p className="text-sm font-medium leading-tight">{card.text}</p>
         {card.subtitle && (
           <p
             className={
-              card.variant
+              isCardAccented(card, activeHighlightAt, staticVariantsEnabled)
                 ? 'text-xs opacity-80'
-                : 'text-xs text-[color:var(--color-text-secondary)]'
+                : 'text-xs text-white/75'
             }
           >
             {card.subtitle}

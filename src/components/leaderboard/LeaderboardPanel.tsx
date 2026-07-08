@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { Trophy, Loader2, RefreshCw } from 'lucide-react';
-import { useWeeklyLeaderboard, type LeaderboardEntry } from '@/lib/hooks/useWeeklyLeaderboard';
+import { useLeaderboard } from '@/lib/hooks/useLeaderboard';
 import { getAnonymousName, getAnonymousAvatar, getAnonymousEmoji } from '@/lib/utils/anonymousNames';
 
 interface LeaderboardPanelProps {
@@ -10,6 +10,7 @@ interface LeaderboardPanelProps {
   onViewHistory?: () => void;
   compact?: boolean;
   refreshTrigger?: number;
+  mode?: 'weekly' | 'lifetime';
 }
 
 const getRankEmoji = (rank: number): string => {
@@ -21,8 +22,8 @@ const getRankEmoji = (rank: number): string => {
   }
 };
 
-export default function LeaderboardPanel({ userId, onViewHistory, compact = false, refreshTrigger }: LeaderboardPanelProps) {
-  const { leaderboard, userRank, loading, error, refetch } = useWeeklyLeaderboard(userId);
+export default function LeaderboardPanel({ userId, onViewHistory, compact = false, refreshTrigger, mode = 'weekly' }: LeaderboardPanelProps) {
+  const { leaderboard, userRank, loading, error, refetch } = useLeaderboard(userId, mode);
 
   useEffect(() => {
     if (refreshTrigger && refreshTrigger > 0) {
@@ -68,7 +69,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
           <div className="p-2.5 md:p-3 bg-white/20 rounded-xl">
             <Trophy className="w-7 h-7 md:w-8 md:h-8 text-white" />
           </div>
-          <p className="text-xs md:text-sm font-medium text-white/90 mt-2 md:mt-3">Classement hebdo</p>
+          <p className="text-xs md:text-sm font-medium text-white/90 mt-2 md:mt-3">{mode === 'lifetime' ? 'Classement à vie' : 'Classement hebdo'}</p>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center mt-2 text-center px-2">
           <span className="text-2xl mb-2">🏆</span>
@@ -109,7 +110,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
           <div className="p-2.5 md:p-3 bg-white/20 rounded-xl">
             <Trophy className="w-7 h-7 md:w-8 md:h-8 text-white animate-trophy-glow" />
           </div>
-          <p className="text-xs md:text-sm font-medium text-white/90 mt-2 md:mt-3">Classement hebdo</p>
+          <p className="text-xs md:text-sm font-medium text-white/90 mt-2 md:mt-3">{mode === 'lifetime' ? 'Classement à vie' : 'Classement hebdo'}</p>
         </div>
 
         <div className="flex-1 flex flex-col justify-center mt-2 space-y-1">
@@ -141,7 +142,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
                   </span>
                 </div>
                 <span className={`text-xs font-bold flex-shrink-0 ml-2 ${isCurrent ? 'text-white' : 'text-white/80'}`}>
-                  {entry.weekly_points} pts
+                  {entry.points} pts
                 </span>
               </div>
             );
@@ -168,7 +169,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
                   <span className="text-xs font-bold text-white truncate">Toi</span>
                 </div>
                 <span className="text-xs font-bold text-white flex-shrink-0 ml-2">
-                  {currentUser.weekly_points} pts
+                  {currentUser.points} pts
                 </span>
               </div>
             </>
@@ -248,7 +249,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
                   <p className="text-xs font-medium text-gray-600 mt-1.5 truncate max-w-[70px] text-center">
                     {second.is_current_user ? 'Toi' : getAnonymousName(second.user_id)}
                   </p>
-                  <p className="text-sm font-bold text-gray-700">{second.weekly_points}</p>
+                  <p className="text-sm font-bold text-gray-700">{second.points}</p>
                   <p className="text-[10px] text-gray-400">pts</p>
                 </div>
               ) : <div className="w-12" />;
@@ -266,7 +267,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
                   <p className="text-xs font-medium text-gray-600 mt-1.5 truncate max-w-[80px] text-center">
                     {first.is_current_user ? 'Toi' : getAnonymousName(first.user_id)}
                   </p>
-                  <p className="text-lg font-bold text-gray-800">{first.weekly_points}</p>
+                  <p className="text-lg font-bold text-gray-800">{first.points}</p>
                   <p className="text-[10px] text-gray-400">pts</p>
                 </div>
               ) : null;
@@ -283,7 +284,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
                   <p className="text-xs font-medium text-gray-600 mt-1.5 truncate max-w-[70px] text-center">
                     {third.is_current_user ? 'Toi' : getAnonymousName(third.user_id)}
                   </p>
-                  <p className="text-sm font-bold text-gray-700">{third.weekly_points}</p>
+                  <p className="text-sm font-bold text-gray-700">{third.points}</p>
                   <p className="text-[10px] text-gray-400">pts</p>
                 </div>
               ) : <div className="w-12" />;
@@ -320,7 +321,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
                 </div>
                 <div>
                   <p className="font-bold text-gray-800">Ta position</p>
-                  <p className="text-xs text-gray-500">{currentUser.weekly_points} pts cette semaine</p>
+                  <p className="text-xs text-gray-500">{currentUser.points} pts cette semaine</p>
                 </div>
               </div>
               <div className="text-right bg-white/50 rounded-lg px-3 py-2">
@@ -366,7 +367,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
                     </span>
                   </div>
                   <span className={`text-sm font-semibold ${isCurrent ? 'text-indigo-600' : 'text-gray-600'}`}>
-                    {entry.weekly_points} pts
+                    {entry.points} pts
                   </span>
                 </div>
               );
@@ -386,7 +387,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
               </span>
               <span className="text-sm font-bold text-indigo-700">Toi</span>
             </div>
-            <span className="text-sm font-semibold text-indigo-600">{currentUser.weekly_points} pts</span>
+            <span className="text-sm font-semibold text-indigo-600">{currentUser.points} pts</span>
           </div>
         </div>
       )}

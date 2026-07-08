@@ -25,6 +25,7 @@ export {
   CATEGORY_CONFIG,
   DEFAULT_CATEGORY_CONFIG,
   getCategoryConfig,
+  getLabelCutoutUrl,
   CATEGORIES,
 } from './types'
 

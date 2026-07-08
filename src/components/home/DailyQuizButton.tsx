@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { CheckCircle, Loader2, Play, Target } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import { HomeHeroCard } from './HomeHeroCard'
+import { HomeFeedCard } from './HomeFeedCard'
 
 interface DailyQuizButtonProps {
   userId?: string
   onStart: () => void
   refreshTrigger?: number
-  // T11/3.E : variant 'square' pour le rendu carte carrée côte-à-côte avec
-  // JournalWeekCard sur la home. 'wide' (défaut) conserve le rendu original
-  // pleine largeur utilisé dans toutes les autres pages.
+  // T11/3.E : variant 'square' pour le rendu carte cote-a-cote avec
+  // JournalWeekCard sur la home. 'wide' (defaut) conserve le rendu original
+  // pleine largeur utilise dans toutes les autres pages.
   variant?: 'wide' | 'square'
 }
 
@@ -58,47 +58,71 @@ export default function DailyQuizButton({
     if (isSquare) {
       return (
         <div
-          className="flex flex-1 min-w-0 min-h-[180px] rounded-2xl items-center justify-center"
+          className="flex min-w-0 min-h-[112px] rounded-2xl items-center justify-center"
           style={{ background: '#1C1C1E', border: '0.5px solid rgba(255,255,255,0.08)' }}
         >
-          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          <Loader2 className="w-6 h-6 animate-spin text-white/40" />
         </div>
       )
     }
     return (
       <div className="rounded-2xl p-6 shadow-sm flex items-center justify-center" style={{ background: '#242424', border: '0.5px solid #333' }}>
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+        <Loader2 className="w-6 h-6 animate-spin text-white/40" />
       </div>
     )
   }
 
-  if (alreadyDone) {
-    if (isSquare) {
+  if (isSquare) {
+    if (alreadyDone) {
       return (
-        <HomeHeroCard
-          surface="gradient"
-          size="lg"
-          gradient="linear-gradient(160deg, #10B981, #14B8A6)"
-          icon={<CheckCircle size={30} />}
+        <HomeFeedCard
+          accent="violet"
           eyebrow="Quiz du jour"
-          title="Terminé !"
-          subtitle="À demain pour un nouveau défi"
-          cta={{
-            label: `Score ${score}/10`,
-            icon: <CheckCircle size={16} />,
-            onClick: () => {},
-            disabled: true,
-          }}
+          title={`Termine ! Score ${score}/10`}
+          icon={
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src="/images/sophie-certily-quizz.webp"
+              alt=""
+              aria-hidden
+              className="h-full w-full object-cover"
+            />
+          }
+          onClick={() => {}}
+          ariaLabel="Quiz du jour termine"
+          disabled
         />
       )
     }
+
+    return (
+      <HomeFeedCard
+        accent="violet"
+        eyebrow="Quiz du jour"
+        title="Teste tes connaissances"
+        icon={
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src="/images/sophie-certily-quizz.webp"
+            alt=""
+            aria-hidden
+            className="h-full w-full object-cover"
+          />
+        }
+        onClick={onStart}
+        ariaLabel="Commencer le quiz du jour"
+      />
+    )
+  }
+
+  if (alreadyDone) {
     return (
       <div className="bg-gradient-to-br from-emerald-500 to-teal-500 rounded-2xl p-5 flex items-center gap-4 shadow-md">
         <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
-          <CheckCircle size={28} className="text-white" />
+          <span className="text-2xl">✅</span>
         </div>
         <div className="flex flex-col gap-1">
-          <p className="text-white font-bold text-lg">Quiz du jour terminé !</p>
+          <p className="text-white font-bold text-lg">Quiz du jour termine !</p>
           <p className="text-white/80 text-sm">
             Score : {score}/10 · Reviens demain 🎯
           </p>
@@ -107,29 +131,12 @@ export default function DailyQuizButton({
     )
   }
 
-  if (isSquare) {
-    return (
-      <HomeHeroCard
-        surface="gradient"
-        size="lg"
-        gradient="linear-gradient(160deg, #2D1B96, #8B5CF6)"
-        icon={<Target size={30} />}
-        eyebrow="Quiz du jour"
-        title="Teste tes connaissances"
-        subtitle="Ton défi quotidien t'attend"
-        cta={{
-          label: 'Commencer',
-          icon: <Play size={16} fill="currentColor" />,
-          onClick: onStart,
-        }}
-      />
-    )
-  }
-
   return (
-    <div className="rounded-2xl p-5 flex items-center justify-between gap-4 cursor-pointer active:scale-95 transition-transform shadow-md"
-         style={{ background: 'linear-gradient(135deg, #2D1B96, #8B5CF6)' }}
-         onClick={onStart}>
+    <div
+      className="rounded-2xl p-5 flex items-center justify-between gap-4 cursor-pointer active:scale-95 transition-transform shadow-md"
+      style={{ background: 'linear-gradient(135deg, #2D1B96, #8B5CF6)' }}
+      onClick={onStart}
+    >
       <div className="flex flex-col gap-1">
         <p className="text-white font-black text-xl leading-tight">Quiz du jour</p>
         <p className="text-white/80 text-sm font-semibold">10 questions · ~5 min</p>

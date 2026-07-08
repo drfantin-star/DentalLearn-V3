@@ -15,6 +15,7 @@ import {
   useFormations,
   useUserFormationProgress,
   getCategoryConfig,
+  getLabelCutoutUrl,
   CATEGORIES,
   type Formation,
   type Sequence,
@@ -27,6 +28,7 @@ import type { IntroSessionResult } from '@/components/formation/EnrollmentCTA'
 import SequencePlayer from '@/components/formation/SequencePlayer'
 import Badge from '@/components/ui/Badge'
 import BibliothequeBanner from '@/components/ui/BibliothequeBanner'
+import CutoutCardRender from '@/components/home/CutoutCardRender'
 import { useRessourceCount } from '@/lib/bibliotheque/useRessourceCount'
 import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
 import { createClient } from '@/lib/supabase/client'
@@ -285,43 +287,43 @@ export default function FormationPage() {
             🔍 Explorer par spécialité
           </h2>
           <div className="grid grid-cols-2 gap-3">
-            {cpCategories.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => openCategory(cat)}
-                className="relative rounded-2xl overflow-hidden"
-                style={{ aspectRatio: '3/2' }}
-              >
-                {cat.labelImageUrl ? (
-                  <img
-                    src={cat.labelImageUrl}
-                    alt={cat.name}
-                    className="w-full h-full object-cover absolute inset-0"
-                  />
-                ) : (
-                  <div
-                    className="w-full h-full absolute inset-0"
-                    style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
-                  />
-                )}
-                <div
-                  className="absolute inset-0"
-                  style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
-                />
-                <span
-                  className="absolute font-bold text-white leading-tight"
-                  style={{
-                    bottom: '10px',
-                    left: '12px',
-                    fontSize: '16px',
-                    textShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                    maxWidth: 'calc(100% - 24px)',
-                  }}
+            {cpCategories.map((cat) => {
+              const cutoutUrl = getLabelCutoutUrl(cat)
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => openCategory(cat)}
+                  className="relative rounded-2xl overflow-hidden"
+                  style={{ aspectRatio: '3/2', boxShadow: cutoutUrl ? `0 0 0 2px ${cat.gradient.from}` : undefined }}
                 >
-                  {cat.name}
-                </span>
-              </button>
-            ))}
+                  {cutoutUrl ? (
+                    <CutoutCardRender
+                      cutoutSrc={cutoutUrl}
+                      colorFrom={cat.gradient.from}
+                      title={cat.name}
+                      variant="theme"
+                    />
+                  ) : (
+                    <>
+                      <div
+                        className="absolute inset-0"
+                        style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
+                      />
+                      <div
+                        className="absolute inset-0"
+                        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
+                      />
+                      <span
+                        className="absolute font-bold text-white leading-tight"
+                        style={{ bottom: '10px', left: '12px', fontSize: '16px', textShadow: '0 1px 3px rgba(0,0,0,0.4)', maxWidth: 'calc(100% - 24px)' }}
+                      >
+                        {cat.name}
+                      </span>
+                    </>
+                  )}
+                </button>
+              )
+            })}
           </div>
         </section>
       </main>

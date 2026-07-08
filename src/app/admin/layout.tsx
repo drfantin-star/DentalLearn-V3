@@ -100,7 +100,7 @@ export default function AdminLayout({
       {/* Sidebar */}
       <aside className="w-64 bg-primary text-white flex flex-col">
         <div className="p-6 border-b border-white/10">
-          <h1 className="text-xl font-bold">DentalLearn</h1>
+          <h1 className="text-xl font-bold">Certily</h1>
           <p className="text-sm text-white/70">Administration</p>
         </div>
         

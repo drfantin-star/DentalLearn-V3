@@ -2,6 +2,7 @@
 
 import type { SceneTemplate } from '@/lib/timeline/schema'
 
+import { HighlightBoundsEditor } from '../HighlightBoundsEditor'
 import { DragHandle, SortableList } from '../SortableList'
 
 type FiguresTemplate = Extract<SceneTemplate, { kind: 'figures' }>
@@ -10,11 +11,13 @@ type Figure = FiguresTemplate['figures'][number]
 interface Props {
   template: FiguresTemplate
   onChange: (next: FiguresTemplate) => void
+  /** Fenetre de la scene courante (warnings bornes hors-fenetre). */
+  sceneWindow?: { startSec: number; endSec: number }
 }
 
 const MAX_FIGURES = 3
 
-export function FiguresEditor({ template, onChange }: Props) {
+export function FiguresEditor({ template, onChange, sceneWindow }: Props) {
   function setFigure(idx: number, figure: Figure) {
     const figures = template.figures.slice()
     figures[idx] = figure
@@ -88,8 +91,22 @@ export function FiguresEditor({ template, onChange }: Props) {
                   }}
                   className="accent-ds-turquoise"
                 />
-                Mise en avant
+                Mise en avant (news uniquement)
               </label>
+              <HighlightBoundsEditor
+                value={{
+                  highlight_at_sec: figure.highlight_at_sec,
+                  highlight_end_sec: figure.highlight_end_sec,
+                }}
+                onChange={(bounds) => {
+                  const next = { ...figure }
+                  delete next.highlight_at_sec
+                  delete next.highlight_end_sec
+                  setFigure(idx, { ...next, ...bounds })
+                }}
+                sceneStartSec={sceneWindow?.startSec}
+                sceneEndSec={sceneWindow?.endSec}
+              />
               {template.figures.length > 1 && (
                 <button
                   type="button"

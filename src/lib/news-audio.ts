@@ -244,7 +244,7 @@ export function buildJournalPrompt(
   // ----- Section "Format de sortie" + intro/corps -----
   if (format === 'dialogue') {
     return [
-      `Tu es le rédacteur du podcast hebdomadaire DentalLearn "Journal de la semaine dentaire".`,
+      `Tu es le rédacteur du podcast hebdomadaire Certily "Journal de la semaine dentaire".`,
       `Sophie et Martin sont deux chirurgiens-dentistes qui commentent l'actualité scientifique dentaire`,
       `de manière professionnelle et engagée, avec des transitions naturelles entre les sujets.`,
       ``,
@@ -279,7 +279,7 @@ export function buildJournalPrompt(
     : 'Style Martin : expert, didactique, donne directement les chiffres et l\'analyse.'
 
   return [
-    `Tu es ${speakerLabel}, animateur unique du podcast hebdomadaire DentalLearn`,
+    `Tu es ${speakerLabel}, animateur unique du podcast hebdomadaire Certily`,
     `"Journal de la semaine dentaire" (format monologue). ${speakerStyle}`,
     ``,
     `Format de sortie strict : chaque ligne non vide commence par "${speakerLabel}: " suivi du texte (avec audio_tags optionnels entre crochets). Une seule voix sur tout le script — n'introduis jamais l'autre personnage.`,

@@ -30,6 +30,7 @@ const config: Config = {
         'axe2': '#00D1C1',
         'axe3': '#F59E0B',
         'axe4': '#EC4899',
+        'quiz-accent': '#7C3AED',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

@@ -16,6 +16,27 @@ const FETCH_LIMIT = 50
 
 type SynthesesPayload = { data: NewsCard[]; total: number; page: number }
 
+// Skeleton d'une carte de la liste : pastille ronde 80x80 a la position de la
+// vignette reelle (rounded-full, cf. NewsCardItem variant grid) + lignes de texte.
+function NewsListSkeleton() {
+  return (
+    <>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="w-full flex items-center gap-3 rounded-xl bg-gray-800 animate-pulse p-3"
+        >
+          <div className="w-20 h-20 flex-shrink-0 rounded-full bg-gray-700" />
+          <div className="flex-1 min-w-0 flex flex-col gap-2">
+            <div className="h-4 w-3/4 rounded bg-gray-700" />
+            <div className="h-3 w-1/3 rounded bg-gray-700" />
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
 function buildSyntheseUrl(page: number, filter: string): string {
   const params = new URLSearchParams({
     limit: String(FETCH_LIMIT),
@@ -118,8 +139,8 @@ export default function NewsPage() {
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link
             href="/"
-            className="p-2 rounded-full text-gray-300 hover:bg-gray-800"
-            aria-label="Retour à l'accueil"
+            className="p-2 rounded-full text-white/70 hover:bg-gray-800"
+            aria-label="Retour a l'accueil"
           >
             <ChevronLeft size={22} />
           </Link>
@@ -127,7 +148,7 @@ export default function NewsPage() {
             <h1 className="text-lg font-bold text-white truncate">
               Actualités scientifiques
             </h1>
-            <p className="text-xs text-gray-400 truncate">
+            <p className="text-xs text-white/55 truncate">
               {loading || total === 0
                 ? 'Toutes les dernières publications dentaires'
                 : `${items.length} sur ${total} articles`}
@@ -141,9 +162,7 @@ export default function NewsPage() {
           <div className="px-4 space-y-4">
             <div className="h-5 w-1/3 rounded bg-gray-800 animate-pulse" />
             <div className="flex flex-col gap-3">
-              <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
-              <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
-              <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
+              <NewsListSkeleton />
             </div>
           </div>
         ) : error ? (
@@ -205,7 +224,7 @@ export default function NewsPage() {
                 aria-label="Faire défiler vers la gauche"
                 className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10
                            w-9 h-9 rounded-full bg-[#242424] shadow-md items-center
-                           justify-center text-gray-300 hover:bg-gray-50"
+                           justify-center text-white/70 hover:bg-[#2e2e2e]"
               >
                 <ChevronLeft size={18} />
               </button>
@@ -220,7 +239,7 @@ export default function NewsPage() {
                   className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
                     activeFilter === 'all'
                       ? 'bg-violet-500 text-white'
-                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                      : 'bg-gray-800 text-white/70 hover:bg-gray-700'
                   }`}
                 >
                   Toutes
@@ -233,7 +252,7 @@ export default function NewsPage() {
                     className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition ${
                       activeFilter === s.value
                         ? 'bg-violet-500 text-white'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                        : 'bg-gray-800 text-white/70 hover:bg-gray-700'
                     }`}
                   >
                     {NEWS_SPECIALITE_LABELS[s.value] ?? s.label}
@@ -247,7 +266,7 @@ export default function NewsPage() {
                 aria-label="Faire défiler vers la droite"
                 className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10
                            w-9 h-9 rounded-full bg-[#242424] shadow-md items-center
-                           justify-center text-gray-300 hover:bg-gray-50"
+                           justify-center text-white/70 hover:bg-[#2e2e2e]"
               >
                 <ChevronRight size={18} />
               </button>
@@ -255,12 +274,10 @@ export default function NewsPage() {
 
             {listLoading ? (
               <div className="flex flex-col gap-3 px-4">
-                <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
-                <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
-                <div className="w-full h-[110px] rounded-xl bg-gray-800 animate-pulse" />
+                <NewsListSkeleton />
               </div>
             ) : items.length === 0 ? (
-              <p className="px-4 text-sm text-gray-400">
+              <p className="px-4 text-sm text-white/55">
                 {activeFilter === 'all'
                   ? 'Aucune actualité disponible pour le moment.'
                   : 'Aucun article dans cette spécialité pour le moment.'}
@@ -285,7 +302,7 @@ export default function NewsPage() {
                       disabled={loadingMore}
                       onClick={loadMore}
                       className="px-5 py-2 bg-gray-800 hover:bg-gray-700 disabled:opacity-50
-                                 rounded-full text-gray-200 text-sm font-medium transition"
+                                 rounded-full text-white/80 text-sm font-medium transition"
                     >
                       {loadingMore ? 'Chargement…' : 'Charger plus'}
                     </button>

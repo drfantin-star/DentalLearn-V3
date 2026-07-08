@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Shield } from 'lucide-react'
 
 export const metadata = {
-  title: 'Accès interdit · DentalLearn',
+  title: 'Accès interdit · Certily',
 }
 
 export default function ForbiddenPage() {

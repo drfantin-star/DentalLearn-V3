@@ -171,7 +171,7 @@ export default function TenantBrandingPage() {
           />
           <p className="text-xs text-gray-500 mt-1">
             URL publique vers votre logo (PNG ou SVG recommandé). Laissez vide pour utiliser
-            le logo DentalLearn.
+            le logo Certily.
           </p>
           {logoUrl && (
             <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200">

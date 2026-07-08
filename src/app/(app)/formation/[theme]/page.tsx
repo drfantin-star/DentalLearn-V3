@@ -317,6 +317,7 @@ export default function ThemePage() {
         sequence={selectedSequence}
         categoryGradient={sequenceGradient}
         coverImageUrl={formations.find(f => f.id === selectedFormationId)?.cover_image_url}
+        formationTitle={formations.find(f => f.id === selectedFormationId)?.title ?? ''}
         onBack={goBack}
         onComplete={handleSequenceComplete}
         shouldSubmitResult={buildShouldSubmitResult(selectedSequence)}
@@ -359,7 +360,7 @@ export default function ThemePage() {
           <p className="text-red-500 mb-4">Erreur : {error.message}</p>
           <button
             onClick={() => router.push('/formation')}
-            className="px-4 py-2 bg-[#242424] rounded-xl text-sm text-[#e5e5e5]"
+            className="px-4 py-2 glass-card rounded-xl text-sm text-white"
           >
             Retour aux thématiques
           </button>
@@ -379,7 +380,7 @@ export default function ThemePage() {
               onClick={() => router.push(fromPage)}
               className="p-2 -ml-2 hover:bg-[#242424] rounded-xl transition-colors"
             >
-              <ChevronLeft size={20} className="text-gray-300" />
+              <ChevronLeft size={20} className="text-white/70" />
             </button>
             <h1 className="text-lg font-bold text-white">{themeConfig.label}</h1>
           </div>
@@ -402,7 +403,7 @@ export default function ThemePage() {
                 onClick={formationsScrollLeft}
                 className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4
                            z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md
-                           items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
+                           items-center justify-center text-white/70 hover:bg-[#2e2e2e]"
               >
                 <ChevronLeft size={20} />
               </button>
@@ -416,6 +417,8 @@ export default function ThemePage() {
                     key={f.id}
                     formation={f}
                     progress={formationProgress[f.id]}
+                    aspect="landscape"
+                    size="large"
                     onClick={() => openFormation(f)}
                   />
                 ))}
@@ -425,7 +428,7 @@ export default function ThemePage() {
                 onClick={formationsScrollRight}
                 className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4
                            z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md
-                           items-center justify-center text-gray-300 hover:bg-[#2e2e2e]"
+                           items-center justify-center text-white/70 hover:bg-[#2e2e2e]"
               >
                 <ChevronRight size={20} />
               </button>
@@ -474,18 +477,19 @@ export default function ThemePage() {
                     ctaLabel,
                     category: themeSlug,
                   }}
+                  size="large"
                 />
               )
             })()
           ) : (
-            <div className="rounded-2xl p-4 opacity-60" style={{ background: '#242424', border: '0.5px solid #333' }}>
+            <div className="glass-card rounded-2xl p-4 opacity-60">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#333] flex items-center justify-center shrink-0">
-                  <Lock size={20} className="text-gray-400" />
+                  <Lock size={20} className="text-white/40" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-[#6b7280] text-sm">Audit EPP</h3>
-                  <p className="text-xs text-gray-400 mt-0.5">Bientôt disponible pour cette thématique</p>
+                  <h3 className="font-semibold text-white/55 text-sm">Audit EPP</h3>
+                  <p className="text-xs text-white/40 mt-0.5">Bientôt disponible pour cette thématique</p>
                 </div>
               </div>
             </div>

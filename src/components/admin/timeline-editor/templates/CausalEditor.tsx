@@ -2,6 +2,8 @@
 
 import type { SceneTemplate } from '@/lib/timeline/schema'
 
+import { HighlightBoundsEditor } from '../HighlightBoundsEditor'
+
 type CausalTemplate = Extract<SceneTemplate, { kind: 'causal' }>
 type CausalNode = NonNullable<CausalTemplate['nodes']>[number]
 type CausalEdge = NonNullable<CausalTemplate['edges']>[number]
@@ -9,6 +11,8 @@ type CausalEdge = NonNullable<CausalTemplate['edges']>[number]
 interface Props {
   template: CausalTemplate
   onChange: (next: CausalTemplate) => void
+  /** Fenetre de la scene courante (warnings bornes hors-fenetre). */
+  sceneWindow?: { startSec: number; endSec: number }
 }
 
 const MAX_NODES = 5
@@ -56,7 +60,7 @@ function migrateLegacyIfNeeded(t: CausalTemplate): CausalTemplate {
   }
 }
 
-export function CausalEditor({ template: rawTemplate, onChange }: Props) {
+export function CausalEditor({ template: rawTemplate, onChange, sceneWindow }: Props) {
   const template = migrateLegacyIfNeeded(rawTemplate)
   const nodes = template.nodes ?? []
   const edges = template.edges ?? []
@@ -90,6 +94,20 @@ export function CausalEditor({ template: rawTemplate, onChange }: Props) {
     update(newNodes, edges)
   }
 
+  function setNodeBounds(
+    idx: number,
+    bounds: { highlight_at_sec?: number; highlight_end_sec?: number }
+  ) {
+    const newNodes = nodes.map((n, i) => {
+      if (i !== idx) return n
+      const next = { ...n }
+      delete next.highlight_at_sec
+      delete next.highlight_end_sec
+      return { ...next, ...bounds }
+    })
+    update(newNodes, edges)
+  }
+
   function addEdge() {
     if (nodes.length < 2) return
     update(nodes, [...edges, { from: nodes[0].id!, to: nodes[1].id! }])
@@ -114,28 +132,39 @@ export function CausalEditor({ template: rawTemplate, onChange }: Props) {
         {nodes.map((node, idx) => (
           <div
             key={node.id ?? idx}
-            className="flex items-center gap-2 rounded-lg border border-white/5 bg-[color:var(--color-bg-card)]/40 p-2"
+            className="space-y-2 rounded-lg border border-white/5 bg-[color:var(--color-bg-card)]/40 p-2"
           >
-            <span className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-[color:var(--color-text-muted)]">
-              {node.id ?? '?'}
-            </span>
-            <input
-              type="text"
-              value={node.text}
-              onChange={(e) => setNodeText(idx, e.target.value)}
-              maxLength={60}
-              className="flex-1 rounded-md border border-white/10 bg-[color:var(--color-bg-input)] px-2 py-1 text-sm text-white focus:border-ds-turquoise focus:outline-none"
+            <div className="flex items-center gap-2">
+              <span className="rounded bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-[color:var(--color-text-muted)]">
+                {node.id ?? '?'}
+              </span>
+              <input
+                type="text"
+                value={node.text}
+                onChange={(e) => setNodeText(idx, e.target.value)}
+                maxLength={60}
+                className="flex-1 rounded-md border border-white/10 bg-[color:var(--color-bg-input)] px-2 py-1 text-sm text-white focus:border-ds-turquoise focus:outline-none"
+              />
+              {nodes.length > MIN_NODES && (
+                <button
+                  type="button"
+                  onClick={() => removeNode(idx)}
+                  className="rounded p-1 text-[color:var(--color-text-muted)] hover:bg-red-500/15 hover:text-red-300"
+                  aria-label="Retirer ce nœud"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <HighlightBoundsEditor
+              value={{
+                highlight_at_sec: node.highlight_at_sec,
+                highlight_end_sec: node.highlight_end_sec,
+              }}
+              onChange={(bounds) => setNodeBounds(idx, bounds)}
+              sceneStartSec={sceneWindow?.startSec}
+              sceneEndSec={sceneWindow?.endSec}
             />
-            {nodes.length > MIN_NODES && (
-              <button
-                type="button"
-                onClick={() => removeNode(idx)}
-                className="rounded p-1 text-[color:var(--color-text-muted)] hover:bg-red-500/15 hover:text-red-300"
-                aria-label="Retirer ce nœud"
-              >
-                ×
-              </button>
-            )}
           </div>
         ))}
         <button

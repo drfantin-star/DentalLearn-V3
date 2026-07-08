@@ -14,6 +14,8 @@ interface Props {
   onChange: (next: Scene) => void
   audioDurationSec: number
   siblingScenes: Scene[]
+  /** Recalcul des bornes de surbrillance de la scene (cf. SceneTemplateEditor). */
+  onRecalculateHighlights?: () => void
 }
 
 export function SceneEditor({
@@ -21,6 +23,7 @@ export function SceneEditor({
   onChange,
   audioDurationSec,
   siblingScenes,
+  onRecalculateHighlights,
 }: Props) {
   return (
     <div className="flex h-full flex-col gap-6 overflow-y-auto pr-1">
@@ -30,7 +33,11 @@ export function SceneEditor({
         audioDurationSec={audioDurationSec}
         siblingScenes={siblingScenes}
       />
-      <SceneTemplateEditor scene={scene} onChange={onChange} />
+      <SceneTemplateEditor
+        scene={scene}
+        onChange={onChange}
+        onRecalculateHighlights={onRecalculateHighlights}
+      />
     </div>
   )
 }

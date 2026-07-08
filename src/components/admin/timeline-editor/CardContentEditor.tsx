@@ -2,13 +2,21 @@
 
 import type { CardContent, CardVariant } from '@/lib/timeline/schema'
 
+import { HighlightBoundsEditor } from './HighlightBoundsEditor'
+
 /**
- * Édition d'une `CardContent` (POC-T6.3).
+ * Édition d'une `CardContent` (POC-T6.3 + bornes de surbrillance Lot 3).
  *
  * Champs :
  *  - text (required, max 60)
  *  - subtitle (optional, max 50)
- *  - variant (default | highlight | warning | success)
+ *  - variant (default | highlight | warning | success). Depuis 2A/8B le
+ *    variant `highlight` n'est plus rendu par le lecteur formation (la mise
+ *    en avant y est dynamique via les bornes) mais RESTE rendu côté news —
+ *    l'éditeur étant universel (formation + news), l'option est conservée
+ *    avec un libellé clarifié.
+ *  - highlight_at_sec / highlight_end_sec (optionnels, cf.
+ *    `HighlightBoundsEditor`)
  *
  * Compteurs de caractères avec couleur progressive selon proximité limite.
  */
@@ -22,11 +30,13 @@ interface Props {
   showVariantPicker?: boolean
   showSubtitle?: boolean
   label?: string
+  /** Fenêtre de la scène courante — warnings hors-fenêtre des bornes. */
+  sceneWindow?: { startSec: number; endSec: number }
 }
 
 const VARIANTS: Array<{ value: CardVariant | 'default'; label: string }> = [
   { value: 'default', label: 'Aucun' },
-  { value: 'highlight', label: 'Mise en avant' },
+  { value: 'highlight', label: 'Mise en avant (news uniquement)' },
   { value: 'warning', label: 'Attention' },
   { value: 'success', label: 'Positif' },
 ]
@@ -50,6 +60,7 @@ export function CardContentEditor({
   showVariantPicker = true,
   showSubtitle = true,
   label,
+  sceneWindow,
 }: Props) {
   return (
     <div className="space-y-2 rounded-lg border border-white/5 bg-[color:var(--color-bg-card)]/40 p-3">
@@ -112,6 +123,21 @@ export function CardContentEditor({
           </div>
         </div>
       )}
+
+      <HighlightBoundsEditor
+        value={{
+          highlight_at_sec: card.highlight_at_sec,
+          highlight_end_sec: card.highlight_end_sec,
+        }}
+        onChange={(bounds) => {
+          const next = { ...card }
+          delete next.highlight_at_sec
+          delete next.highlight_end_sec
+          onChange({ ...next, ...bounds })
+        }}
+        sceneStartSec={sceneWindow?.startSec}
+        sceneEndSec={sceneWindow?.endSec}
+      />
 
       {showVariantPicker && (
         <div className="flex flex-wrap gap-1">

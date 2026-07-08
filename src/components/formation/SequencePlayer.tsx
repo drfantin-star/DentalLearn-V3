@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react'
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import {
   ChevronLeft,
   ArrowLeft,
@@ -17,6 +17,8 @@ import {
   ChevronDown,
   Info,
   Play,
+  Minimize2,
+  Maximize2,
 } from 'lucide-react'
 import {
   createClient,
@@ -31,6 +33,7 @@ import TreasureChest from '@/components/sequences/TreasureChest'
 import CaseStudyQuestion from '@/components/questions/CaseStudyQuestion'
 import { parseCaseStudyData } from '@/lib/questions/parseCaseStudyData'
 import { useAudio } from '@/context/AudioContext'
+import { useFocusMode } from '@/context/FocusModeContext'
 
 // ============================================
 // TYPES (basés sur types/questions.ts)
@@ -40,6 +43,7 @@ interface SequencePlayerProps {
   sequence: Sequence
   categoryGradient: { from: string; to: string }
   coverImageUrl?: string | null
+  formationTitle?: string
   onBack: () => void
   onComplete: (score: number, totalPoints: number) => void
   shouldSubmitResult?: () => Promise<boolean>
@@ -251,6 +255,7 @@ export default function SequencePlayer({
   sequence,
   categoryGradient,
   coverImageUrl,
+  formationTitle,
   onBack,
   onComplete,
   shouldSubmitResult,
@@ -261,14 +266,26 @@ export default function SequencePlayer({
   // le FAB overlay du wrapper enrichi (la card legacy étant masquée par
   // T7.4-UX-B). Aucune autre méthode du context n'est consommée ici.
   const { playAudio, state: audioState } = useAudio()
+  const { isFocus, setFocus } = useFocusMode()
+
+  // Tap temporaire : affiche header+onglets 2600 ms puis les re-masque.
+  const [tapVisible, setTapVisible] = useState(false)
+  const tapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleFocusTap = useCallback(() => {
+    if (!isFocus) return
+    setTapVisible(true)
+    if (tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current)
+    tapTimeoutRef.current = setTimeout(() => setTapVisible(false), 2600)
+  }, [isFocus])
 
   const hasMedia = !!sequence.course_media_url
   const hasPdf = !!sequence.infographic_url
   const mediaType = sequence.course_media_type || 'video' // défaut vidéo
   const isAudio = mediaType === 'audio'
 
-  // Mode démo : toujours afficher les 3 étapes pour tester l'interface
-  const demoMode = true // Mettre à false en production
+  // Mode démo : désactivé — la progression réelle conditionne l'accès au quiz.
+  const demoMode = false
   const showVideo = demoMode || hasMedia
   const showPdf = demoMode || hasPdf
 
@@ -330,6 +347,29 @@ export default function SequencePlayer({
     audioState.duration,
     sequence.id,
   ])
+
+  // Focus mode : s'active quand l'audio démarre sur mobile en mode enrichi.
+  // Pas de setFocus(false) à la pause — comportement Netflix.
+  const isEnrichedMode = isAudio && !!sequence.timeline_url && sequence.timeline_published
+  useEffect(() => {
+    if (!isEnrichedMode) return
+    if (!audioState.isPlaying) return
+    const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+    if (isMobile) setFocus(true)
+  }, [audioState.isPlaying, isEnrichedMode, setFocus])
+
+  // Fin d'audio : sortie automatique du focus pour que header + boutons reviennent.
+  useEffect(() => {
+    if (courseCompleted) setFocus(false)
+  }, [courseCompleted, setFocus])
+
+  // Cleanup : quitter la séquence remet le focus à false.
+  useEffect(() => {
+    return () => {
+      setFocus(false)
+      if (tapTimeoutRef.current) clearTimeout(tapTimeoutRef.current)
+    }
+  }, [setFocus])
 
   // Écriture SM-2 partagée avec la remédiation de bloc (mécanisme A)
   const supabase = useMemo(() => createClient(), [])
@@ -854,7 +894,7 @@ export default function SequencePlayer({
           <button onClick={onBack} className="p-1 rounded-lg" style={{ color: '#a3a3a3' }}>
             <ChevronLeft size={20} />
           </button>
-          <p className="flex-1 font-bold text-sm truncate" style={{ color: '#e5e5e5' }}>{sequence.title}</p>
+          <p className="flex-1 font-bold text-sm leading-tight" style={{ color: '#e5e5e5' }}>S{sequence.sequence_number} · {sequence.title}</p>
         </div>
 
         <div className="flex-1 p-4">
@@ -880,6 +920,8 @@ export default function SequencePlayer({
                 timelinePublished={sequence.timeline_published ?? false}
                 activeTab={enrichedActiveTab}
                 hideLegacyCardWhenEnriched={true}
+                startCardFormationTitle={formationTitle}
+                startCardSequenceLabel={`S${sequence.sequence_number} · ${sequence.title}`}
                 onPlayRequest={() =>
                   playAudio({
                     audioUrl: sequence.course_media_url!,
@@ -967,13 +1009,13 @@ export default function SequencePlayer({
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: '#0F0F0F' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: '#0F0F0F' }} onClick={handleFocusTap}>
       {/* Header */}
       <div className="sticky top-0 z-20 px-4 py-3 hidden md:flex items-center gap-3" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
         <button onClick={onBack} className="p-1 rounded-lg" style={{ color: '#a3a3a3' }}>
           <ChevronLeft size={20} />
         </button>
-        <p className="flex-1 font-bold text-sm truncate" style={{ color: '#e5e5e5' }}>{sequence.title}</p>
+        <p className="flex-1 font-bold text-sm leading-tight" style={{ color: '#e5e5e5' }}>S{sequence.sequence_number} · {sequence.title}</p>
         <span className="font-bold text-[13px] text-amber-600">⭐ {totalPoints}</span>
       </div>
 
@@ -981,10 +1023,10 @@ export default function SequencePlayer({
           clear le MiniPlayer global flottant (`bottom-20` = 80px, hauteur ~70px,
           top à 150px du viewport bottom). pb-24 laissait 54px de contenu
           (notamment fenêtre karaoké) recouverts par le MiniPlayer. */}
-      <div className="flex-1 p-4 overflow-auto pb-40">
+      <div className={`flex-1 overflow-auto pb-40 ${isFocus ? 'px-4 pt-0' : 'p-4'}`}>
         {/* COURS (VIDEO ou AUDIO) */}
         {playerStep === 'video' && (
-          <div className="text-center py-6">
+          <div className={`text-center ${isFocus ? 'pt-0 pb-6' : 'py-6'}`}>
             {/* ─── AudioPlayer enrichi (POC-T7.3) ─── */}
             {mediaType === 'audio' && sequence.course_media_url && (
               <div className="mb-6">
@@ -994,26 +1036,52 @@ export default function SequencePlayer({
                         uniquement en mode enriched mobile, le desktop a son
                         propre header sticky ligne ~625. Donne accès au drawer
                         Objectifs (T7.4-UX-E) qui restitue le contenu objectives
-                        de l'ancienne card gradient (supprimée par T7.4-UX-B). */}
-                    <div className="md:hidden mb-3 flex items-center gap-2">
-                      <p className="flex-1 font-bold text-base truncate" style={{ color: '#e5e5e5' }}>
-                        {sequence.title}
+                        de l'ancienne card gradient (supprimée par T7.4-UX-B).
+                        En mode focus : masqué sauf pendant 2600 ms après un tap. */}
+                    <div className={`md:hidden mb-3 flex items-center gap-2 ${isFocus && !tapVisible ? 'hidden' : ''}`}>
+                      <p className="flex-1 font-bold text-base leading-tight" style={{ color: '#e5e5e5' }}>
+                        S{sequence.sequence_number} · {sequence.title}
                       </p>
                       <button
                         type="button"
-                        onClick={() => setObjectivesDrawerOpen(true)}
+                        onClick={(e) => { e.stopPropagation(); setObjectivesDrawerOpen(true) }}
                         className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-colors hover:bg-white/5"
                         style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a', color: '#a3a3a3' }}
-                        aria-label="Objectifs de la séquence"
+                        aria-label="Objectifs de la sequence"
                       >
                         <Info size={20} />
                       </button>
+                      {/* Bouton focus : Minimize2 si focus actif, Maximize2 si audio actif hors focus */}
+                      {isFocus ? (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setFocus(false) }}
+                          className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-colors hover:bg-white/5"
+                          style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a', color: '#a3a3a3' }}
+                          aria-label="Quitter le mode focus"
+                        >
+                          <Minimize2 size={20} />
+                        </button>
+                      ) : audioState.isPlaying ? (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setFocus(true) }}
+                          className="flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-colors hover:bg-white/5"
+                          style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a', color: '#a3a3a3' }}
+                          aria-label="Entrer en mode focus"
+                        >
+                          <Maximize2 size={20} />
+                        </button>
+                      ) : null}
                     </div>
-                    <EnrichedTabSelector
-                      active={enrichedActiveTab}
-                      onChange={setEnrichedActiveTab}
-                      categoryGradient={categoryGradient}
-                    />
+                    {/* Onglets masques en mode focus sauf pendant le tap temporaire */}
+                    <div className={isFocus && !tapVisible ? 'hidden' : ''}>
+                      <EnrichedTabSelector
+                        active={enrichedActiveTab}
+                        onChange={setEnrichedActiveTab}
+                        categoryGradient={categoryGradient}
+                      />
+                    </div>
                   </>
                 )}
                 <EnrichedAudioPlayer
@@ -1031,6 +1099,8 @@ export default function SequencePlayer({
                   timelinePublished={sequence.timeline_published ?? false}
                   activeTab={enrichedActiveTab}
                   hideLegacyCardWhenEnriched={true}
+                  startCardFormationTitle={formationTitle}
+                  startCardSequenceLabel={`S${sequence.sequence_number} · ${sequence.title}`}
                   onPlayRequest={() =>
                     playAudio({
                       audioUrl: sequence.course_media_url!,
@@ -1074,25 +1144,27 @@ export default function SequencePlayer({
 
             {/* ─── Pas de média ─── */}
             {(!sequence.course_media_type || !sequence.course_media_url) && (
-              <p className="text-gray-500 italic mb-6">Pas de contenu média pour cette séquence</p>
+              <p className="text-white/55 italic mb-6">Pas de contenu média pour cette séquence</p>
             )}
 
-            {hasMedia && !courseCompleted && !demoMode ? (
+            {hasMedia && !courseCompleted && !demoMode && !isFocus ? (
               <>
                 <button
                   disabled
-                  className="w-full max-w-xs py-4 rounded-2xl font-bold bg-gray-200 text-gray-400 cursor-not-allowed"
+                  className="w-full max-w-xs py-4 rounded-2xl font-bold bg-[#242424] text-white/30 cursor-not-allowed"
                 >
                   Passer au Quiz
                 </button>
-                <p className="text-gray-400 text-xs text-center mt-2">
+                <p className="text-white/55 text-xs text-center mt-2">
                   Écoutez 100% du cours pour débloquer le quiz
                 </p>
               </>
             ) : (
               <>
-                {/* Barre de navigation basse — mobile uniquement */}
-                <div className="md:hidden flex gap-3 mt-4">
+                {/* Barre de navigation basse — mobile uniquement.
+                    En mode focus (avant fin d'audio) : meme mécanique tap-révèle que le header.
+                    Bloc verrouille absent en focus (condition superieure avec !isFocus). */}
+                <div className={isFocus && !courseCompleted && !tapVisible ? 'hidden' : 'md:hidden flex gap-3 mt-4'}>
                   {/* Bouton retour */}
                   <button
                     onClick={onBack}
@@ -1256,8 +1328,8 @@ export default function SequencePlayer({
                           disabled={showFeedback} className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
                           style={{ background: bg, border: `2px solid ${border}`, cursor: showFeedback ? 'default' : 'pointer' }}>
                           <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-                            {showFeedback ? (isCorrect ? <CheckSquare size={24} className="text-emerald-500" /> : isSelected ? <X size={24} className="text-red-500" /> : <Square size={24} className="text-gray-300" />)
-                              : isSelected ? <CheckSquare size={24} style={{ color: categoryGradient.from }} /> : <Square size={24} className="text-gray-400" />}
+                            {showFeedback ? (isCorrect ? <CheckSquare size={24} className="text-emerald-500" /> : isSelected ? <X size={24} className="text-red-500" /> : <Square size={24} className="text-white/40" />)
+                              : isSelected ? <CheckSquare size={24} style={{ color: categoryGradient.from }} /> : <Square size={24} className="text-white/40" />}
                           </span>
                           <span className="flex-1 font-semibold text-sm" style={{ color: textColor }}>{opt.text}</span>
                         </button>
@@ -1310,7 +1382,7 @@ export default function SequencePlayer({
               {/* === FILL_BLANK === */}
               {qType === 'fill_blank' && (() => {
                 const opts = parseFillBlankOptions(q.options)
-                if (!opts) return <p className="text-gray-500">Format de question non supporté</p>
+                if (!opts) return <p className="text-white/55">Format de question non supporté</p>
                 
                 const hasWordBank = opts.wordBank && opts.wordBank.length > 0
                 const usedWords = Object.values(fillBlankAnswers)
@@ -1424,7 +1496,7 @@ export default function SequencePlayer({
               {/* === ORDERING (ou drag_drop format ordering) === */}
               {(qType === 'ordering' || (qType === 'drag_drop' && isDragDropOrdering(q.options))) && (() => {
                 const opts = parseOrderingOptions(q.options)
-                if (opts.length === 0) return <p className="text-gray-500">Format de question non supporté</p>
+                if (opts.length === 0) return <p className="text-white/55">Format de question non supporté</p>
 
                 const moveItem = (from: number, to: number) => {
                   if (showFeedback || to < 0 || to >= orderingOrder.length) return
@@ -1456,10 +1528,10 @@ export default function SequencePlayer({
                             <span className="flex-1 text-sm font-semibold" style={{ color: '#e5e5e5' }}>{item.text}</span>
                             {!showFeedback && (
                               <div className="flex flex-col">
-                                <button onClick={() => moveItem(index, index - 1)} disabled={index === 0} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
+                                <button onClick={() => moveItem(index, index - 1)} disabled={index === 0} className="p-1 hover:bg-white/10 rounded disabled:opacity-30">
                                   <ChevronUp size={16} style={{ color: '#a3a3a3' }} />
                                 </button>
-                                <button onClick={() => moveItem(index, index + 1)} disabled={index === orderingOrder.length - 1} className="p-1 hover:bg-gray-100 rounded disabled:opacity-30">
+                                <button onClick={() => moveItem(index, index + 1)} disabled={index === orderingOrder.length - 1} className="p-1 hover:bg-white/10 rounded disabled:opacity-30">
                                   <ChevronDown size={16} style={{ color: '#a3a3a3' }} />
                                 </button>
                               </div>
@@ -1482,7 +1554,7 @@ export default function SequencePlayer({
               {(qType === 'matching' || (qType === 'drag_drop' && isDragDropMatching(q.options))) && (() => {
                 const data = parseMatchingData(q.options, q.id)
                 if (!data || data.leftItems.length === 0) {
-                  return <p className="text-gray-500">Format de question non supporté</p>
+                  return <p className="text-white/55">Format de question non supporté</p>
                 }
                 const rights = shuffledMatchingRights.length > 0 ? shuffledMatchingRights : data.rightOptions
                 const matchByLeft = new Map(matchingMatches.map(m => [m.leftKey, m]))
@@ -1688,7 +1760,7 @@ export default function SequencePlayer({
         {/* RÉSULTATS */}
         {playerStep === 'results' && (
           <div className="text-center py-5">
-            <div className="w-28 h-28 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: `conic-gradient(${score >= 75 ? '#22C55E' : score >= 50 ? '#FBBF24' : '#EF4444'} ${score * 3.6}deg, #E2E8F0 0deg)` }}>
+            <div className="w-28 h-28 rounded-full mx-auto mb-4 flex items-center justify-center glow-accent" style={{ background: `conic-gradient(${score >= 75 ? '#22C55E' : score >= 50 ? '#FBBF24' : '#EF4444'} ${score * 3.6}deg, #E2E8F0 0deg)` }}>
               <div className="w-[88px] h-[88px] rounded-full flex items-center justify-center" style={{ background: '#0F0F0F' }}>
                 <span className="text-3xl font-extrabold" style={{ color: '#e5e5e5' }}>{score}%</span>
               </div>
@@ -1731,12 +1803,13 @@ export default function SequencePlayer({
       {showOverlay && overlayData && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="
+            glass-panel transition-premium
             w-full rounded-3xl overflow-hidden shadow-2xl
             flex flex-col
             max-h-[80vh]
             sm:max-w-2xl sm:max-h-[75vh]
             lg:max-w-3xl
-          " style={{ background: '#1a1a1a' }}>
+          ">
 
             {/* Header coloré — compact sur mobile */}
             <div className={`flex items-center gap-4 px-6 py-4 shrink-0 ${
@@ -1837,7 +1910,7 @@ function EnrichedTabSelector({
             <button
               key={t.id}
               onClick={() => onChange(t.id)}
-              className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
+              className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-premium ${
                 isActive
                   ? 'text-white shadow-sm'
                   : 'text-[#a3a3a3] hover:text-[#e5e5e5] hover:bg-white/5'

@@ -15,6 +15,7 @@ export interface Formation {
   description_short: string | null
   description_long: string | null
   cover_image_url: string | null
+  cover_cutout_url: string | null
   biblio_pdf_url: string | null
   category: string | null
   level: string | null
@@ -615,3 +616,16 @@ export const CATEGORIES = Object.entries(CATEGORY_CONFIG).map(([id, config]) => 
   id,
   ...config,
 }))
+
+const LABELS_CUTOUTS_BASE = 'https://dxybsuhfkwuemapqrvgz.supabase.co/storage/v1/object/public/ui-assets/labels-cutouts'
+
+/**
+ * Derives the cutout URL from a category's labelImageUrl.
+ * Pattern: ui-assets/label-{slug}.png → labels-cutouts/label-{slug}.webp
+ * Returns undefined if no labelImageUrl or pattern doesn't match.
+ */
+export function getLabelCutoutUrl(cat: Pick<CategoryConfig, 'labelImageUrl'>): string | undefined {
+  if (!cat.labelImageUrl) return undefined
+  const m = /\/label-(.+)\.png$/.exec(cat.labelImageUrl)
+  return m ? `${LABELS_CUTOUTS_BASE}/label-${m[1]}.webp` : undefined
+}

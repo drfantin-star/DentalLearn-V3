@@ -10,11 +10,13 @@ type FlowchartTemplate = Extract<SceneTemplate, { kind: 'flowchart' }>
 interface Props {
   template: FlowchartTemplate
   onChange: (next: FlowchartTemplate) => void
+  /** Fenetre de la scene courante (warnings bornes hors-fenetre). */
+  sceneWindow?: { startSec: number; endSec: number }
 }
 
 const MAX_STEPS = 5
 
-export function FlowchartEditor({ template, onChange }: Props) {
+export function FlowchartEditor({ template, onChange, sceneWindow }: Props) {
   function setCard(idx: number, card: CardContent) {
     const cards = template.cards.slice()
     cards[idx] = card
@@ -79,6 +81,7 @@ export function FlowchartEditor({ template, onChange }: Props) {
                 card={card}
                 onChange={(next) => setCard(idx, next)}
                 label={`Étape ${idx + 1}`}
+                sceneWindow={sceneWindow}
               />
               {template.cards.length > 1 && (
                 <button

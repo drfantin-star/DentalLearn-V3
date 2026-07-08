@@ -61,7 +61,7 @@ export function createDailyReminderNotification(
   }
 
   return {
-    title: `${emoji} Rappel DentalLearn`,
+    title: `${emoji} Rappel Certily`,
     body,
     icon: DEFAULT_ICON,
     badge: DEFAULT_BADGE,

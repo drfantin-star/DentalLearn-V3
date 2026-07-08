@@ -30,16 +30,10 @@ interface NewsRecapCardProps {
   className?: string
 }
 
-function truncate(text: string, max: number): string {
-  if (!text) return ''
-  const trimmed = text.trim()
-  if (trimmed.length <= max) return trimmed
-  return trimmed.slice(0, max - 1).trimEnd() + '…'
-}
-
 /** Parse un raw figure libre vers `{ value, label }` (même heuristique que
  *  buildNewsTimeline, dupliquée ici pour découpler le composant client de
- *  la lib server-side). */
+ *  la lib server-side). Contrairement à la timeline, le label est affiché
+ *  en entier (carte statique : wrap multi-lignes, pas d'ellipse). */
 function parseFigure(
   rawFigure: string,
   emphasis: boolean,
@@ -50,13 +44,13 @@ function parseFigure(
   if (m && m[1] && m[1].length <= 16) {
     return {
       value: m[1].trim(),
-      label: truncate(m[2] ?? '', 40),
+      label: (m[2] ?? '').trim(),
       ...(emphasis ? { emphasis } : {}),
     }
   }
   return {
     value: '—',
-    label: truncate(raw, 40),
+    label: raw,
     ...(emphasis ? { emphasis } : {}),
   }
 }
@@ -68,23 +62,18 @@ export function NewsRecapCard({ synthesis, className }: NewsRecapCardProps) {
         .map((raw, i) => parseFigure(raw, i === 0))
     : undefined
 
-  const title = truncate(
-    `En résumé — ${synthesis.display_title ?? 'Synthèse'}`,
-    80,
-  )
-
+  // Impact et limites affichés en entier (wrap multi-lignes, la carte
+  // s'allonge verticalement) — seule la variante 'comfortable' du template
+  // porte les tailles lisibles mobile. Titre volontairement vide : le titre
+  // complet est déjà dans le header du modal juste au-dessus, le template ne
+  // rend alors que son kicker « En résumé ».
   return (
     <Recap
-      title={title}
+      title=""
       figures={figures}
-      impact={
-        synthesis.clinical_impact
-          ? truncate(synthesis.clinical_impact, 200)
-          : undefined
-      }
-      caveats={
-        synthesis.caveats ? truncate(synthesis.caveats, 160) : undefined
-      }
+      impact={synthesis.clinical_impact?.trim() || undefined}
+      caveats={synthesis.caveats?.trim() || undefined}
+      size="comfortable"
       className={className}
     />
   )

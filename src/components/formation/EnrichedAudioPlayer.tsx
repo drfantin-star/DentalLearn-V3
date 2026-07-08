@@ -80,6 +80,10 @@ interface EnrichedAudioPlayerProps {
   // et que la track n'a pas encore démarré. Une fois `state.audioUrl === src`,
   // le FAB disparaît et le panneau enrichi prend le relais.
   onPlayRequest?: () => void
+
+  // Carton titre affiché avant la première scène (displayedScene null).
+  startCardFormationTitle?: string
+  startCardSequenceLabel?: string
 }
 
 export default function EnrichedAudioPlayer({
@@ -100,6 +104,8 @@ export default function EnrichedAudioPlayer({
   activeTab,
   hideLegacyCardWhenEnriched = false,
   onPlayRequest,
+  startCardFormationTitle,
+  startCardSequenceLabel,
 }: EnrichedAudioPlayerProps) {
   // Lecture seule — Q5. Aucune méthode d'écriture du context n'est extraite.
   const { state } = useAudio()
@@ -182,24 +188,70 @@ export default function EnrichedAudioPlayer({
   // cette séquence.
   const showPrePlayState = hideLegacyCard && !isCurrentTrack
 
+  // Audio seul mobile : cover-vinyle lanceur (remplace la carte legacy).
+  const isAudioOnly = activeTab === 'audio_only'
+  const vinylSpinning = isCurrentTrack && state.isPlaying
+
   return (
     <div className="w-full">
       {/* Player audio — INCHANGÉ. Aucune prop modifiée. */}
       {!hideLegacyCard && (
-        <AudioPlayer
-          src={src}
-          duration={duration}
-          sequenceId={sequenceId}
-          onComplete={onComplete}
-          onProgress={onProgress}
-          accentColor={accentColor}
-          accentColorSecondary={accentColorSecondary}
-          sequenceTitle={sequenceTitle}
-          formationTitle={formationTitle}
-          learningObjectives={learningObjectives}
-          coverImageUrl={coverImageUrl}
-          userId={userId}
-        />
+        <div className={isAudioOnly ? 'hidden md:block' : undefined}>
+          <AudioPlayer
+            src={src}
+            duration={duration}
+            sequenceId={sequenceId}
+            onComplete={onComplete}
+            onProgress={onProgress}
+            accentColor={accentColor}
+            accentColorSecondary={accentColorSecondary}
+            sequenceTitle={sequenceTitle}
+            formationTitle={formationTitle}
+            learningObjectives={learningObjectives}
+            coverImageUrl={coverImageUrl}
+            userId={userId}
+          />
+        </div>
+      )}
+
+      {/* Audio seul mobile : cover-vinyle lanceur (md:hidden -> desktop garde la carte) */}
+      {isAudioOnly && !error && (
+        <div className="md:hidden flex justify-center mt-2 mb-4">
+          <button
+            type="button"
+            onClick={isCurrentTrack ? undefined : onPlayRequest}
+            className="relative w-44 h-44 rounded-full overflow-hidden shadow-2xl active:scale-[0.98] transition-transform"
+            style={{ transform: 'translateZ(0)', WebkitTransform: 'translateZ(0)' }}
+            aria-label={isCurrentTrack ? 'Lecture en cours' : 'Demarrer la lecture audio'}
+          >
+            {/* couche tournante : cover, ou degrade de repli si pas de cover */}
+            <span
+              className={`absolute inset-0 ${vinylSpinning ? 'animate-vinyl-spin' : ''}`}
+              style={
+                coverImageUrl
+                  ? undefined
+                  : { background: `linear-gradient(135deg, ${accentColor ?? '#2D1B96'}, ${accentColorSecondary ?? '#00D1C1'})` }
+              }
+            >
+              {coverImageUrl && (
+                <img src={coverImageUrl} alt="" className="w-full h-full object-cover" />
+              )}
+            </span>
+            {/* trou central vinyle (fixe) */}
+            <span
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full"
+              style={{ background: '#0F0F0F', border: '2px solid rgba(255,255,255,0.25)' }}
+            />
+            {/* overlay play tant que la piste n'est pas lancee (fixe) */}
+            {!isCurrentTrack && (
+              <span className="absolute inset-0 flex items-center justify-center bg-black/35">
+                <span className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center">
+                  <Play size={26} fill="#0F0F0F" className="text-[#0F0F0F] ml-0.5" />
+                </span>
+              </span>
+            )}
+          </button>
+        </div>
       )}
 
       {/* POC-T7.4-UX-FAB : pre-play state — large FAB Play centré dans une
@@ -242,6 +294,9 @@ export default function EnrichedAudioPlayer({
                 displayedScene={displayedScene}
                 sceneConcepts={sceneConcepts}
                 timeline={timeline}
+                highlightTime={state.currentTime}
+                startCardFormationTitle={startCardFormationTitle}
+                startCardSequenceLabel={startCardSequenceLabel}
               />
             </div>
           ) : (
@@ -275,12 +330,17 @@ export default function EnrichedAudioPlayer({
                   displayedScene={displayedScene}
                   sceneConcepts={sceneConcepts}
                   timeline={timeline}
+                  highlightTime={state.currentTime}
+                  startCardFormationTitle={startCardFormationTitle}
+                  startCardSequenceLabel={startCardSequenceLabel}
                 />
               </div>
               <div className="order-2 md:order-1 md:min-h-0 md:overflow-y-auto">
                 <KaraokeTranscript
                   transcript={timeline.transcript}
                   currentTime={state.currentTime}
+                  variant="single"
+                  concepts={timeline.concepts ?? []}
                 />
               </div>
             </div>
@@ -306,12 +366,21 @@ interface WhiteboardOrCoverProps {
   displayedScene: Scene | null
   sceneConcepts: DisplayableConcept[]
   timeline: NonNullable<ReturnType<typeof useEnrichedTimeline>['timeline']>
+  // Lot 2 : temps audio réel (state.currentTime, lecture seule) pour la
+  // surbrillance dynamique des items — simple plomberie de prop, séparée du
+  // mécanisme figé start_sec + 0.5 de sélection de scène.
+  highlightTime?: number
+  startCardFormationTitle?: string
+  startCardSequenceLabel?: string
 }
 
 function WhiteboardOrCover({
   displayedScene,
   sceneConcepts,
   timeline,
+  highlightTime,
+  startCardFormationTitle,
+  startCardSequenceLabel,
 }: WhiteboardOrCoverProps) {
   if (displayedScene) {
     // Rendu « scène + concepts en dessous » extrait dans un composant
@@ -322,15 +391,32 @@ function WhiteboardOrCover({
         displayedScene={displayedScene}
         sceneConcepts={sceneConcepts}
         scenes={timeline.scenes}
+        highlightTime={highlightTime}
       />
     )
   }
-  // POC-T7.4a-E — gap initial avant la première scène (displayedScene null) :
-  // 3 dots pulsants staggered (validation Dr Fantin). Couvre aussi les
-  // timelines sans scène (`scenes[]` vide).
+  // Carton titre avant la première scène — remplace les 3 dots si les labels
+  // sont fournis. Repli : 3 dots si aucun label disponible.
+  if (startCardSequenceLabel || startCardFormationTitle) {
+    return (
+      <div className="bg-[color:var(--color-bg-card)]/30 rounded-xl p-6 flex flex-col items-center justify-center min-h-[240px] gap-2 text-center">
+        {startCardFormationTitle && (
+          <p className="text-xs uppercase tracking-widest text-accent font-medium">
+            {startCardFormationTitle}
+          </p>
+        )}
+        {startCardSequenceLabel && (
+          <p className="text-2xl font-semibold text-white leading-snug">
+            {startCardSequenceLabel}
+          </p>
+        )}
+      </div>
+    )
+  }
+  // Fallback 3 dots (pas de labels fournis).
   return (
     <div className="bg-[color:var(--color-bg-card)]/30 rounded-xl p-6 flex items-center justify-center min-h-[240px]">
-      <div className="flex items-center gap-2 text-[color:var(--color-text-muted)]" role="status" aria-label="Visualisation à venir">
+      <div className="flex items-center gap-2 text-white/55" role="status" aria-label="Visualisation à venir">
         <span className="w-2 h-2 rounded-full bg-current opacity-40 animate-pulse" />
         <span className="w-2 h-2 rounded-full bg-current opacity-40 animate-pulse" style={{ animationDelay: '200ms' }} />
         <span className="w-2 h-2 rounded-full bg-current opacity-40 animate-pulse" style={{ animationDelay: '400ms' }} />

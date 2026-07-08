@@ -2,10 +2,10 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, CalendarDays, ChevronLeft, ChevronRight, Loader2, LogOut, Sparkles, UserCircle } from 'lucide-react'
+import { BookOpen, Calendar, CalendarDays, ChevronLeft, ChevronRight, LogOut, Sparkles } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORIES, getCategoryConfig } from '@/lib/supabase/types'
+import { getCategoryConfig } from '@/lib/supabase/types'
 import type { Formation } from '@/lib/supabase/types'
 import { getAnonymousName, getAnonymousEmoji } from '@/lib/utils/anonymousNames'
 import Link from 'next/link'
@@ -17,52 +17,72 @@ import { HomeHeroCard } from '@/components/home/HomeHeroCard'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
 import ForYouCard from '@/components/home/ForYouCard'
+import ExploreRow from '@/components/home/ExploreRow'
 import { mediaCardSizeStyle } from '@/components/home/MediaCard'
 import type { JournalEpisode, NewsCard } from '@/types/news'
 import type { ForYouItem } from '@/types/forYou'
 import type { EvenementItemData } from '@/types/evenements'
+import LeaderboardModal from '@/components/leaderboard/LeaderboardModal'
+import { useLeaderboard } from '@/lib/hooks/useLeaderboard'
+import ThemeQuizModal from '@/components/quiz/ThemeQuizModal'
+import { INTEREST_TO_NEWS_THEME, NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
+import { NEWS_CUTOUTS_BASE, getSpecialiteColor } from '@/lib/news-cover'
+import CutoutCardRender from '@/components/home/CutoutCardRender'
+import SophieAutopilotCard from '@/components/sophie/SophieAutopilotCard'
 
-function formatEventDate(iso: string): string {
-  const d = new Date(iso)
-  const date = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
-  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  return `${date} à ${time}`
+function formationToForYouItem(f: Formation): ForYouItem {
+  const config = getCategoryConfig(f.category)
+  const from =
+    config.type === 'axe3' ? '/patient' : config.type === 'axe4' ? '/sante' : '/formation'
+  return {
+    id: `formation-${f.id}`,
+    type: 'formation',
+    title: f.title,
+    href: `/formation/${f.category}?formation=${f.slug}&from=${from}`,
+    axe: (f.axe_cp as 1 | 2 | 3 | 4 | null) ?? null,
+    category: f.category,
+    cover: f.cover_image_url,
+    cutout: f.cover_cutout_url,
+  }
 }
 
 export default function HomePage() {
   const [showDailyQuiz, setShowDailyQuiz] = useState(false)
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [quizTheme, setQuizTheme] = useState<{ specialite: string; label: string } | null>(null)
 
-  const { user, profile, streak, loading: userLoading, refetch: refetchUser } = useUser()
+  const { user, profile, streak, refetch: refetchUser } = useUser()
+  const { userRank: lifetimeRank } = useLeaderboard(user?.id, 'lifetime')
 
-  const [newsItems, setNewsItems] = useState<NewsCard[]>([])
+  const [recentNews, setRecentNews] = useState<NewsCard[]>([])
+  const [themeRows, setThemeRows] = useState<{ key: string; label: string; items: NewsCard[] }[]>([])
   const [modalNewsId, setModalNewsId] = useState<string | null>(null)
   const [journal, setJournal] = useState<JournalEpisode | null>(null)
   const router = useRouter()
 
-  // Formations "Fraîchement arrivé" — 5 dernières tous axes
+  // Formations recentes — source pour completer "Pour toi"
   const [recentFormations, setRecentFormations] = useState<Formation[]>([])
   const [recentLoading, setRecentLoading] = useState(true)
 
-  // Feed « Pour vous » — personnalisé sur les intérêts déclarés (cf. /api/for-you)
+  // Formations commencees non terminees (section "Reprendre")
+  const [inProgressFormations, setInProgressFormations] = useState<Formation[]>([])
+  const [inProgressProgress, setInProgressProgress] = useState<
+    Record<string, { progressPercent: number }>
+  >({})
+  const [inProgressLoading, setInProgressLoading] = useState(true)
+
+  // Feed "Pour vous"
   const [forYouItems, setForYouItems] = useState<ForYouItem[]>([])
   const [forYouLoading, setForYouLoading] = useState(true)
-  // True si le feed perso a échoué/timeout → « Fraîchement arrivé » bascule en
-  // fallback gracieux (base sans dédup) plutôt que de rester vide/bloqué.
-  const [forYouError, setForYouError] = useState(false)
 
-  // Événements — 3 prochains (live_events + live_sessions)
+  // Evenements
   const [evenements, setEvenements] = useState<EvenementItemData[]>([])
-  const [formationProgress, setFormationProgress] = useState<
-    Record<string, { isStarted: boolean; isCompleted: boolean }>
-  >({})
 
   // Refs carousels
   const forYouScrollRef = useRef<HTMLDivElement>(null)
-  const recentScrollRef = useRef<HTMLDivElement>(null)
-  const axe12ScrollRef = useRef<HTMLDivElement>(null)
-  const axe3ScrollRef = useRef<HTMLDivElement>(null)
-  const axe4ScrollRef = useRef<HTMLDivElement>(null)
+  const ressourcesScrollRef = useRef<HTMLDivElement>(null)
+  const reprendreScrollRef = useRef<HTMLDivElement>(null)
 
   const scroll = (ref: React.RefObject<HTMLDivElement>, dir: 'left' | 'right') => {
     ref.current?.scrollBy({ left: dir === 'left' ? -320 : 320, behavior: 'smooth' })
@@ -76,7 +96,7 @@ export default function HomePage() {
         .select('*')
         .eq('is_published', true)
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(8)
       if (data) setRecentFormations(data)
       setRecentLoading(false)
     }
@@ -84,52 +104,80 @@ export default function HomePage() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/news/syntheses?limit=5')
-      .then(r => r.json())
-      .then(d => setNewsItems(d.data ?? []))
+    if (!user?.id) {
+      setInProgressLoading(false)
+      return
+    }
+    async function fetchInProgress() {
+      const supabase = createClient()
+      const { data: ufRows } = await supabase
+        .from('user_formations')
+        .select('formation_id')
+        .eq('user_id', user!.id)
+        .is('completed_at', null)
+      if (!ufRows || ufRows.length === 0) {
+        setInProgressLoading(false)
+        return
+      }
+      const ids = ufRows.map((r) => r.formation_id)
+      const [{ data: formations }, { data: completedSeqs }] = await Promise.all([
+        supabase
+          .from('formations')
+          .select('*')
+          .in('id', ids)
+          .eq('is_published', true),
+        supabase
+          .from('user_sequences')
+          .select('sequences!inner(formation_id)')
+          .eq('user_id', user!.id)
+          .not('completed_at', 'is', null),
+      ])
+      if (formations) {
+        setInProgressFormations(formations)
+        const completedByFormation: Record<string, number> = {}
+        for (const row of completedSeqs ?? []) {
+          const fid = (row.sequences as { formation_id: string }).formation_id
+          if (ids.includes(fid)) {
+            completedByFormation[fid] = (completedByFormation[fid] ?? 0) + 1
+          }
+        }
+        const map: Record<string, { progressPercent: number }> = {}
+        formations.forEach((f) => {
+          const completed = completedByFormation[f.id] ?? 0
+          const total = f.total_sequences || 1
+          map[f.id] = { progressPercent: Math.round((completed / total) * 100) }
+        })
+        setInProgressProgress(map)
+      }
+      setInProgressLoading(false)
+    }
+    fetchInProgress()
+  }, [user?.id])
+
+  useEffect(() => {
+    fetch('/api/news/by-theme')
+      .then((r) => r.json())
+      .then((d) => {
+        setRecentNews(d.recent ?? [])
+        setThemeRows(d.rows ?? [])
+      })
       .catch(() => {})
   }, [])
 
-  // Feed « Pour vous » — la route renvoie { items: [] } si l'utilisateur n'a
-  // pas d'intérêts (onboarding skippé) → la section ne sera pas rendue.
   useEffect(() => {
     fetch('/api/for-you')
-      .then(r => r.json())
-      .then(d => setForYouItems(d.items ?? []))
-      .catch(() => { setForYouItems([]); setForYouError(true) })
+      .then((r) => r.json())
+      .then((d) => setForYouItems(d.items ?? []))
+      .catch(() => setForYouItems([]))
       .finally(() => setForYouLoading(false))
   }, [])
 
-  // T11 : journal hebdo publié — l'API renvoie 200 + null si aucun journal
-  // disponible (cf. /api/news/journal/current)
   useEffect(() => {
     fetch('/api/news/journal/current')
       .then((r) => (r.ok ? r.json() : null))
       .then((data: JournalEpisode | null) => setJournal(data))
       .catch(() => setJournal(null))
   }, [])
-
-  useEffect(() => {
-    if (!user?.id || recentFormations.length === 0) return
-    async function fetchProgress() {
-      const supabase = createClient()
-      const { data } = await supabase
-        .from('user_formations')
-        .select('formation_id, current_sequence, completed_at')
-        .eq('user_id', user!.id)
-      if (data) {
-        const map: Record<string, { isStarted: boolean; isCompleted: boolean }> = {}
-        data.forEach((uf) => {
-          map[uf.formation_id] = {
-            isStarted: true,
-            isCompleted: !!uf.completed_at,
-          }
-        })
-        setFormationProgress(map)
-      }
-    }
-    fetchProgress()
-  }, [user?.id, recentFormations])
 
   useEffect(() => {
     async function fetchEvenements() {
@@ -154,9 +202,13 @@ export default function HomePage() {
           .order('starts_at', { ascending: true })
           .limit(3),
       ])
-      const allIds = Array.from(new Set(
-        [...(events ?? []), ...(sessions ?? [])].map((e) => e.formateur_user_id).filter(Boolean)
-      ))
+      const allIds = Array.from(
+        new Set(
+          [...(events ?? []), ...(sessions ?? [])]
+            .map((e) => e.formateur_user_id)
+            .filter(Boolean),
+        ),
+      )
       const profileMap: Record<string, string | null> = {}
       if (allIds.length > 0) {
         const { data: profiles } = await supabase
@@ -189,9 +241,9 @@ export default function HomePage() {
     void fetchEvenements()
   }, [])
 
-  const handleDailyQuizComplete = async (score: number, totalPoints: number) => {
+  const handleDailyQuizComplete = async (_score: number, _totalPoints: number) => {
     setShowDailyQuiz(false)
-    setRefreshTrigger(prev => prev + 1)
+    setRefreshTrigger((prev) => prev + 1)
     refetchUser()
   }
 
@@ -202,141 +254,73 @@ export default function HomePage() {
     router.refresh()
   }
 
-  // « Fraîchement arrivé » — plancher de cartes affichées avant de tolérer le
-  // doublon avec « Pour vous ». Ajustable. À 3 : si la dédup descend sous 3
-  // cartes, on recomplète avec les formations exclues (cas catalogue maigre).
-  const FRESHLY_ARRIVED_FLOOR = 3
-
-  // Dédup : « Pour vous » est prioritaire → on retire de « Fraîchement arrivé »
-  // les formations déjà présentes dans le feed perso (id `formation-<uuid>`).
-  // Le rendu DOIT dériver de ce calcul (et pas d'un state écrasé en deux temps)
-  // pour ne jamais flasher l'état pré-dédup pendant que « Pour vous » se résout.
-  const freshlyArrivedFormations = useMemo(() => {
-    // base = requête « Fraîchement arrivé » telle quelle (is_published, DESC, 5).
-    const base = recentFormations
-    // Fallback gracieux : « Pour vous » a échoué/timeout → on affiche la base
-    // sans dédup plutôt que de rester vide.
-    if (forYouError) return base.slice(0, 5)
-
-    const excluded = new Set(
-      forYouItems
+  // "Pour toi" : formations + EPP du feed, completes avec recentFormations jusqu'a ~8 cartes
+  const pourToiItems = useMemo(() => {
+    const feedItems = forYouItems.filter((i) => i.type === 'formation' || i.type === 'epp')
+    const feedFormationIds = new Set(
+      feedItems
         .filter((i) => i.type === 'formation')
-        .map((i) => i.id.replace(/^formation-/, ''))
+        .map((i) => i.id.replace(/^formation-/, '')),
     )
-    const deduped = base.filter((f) => !excluded.has(f.id))
+    const extras = recentFormations
+      .filter((f) => !feedFormationIds.has(f.id))
+      .map(formationToForYouItem)
+    return [...feedItems, ...extras].slice(0, 8)
+  }, [forYouItems, recentFormations])
 
-    if (deduped.length >= FRESHLY_ARRIVED_FLOOR) {
-      return deduped.slice(0, 5)
-    }
+  // "Ressources pour toi" : fiches + autoevals du feed
+  const ressourcesItems = useMemo(
+    () => forYouItems.filter((i) => i.type === 'fiche' || i.type === 'autoeval'),
+    [forYouItems],
+  )
 
-    // Sous le plancher : recompléter avec les exclues (ordre created_at DESC,
-    // déjà l'ordre de `base`) jusqu'à min(plancher, base.length) cartes.
-    const target = Math.min(FRESHLY_ARRIVED_FLOOR, base.length)
-    const result = [...deduped]
-    for (const f of base) {
-      if (result.length >= target) break
-      if (!result.some((r) => r.id === f.id)) result.push(f)
-    }
-    return result.slice(0, 5)
-  }, [recentFormations, forYouItems, forYouError])
+  const quizSpecialiteFor = (rowKey: string): { specialite: string; label: string } | null => {
+    const map = INTEREST_TO_NEWS_THEME[rowKey]
+    if (!map || map.field !== 'specialite') return null
+    return { specialite: map.value, label: NEWS_SPECIALITE_LABELS[map.value] ?? map.value }
+  }
 
-  // La liste d'exclusion (« Pour vous ») est résolue dès que son fetch a
-  // abouti (succès, vide, ou erreur → forYouLoading=false). Tant qu'elle ne
-  // l'est pas, on n'affiche aucune carte (skeleton/loader).
-  const freshlyArrivedResolving = recentLoading || forYouLoading
-
-  // Catégories par axe
-  const axe12Categories = CATEGORIES.filter(c => c.type === 'cp')
-  const axe3Categories = CATEGORIES.filter(c => c.type === 'axe3')
-  const axe4Categories = CATEGORIES.filter(c => c.type === 'axe4')
-
-  // Composant carousel catégories réutilisable
-  const CategoryCarousel = ({
-    categories,
-    scrollRef,
-  }: {
-    categories: typeof CATEGORIES
-    scrollRef: React.RefObject<HTMLDivElement>
-  }) => (
-    <div className="-mx-4">
-      {/* Zone cards */}
-      <div className="py-2 relative" style={{ paddingLeft: '16px', paddingRight: '0' }}>
-        <button
-          onClick={() => scroll(scrollRef, 'left')}
-          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
-        >
-          <ChevronLeft size={18} />
-        </button>
-
-        <div
-          ref={scrollRef}
-          className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory pr-4"
-        >
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => {
-                const from = cat.type === 'axe3'
-                  ? '/patient'
-                  : cat.type === 'axe4'
-                  ? '/sante'
-                  : '/formation'
-                window.location.href = `/formation/${cat.id}?from=${from}`
-              }}
-              className="flex-shrink-0 snap-start rounded-2xl overflow-hidden"
-              style={{
-                width: 'calc(50vw - 24px)',
-                maxWidth: '220px',
-                minWidth: '148px',
-                aspectRatio: '3/2',
-                position: 'relative',
-                border: 'none',
-                flexShrink: 0,
-              }}
-            >
-              {/* Image de fond pleine */}
-              {cat.labelImageUrl ? (
-                <img
-                  src={cat.labelImageUrl}
-                  alt={cat.name}
-                  className="w-full h-full object-cover absolute inset-0"
-                />
-              ) : (
-                <div
-                  className="w-full h-full absolute inset-0"
-                  style={{ background: `linear-gradient(135deg, ${cat.gradient.from}, ${cat.gradient.to})` }}
-                />
-              )}
-              {/* Overlay gradient pour lisibilité texte */}
-              <div
-                className="absolute inset-0"
-                style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)' }}
-              />
-              {/* Label texte */}
-              <span
-                className="absolute font-bold text-white leading-tight"
-                style={{
-                  bottom: '10px',
-                  left: '10px',
-                  fontSize: '15px',
-                  textShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                  maxWidth: 'calc(100% - 20px)',
-                }}
-              >
-                {cat.name}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <button
-          onClick={() => scroll(scrollRef, 'right')}
-          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
-        >
-          <ChevronRight size={18} />
-        </button>
+  const renderNewsRow = (
+    title: string,
+    items: NewsCard[],
+    showSeeAll: boolean,
+    headerCard?: React.ReactNode,
+    hideCover?: boolean,
+    hideBadge?: boolean,
+  ) => (
+    <section key={title}>
+      <div className="flex items-center mb-4">
+        <h2 className="text-base font-bold text-white flex items-center gap-2">
+          📰 {title}
+        </h2>
       </div>
-    </div>
+      <div className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide -mx-4 px-4 pb-2">
+        {headerCard}
+        {items.map((item) => (
+          <NewsCardItem
+            key={item.id}
+            news={item}
+            variant="carousel"
+            onClick={(n) => setModalNewsId(n.id)}
+            hideCover={hideCover}
+            hideBadge={hideBadge}
+          />
+        ))}
+        {showSeeAll && (
+          <div
+            className="flex-shrink-0 rounded-2xl bg-gradient-to-br from-primary to-primary
+                       flex flex-col items-center justify-center cursor-pointer
+                       hover:scale-[1.02] transition-premium glow-accent"
+            style={mediaCardSizeStyle('landscape')}
+            onClick={() => router.push('/news')}
+          >
+            <span className="text-white text-sm font-medium text-center px-4">
+              Voir toutes les actus →
+            </span>
+          </div>
+        )}
+      </div>
+    </section>
   )
 
   return (
@@ -344,7 +328,10 @@ export default function HomePage() {
       {/* Header */}
       <header className="bg-gradient-to-br from-primary to-accent px-5 py-4">
         <div className="flex items-center justify-between gap-3">
-          <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/30 flex-shrink-0">
+          <Link
+            href="/profil"
+            className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-white/30 flex-shrink-0 hover:ring-white/60 transition-all"
+          >
             {profile?.profile_photo_url ? (
               <img src={profile.profile_photo_url} alt="avatar" className="w-full h-full object-cover" />
             ) : (
@@ -354,11 +341,17 @@ export default function HomePage() {
                 </span>
               </div>
             )}
-          </div>
+          </Link>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-black uppercase truncate" style={{ fontSize: '18px', lineHeight: '1.3' }}>
+            <p
+              className="text-white font-black uppercase truncate"
+              style={{ fontSize: '18px', lineHeight: '1.3' }}
+            >
               Bonjour, {profile?.first_name || 'Utilisateur'}
-              <span className="hidden md:inline ml-2 font-bold" style={{ fontSize: '13px', opacity: 0.6 }}>
+              <span
+                className="hidden md:inline ml-2 font-bold"
+                style={{ fontSize: '13px', opacity: 0.6 }}
+              >
                 {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
               </span>
             </p>
@@ -366,15 +359,22 @@ export default function HomePage() {
               {getAnonymousEmoji(user?.id || '')} {getAnonymousName(user?.id || '')}
             </p>
           </div>
-          <Link href="/profil" className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors">
-            <UserCircle size={24} className="text-white" />
-          </Link>
+          <button
+            type="button"
+            onClick={() => setShowLeaderboard(true)}
+            aria-label="Voir le classement"
+            className="flex items-center gap-1.5 bg-white/15 rounded-full px-3 py-1.5 flex-shrink-0 hover:bg-white/25 transition-colors"
+          >
+            <span className="text-white text-xs font-bold">🔥 {streak?.current_streak ?? 0}</span>
+            <span className="text-white/40 text-xs">·</span>
+            <span className="text-white text-xs font-bold">{lifetimeRank?.points ?? 0} pts</span>
+          </button>
           {user && (
             <button
               type="button"
               onClick={handleSignOut}
-              aria-label="Se déconnecter"
-              title="Se déconnecter"
+              aria-label="Se deconnecter"
+              title="Se deconnecter"
               className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors"
             >
               <LogOut size={20} className="text-white" />
@@ -383,54 +383,83 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen" style={{ background: '#0F0F0F' }}>
-
-        {/* 1ʳᵉ ligne unifiée : Quiz du jour / Journal / Événements (HomeHeroCard).
-            Mobile/tablette (< lg) : pattern hero → Quiz pleine largeur (col-span-2)
-            puis Journal + Événements en 2 colonnes. Desktop (≥ lg) : 3 colonnes
-            égales, identiques au rendu précédent (flex-1 → grid-cols-3). */}
-        <section>
-          <div className="grid grid-cols-2 lg:grid-cols-3 items-stretch gap-3">
-            <div className="col-span-2 lg:col-span-1 flex">
-              <DailyQuizButton
-                userId={user?.id}
-                onStart={() => setShowDailyQuiz(true)}
-                refreshTrigger={refreshTrigger}
-                variant="square"
-              />
-            </div>
-            <JournalWeekCard journal={journal} />
-            <HomeHeroCard
-              surface="neutral"
-              icon={<Calendar size={26} />}
-              eyebrow="Événements"
-              title={evenements.length > 0 ? evenements[0].title : 'Rien à l’horizon'}
-              subtitle={
-                evenements.length > 0
-                  ? formatEventDate(evenements[0].starts_at)
-                  : 'Aucun événement programmé'
-              }
-              cta={{
-                label: 'Voir le calendrier',
-                icon: <CalendarDays size={15} />,
-                onClick: () => router.push('/evenements'),
-              }}
-            />
-          </div>
+      <main
+        className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen"
+        style={{ background: '#0F0F0F' }}
+      >
+        {/* Sophie / Quiz / Journal — 3 cartes uniformisees */}
+        <section className="flex flex-col gap-3">
+          <SophieAutopilotCard />
+          <DailyQuizButton
+            userId={user?.id}
+            onStart={() => setShowDailyQuiz(true)}
+            refreshTrigger={refreshTrigger}
+            variant="square"
+          />
+          <JournalWeekCard journal={journal} />
         </section>
 
-        {/* Pour vous — rendue seulement si le feed renvoie ≥1 item (un user
-            ayant skippé l'onboarding reçoit { items: [] } → pas de section). */}
-        {!forYouLoading && forYouItems.length > 0 && (
+        {/* Reprendre — formations commencees non terminees */}
+        {!inProgressLoading && inProgressFormations.length > 0 && (
           <section>
             <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
-              <Sparkles size={18} className="text-violet-400" /> Pour vous
+              <BookOpen size={18} className="text-violet-400" /> Reprendre
+            </h2>
+            <div className="relative">
+              <button
+                onClick={() => scroll(reprendreScrollRef, 'left')}
+                className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
+                aria-label="Precedent"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <div
+                ref={reprendreScrollRef}
+                className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+              >
+                {inProgressFormations.map((f) => {
+                  const config = getCategoryConfig(f.category)
+                  const from =
+                    config.type === 'axe3'
+                      ? '/patient'
+                      : config.type === 'axe4'
+                      ? '/sante'
+                      : '/formation'
+                  return (
+                    <FormationCardOverlay
+                      key={f.id}
+                      formation={f}
+                      progressPercent={inProgressProgress[f.id]?.progressPercent ?? 0}
+                      aspect="landscape"
+                      onClick={() => {
+                        window.location.href = `/formation/${f.category}?formation=${f.slug}&from=${from}`
+                      }}
+                    />
+                  )
+                })}
+              </div>
+              <button
+                onClick={() => scroll(reprendreScrollRef, 'right')}
+                className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
+                aria-label="Suivant"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </section>
+        )}
+
+        {/* Pour toi — formations + EPP */}
+        {!forYouLoading && !recentLoading && pourToiItems.length > 0 && (
+          <section>
+            <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
+              <Sparkles size={18} className="text-violet-400" /> Pour toi
             </h2>
             <div className="relative">
               <button
                 onClick={() => scroll(forYouScrollRef, 'left')}
                 className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
-                aria-label="Précédent"
+                aria-label="Precedent"
               >
                 <ChevronLeft size={20} />
               </button>
@@ -438,7 +467,7 @@ export default function HomePage() {
                 ref={forYouScrollRef}
                 className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
               >
-                {forYouItems.map((item) => (
+                {pourToiItems.map((item) => (
                   <ForYouCard key={item.id} item={item} />
                 ))}
               </div>
@@ -453,140 +482,122 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* News */}
-        <section>
-          <div className="flex items-center mb-4">
-            <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2">
-              📰 Actualités
+        {/* Ressources pour toi — fiches + autoevals */}
+        {!forYouLoading && ressourcesItems.length > 0 && (
+          <section>
+            <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
+              📚 Ressources pour toi
             </h2>
-          </div>
-          <div className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide -mx-4 px-4 pb-2">
-            {newsItems.map((item) => (
-              <NewsCardItem
-                key={item.id}
-                news={item}
-                variant="carousel"
-                onClick={(n) => setModalNewsId(n.id)}
-              />
-            ))}
-            <div
-              className="flex-shrink-0 rounded-2xl bg-gradient-to-br
-                         from-violet-600 to-violet-900 flex flex-col items-center
-                         justify-center cursor-pointer hover:scale-[1.02] transition"
-              style={mediaCardSizeStyle('landscape')}
-              onClick={() => router.push('/news')}
-            >
-              <span className="text-white text-sm font-medium text-center px-4">
-                Voir toutes les actus →
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* Fraîchement arrivé — masquée si, exclusion résolue, il ne reste
-            aucune carte (catalogue réellement vide). Tant que « Pour vous »
-            n'est pas résolu : skeleton/loader, jamais l'état pré-dédup. */}
-        {(freshlyArrivedResolving || freshlyArrivedFormations.length > 0) && (
-        <section>
-          <h2 className="text-base font-bold text-[#e5e5e5] mb-3">⚡ Fraîchement arrivé</h2>
-          {freshlyArrivedResolving ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="animate-spin text-gray-400" size={24} />
-            </div>
-          ) : (
             <div className="relative">
               <button
-                onClick={() => scroll(recentScrollRef, 'left')}
+                onClick={() => scroll(ressourcesScrollRef, 'left')}
                 className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
+                aria-label="Precedent"
               >
                 <ChevronLeft size={20} />
               </button>
               <div
-                ref={recentScrollRef}
+                ref={ressourcesScrollRef}
                 className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
               >
-                {freshlyArrivedFormations.map((f) => {
-                  const config = getCategoryConfig(f.category)
-                  const from = config.type === 'axe3'
-                    ? '/patient'
-                    : config.type === 'axe4'
-                    ? '/sante'
-                    : '/formation'
-                  return (
-                    <FormationCardOverlay
-                      key={f.id}
-                      formation={f}
-                      progress={formationProgress[f.id]}
-                      onClick={() => {
-                        window.location.href = `/formation/${f.category}?formation=${f.slug}&from=${from}`
-                      }}
-                    />
-                  )
-                })}
+                {ressourcesItems.map((item) => (
+                  <ForYouCard key={item.id} item={item} />
+                ))}
               </div>
               <button
-                onClick={() => scroll(recentScrollRef, 'right')}
+                onClick={() => scroll(ressourcesScrollRef, 'right')}
                 className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
+                aria-label="Suivant"
               >
                 <ChevronRight size={20} />
               </button>
             </div>
-          )}
-        </section>
+          </section>
         )}
 
-        {/* Explorer */}
+        {/* Explorer — acces rapide aux 3 espaces */}
         <section>
-          <h2 className="text-xl font-black text-white mb-4 flex items-center gap-2">
-            🔍 Explorer
+          <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
+            🧭 Explorer
           </h2>
-          <Link
-            href="/formation"
-            className="group mb-3 flex w-fit items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          >
-            <h3 className="text-base font-bold text-white">Pratiques cliniques</h3>
-            <ChevronRight
-              size={18}
-              aria-hidden="true"
-              className="text-white/60 transition-all group-hover:translate-x-0.5 group-hover:text-white"
-            />
-          </Link>
-          <CategoryCarousel
-            categories={axe12Categories}
-            scrollRef={axe12ScrollRef}
-          />
-          <Link
-            href="/patient"
-            className="group mt-6 mb-3 flex w-fit items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          >
-            <h3 className="text-base font-bold text-white">Relation Patient</h3>
-            <ChevronRight
-              size={18}
-              aria-hidden="true"
-              className="text-white/60 transition-all group-hover:translate-x-0.5 group-hover:text-white"
-            />
-          </Link>
-          <CategoryCarousel
-            categories={axe3Categories}
-            scrollRef={axe3ScrollRef}
-          />
-          <Link
-            href="/sante"
-            className="group mt-6 mb-3 flex w-fit items-center gap-1.5 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          >
-            <h3 className="text-base font-bold text-white">Santé Praticien</h3>
-            <ChevronRight
-              size={18}
-              aria-hidden="true"
-              className="text-white/60 transition-all group-hover:translate-x-0.5 group-hover:text-white"
-            />
-          </Link>
-          <CategoryCarousel
-            categories={axe4Categories}
-            scrollRef={axe4ScrollRef}
-          />
+          <ExploreRow />
         </section>
 
+        {/* Evenements — masque si vide */}
+        {evenements.length > 0 && (
+          <section>
+            <HomeHeroCard
+              surface="neutral"
+              icon={<Calendar size={26} />}
+              eyebrow="Evenements"
+              title={evenements[0].title}
+              compact
+              cta={{
+                label: 'Voir le calendrier',
+                icon: <CalendarDays size={15} />,
+                onClick: () => router.push('/evenements'),
+              }}
+            />
+          </section>
+        )}
+
+        {/* Actualites — eclatees par theme (Session 1bis) */}
+        {recentNews.length > 0 && renderNewsRow('Les dernieres actus', recentNews, true, undefined, undefined, true)}
+        {themeRows.map((row) => {
+          const themeMap = INTEREST_TO_NEWS_THEME[row.key]
+          const specialiteSlug = themeMap?.field === 'specialite' ? themeMap.value : null
+          const cutoutUrl = specialiteSlug
+            ? `${NEWS_CUTOUTS_BASE}/news-spec-${specialiteSlug}.webp`
+            : null
+          const headerColor = getSpecialiteColor(specialiteSlug)
+
+          const headerCard = (
+            <div
+              key={`header-${row.key}`}
+              className="flex-shrink-0 snap-start rounded-2xl overflow-hidden relative"
+              style={{ ...mediaCardSizeStyle('landscape'), position: 'relative', background: '#0d0d1a' }}
+            >
+              {cutoutUrl ? (
+                <CutoutCardRender
+                  cutoutSrc={cutoutUrl}
+                  colorFrom={headerColor}
+
+                  title={row.label}
+                />
+              ) : (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: `linear-gradient(135deg, ${headerColor}, ${headerColor}88)`,
+                  }}
+                />
+              )}
+            </div>
+          )
+
+          const quiz = quizSpecialiteFor(row.key)
+          return (
+            <React.Fragment key={row.key}>
+              {renderNewsRow(`Parce que tu t'interesses a ${row.label}`, row.items, false, headerCard, true, true)}
+              {quiz && (
+                <button
+                  type="button"
+                  onClick={() => setQuizTheme(quiz)}
+                  className="w-full glass-card glow-accent transition-premium rounded-2xl
+                             px-4 py-3 flex items-center justify-between text-left
+                             hover:scale-[1.01] mb-6"
+                  aria-label={`Teste-toi en ${quiz.label}`}
+                >
+                  <span className="text-white text-sm font-semibold flex items-center gap-2">
+                    🎯 Teste-toi en {quiz.label}
+                  </span>
+                  <span className="text-white/60 text-xs">10 questions ·</span>
+                </button>
+              )}
+            </React.Fragment>
+          )
+        })}
       </main>
 
       {showDailyQuiz && user && (
@@ -598,6 +609,20 @@ export default function HomePage() {
       )}
 
       <NewsModal newsId={modalNewsId} onClose={() => setModalNewsId(null)} />
+
+      {quizTheme && (
+        <ThemeQuizModal
+          specialite={quizTheme.specialite}
+          label={quizTheme.label}
+          onClose={() => setQuizTheme(null)}
+        />
+      )}
+
+      <LeaderboardModal
+        open={showLeaderboard}
+        onClose={() => setShowLeaderboard(false)}
+        userId={user?.id}
+      />
     </>
   )
 }

@@ -1,0 +1,9 @@
+-- DOWN : no-op intentionnel.
+-- Le seed est idempotent et inoffensif. Pour annuler manuellement si nécessaire :
+-- delete from cp_user_settings
+-- where cp_duration_years = 6
+--   and exists (
+--     select 1 from user_profiles up
+--     where up.id = cp_user_settings.user_id
+--       and up.ordre_inscription_date = cp_user_settings.cp_start_date
+--   );

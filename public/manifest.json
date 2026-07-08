@@ -1,6 +1,6 @@
 {
-  "name": "DentalLearn",
-  "short_name": "DentalLearn",
+  "name": "Certily",
+  "short_name": "Certily",
   "description": "Révisions gamifiées pour chirurgiens-dentistes",
   "start_url": "/",
   "display": "standalone",

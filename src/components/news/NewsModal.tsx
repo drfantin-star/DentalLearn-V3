@@ -1,26 +1,53 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import type { NewsDetailResponse } from '@/types/news'
-import { formatDate } from '@/lib/news-display'
-import { NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
 import { NewsRecapCard } from '@/components/news/NewsRecapCard'
+import WavePlayButton from '@/components/WavePlayButton'
 
 interface Props {
   newsId: string | null
   onClose: () => void
 }
 
-const CATEGORY_BADGE_CLASSES: Record<string, string> = {
-  scientifique: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
-  pratique: 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
-}
-const CATEGORY_BADGE_FALLBACK = 'bg-gray-500/20 text-gray-300 border-gray-400/30'
-
 export default function NewsModal({ newsId, onClose }: Props) {
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<NewsDetailResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Lecture audio locale au modal (élément <audio> caché, aucun contrôle
+  // natif exposé). Volontairement PAS branché sur AudioContext (réservé aux
+  // formations / logs DPC) ni sur AudioPlayerContext (queue playlist).
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [progressPercent, setProgressPercent] = useState(0)
+
+  const handleTogglePlay = () => {
+    const el = audioRef.current
+    if (!el) return
+    if (el.paused) {
+      void el.play()
+    } else {
+      el.pause()
+    }
+  }
+
+  // Coupe la lecture à la fermeture du modal (le retrait du <audio> du DOM
+  // ne suffit pas dans tous les navigateurs) et au démontage.
+  useEffect(() => {
+    if (!newsId) {
+      audioRef.current?.pause()
+      setIsPlaying(false)
+      setProgressPercent(0)
+    }
+  }, [newsId])
+
+  useEffect(() => {
+    const ref = audioRef
+    return () => {
+      ref.current?.pause()
+    }
+  }, [])
 
   useEffect(() => {
     if (!newsId) return
@@ -29,6 +56,8 @@ export default function NewsModal({ newsId, onClose }: Props) {
     setLoading(true)
     setError(null)
     setData(null)
+    setIsPlaying(false)
+    setProgressPercent(0)
 
     fetch(`/api/news/syntheses/${newsId}`)
       .then(async (res) => {
@@ -67,20 +96,6 @@ export default function NewsModal({ newsId, onClose }: Props) {
       : source.source_url ?? null
     : null
 
-  const categoryClass =
-    (synthesis?.category_editorial &&
-      CATEGORY_BADGE_CLASSES[synthesis.category_editorial]) ||
-    CATEGORY_BADGE_FALLBACK
-
-  const specialiteLabel = synthesis?.specialite
-    ? NEWS_SPECIALITE_LABELS[synthesis.specialite] ?? synthesis.specialite
-    : null
-
-  const durationMin =
-    episode && typeof episode.duration_s === 'number'
-      ? Math.floor(episode.duration_s / 60)
-      : null
-
   return (
     <div
       className="fixed inset-0 z-50 bg-black/60 flex items-end md:items-center justify-center"
@@ -89,7 +104,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
       aria-modal="true"
     >
       <div
-        className="bg-gray-900 w-full md:w-full md:max-w-2xl rounded-t-2xl md:rounded-2xl
+        className="glass-panel w-full md:w-full md:max-w-2xl rounded-t-2xl md:rounded-2xl
                    max-h-[85vh] overflow-y-auto relative"
         onClick={(e) => e.stopPropagation()}
       >
@@ -115,35 +130,49 @@ export default function NewsModal({ newsId, onClose }: Props) {
               Impossible de charger l’actualité ({error}).
             </p>
           ) : !synthesis ? (
-            <p className="text-sm text-gray-400">Aucune donnée.</p>
+            <p className="text-sm text-white/55">Aucune donnee.</p>
           ) : (
             <>
               <h2 className="text-xl font-bold text-white pr-10">
                 {synthesis.display_title}
               </h2>
 
-              <div className="flex flex-wrap gap-2 mt-3">
-                {specialiteLabel ? (
-                  <span
-                    className="px-2 py-0.5 rounded-full border text-[11px] font-medium
-                               bg-violet-500/20 text-violet-300 border-violet-400/30"
-                  >
-                    {specialiteLabel}
-                  </span>
-                ) : null}
-                {synthesis.category_editorial ? (
-                  <span
-                    className={`px-2 py-0.5 rounded-full border text-[11px] font-medium ${categoryClass}`}
-                  >
-                    {synthesis.category_editorial}
-                  </span>
-                ) : null}
-              </div>
-
-              {synthesis.published_at ? (
-                <p className="text-xs text-gray-400 mt-2">
-                  {formatDate(synthesis.published_at)}
-                </p>
+              {/* Player épuré juste sous le titre : bouton vague seul, glow
+                  teal sur le bouton (token glow-accent), sans conteneur
+                  carte, sans libellé ni durée. */}
+              {episode ? (
+                <div className="mt-4">
+                  <WavePlayButton
+                    isPlaying={isPlaying}
+                    progressPercent={progressPercent}
+                    onToggle={handleTogglePlay}
+                    ariaLabel={
+                      isPlaying
+                        ? 'Mettre la synthèse audio en pause'
+                        : 'Écouter la synthèse audio'
+                    }
+                    className="glow-accent"
+                  />
+                  {/* Élément audio caché : ni contrôles natifs, ni vitesse,
+                      ni menu — le WavePlayButton est la seule surface. */}
+                  <audio
+                    ref={audioRef}
+                    src={episode.audio_url}
+                    preload="metadata"
+                    className="hidden"
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                    onEnded={() => setIsPlaying(false)}
+                    onTimeUpdate={(e) => {
+                      const el = e.currentTarget
+                      setProgressPercent(
+                        el.duration > 0
+                          ? (el.currentTime / el.duration) * 100
+                          : 0,
+                      )
+                    }}
+                  />
+                </div>
               ) : null}
 
               {/* T8 — carte récap statique si la synthèse appartient à un
@@ -155,27 +184,21 @@ export default function NewsModal({ newsId, onClose }: Props) {
                 </div>
               ) : null}
 
-              {episode ? (
-                <div className="mt-3">
-                  <audio controls src={episode.audio_url} className="w-full">
-                    Votre navigateur ne supporte pas l’audio.
-                  </audio>
-                  {durationMin !== null ? (
-                    <p className="text-xs text-gray-400 mt-1">{durationMin} min</p>
-                  ) : null}
-                </div>
-              ) : null}
-
-              <p className="text-sm text-gray-300 mt-4 whitespace-pre-line">
+              <p className="text-base leading-relaxed text-white/70 mt-4 whitespace-pre-line">
                 {synthesis.summary_fr}
               </p>
 
-              {synthesis.clinical_impact ? (
+              {/* Impact clinique et Limites : déjà portés par la carte récap
+                  quand elle est affichée (timeline_url présent) — on ne les
+                  rend en sections détail QUE si la carte récap est absente,
+                  pour éviter le doublon sans perdre l'info sur les news
+                  sans épisode audio. */}
+              {!episode?.timeline_url && synthesis.clinical_impact ? (
                 <section className="mt-5">
                   <h3 className="text-xs uppercase tracking-wide text-violet-400 font-semibold">
                     Impact clinique
                   </h3>
-                  <p className="text-sm text-gray-300 mt-1 whitespace-pre-line">
+                  <p className="text-base leading-relaxed text-white/70 mt-1 whitespace-pre-line">
                     {synthesis.clinical_impact}
                   </p>
                 </section>
@@ -183,10 +206,10 @@ export default function NewsModal({ newsId, onClose }: Props) {
 
               {synthesis.key_figures && synthesis.key_figures.length > 0 ? (
                 <section className="mt-5">
-                  <h3 className="text-xs uppercase tracking-wide text-gray-400 font-semibold">
-                    Chiffres clés
+                  <h3 className="text-xs uppercase tracking-wide text-white/55 font-semibold">
+                    Chiffres cles
                   </h3>
-                  <ul className="list-disc list-inside text-sm text-gray-300 mt-1 space-y-1">
+                  <ul className="list-disc list-inside text-base leading-relaxed text-white/70 mt-1 space-y-1">
                     {synthesis.key_figures.map((figure, i) => (
                       <li key={i}>{figure}</li>
                     ))}
@@ -196,13 +219,13 @@ export default function NewsModal({ newsId, onClose }: Props) {
 
               {synthesis.evidence_level ? (
                 <section className="mt-5">
-                  <h3 className="text-xs uppercase tracking-wide text-gray-400 font-semibold">
+                  <h3 className="text-xs uppercase tracking-wide text-white/55 font-semibold">
                     Niveau de preuve
                   </h3>
                   <div className="mt-1 flex items-center gap-2">
                     <span
                       className="px-2 py-0.5 rounded-full text-[11px] font-medium
-                                 bg-gray-700 text-gray-200"
+                                 bg-gray-700 text-white/80"
                     >
                       {synthesis.evidence_level}
                     </span>
@@ -210,12 +233,12 @@ export default function NewsModal({ newsId, onClose }: Props) {
                 </section>
               ) : null}
 
-              {synthesis.caveats ? (
+              {!episode?.timeline_url && synthesis.caveats ? (
                 <section className="mt-5">
                   <h3 className="text-xs uppercase tracking-wide text-amber-400 font-semibold">
                     Limites
                   </h3>
-                  <p className="text-sm text-gray-300 mt-1 whitespace-pre-line">
+                  <p className="text-base leading-relaxed text-white/70 mt-1 whitespace-pre-line">
                     {synthesis.caveats}
                   </p>
                 </section>

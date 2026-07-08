@@ -17,6 +17,8 @@ export type BadgeVariant =
   // Catégories news (dark theme translucide)
   | 'news-scientifique'
   | 'news-pratique'
+  | 'news-reglementaire'
+  | 'news-humour'
 
 export type BadgeSize = 'sm' | 'md' | 'lg'
 
@@ -42,6 +44,8 @@ const variantStyles: Record<BadgeVariant, string> = {
   neutral: 'bg-gray-100 text-gray-700 border-gray-200',
   'news-scientifique': 'bg-blue-500/20 text-blue-300 border-blue-400/30',
   'news-pratique': 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
+  'news-reglementaire': 'bg-amber-500/20 text-amber-300 border-amber-400/30',
+  'news-humour': 'bg-pink-500/20 text-pink-300 border-pink-400/30',
 }
 
 const variantLabels: Partial<Record<BadgeVariant, string>> = {
@@ -61,7 +65,7 @@ const sizeBase: Record<BadgeSize, string> = {
   lg: 'text-xs font-medium px-2 py-1 rounded-full',
 }
 
-const NEWS_VARIANTS = new Set<BadgeVariant>(['news-scientifique', 'news-pratique'])
+const NEWS_VARIANTS = new Set<BadgeVariant>(['news-scientifique', 'news-pratique', 'news-reglementaire', 'news-humour'])
 
 function typographyForMd(variant: BadgeVariant): string {
   return NEWS_VARIANTS.has(variant) ? 'font-medium' : 'font-bold uppercase'
