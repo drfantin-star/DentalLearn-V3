@@ -18,6 +18,7 @@ import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
 import ForYouCard from '@/components/home/ForYouCard'
 import ExploreRow from '@/components/home/ExploreRow'
+import { useDemarches } from '@/lib/hooks/useDemarches'
 import { mediaCardSizeStyle } from '@/components/home/MediaCard'
 import type { JournalEpisode, NewsCard } from '@/types/news'
 import type { ForYouItem } from '@/types/forYou'
@@ -54,6 +55,9 @@ export default function HomePage() {
 
   const { user, profile, streak, refetch: refetchUser } = useUser()
   const { userRank: lifetimeRank } = useLeaderboard(user?.id, 'lifetime')
+  // Demarches en cours — utilisees pour completer "Reprendre" avec les EPP
+  // en cours (les formations viennent de user_formations plus bas).
+  const { demarches: allDemarches } = useDemarches(user?.id)
 
   const [recentNews, setRecentNews] = useState<NewsCard[]>([])
   const [themeRows, setThemeRows] = useState<{ key: string; label: string; items: NewsCard[] }[]>([])
@@ -83,9 +87,14 @@ export default function HomePage() {
   const forYouScrollRef = useRef<HTMLDivElement>(null)
   const ressourcesScrollRef = useRef<HTMLDivElement>(null)
   const reprendreScrollRef = useRef<HTMLDivElement>(null)
+  // Refs des carrousels news (une entree par rangee, clef = titre).
+  const newsScrollRefs = useRef<Record<string, HTMLDivElement | null>>({})
 
   const scroll = (ref: React.RefObject<HTMLDivElement>, dir: 'left' | 'right') => {
     ref.current?.scrollBy({ left: dir === 'left' ? -320 : 320, behavior: 'smooth' })
+  }
+  const scrollEl = (el: HTMLDivElement | null, dir: 'left' | 'right') => {
+    el?.scrollBy({ left: dir === 'left' ? -320 : 320, behavior: 'smooth' })
   }
 
   useEffect(() => {
@@ -274,6 +283,12 @@ export default function HomePage() {
     [forYouItems],
   )
 
+  // EPP en cours — affiches dans "Reprendre" a cote des formations.
+  const inProgressEpp = useMemo(
+    () => allDemarches.filter((d) => d.type === 'epp'),
+    [allDemarches],
+  )
+
   const quizSpecialiteFor = (rowKey: string): { specialite: string; label: string } | null => {
     const map = INTEREST_TO_NEWS_THEME[rowKey]
     if (!map || map.field !== 'specialite') return null
@@ -289,36 +304,55 @@ export default function HomePage() {
     hideBadge?: boolean,
   ) => (
     <section key={title}>
-      <div className="flex items-center mb-4">
-        <h2 className="text-base font-bold text-white flex items-center gap-2">
-          📰 {title}
-        </h2>
-      </div>
-      <div className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide -mx-4 px-4 pb-2">
-        {headerCard}
-        {items.map((item) => (
-          <NewsCardItem
-            key={item.id}
-            news={item}
-            variant="carousel"
-            onClick={(n) => setModalNewsId(n.id)}
-            hideCover={hideCover}
-            hideBadge={hideBadge}
-          />
-        ))}
-        {showSeeAll && (
-          <div
-            className="flex-shrink-0 rounded-2xl bg-gradient-to-br from-primary to-primary
-                       flex flex-col items-center justify-center cursor-pointer
-                       hover:scale-[1.02] transition-premium glow-accent"
-            style={mediaCardSizeStyle('landscape')}
-            onClick={() => router.push('/news')}
-          >
-            <span className="text-white text-sm font-medium text-center px-4">
-              Voir toutes les actus →
-            </span>
-          </div>
-        )}
+      <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
+        📰 {title}
+      </h2>
+      <div className="relative">
+        <button
+          onClick={() => scrollEl(newsScrollRefs.current[title], 'left')}
+          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
+          aria-label="Precedent"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <div
+          ref={(el) => {
+            newsScrollRefs.current[title] = el
+          }}
+          className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide -mx-4 px-4 pb-2"
+        >
+          {headerCard}
+          {items.map((item) => (
+            <NewsCardItem
+              key={item.id}
+              news={item}
+              variant="carousel"
+              onClick={(n) => setModalNewsId(n.id)}
+              hideCover={hideCover}
+              hideBadge={hideBadge}
+            />
+          ))}
+          {showSeeAll && (
+            <div
+              className="flex-shrink-0 rounded-2xl bg-gradient-to-br from-primary to-primary
+                         flex flex-col items-center justify-center cursor-pointer
+                         hover:scale-[1.02] transition-premium glow-accent"
+              style={mediaCardSizeStyle('landscape')}
+              onClick={() => router.push('/news')}
+            >
+              <span className="text-white text-sm font-medium text-center px-4">
+                Voir toutes les actus →
+              </span>
+            </div>
+          )}
+        </div>
+        <button
+          onClick={() => scrollEl(newsScrollRefs.current[title], 'right')}
+          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-10 h-10 rounded-full bg-[#242424] shadow-md items-center justify-center text-gray-300 hover:bg-gray-50"
+          aria-label="Suivant"
+        >
+          <ChevronRight size={20} />
+        </button>
       </div>
     </section>
   )
@@ -399,8 +433,9 @@ export default function HomePage() {
           <JournalWeekCard journal={journal} />
         </section>
 
-        {/* Reprendre — formations commencees non terminees */}
-        {!inProgressLoading && inProgressFormations.length > 0 && (
+        {/* Reprendre — formations commencees non terminees + EPP en cours */}
+        {!inProgressLoading &&
+          (inProgressFormations.length > 0 || inProgressEpp.length > 0) && (
           <section>
             <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
               <BookOpen size={18} className="text-violet-400" /> Reprendre
@@ -437,6 +472,69 @@ export default function HomePage() {
                     />
                   )
                 })}
+                {/* EPP en cours — carte degrade teal (axe 2), titre centre,
+                    meme langage visuel que les cartes sans image. */}
+                {inProgressEpp.map((epp) => (
+                  <button
+                    key={epp.id}
+                    type="button"
+                    onClick={() => router.push(epp.ctaUrl)}
+                    aria-label={epp.title}
+                    className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform duration-150 relative"
+                    style={{
+                      ...mediaCardSizeStyle('landscape'),
+                      border: '0.5px solid rgba(255,255,255,0.08)',
+                      boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                    }}
+                  >
+                    <div
+                      aria-hidden
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background:
+                          'radial-gradient(ellipse at 70% 40%, #0F7B6Ccc 0%, #0F7B6C44 55%, #0d0d1a 100%)',
+                      }}
+                    />
+                    <div
+                      aria-hidden
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background:
+                          'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 60%, rgba(0,0,0,0.35) 100%)',
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '14px',
+                      }}
+                    >
+                      <p
+                        style={{
+                          margin: 0,
+                          textAlign: 'center',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          color: 'white',
+                          lineHeight: 1.3,
+                          textShadow: '0 2px 6px rgba(0,0,0,0.85)',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 4,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {epp.title}
+                      </p>
+                    </div>
+                  </button>
+                ))}
               </div>
               <button
                 onClick={() => scroll(reprendreScrollRef, 'right')}
@@ -558,11 +656,12 @@ export default function HomePage() {
               style={{ ...mediaCardSizeStyle('landscape'), position: 'relative', background: '#0d0d1a' }}
             >
               {cutoutUrl ? (
+                // Carte "label" : image centrée, sans zone de texte.
                 <CutoutCardRender
                   cutoutSrc={cutoutUrl}
                   colorFrom={headerColor}
-
-                  title={row.label}
+                  title=""
+                  variant="compact"
                 />
               ) : (
                 <div
