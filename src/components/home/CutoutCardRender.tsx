@@ -150,31 +150,39 @@ export default function CutoutCardRender({
         </div>
       )}
 
-      {/* Titre — colonne gauche (l'objet détouré occupe la droite), ancré en
-          bas et grandissant vers le haut : le titre s'affiche en entier
-          (jusqu'à 6 lignes) sans jamais chevaucher l'icône ni déborder à
-          droite. */}
-      <p
+      {/* Titre — colonne gauche (l'objet détouré occupe la droite), CENTRÉ
+          verticalement : le titre s'affiche en entier (jusqu'à 5 lignes),
+          équilibré quelle que soit la hauteur de carte, sans chevaucher
+          l'icône ni déborder à droite. */}
+      <div
         style={{
           position: 'absolute',
-          bottom: showProgress ? '14px' : '12px',
-          left: '12px',
+          top: 0,
+          bottom: showProgress ? '4px' : 0,
+          left: '14px',
           right: '40%',
           zIndex: 4,
-          margin: 0,
-          fontSize: '12px',
-          fontWeight: 700,
-          color: 'white',
-          lineHeight: 1.25,
-          textShadow: '0 2px 6px rgba(0,0,0,0.85)',
-          display: '-webkit-box',
-          WebkitLineClamp: 6,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
         }}
       >
-        {title}
-      </p>
+        <p
+          style={{
+            margin: 0,
+            fontSize: '13px',
+            fontWeight: 700,
+            color: 'white',
+            lineHeight: 1.28,
+            textShadow: '0 2px 6px rgba(0,0,0,0.85)',
+            display: '-webkit-box',
+            WebkitLineClamp: 5,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {title}
+        </p>
+      </div>
 
       {/* Barre de progression — optionnelle, tout en bas */}
       {showProgress && (
