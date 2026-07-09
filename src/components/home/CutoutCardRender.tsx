@@ -24,6 +24,9 @@ interface CutoutCardRenderProps {
   /** Opacité de l'objet détouré (variant landscape). Défaut 0.9. Baissée
    *  pour les cartes "Dernières actus" afin d'atténuer la cover. */
   imageOpacity?: number
+  /** Facteur d'échelle de l'objet détouré (variant landscape). Défaut 1.
+   *  Réduit pour les cartes "Dernières actus". */
+  imageScale?: number
 }
 
 /**
@@ -40,6 +43,7 @@ export default function CutoutCardRender({
   progress,
   variant = 'landscape',
   imageOpacity = 0.9,
+  imageScale = 1,
 }: CutoutCardRenderProps) {
   if (variant === 'compact') {
     return <CutoutCompact cutoutSrc={cutoutSrc} colorFrom={colorFrom} />
@@ -107,6 +111,8 @@ export default function CutoutCardRender({
           objectPosition: 'center bottom',
           zIndex: 2,
           opacity: imageOpacity,
+          transform: `scale(${imageScale})`,
+          transformOrigin: 'center bottom',
           filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.5))',
         }}
       />

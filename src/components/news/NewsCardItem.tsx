@@ -208,6 +208,7 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
           colorFrom={baseColor}
           title={news.display_title}
           imageOpacity={0.55}
+          imageScale={0.85}
         />
       </button>
     )
