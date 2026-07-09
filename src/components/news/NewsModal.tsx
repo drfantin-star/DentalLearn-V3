@@ -142,8 +142,9 @@ export default function NewsModal({ newsId, onClose }: Props) {
                     {synthesis.display_title}
                   </h2>
                   {source?.journal_name ? (
-                    <p className="text-sm text-white/50 mt-1">
-                      Source : {source.journal_name}
+                    <p className="mt-1 text-sm text-white/90">
+                      <span className="text-white/55">Source : </span>
+                      {source.journal_name}
                     </p>
                   ) : null}
                 </div>
@@ -263,7 +264,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
                   href={sourceHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block mt-5 text-xs text-blue-400 hover:underline"
+                  className="inline-block mt-5 text-sm font-medium text-blue-300 underline underline-offset-2 hover:text-blue-200"
                 >
                   Accéder à l’article →
                 </a>

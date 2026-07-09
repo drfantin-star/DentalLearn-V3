@@ -7,7 +7,7 @@ import NewsCardSVG, { SPECIALITE_COLORS, NEWS_DEFAULT_COLOR } from './NewsCardSV
 import Badge, { type BadgeVariant } from '@/components/ui/Badge'
 import MediaCard, { mediaCardSizeStyle } from '@/components/home/MediaCard'
 import CutoutCardRender from '@/components/home/CutoutCardRender'
-import { getNewsCoverChain, getSpecialiteGradient, getNewsCutoutUrl, getSpecialiteColor } from '@/lib/news-cover'
+import { getNewsCoverChain, getNewsCutoutUrl, getSpecialiteColor } from '@/lib/news-cover'
 
 interface Props {
   news: NewsCard
@@ -115,42 +115,70 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
   }
 
   // ── Variant carousel + hideCover (rangees thematiques Home uniquement) ────
-  // Pas d'image : fond = degrade specialite a 70% d'opacite + titre en grand.
+  // Pas d'image : degrade radial specialite + voile bas + titre CENTRE (H+V) +
+  // ombre — meme langage visuel que les cartes "Reprendre", titre centre car
+  // aucune icone a habiller.
   if (hideCover) {
+    const themeColor = getSpecialiteColor(news.specialite)
     return (
       <button
         type="button"
         onClick={() => onClick(news)}
         aria-label={news.display_title}
-        className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform duration-150"
+        className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform duration-150 relative"
         style={{
           ...mediaCardSizeStyle('landscape'),
-          position: 'relative',
-          border: '0.5px solid #333',
-          background: getSpecialiteGradient(news.specialite),
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '14px',
+          border: '0.5px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
         }}
       >
-        <p
+        {/* Fond degrade radial pilote par la specialite */}
+        <div
+          aria-hidden
           style={{
-            fontSize: '15px',
-            fontWeight: 700,
-            color: 'white',
-            lineHeight: 1.3,
-            textAlign: 'center',
-            textShadow: '0 1px 4px rgba(0,0,0,0.7)',
-            display: '-webkit-box',
-            WebkitLineClamp: 4,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            margin: 0,
+            position: 'absolute',
+            inset: 0,
+            background: `radial-gradient(ellipse at 70% 40%, ${themeColor}cc 0%, ${themeColor}44 55%, #0d0d1a 100%)`,
+          }}
+        />
+        {/* Voile sombre bas pour lisibilite du titre */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 60%, rgba(0,0,0,0.35) 100%)',
+          }}
+        />
+        {/* Titre centre H+V */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '14px',
           }}
         >
-          {news.display_title}
-        </p>
+          <p
+            style={{
+              margin: 0,
+              textAlign: 'center',
+              fontSize: '14px',
+              fontWeight: 700,
+              color: 'white',
+              lineHeight: 1.3,
+              textShadow: '0 2px 6px rgba(0,0,0,0.85)',
+              display: '-webkit-box',
+              WebkitLineClamp: 4,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {news.display_title}
+          </p>
+        </div>
       </button>
     )
   }
@@ -160,89 +188,29 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
   const baseColor = getSpecialiteColor(news.specialite)
 
   // Rendu cutout si un detourage est disponible (theme ou specialite).
+  // Delegue a CutoutCardRender (meme rendu que "Reprendre"/"Pour toi") : titre
+  // remonte + habillage de l'icone via shape-outside, affiche en entier.
   if (cutoutSrc) {
     return (
-      <MediaCard
-        aspect="landscape"
+      <button
+        type="button"
         onClick={() => onClick(news)}
-        ariaLabel={news.display_title}
-        cover={undefined}
-        fallback={
-          <>
-            {/* Fond dégradé radial piloté par la spécialité */}
-            <div
-              aria-hidden="true"
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: `radial-gradient(ellipse at 70% 40%, ${baseColor}cc 0%, ${baseColor}44 55%, #0d0d1a 100%)`,
-              }}
-            />
-            {/* Voile sombre bas pour lisibilité */}
-            <div
-              aria-hidden="true"
-              style={{
-                position: 'absolute',
-                inset: 0,
-                background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
-              }}
-            />
-            {/* Glow derrière l'objet */}
-            <div
-              aria-hidden="true"
-              style={{
-                position: 'absolute',
-                right: '-10%',
-                top: '0%',
-                width: '75%',
-                height: '100%',
-                background: `radial-gradient(ellipse at center, ${baseColor}55 0%, transparent 70%)`,
-              }}
-            />
-            {/* Objet detouré — flotte à droite, jamais rogné */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={cutoutSrc}
-              alt=""
-              aria-hidden="true"
-              style={{
-                position: 'absolute',
-                right: '-4%',
-                top: '0%',
-                width: '68%',
-                height: '100%',
-                objectFit: 'contain',
-                objectPosition: 'center bottom',
-                filter: 'drop-shadow(0 6px 16px rgba(0,0,0,0.5))',
-              }}
-            />
-          </>
-        }
-        topLeft={
-          !hideBadge && category ? (
-            <Badge variant={categoryVariant(category)} size="md">
-              {category}
-            </Badge>
-          ) : undefined
-        }
+        aria-label={news.display_title}
+        className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform duration-150 relative"
+        style={{
+          ...mediaCardSizeStyle('landscape'),
+          border: '0.5px solid #333',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+        }}
       >
-        <p
-          style={{
-            fontSize: '14px',
-            fontWeight: 700,
-            color: 'white',
-            lineHeight: 1.3,
-            display: '-webkit-box',
-            WebkitLineClamp: 3,
-            WebkitBoxOrient: 'vertical',
-            overflow: 'hidden',
-            textShadow: '0 1px 3px rgba(0,0,0,0.7)',
-            maxWidth: '55%',
-          }}
-        >
-          {news.display_title}
-        </p>
-      </MediaCard>
+        <CutoutCardRender
+          cutoutSrc={cutoutSrc}
+          colorFrom={baseColor}
+          title={news.display_title}
+          imageOpacity={0.55}
+          imageScale={0.85}
+        />
+      </button>
     )
   }
 
@@ -303,7 +271,7 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
           color: 'white',
           lineHeight: 1.3,
           display: '-webkit-box',
-          WebkitLineClamp: 3,
+          WebkitLineClamp: 4,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
           textShadow: '0 1px 3px rgba(0,0,0,0.5)',

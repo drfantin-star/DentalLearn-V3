@@ -13,21 +13,21 @@ interface ExploreCard {
 const EXPLORE_CARDS: ExploreCard[] = [
   {
     href: '/formation',
-    title: 'Formations',
+    title: 'Formations & EPP',
     subtitle: 'Axes 1 & 2',
     accent: AXE_COLORS[1].hex,
     image: '/explore/explore-formation.webp',
   },
   {
     href: '/patient',
-    title: 'Patient',
+    title: 'Relation patient',
     subtitle: 'Axe 3',
     accent: AXE_COLORS[3].dark,
     image: '/explore/explore-patient.webp',
   },
   {
     href: '/sante',
-    title: 'Sante',
+    title: 'Santé personnelle',
     subtitle: 'Axe 4',
     accent: AXE_COLORS[4].hex,
     image: '/explore/explore-sante.webp',

@@ -21,15 +21,6 @@ const AXE_ACCENT: Record<number, string> = {
 }
 const NEUTRAL_ACCENT = '#6B7280'
 
-const TYPE_BADGE: Record<ForYouType, string> = {
-  formation: 'Formation',
-  epp: 'EPP',
-  fiche: 'Fiche',
-  autoeval: 'Auto-évaluation',
-  news: 'Actu',
-  conformite: 'Conformité',
-}
-
 const TYPE_PICTO: Record<ForYouType, string> = {
   formation: '🎓',
   epp: '📋',
@@ -50,7 +41,6 @@ export default function ForYouCard({ item }: { item: ForYouItem }) {
   if (item.type === 'formation' && item.cutout) {
     const cfg = item.category ? getCategoryConfig(item.category) : null
     const colorFrom = cfg?.gradient.from ?? accent
-    const eyebrow = cfg?.shortName
 
     return (
       <a
@@ -61,12 +51,12 @@ export default function ForYouCard({ item }: { item: ForYouItem }) {
           ...mediaCardSizeStyle('landscape'),
           position: 'relative',
           border: '0.5px solid #333',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
         }}
       >
         <CutoutCardRender
           cutoutSrc={item.cutout}
           colorFrom={colorFrom}
-          eyebrow={eyebrow}
           title={item.title}
         />
       </a>
@@ -95,37 +85,24 @@ export default function ForYouCard({ item }: { item: ForYouItem }) {
       coverAlt={item.title}
       coverFit={isFormationCover ? 'contain' : 'cover'}
       coverBackground={isFormationCover ? coverBg : undefined}
+      // Sans image (fiche / auto-évaluation) : titre centré H+V. Avec cover :
+      // titre ancré en bas.
+      align={item.cover ? 'bottom' : 'center'}
       fallback={
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: `linear-gradient(135deg, ${accent}, ${accent}99)`,
+            background: `radial-gradient(ellipse at 70% 40%, ${accent}cc 0%, ${accent}44 55%, #0d0d1a 100%)`,
           }}
         >
           <span
             aria-hidden
-            style={{ position: 'absolute', top: '8px', right: '10px', fontSize: '22px', opacity: 0.2 }}
+            style={{ position: 'absolute', top: '10px', right: '12px', fontSize: '30px', opacity: 0.32 }}
           >
             {TYPE_PICTO[item.type]}
           </span>
         </div>
-      }
-      topLeft={
-        <span
-          style={{
-            background: accent,
-            color: '#fff',
-            fontSize: '10px',
-            fontWeight: 700,
-            letterSpacing: '0.02em',
-            padding: '3px 8px',
-            borderRadius: '999px',
-            textTransform: 'uppercase',
-          }}
-        >
-          {TYPE_BADGE[item.type]}
-        </span>
       }
     >
       <p
@@ -135,10 +112,10 @@ export default function ForYouCard({ item }: { item: ForYouItem }) {
           color: 'white',
           lineHeight: 1.3,
           display: '-webkit-box',
-          WebkitLineClamp: 3,
+          WebkitLineClamp: item.cover ? 4 : 5,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
-          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+          textShadow: '0 1px 3px rgba(0,0,0,0.6)',
         }}
       >
         {item.title}
