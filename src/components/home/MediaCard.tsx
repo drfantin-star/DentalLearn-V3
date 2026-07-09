@@ -94,6 +94,12 @@ interface MediaCardProps {
   aspect?: MediaCardAspect
   /** Taille. 'default' = largeur standard (50vw, max 220px). 'large' = 72vw, max 340px. */
   size?: MediaCardSize
+  /**
+   * Placement du bloc `children`. `bottom` (défaut) = ancré bas-gauche.
+   * `center` = centré horizontalement + verticalement (cartes sans image, ex.
+   * fiches / auto-évaluations : le titre occupe le centre de la carte).
+   */
+  align?: 'bottom' | 'center'
   /** Bloc bas en overlay : titre + sous-titre / CTA. */
   children: ReactNode
 }
@@ -112,6 +118,7 @@ export default function MediaCard({
   topRight,
   aspect = 'portrait',
   size = 'default',
+  align = 'bottom',
   children,
 }: MediaCardProps) {
   const className = 'flex-shrink-0 snap-start rounded-2xl overflow-hidden block text-left'
@@ -119,6 +126,7 @@ export default function MediaCard({
     ...mediaCardSizeStyle(aspect, size),
     position: 'relative',
     border: '0.5px solid #333',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
   }
 
   const inner = (
@@ -177,21 +185,38 @@ export default function MediaCard({
         </div>
       )}
 
-      {/* Bloc bas */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: '10px',
-          left: '10px',
-          right: '10px',
-          zIndex: 3,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px',
-        }}
-      >
-        {children}
-      </div>
+      {/* Bloc titre — ancré bas (défaut) ou centré (cartes sans image) */}
+      {align === 'center' ? (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 3,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            padding: '14px',
+          }}
+        >
+          {children}
+        </div>
+      ) : (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '10px',
+            left: '10px',
+            right: '10px',
+            zIndex: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '6px',
+          }}
+        >
+          {children}
+        </div>
+      )}
     </>
   )
 

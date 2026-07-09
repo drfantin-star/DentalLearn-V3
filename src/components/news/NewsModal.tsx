@@ -137,6 +137,15 @@ export default function NewsModal({ newsId, onClose }: Props) {
                 {synthesis.display_title}
               </h2>
 
+              {/* Source (nom du journal) sous le titre : texte discret, pas de
+                  badge. Rien affiché si le champ est vide (fallback propre). */}
+              {source?.journal_name ? (
+                <p className="mt-1 text-sm text-white/90">
+                  <span className="text-white/55">Source : </span>
+                  {source.journal_name}
+                </p>
+              ) : null}
+
               {/* Player épuré juste sous le titre : bouton vague seul, glow
                   teal sur le bouton (token glow-accent), sans conteneur
                   carte, sans libellé ni durée. */}
@@ -249,7 +258,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
                   href={sourceHref}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block mt-5 text-xs text-blue-400 hover:underline"
+                  className="inline-block mt-5 text-sm font-medium text-blue-300 underline underline-offset-2 hover:text-blue-200"
                 >
                   Accéder à l’article →
                 </a>

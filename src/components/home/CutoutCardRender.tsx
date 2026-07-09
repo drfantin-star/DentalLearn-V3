@@ -21,6 +21,12 @@ interface CutoutCardRenderProps {
    * - "theme" : ratio 3/2, illustration plein fond object-contain centrée + glow doux — grilles Explorer.
    */
   variant?: 'landscape' | 'compact' | 'theme'
+  /** Opacité de l'objet détouré (variant landscape). Défaut 0.9. Baissée
+   *  pour les cartes "Dernières actus" afin d'atténuer la cover. */
+  imageOpacity?: number
+  /** Facteur d'échelle de l'objet détouré (variant landscape). Défaut 1.
+   *  Réduit pour les cartes "Dernières actus". */
+  imageScale?: number
 }
 
 /**
@@ -36,6 +42,8 @@ export default function CutoutCardRender({
   title,
   progress,
   variant = 'landscape',
+  imageOpacity = 0.9,
+  imageScale = 1,
 }: CutoutCardRenderProps) {
   if (variant === 'compact') {
     return <CutoutCompact cutoutSrc={cutoutSrc} colorFrom={colorFrom} />
@@ -86,7 +94,8 @@ export default function CutoutCardRender({
         }}
       />
 
-      {/* Objet détouré — flotte à droite, jamais rogné */}
+      {/* Objet détouré — resserré à droite pour laisser une vraie colonne de
+          texte à gauche (titre affiché en entier). */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={cutoutSrc}
@@ -94,15 +103,30 @@ export default function CutoutCardRender({
         aria-hidden="true"
         style={{
           position: 'absolute',
-          right: '-4%',
-          top: '2%',
-          width: '72%',
-          height: '88%',
+          right: '-2%',
+          top: '8%',
+          width: '58%',
+          height: '82%',
           objectFit: 'contain',
           objectPosition: 'center bottom',
           zIndex: 2,
-          opacity: 0.88,
+          opacity: imageOpacity,
+          transform: `scale(${imageScale})`,
+          transformOrigin: 'center bottom',
           filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.5))',
+        }}
+      />
+
+      {/* Voile gauche — ancre et lisibilise la colonne de titre par-dessus le
+          dégradé, quelle que soit la couleur. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'linear-gradient(to right, rgba(0,0,0,0.74) 0%, rgba(0,0,0,0.45) 40%, transparent 66%)',
+          zIndex: 3,
         }}
       />
 
@@ -136,28 +160,39 @@ export default function CutoutCardRender({
         </div>
       )}
 
-      {/* Titre — bas gauche, laisse de la place à l'objet détouré */}
-      <p
+      {/* Titre — colonne gauche (l'objet détouré occupe la droite), CENTRÉ
+          verticalement : le titre s'affiche en entier (jusqu'à 5 lignes),
+          équilibré quelle que soit la hauteur de carte, sans chevaucher
+          l'icône ni déborder à droite. */}
+      <div
         style={{
           position: 'absolute',
-          bottom: showProgress ? '18px' : '14px',
-          left: '10px',
-          right: '48%',
+          top: 0,
+          bottom: showProgress ? '4px' : 0,
+          left: '14px',
+          right: '40%',
           zIndex: 4,
-          margin: 0,
-          fontSize: '13px',
-          fontWeight: 700,
-          color: 'white',
-          lineHeight: 1.25,
-          textShadow: '0 2px 6px rgba(0,0,0,0.8)',
-          display: '-webkit-box',
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
         }}
       >
-        {title}
-      </p>
+        <p
+          style={{
+            margin: 0,
+            fontSize: '13px',
+            fontWeight: 700,
+            color: 'white',
+            lineHeight: 1.28,
+            textShadow: '0 2px 6px rgba(0,0,0,0.85)',
+            display: '-webkit-box',
+            WebkitLineClamp: 5,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+        >
+          {title}
+        </p>
+      </div>
 
       {/* Barre de progression — optionnelle, tout en bas */}
       {showProgress && (

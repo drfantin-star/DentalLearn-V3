@@ -290,6 +290,7 @@ export default function NewsPage() {
                       key={item.id}
                       news={item}
                       variant="grid"
+                      hideBadge
                       onClick={(n) => setModalNewsId(n.id)}
                     />
                   ))}
