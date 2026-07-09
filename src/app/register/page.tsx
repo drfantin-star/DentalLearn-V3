@@ -29,7 +29,13 @@ export default async function RegisterPage({
 }) {
   const params = await searchParams
 
-  if (isInviteValid(params.invite)) {
+  // La porte s'ouvre en grand si les inscriptions publiques sont ouvertes
+  // (NEXT_PUBLIC_REGISTRATION_OPEN=true, meme flag que la page login) OU si un
+  // code d'invitation valide est fourni. Sinon : waitlist. Flag absent/!= true
+  // + pas d'invite => comportement beta actuel inchange.
+  const registrationOpen = process.env.NEXT_PUBLIC_REGISTRATION_OPEN === 'true'
+
+  if (registrationOpen || isInviteValid(params.invite)) {
     return <RegisterForm />
   }
 
