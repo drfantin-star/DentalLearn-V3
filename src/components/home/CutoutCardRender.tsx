@@ -86,7 +86,8 @@ export default function CutoutCardRender({
         }}
       />
 
-      {/* Objet détouré — flotte à droite, jamais rogné */}
+      {/* Objet détouré — resserré à droite pour laisser une vraie colonne de
+          texte à gauche (titre affiché en entier). */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={cutoutSrc}
@@ -94,15 +95,28 @@ export default function CutoutCardRender({
         aria-hidden="true"
         style={{
           position: 'absolute',
-          right: '-4%',
-          top: '2%',
-          width: '72%',
-          height: '88%',
+          right: '-2%',
+          top: '8%',
+          width: '58%',
+          height: '82%',
           objectFit: 'contain',
           objectPosition: 'center bottom',
           zIndex: 2,
-          opacity: 0.88,
+          opacity: 0.9,
           filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.5))',
+        }}
+      />
+
+      {/* Voile gauche — ancre et lisibilise la colonne de titre par-dessus le
+          dégradé, quelle que soit la couleur. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'linear-gradient(to right, rgba(0,0,0,0.74) 0%, rgba(0,0,0,0.45) 40%, transparent 66%)',
+          zIndex: 3,
         }}
       />
 
@@ -136,44 +150,31 @@ export default function CutoutCardRender({
         </div>
       )}
 
-      {/* Titre — occupe toute la carte et HABILLE l'objet détouré (bas-droite)
-          via un spacer flottant + shape-outside : le titre remonte en haut et
-          s'affiche en entier, en contournant l'icône plutôt qu'en étant tronqué
-          dans le coin bas-gauche. */}
-      <div
+      {/* Titre — colonne gauche (l'objet détouré occupe la droite), ancré en
+          bas et grandissant vers le haut : le titre s'affiche en entier
+          (jusqu'à 6 lignes) sans jamais chevaucher l'icône ni déborder à
+          droite. */}
+      <p
         style={{
           position: 'absolute',
-          top: '10px',
+          bottom: showProgress ? '14px' : '12px',
           left: '12px',
-          right: '10px',
-          bottom: showProgress ? '12px' : '10px',
+          right: '40%',
           zIndex: 4,
+          margin: 0,
+          fontSize: '12px',
+          fontWeight: 700,
+          color: 'white',
+          lineHeight: 1.25,
+          textShadow: '0 2px 6px rgba(0,0,0,0.85)',
+          display: '-webkit-box',
+          WebkitLineClamp: 6,
+          WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
         }}
       >
-        <p
-          style={{
-            margin: 0,
-            height: '100%',
-            fontSize: '13px',
-            fontWeight: 700,
-            color: 'white',
-            lineHeight: 1.28,
-            textShadow: '0 2px 6px rgba(0,0,0,0.9)',
-          }}
-        >
-          <span
-            aria-hidden="true"
-            style={{
-              float: 'right',
-              width: '54%',
-              height: '100%',
-              shapeOutside: 'polygon(0% 50%, 100% 50%, 100% 100%, 0% 100%)',
-            }}
-          />
-          {title}
-        </p>
-      </div>
+        {title}
+      </p>
 
       {/* Barre de progression — optionnelle, tout en bas */}
       {showProgress && (
