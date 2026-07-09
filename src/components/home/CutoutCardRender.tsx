@@ -136,28 +136,44 @@ export default function CutoutCardRender({
         </div>
       )}
 
-      {/* Titre — bas gauche, laisse de la place à l'objet détouré */}
-      <p
+      {/* Titre — occupe toute la carte et HABILLE l'objet détouré (bas-droite)
+          via un spacer flottant + shape-outside : le titre remonte en haut et
+          s'affiche en entier, en contournant l'icône plutôt qu'en étant tronqué
+          dans le coin bas-gauche. */}
+      <div
         style={{
           position: 'absolute',
-          bottom: showProgress ? '18px' : '14px',
-          left: '10px',
-          right: '48%',
+          top: '10px',
+          left: '12px',
+          right: '10px',
+          bottom: showProgress ? '12px' : '10px',
           zIndex: 4,
-          margin: 0,
-          fontSize: '13px',
-          fontWeight: 700,
-          color: 'white',
-          lineHeight: 1.25,
-          textShadow: '0 2px 6px rgba(0,0,0,0.8)',
-          display: '-webkit-box',
-          WebkitLineClamp: 3,
-          WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
         }}
       >
-        {title}
-      </p>
+        <p
+          style={{
+            margin: 0,
+            height: '100%',
+            fontSize: '13px',
+            fontWeight: 700,
+            color: 'white',
+            lineHeight: 1.28,
+            textShadow: '0 2px 6px rgba(0,0,0,0.9)',
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              float: 'right',
+              width: '54%',
+              height: '100%',
+              shapeOutside: 'polygon(0% 50%, 100% 50%, 100% 100%, 0% 100%)',
+            }}
+          />
+          {title}
+        </p>
+      </div>
 
       {/* Barre de progression — optionnelle, tout en bas */}
       {showProgress && (

@@ -85,6 +85,9 @@ export default function ForYouCard({ item }: { item: ForYouItem }) {
       coverAlt={item.title}
       coverFit={isFormationCover ? 'contain' : 'cover'}
       coverBackground={isFormationCover ? coverBg : undefined}
+      // Sans image (fiche / auto-évaluation) : titre centré H+V. Avec cover :
+      // titre ancré en bas.
+      align={item.cover ? 'bottom' : 'center'}
       fallback={
         <div
           style={{
@@ -109,10 +112,10 @@ export default function ForYouCard({ item }: { item: ForYouItem }) {
           color: 'white',
           lineHeight: 1.3,
           display: '-webkit-box',
-          WebkitLineClamp: 3,
+          WebkitLineClamp: item.cover ? 4 : 5,
           WebkitBoxOrient: 'vertical',
           overflow: 'hidden',
-          textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+          textShadow: '0 1px 3px rgba(0,0,0,0.6)',
         }}
       >
         {item.title}
