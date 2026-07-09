@@ -21,6 +21,9 @@ interface CutoutCardRenderProps {
    * - "theme" : ratio 3/2, illustration plein fond object-contain centrée + glow doux — grilles Explorer.
    */
   variant?: 'landscape' | 'compact' | 'theme'
+  /** Opacité de l'objet détouré (variant landscape). Défaut 0.9. Baissée
+   *  pour les cartes "Dernières actus" afin d'atténuer la cover. */
+  imageOpacity?: number
 }
 
 /**
@@ -36,6 +39,7 @@ export default function CutoutCardRender({
   title,
   progress,
   variant = 'landscape',
+  imageOpacity = 0.9,
 }: CutoutCardRenderProps) {
   if (variant === 'compact') {
     return <CutoutCompact cutoutSrc={cutoutSrc} colorFrom={colorFrom} />
@@ -102,7 +106,7 @@ export default function CutoutCardRender({
           objectFit: 'contain',
           objectPosition: 'center bottom',
           zIndex: 2,
-          opacity: 0.9,
+          opacity: imageOpacity,
           filter: 'drop-shadow(0 8px 20px rgba(0,0,0,0.5))',
         }}
       />
