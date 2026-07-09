@@ -29,6 +29,84 @@ function sanitizeSearchTerm(q: string): string {
   return q.replace(/[,()%]/g, '').trim()
 }
 
+type AudioState = 'published' | 'ready' | 'none'
+
+function hasAudio(url: unknown): boolean {
+  return typeof url === 'string' && url.trim().length > 0
+}
+
+// Calcule en UNE requête groupée l'état audio de chaque synthèse affichée.
+// Chemin : news_episode_items.synthesis_id → news_episodes (type='insight').
+//   1. 'published' s'il existe ≥1 épisode insight lié publié avec audio.
+//   2. sinon 'ready' s'il existe ≥1 épisode insight lié avec audio (non publié).
+//   3. sinon 'none'.
+async function computeAudioStates(
+  adminSupabase: ReturnType<typeof createAdminClient>,
+  synthesisIds: string[],
+): Promise<Map<string, AudioState>> {
+  const result = new Map<string, AudioState>()
+  if (synthesisIds.length === 0) return result
+
+  // synthesis_id NULL (hard-delete legacy) est écarté par .in().
+  const { data: itemRows, error: itemErr } = await adminSupabase
+    .from('news_episode_items')
+    .select('synthesis_id, episode_id')
+    .in('synthesis_id', synthesisIds)
+
+  if (itemErr) {
+    console.error('Erreur lecture news_episode_items (audio state):', itemErr)
+    return result
+  }
+
+  const episodeIds = Array.from(
+    new Set(
+      (itemRows ?? [])
+        .map((r: { episode_id: string | null }) => r.episode_id)
+        .filter((id): id is string => !!id),
+    ),
+  )
+  if (episodeIds.length === 0) return result
+
+  const { data: episodeRows, error: epErr } = await adminSupabase
+    .from('news_episodes')
+    .select('id, status, audio_url')
+    .in('id', episodeIds)
+    .eq('type', 'insight')
+
+  if (epErr) {
+    console.error('Erreur lecture news_episodes (audio state):', epErr)
+    return result
+  }
+
+  const episodeById = new Map<
+    string,
+    { status: string; audio_url: string | null }
+  >()
+  for (const e of episodeRows ?? []) {
+    episodeById.set(e.id as string, {
+      status: (e.status as string) ?? '',
+      audio_url: (e.audio_url as string | null) ?? null,
+    })
+  }
+
+  // Agrège l'état par synthèse : published prime sur ready prime sur none.
+  for (const row of itemRows ?? []) {
+    const synthesisId = row.synthesis_id as string | null
+    if (!synthesisId) continue
+    const episode = episodeById.get(row.episode_id as string)
+    if (!episode || !hasAudio(episode.audio_url)) continue
+
+    const current = result.get(synthesisId) ?? 'none'
+    if (episode.status === 'published') {
+      result.set(synthesisId, 'published')
+    } else if (current !== 'published') {
+      result.set(synthesisId, 'ready')
+    }
+  }
+
+  return result
+}
+
 // GET: Liste paginée des synthèses news avec filtres
 export async function GET(request: Request) {
   try {
@@ -130,9 +208,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
+    const audioStates = await computeAudioStates(
+      adminSupabase,
+      (data ?? []).map((row: any) => row.id as string),
+    )
+
     const syntheses = (data ?? []).map((row: any) => {
       const base = {
         id: row.id,
+        audioState: audioStates.get(row.id) ?? 'none',
         display_title: row.display_title,
         summary_fr: truncate(row.summary_fr, SUMMARY_TRUNCATE_CHARS),
         specialite: row.specialite,
