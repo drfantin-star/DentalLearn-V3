@@ -251,33 +251,15 @@ export async function POST(
     const wordCount = countWords(scriptMd)
     const estimatedDurationMin = wordCount > 0 ? wordCount / 150 : 0
 
-    // Archivage défensif sur (type, week_iso) juste avant l'INSERT.
-    // L'archivage du step 4 ne couvre que les épisodes liés à la synthèse
-    // courante via news_episode_items. La contrainte unique
-    // news_episodes_type_week_uniq porte sur (type, week_iso) WHERE
-    // status <> 'archived' — un épisode orphelin (step 8 ayant échoué
-    // antérieurement) ou tout autre épisode actif partageant la clé
-    // bloquerait l'INSERT. On archive ici tout épisode actif partageant
-    // la clé du nouvel INSERT pour garantir que la contrainte unique est
-    // libérée avant le step suivant.
+    // Semaine ISO courante — informative pour les insights. Depuis la
+    // migration 20260709a, l'index d'unicité hebdo news_episodes_type_week_uniq
+    // NE s'applique PLUS au type 'insight' : plusieurs insights peuvent
+    // coexister la même semaine (un par synthèse). On ne fait donc PLUS
+    // d'archivage hebdomadaire ici (il archivait à tort les insights des
+    // autres synthèses). La règle "1 insight actif par synthèse" est garantie
+    // par le step 4 (archivage des épisodes de LA MÊME synthèse) et, en
+    // défense DB, par le trigger news_episode_items_one_active_insight.
     const currentWeek = getCurrentIsoWeek()
-    const { error: weekArchiveError } = await adminSupabase
-      .from('news_episodes')
-      .update({ status: 'archived' })
-      .eq('type', 'insight')
-      .eq('week_iso', currentWeek)
-      .neq('status', 'archived')
-
-    if (weekArchiveError) {
-      console.error(
-        'Erreur archivage défensif (type, week_iso):',
-        weekArchiveError,
-      )
-      return NextResponse.json(
-        { error: weekArchiveError.message },
-        { status: 500 },
-      )
-    }
 
     const { data: episode, error: insertError } = await adminSupabase
       .from('news_episodes')
