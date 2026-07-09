@@ -8,6 +8,8 @@ import { useAutoevalCompletions } from '@/lib/autoeval/useAutoevalCompletions'
 import { AttestationCard } from '@/components/profile/attestations/AttestationCard'
 import { AttestationEmptyState } from '@/components/profile/attestations/AttestationEmptyState'
 import AutoevalAttestationTab from '@/components/profile/attestations/AutoevalAttestationTab'
+import { EppActionPlanCard } from '@/components/profile/attestations/EppActionPlanCard'
+import { useEppActionPlans } from '@/lib/hooks/useEppActionPlans'
 
 type TabType = 'formation_online' | 'epp' | 'action_cnp_info_patient' | 'autoeval'
 
@@ -15,6 +17,7 @@ export default function MaCertifAttestationsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('formation_online')
   const { formationOnline, epp, actionF, loading, error } = useUserAttestations()
   const autoeval = useAutoevalCompletions()
+  const { plans: actionPlans, loading: plansLoading } = useEppActionPlans()
 
   const currentList =
     activeTab === 'formation_online'
@@ -39,7 +42,7 @@ export default function MaCertifAttestationsPage() {
           </Link>
           <div>
             <h1 className="font-bold text-white text-lg leading-tight">
-              Mes attestations
+              Mes attestations et documents
             </h1>
             <p className="text-xs text-white/55">
               Certificats Qualiopi · QUA006589
@@ -138,7 +141,8 @@ export default function MaCertifAttestationsPage() {
               </div>
             )}
 
-            {!loading && !error && currentList.length === 0 && (
+            {!loading && !error && currentList.length === 0 &&
+              !(activeTab === 'epp' && (actionPlans.length > 0 || plansLoading)) && (
               <AttestationEmptyState type={activeTab} />
             )}
 
@@ -147,6 +151,20 @@ export default function MaCertifAttestationsPage() {
                 {currentList.map(attestation => (
                   <AttestationCard key={attestation.id} attestation={attestation} />
                 ))}
+              </div>
+            )}
+
+            {/* Plans d'action EPP sauvegardes (Tour 1) */}
+            {!error && activeTab === 'epp' && actionPlans.length > 0 && (
+              <div className={currentList.length > 0 ? 'mt-8' : ''}>
+                <h2 className="text-sm font-semibold text-white/70 mb-3 px-1">
+                  Plans d&apos;action sauvegardes
+                </h2>
+                <div className="space-y-3">
+                  {actionPlans.map(plan => (
+                    <EppActionPlanCard key={plan.sessionId} plan={plan} />
+                  ))}
+                </div>
               </div>
             )}
 
