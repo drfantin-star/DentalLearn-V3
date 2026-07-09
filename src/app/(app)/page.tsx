@@ -319,7 +319,7 @@ export default function HomePage() {
           ref={(el) => {
             newsScrollRefs.current[title] = el
           }}
-          className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide -mx-4 px-4 pb-2"
+          className="flex gap-3 overflow-x-auto scroll-smooth scrollbar-hide pb-2"
         >
           {headerCard}
           {items.map((item) => (
@@ -450,7 +450,7 @@ export default function HomePage() {
               </button>
               <div
                 ref={reprendreScrollRef}
-                className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+                className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory"
               >
                 {inProgressFormations.map((f) => {
                   const config = getCategoryConfig(f.category)
@@ -563,7 +563,7 @@ export default function HomePage() {
               </button>
               <div
                 ref={forYouScrollRef}
-                className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+                className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory"
               >
                 {pourToiItems.map((item) => (
                   <ForYouCard key={item.id} item={item} />
@@ -596,7 +596,7 @@ export default function HomePage() {
               </button>
               <div
                 ref={ressourcesScrollRef}
-                className="flex gap-2.5 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-2 snap-x snap-mandatory"
+                className="flex gap-2.5 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory"
               >
                 {ressourcesItems.map((item) => (
                   <ForYouCard key={item.id} item={item} />
