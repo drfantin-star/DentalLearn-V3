@@ -19,6 +19,7 @@ import {
   Plus,
   Database,
   Inbox,
+  Mic,
 } from 'lucide-react'
 import { ALLOWED_FORMATION_CATEGORIES } from '@/lib/constants/news'
 import { describeCardDate, formatDate } from '@/lib/news-display'
@@ -106,6 +107,7 @@ interface Synthesis {
   created_at: string
   published_at: string | null
   ingested_at: string | null
+  audioState: 'published' | 'ready' | 'none'
 }
 
 interface ListResponse {
@@ -530,6 +532,22 @@ function NewsListPage() {
 
 // ---------- Card ----------
 
+// Icône micro reflétant l'état audio de la synthèse :
+//   published → micro vert   ; ready → micro gris   ; none → rien.
+function AudioStateIcon({ state }: { state: Synthesis['audioState'] }) {
+  if (state === 'none') return null
+  const isPublished = state === 'published'
+  const label = isPublished ? 'Audio publié' : 'Audio prêt (non publié)'
+  return (
+    <span title={label} aria-label={label} role="img" className="flex-shrink-0 mt-0.5">
+      <Mic
+        className={`w-4 h-4 ${isPublished ? 'text-emerald-600' : 'text-gray-400'}`}
+        aria-hidden="true"
+      />
+    </span>
+  )
+}
+
 function SynthesisCard({ synthesis }: { synthesis: Synthesis }) {
   const dateInfo = describeCardDate(synthesis.published_at, synthesis.created_at)
   const editorialBadge = synthesis.category_editorial
@@ -541,9 +559,12 @@ function SynthesisCard({ synthesis }: { synthesis: Synthesis }) {
       href={`/admin/news/${synthesis.id}`}
       className="block bg-white rounded-2xl shadow-lg p-5 hover:shadow-xl hover:-translate-y-0.5 transition-all"
     >
-      <h3 className="font-semibold text-base text-gray-900 line-clamp-2 mb-3">
-        {synthesis.display_title || 'Sans titre'}
-      </h3>
+      <div className="flex items-start gap-1.5 mb-3">
+        <h3 className="font-semibold text-base text-gray-900 line-clamp-2 flex-1">
+          {synthesis.display_title || 'Sans titre'}
+        </h3>
+        <AudioStateIcon state={synthesis.audioState} />
+      </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">
         {synthesis.specialite && (
