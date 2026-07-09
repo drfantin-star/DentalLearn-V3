@@ -141,6 +141,7 @@ export default function NewsModal({ newsId, onClose }: Props) {
                   badge. Rien affiché si le champ est vide (fallback propre). */}
               {source?.journal_name ? (
                 <p className="mt-1 text-sm text-white/90">
+                  <span className="text-white/55">Source : </span>
                   {source.journal_name}
                 </p>
               ) : null}
