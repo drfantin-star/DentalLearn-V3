@@ -62,13 +62,14 @@ export function HomeFeedCard({
         boxShadow: '0 2px 12px rgba(0,0,0,0.4)',
       }}
     >
-      {/* Bouton info secondaire — haut-droite */}
+      {/* Bouton info secondaire — a gauche de l'icone ronde (sinon masque
+          derriere l'icone Sophie). Centre verticalement sur l'icone. */}
       {infoAction && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); infoAction.onClick() }}
           aria-label={infoAction.ariaLabel}
-          className="absolute top-3 right-3 flex items-center justify-center w-8 h-8 rounded-full text-neutral-300 hover:bg-white/5 z-10"
+          className="absolute top-1/2 -translate-y-1/2 right-[128px] flex items-center justify-center w-8 h-8 rounded-full text-neutral-300 hover:bg-white/5 z-10"
           style={{ background: 'rgba(255,255,255,0.06)' }}
         >
           <Info size={15} />
