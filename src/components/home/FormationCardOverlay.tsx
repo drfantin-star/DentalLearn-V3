@@ -47,7 +47,6 @@ export default function FormationCardOverlay({
         <CutoutCardRender
           cutoutSrc={formation.cover_cutout_url!}
           colorFrom={catConfig.gradient.from}
-          eyebrow={catConfig.shortName}
           title={formation.title}
           progress={pct}
         />
@@ -79,33 +78,6 @@ export default function FormationCardOverlay({
               background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)',
             }}
           />
-
-          <div
-            style={{
-              position: 'absolute',
-              top: '10px',
-              left: '10px',
-              zIndex: 2,
-              background: 'rgba(0,0,0,0.5)',
-              backdropFilter: 'blur(6px)',
-              WebkitBackdropFilter: 'blur(6px)',
-              borderRadius: '100px',
-              padding: '3px 8px',
-              border: '0.5px solid rgba(255,255,255,0.15)',
-            }}
-          >
-            <span
-              style={{
-                fontSize: '10px',
-                fontWeight: 600,
-                color: 'rgba(255,255,255,0.8)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.07em',
-              }}
-            >
-              FORMATION
-            </span>
-          </div>
 
           <p
             style={{

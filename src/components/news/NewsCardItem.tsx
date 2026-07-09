@@ -7,7 +7,7 @@ import NewsCardSVG, { SPECIALITE_COLORS, NEWS_DEFAULT_COLOR } from './NewsCardSV
 import Badge, { type BadgeVariant } from '@/components/ui/Badge'
 import MediaCard, { mediaCardSizeStyle } from '@/components/home/MediaCard'
 import CutoutCardRender from '@/components/home/CutoutCardRender'
-import { getNewsCoverChain, getSpecialiteGradient, getNewsCutoutUrl, getSpecialiteColor } from '@/lib/news-cover'
+import { getNewsCoverChain, getNewsCutoutUrl, getSpecialiteColor } from '@/lib/news-cover'
 
 interface Props {
   news: NewsCard
@@ -115,38 +115,58 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
   }
 
   // ── Variant carousel + hideCover (rangees thematiques Home uniquement) ────
-  // Pas d'image : fond = degrade specialite a 70% d'opacite + titre en grand.
+  // Pas d'image : degrade radial specialite + voile bas + titre bas-gauche +
+  // ombre — meme langage visuel que les cartes "Reprendre" (CutoutCardRender
+  // landscape), pour une home uniforme.
   if (hideCover) {
+    const themeColor = getSpecialiteColor(news.specialite)
     return (
       <button
         type="button"
         onClick={() => onClick(news)}
         aria-label={news.display_title}
-        className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform duration-150"
+        className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform duration-150 relative"
         style={{
           ...mediaCardSizeStyle('landscape'),
-          position: 'relative',
-          border: '0.5px solid #333',
-          background: getSpecialiteGradient(news.specialite),
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '14px',
+          border: '0.5px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
         }}
       >
+        {/* Fond degrade radial pilote par la specialite */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: `radial-gradient(ellipse at 70% 40%, ${themeColor}cc 0%, ${themeColor}44 55%, #0d0d1a 100%)`,
+          }}
+        />
+        {/* Voile sombre bas pour lisibilite du titre */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)',
+          }}
+        />
+        {/* Titre bas-gauche */}
         <p
           style={{
-            fontSize: '15px',
+            position: 'absolute',
+            bottom: '12px',
+            left: '12px',
+            right: '12px',
+            margin: 0,
+            fontSize: '14px',
             fontWeight: 700,
             color: 'white',
             lineHeight: 1.3,
-            textAlign: 'center',
-            textShadow: '0 1px 4px rgba(0,0,0,0.7)',
+            textShadow: '0 2px 6px rgba(0,0,0,0.8)',
             display: '-webkit-box',
-            WebkitLineClamp: 4,
+            WebkitLineClamp: 3,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
-            margin: 0,
           }}
         >
           {news.display_title}

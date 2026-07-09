@@ -119,6 +119,7 @@ export default function MediaCard({
     ...mediaCardSizeStyle(aspect, size),
     position: 'relative',
     border: '0.5px solid #333',
+    boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
   }
 
   const inner = (
