@@ -5,6 +5,7 @@ import { X, Play, ExternalLink } from 'lucide-react'
 import { useAudioPlayer } from '@/context/AudioPlayerContext'
 import { NEWS_SPECIALITE_LABELS } from '@/lib/constants/news'
 import { NewsVisualSequence } from '@/components/news/NewsVisualSequence'
+import WavePlayButton from '@/components/WavePlayButton'
 import { TimelineSchema, type Timeline } from '@/lib/timeline/schema'
 import type { JournalEpisode } from '@/types/news'
 
@@ -34,6 +35,14 @@ export function JournalDetailModal({ journal, onClose }: Props) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [currentSynthesisIndex, setCurrentSynthesisIndex] = useState(0)
   const [audioIsPlaying, setAudioIsPlaying] = useState(false)
+  const [progressPercent, setProgressPercent] = useState(0)
+
+  function handleTogglePlay() {
+    const el = audioRef.current
+    if (!el) return
+    if (el.paused) void el.play()
+    else el.pause()
+  }
 
   useEffect(() => {
     if (!journal.timeline_url || !journal.timeline_published) return
@@ -54,8 +63,10 @@ export function JournalDetailModal({ journal, onClose }: Props) {
   // Branche le player audio interne de la modal → indice synthèse courante
   // depuis chapters[i].start_sec/end_sec (alignement par chapitre Q-T8-3=b).
   function handleTimeUpdate(e: React.SyntheticEvent<HTMLAudioElement>) {
+    const el = e.currentTarget
+    setProgressPercent(el.duration > 0 ? (el.currentTime / el.duration) * 100 : 0)
     if (!timeline) return
-    const t = e.currentTarget.currentTime
+    const t = el.currentTime
     const idx = timeline.chapters.findIndex(
       (c) => t >= c.start_sec && t < c.end_sec,
     )
@@ -71,9 +82,10 @@ export function JournalDetailModal({ journal, onClose }: Props) {
         className="bg-gray-900 rounded-t-3xl sm:rounded-3xl w-full max-w-2xl max-h-[85vh] overflow-y-auto p-6 pb-8"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* En-tête */}
-        <div className="flex items-start justify-between mb-4">
-          <div>
+        {/* En-tête — lecteur vague a droite, aligne sur la 2e ligne
+            (titre) et la ligne d'infos (source). Bouton fermer au-dessus. */}
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-teal-400 text-sm font-bold">🎙️ Journal de la semaine</span>
             </div>
@@ -85,15 +97,38 @@ export function JournalDetailModal({ journal, onClose }: Props) {
               {durationLabel ? ` · ${durationLabel}` : ''}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors ml-4 shrink-0"
-            aria-label="Fermer"
-          >
-            <X size={22} />
-          </button>
+          <div className="flex flex-col items-end gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-colors"
+              aria-label="Fermer"
+            >
+              <X size={22} />
+            </button>
+            <WavePlayButton
+              isPlaying={audioIsPlaying}
+              progressPercent={progressPercent}
+              onToggle={handleTogglePlay}
+              sizeClassName="w-14 h-14"
+              iconSize={20}
+              ariaLabel={audioIsPlaying ? 'Mettre le journal en pause' : 'Écouter le journal'}
+              className="glow-accent"
+            />
+          </div>
         </div>
+        {/* Élément audio caché : le WavePlayButton est la seule surface de
+            contrôle (pas de controles natifs ni vitesse, contrainte produit). */}
+        <audio
+          ref={audioRef}
+          src={journal.audio_url}
+          preload="metadata"
+          className="hidden"
+          onTimeUpdate={handleTimeUpdate}
+          onPlay={() => setAudioIsPlaying(true)}
+          onPause={() => setAudioIsPlaying(false)}
+          onEnded={() => setAudioIsPlaying(false)}
+        />
 
         {/* Sommaire */}
         <div className="mb-5">
@@ -163,21 +198,6 @@ export function JournalDetailModal({ journal, onClose }: Props) {
             </div>
           </div>
         )}
-
-        {/* Player audio HTML5 — pas de contrôle vitesse (contrainte produit) */}
-        <div className="mb-4">
-          <audio
-            ref={audioRef}
-            controls
-            src={journal.audio_url}
-            onTimeUpdate={handleTimeUpdate}
-            onPlay={() => setAudioIsPlaying(true)}
-            onPause={() => setAudioIsPlaying(false)}
-            onEnded={() => setAudioIsPlaying(false)}
-            className="w-full"
-            style={{ height: '40px' }}
-          />
-        </div>
 
         {/* T8 — Panneau visuel défilant aligné par chapitre (maquette γ).
             Affiché uniquement si timeline présente + parsée OK (Q-T8-6=a). */}

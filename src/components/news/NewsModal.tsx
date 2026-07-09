@@ -133,46 +133,60 @@ export default function NewsModal({ newsId, onClose }: Props) {
             <p className="text-sm text-white/55">Aucune donnee.</p>
           ) : (
             <>
-              <h2 className="text-xl font-bold text-white pr-10">
-                {synthesis.display_title}
-              </h2>
+              {/* En-tête — titre + source a gauche, lecteur vague a droite
+                  aligne sur la 2e ligne du titre et la source (items-end).
+                  pr-12 : laisse la place au bouton fermer absolu (top-right). */}
+              <div className="flex items-end justify-between gap-4 pr-12">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-xl font-bold text-white">
+                    {synthesis.display_title}
+                  </h2>
+                  {source?.journal_name ? (
+                    <p className="text-sm text-white/50 mt-1">
+                      Source : {source.journal_name}
+                    </p>
+                  ) : null}
+                </div>
 
-              {/* Player épuré juste sous le titre : bouton vague seul, glow
-                  teal sur le bouton (token glow-accent), sans conteneur
-                  carte, sans libellé ni durée. */}
-              {episode ? (
-                <div className="mt-4">
+                {/* Player épuré : bouton vague seul, glow teal (token
+                    glow-accent), sans conteneur carte, sans libellé ni durée. */}
+                {episode ? (
                   <WavePlayButton
                     isPlaying={isPlaying}
                     progressPercent={progressPercent}
                     onToggle={handleTogglePlay}
+                    sizeClassName="w-14 h-14"
+                    iconSize={20}
                     ariaLabel={
                       isPlaying
                         ? 'Mettre la synthèse audio en pause'
                         : 'Écouter la synthèse audio'
                     }
-                    className="glow-accent"
+                    className="glow-accent shrink-0"
                   />
-                  {/* Élément audio caché : ni contrôles natifs, ni vitesse,
-                      ni menu — le WavePlayButton est la seule surface. */}
-                  <audio
-                    ref={audioRef}
-                    src={episode.audio_url}
-                    preload="metadata"
-                    className="hidden"
-                    onPlay={() => setIsPlaying(true)}
-                    onPause={() => setIsPlaying(false)}
-                    onEnded={() => setIsPlaying(false)}
-                    onTimeUpdate={(e) => {
-                      const el = e.currentTarget
-                      setProgressPercent(
-                        el.duration > 0
-                          ? (el.currentTime / el.duration) * 100
-                          : 0,
-                      )
-                    }}
-                  />
-                </div>
+                ) : null}
+              </div>
+
+              {/* Élément audio caché : ni contrôles natifs, ni vitesse,
+                  ni menu — le WavePlayButton est la seule surface. */}
+              {episode ? (
+                <audio
+                  ref={audioRef}
+                  src={episode.audio_url}
+                  preload="metadata"
+                  className="hidden"
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onEnded={() => setIsPlaying(false)}
+                  onTimeUpdate={(e) => {
+                    const el = e.currentTarget
+                    setProgressPercent(
+                      el.duration > 0
+                        ? (el.currentTime / el.duration) * 100
+                        : 0,
+                    )
+                  }}
+                />
               ) : null}
 
               {/* T8 — carte récap statique si la synthèse appartient à un
