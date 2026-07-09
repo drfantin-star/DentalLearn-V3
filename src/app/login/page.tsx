@@ -120,14 +120,19 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Pas encore de compte ?{' '}
-            <Link href="/register" className="text-primary font-medium hover:underline">
-              S&apos;inscrire
-            </Link>
-          </p>
-        </div>
+        {/* Lien d'inscription masque pendant la beta privee (inscriptions
+            publiques fermees). Reouverture : definir NEXT_PUBLIC_REGISTRATION_OPEN=true
+            dans Vercel + redeploy. Variable absente => lien masque par defaut. */}
+        {process.env.NEXT_PUBLIC_REGISTRATION_OPEN === 'true' && (
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Pas encore de compte ?{' '}
+              <Link href="/register" className="text-primary font-medium hover:underline">
+                S&apos;inscrire
+              </Link>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
