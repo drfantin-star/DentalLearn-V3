@@ -30,6 +30,7 @@ import { INTEREST_TO_NEWS_THEME, NEWS_SPECIALITE_LABELS } from '@/lib/constants/
 import { NEWS_CUTOUTS_BASE, getSpecialiteColor } from '@/lib/news-cover'
 import CutoutCardRender from '@/components/home/CutoutCardRender'
 import SophieAutopilotCard from '@/components/sophie/SophieAutopilotCard'
+import PageContainer from '@/components/layout/PageContainer'
 
 function formationToForYouItem(f: Formation): ForYouItem {
   const config = getCategoryConfig(f.category)
@@ -417,10 +418,8 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main
-        className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen"
-        style={{ background: '#0F0F0F' }}
-      >
+      <main className="min-h-screen" style={{ background: '#0F0F0F' }}>
+       <PageContainer className="py-6 space-y-8">
         {/* Sophie / Quiz / Journal — 3 cartes uniformisees */}
         <section className="flex flex-col gap-3">
           <SophieAutopilotCard />
@@ -697,6 +696,7 @@ export default function HomePage() {
             </React.Fragment>
           )
         })}
+       </PageContainer>
       </main>
 
       {showDailyQuiz && user && (
