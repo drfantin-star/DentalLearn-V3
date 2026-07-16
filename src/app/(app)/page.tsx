@@ -614,8 +614,10 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* Explorer — acces rapide aux 3 espaces */}
-        <section>
+        {/* Explorer — acces rapide aux 3 espaces.
+            Masquee sur desktop (lg) : redondante avec les liens de la SideNav.
+            Conservee sur mobile ou il n'y a pas de sidebar. */}
+        <section className="lg:hidden">
           <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
             🧭 Explorer
           </h2>

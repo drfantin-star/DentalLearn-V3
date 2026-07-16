@@ -8,7 +8,6 @@ import {
   Newspaper,
   UserCircle,
   ShieldCheck,
-  Search,
   GraduationCap,
   Users,
   Heart,
@@ -36,9 +35,9 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/news', icon: Newspaper, label: 'Shorts' },
   { href: '/ma-certif', icon: UserCircle, label: 'Ma Certif' },
   { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
-  { href: '/recherche', icon: Search, label: 'Recherche' },
-  // Sous Recherche : acces direct aux 3 espaces (memes libelles que les
-  // cartes "Explorer" de la home, cf. components/home/ExploreRow.tsx).
+  // Acces direct aux 3 espaces (memes libelles que les cartes "Explorer" de
+  // la home, cf. components/home/ExploreRow.tsx). Ces liens remplacent la
+  // section "Explorer" de la home sur desktop (masquee en lg).
   { href: '/formation', icon: GraduationCap, label: 'Formations & EPP' },
   { href: '/patient', icon: Users, label: 'Relation patient' },
   { href: '/sante', icon: Heart, label: 'Santé personnelle' },
