@@ -9,6 +9,9 @@ import {
   UserCircle,
   ShieldCheck,
   Search,
+  GraduationCap,
+  Users,
+  Heart,
   Shield,
   Presentation,
   Briefcase,
@@ -34,6 +37,11 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/ma-certif', icon: UserCircle, label: 'Ma Certif' },
   { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
   { href: '/recherche', icon: Search, label: 'Recherche' },
+  // Sous Recherche : acces direct aux 3 espaces (memes libelles que les
+  // cartes "Explorer" de la home, cf. components/home/ExploreRow.tsx).
+  { href: '/formation', icon: GraduationCap, label: 'Formations & EPP' },
+  { href: '/patient', icon: Users, label: 'Relation patient' },
+  { href: '/sante', icon: Heart, label: 'Santé personnelle' },
 ]
 
 // Memes conditions que la page Profil (cf. src/app/(app)/profil/page.tsx) : un
