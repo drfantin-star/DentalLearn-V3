@@ -107,7 +107,7 @@ export default function MaCertifPage() {
         <p className="text-sm font-semibold text-white/80">Ma Certification Periodique</p>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-2xl lg:max-w-[1500px] mx-auto px-4 lg:px-8 py-6 space-y-6">
 
         {/* Radar CP */}
         <RadarCP
