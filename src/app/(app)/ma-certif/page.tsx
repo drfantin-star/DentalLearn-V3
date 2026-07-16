@@ -31,6 +31,7 @@ export default function MaCertifPage() {
   const [cpProgress, setCpProgress] = useState<CpProgress[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [actionsModalOpen, setActionsModalOpen] = useState(false)
+  const [autoevalYears, setAutoevalYears] = useState<number[]>([])
 
   async function loadCpProgress(uid: string) {
     const { data: cpRows } = await supabase
@@ -88,6 +89,14 @@ export default function MaCertifPage() {
       // Lire la vue cp_user_progress (socle CP officiel)
       await loadCpProgress(session.user.id)
 
+      // Années d'auto-évaluation santé réalisées (axe 4) pour la sous-ligne du radar.
+      const { data: autoevalRows } = await supabase
+        .from('cp_actions')
+        .select('validation_date')
+        .eq('user_id', session.user.id)
+        .eq('action_type', 'auto_evaluation')
+      setAutoevalYears([...new Set((autoevalRows ?? []).map(r => Number(String(r.validation_date).slice(0, 4))))])
+
       setLoading(false)
     }
     load()
@@ -117,6 +126,7 @@ export default function MaCertifPage() {
         <RadarCP
           ordreInscriptionDate={ordreDate}
           actionsParAxe={actionsParAxe}
+          autoevalYears={autoevalYears}
         />
 
         {/* Attestations (haut) + actions (bas) empilees — colonne droite du
