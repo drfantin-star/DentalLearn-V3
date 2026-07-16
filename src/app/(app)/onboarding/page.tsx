@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Bell, Check } from 'lucide-react'
 import InterestChips from '@/components/interests/InterestChips'
 import type { InterestSection } from '@/components/interests/InterestChips'
 import SophieBubble from '@/components/sophie/SophieBubble'
 import type { UserInterests } from '@/lib/supabase/types'
 import { useSaveInterests } from '@/lib/hooks/useSaveInterests'
 import { useUser } from '@/lib/hooks/useUser'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { createClient } from '@/lib/supabase/client'
 
 // ── Configuration des étapes ──────────────────────────────────────────
@@ -58,6 +59,30 @@ export default function OnboardingPage() {
   const [formateurPub, setFormateurPub] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [outro, setOutro] = useState(false)
+
+  // Abonnement push (déclenche le prompt de permission navigateur)
+  const {
+    isSupported: pushSupported,
+    permission: pushPermission,
+    isSubscribed,
+    isLoading: pushLoading,
+    subscribe,
+  } = usePushNotifications()
+
+  const handleEnablePush = useCallback(async () => {
+    const ok = await subscribe()
+    // Abonnement réussi : on (ré)affirme le consentement global de compte.
+    if (ok && user) {
+      try {
+        const supabase = createClient()
+        await supabase
+          .from('user_notification_preferences')
+          .upsert({ user_id: user.id, notifications_enabled: true }, { onConflict: 'user_id' })
+      } catch {
+        // best-effort
+      }
+    }
+  }, [subscribe, user])
 
   // Garde-fou one-shot (inchangé par rapport au correctif PR2b-fix)
   useEffect(() => {
@@ -173,6 +198,11 @@ export default function OnboardingPage() {
               formateurPub={formateurPub}
               onToggleLive={() => setLiveReminders((v) => !v)}
               onToggleFormateur={() => setFormateurPub((v) => !v)}
+              pushSupported={pushSupported}
+              pushPermission={pushPermission}
+              isSubscribed={isSubscribed}
+              pushLoading={pushLoading}
+              onEnablePush={() => { void handleEnablePush() }}
             />
           ) : (
             <InterestChips
@@ -238,6 +268,11 @@ interface NotifTogglesProps {
   formateurPub: boolean
   onToggleLive: () => void
   onToggleFormateur: () => void
+  pushSupported: boolean
+  pushPermission: 'prompt' | 'granted' | 'denied' | 'unsupported'
+  isSubscribed: boolean
+  pushLoading: boolean
+  onEnablePush: () => void
 }
 
 function NotifToggles({
@@ -245,9 +280,59 @@ function NotifToggles({
   formateurPub,
   onToggleLive,
   onToggleFormateur,
+  pushSupported,
+  pushPermission,
+  isSubscribed,
+  pushLoading,
+  onEnablePush,
 }: NotifTogglesProps) {
   return (
     <div className="flex flex-col gap-3">
+      {/* Activation en 1 tap : déclenche le prompt de permission navigateur */}
+      {pushSupported && pushPermission !== 'denied' && (
+        <button
+          type="button"
+          onClick={isSubscribed ? undefined : onEnablePush}
+          disabled={pushLoading || isSubscribed}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3.5 text-sm font-semibold transition active:scale-[0.99] disabled:cursor-default"
+          style={
+            isSubscribed
+              ? {
+                  background: 'rgba(0,188,212,0.10)',
+                  borderColor: 'rgba(0,188,212,0.35)',
+                  color: 'rgba(0,188,212,1)',
+                }
+              : {
+                  background: 'rgba(0,188,212,0.9)',
+                  borderColor: 'transparent',
+                  color: '#001014',
+                }
+          }
+        >
+          {pushLoading ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : isSubscribed ? (
+            <><Check className="h-5 w-5" /> Notifications activées</>
+          ) : (
+            <><Bell className="h-5 w-5" /> Activer les notifications</>
+          )}
+        </button>
+      )}
+
+      {pushPermission === 'denied' && (
+        <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/60">
+          Les notifications sont bloquées par ton navigateur. Autorise-les dans ses
+          paramètres pour les recevoir.
+        </p>
+      )}
+
+      {!pushSupported && (
+        <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/60">
+          Pour recevoir les notifications sur iPhone, ajoute d&apos;abord l&apos;app à
+          ton écran d&apos;accueil.
+        </p>
+      )}
+
       <ToggleRow
         label="Rappels sessions live"
         active={liveReminders}
