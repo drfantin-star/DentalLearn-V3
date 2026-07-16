@@ -42,7 +42,7 @@ export default function RecherchePage() {
   return (
     <>
       <header
-        className="px-4 pt-5 pb-4"
+        className="px-4 lg:px-8 lg:max-w-[1500px] lg:mx-auto pt-5 pb-4"
         style={{ background: '#0F0F0F' }}
       >
         <h1 className="text-2xl font-black text-white mb-4">Recherche</h1>
@@ -67,7 +67,7 @@ export default function RecherchePage() {
       </header>
 
       <main
-        className="px-4 pb-28 space-y-8"
+        className="px-4 lg:px-8 lg:max-w-[1500px] lg:mx-auto pb-28 space-y-8"
         style={{ background: '#0F0F0F', minHeight: '100vh' }}
       >
         {SECTIONS.map((section) => {
@@ -78,7 +78,8 @@ export default function RecherchePage() {
               <h2 className="text-base font-bold text-[#e5e5e5] mb-3">
                 {section.label}
               </h2>
-              <div className="grid grid-cols-2 gap-2.5">
+              {/* Desktop : 4 colonnes (cartes 2x plus petites). Mobile : 2. */}
+              <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4 lg:gap-4">
                 {cats.map((cat) => {
                   const from =
                     cat.type === 'axe3'
