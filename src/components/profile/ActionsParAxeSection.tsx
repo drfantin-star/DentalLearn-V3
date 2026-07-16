@@ -59,6 +59,10 @@ export default function ActionsParAxeSection({ userId, cpProgress, onProgressRef
   const [modalAxeId, setModalAxeId] = useState<number | null>(null)
   const [editState, setEditState] = useState<EditState | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  // Sous-ligne auto-évaluation annuelle (axe 4) : années réalisées + bornes de la période CP.
+  const [autoevalYears, setAutoevalYears] = useState<Set<number> | null>(null)
+  const [cpYears, setCpYears] = useState<number[] | null>(null)
+  const currentYear = new Date().getFullYear()
 
   const fetchActionsForAxe = useCallback(async (axeId: number) => {
     setLoadingAxes((prev: Record<number, boolean>) => ({ ...prev, [axeId]: true }))
@@ -78,6 +82,35 @@ export default function ActionsParAxeSection({ userId, cpProgress, onProgressRef
       fetchActionsForAxe(axe.axe_id)
     }
   }, [cpProgress, fetchActionsForAxe])
+
+  // Auto-évaluation santé (axe 4) : set des années réalisées + années de la période CP.
+  // Source de vérité = cp_actions (action_type='auto_evaluation', 1 ligne/an via dédup 2A).
+  useEffect(() => {
+    let active = true
+    async function loadAutoeval() {
+      const [{ data: actions }, { data: settings }] = await Promise.all([
+        supabase
+          .from('cp_actions')
+          .select('validation_date')
+          .eq('user_id', userId)
+          .eq('action_type', 'auto_evaluation'),
+        supabase
+          .from('cp_user_settings')
+          .select('cp_start_date, cp_duration_years')
+          .eq('user_id', userId)
+          .maybeSingle(),
+      ])
+      if (!active) return
+      // Année parsée depuis la chaîne 'YYYY-…' pour éviter tout décalage de fuseau.
+      setAutoevalYears(new Set((actions ?? []).map(a => Number(String(a.validation_date).slice(0, 4)))))
+      if (settings?.cp_start_date && settings?.cp_duration_years) {
+        const startYear = Number(String(settings.cp_start_date).slice(0, 4))
+        setCpYears(Array.from({ length: settings.cp_duration_years }, (_, i) => startYear + i))
+      }
+    }
+    loadAutoeval()
+    return () => { active = false }
+  }, [supabase, userId])
 
   function handleDeclareSuccess(axeId: number) {
     setModalAxeId(null)
@@ -154,6 +187,41 @@ export default function ActionsParAxeSection({ userId, cpProgress, onProgressRef
 
               {/* Liste des actions */}
               <div className="px-4 py-3">
+                {/* Sous-ligne auto-évaluation annuelle — axe 4 uniquement */}
+                {axe.axe_id === 4 && cpYears && cpYears.length > 0 && (
+                  <div className="mb-3 pb-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-xs font-medium text-white/70">Auto-évaluation santé</span>
+                      <span className="text-[10px] text-white/40">une par an</span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {cpYears.map(year => {
+                        const done = autoevalYears?.has(year) ?? false
+                        const future = year > currentYear
+                        const label = done
+                          ? `${year} ✓ — réalisée`
+                          : future
+                            ? `${year} — à venir`
+                            : `${year} — non réalisée`
+                        return (
+                          <div key={year} className="flex flex-col items-center gap-1" title={label}>
+                            <div
+                              className="w-4 h-4 rounded-full"
+                              style={
+                                done
+                                  ? { background: color }
+                                  : future
+                                    ? { background: 'rgba(255,255,255,0.06)' }
+                                    : { background: 'transparent', border: `1.5px solid ${color}` }
+                              }
+                            />
+                            <span className="text-[9px] text-white/35 tabular-nums">{`’${String(year).slice(2)}`}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
                 {loading ? (
                   <div className="flex justify-center py-3">
                     <Loader2 size={16} className="animate-spin text-white/40" />
