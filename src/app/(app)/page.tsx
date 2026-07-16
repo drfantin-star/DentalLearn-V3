@@ -31,6 +31,7 @@ import { NEWS_CUTOUTS_BASE, getSpecialiteColor } from '@/lib/news-cover'
 import CutoutCardRender from '@/components/home/CutoutCardRender'
 import SophieAutopilotCard from '@/components/sophie/SophieAutopilotCard'
 import PageContainer from '@/components/layout/PageContainer'
+import NotificationBell from '@/components/notifications/NotificationBell'
 
 function formationToForYouItem(f: Formation): ForYouItem {
   const config = getCategoryConfig(f.category)
@@ -404,6 +405,7 @@ export default function HomePage() {
             <span className="text-white/40 text-xs">·</span>
             <span className="text-white text-xs font-bold">{lifetimeRank?.points ?? 0} pts</span>
           </button>
+          {user && <NotificationBell />}
           {user && (
             <button
               type="button"

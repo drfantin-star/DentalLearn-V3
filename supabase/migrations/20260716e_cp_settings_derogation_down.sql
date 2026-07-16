@@ -1,0 +1,5 @@
+-- No-op documenté : cette migration corrige des données erronées (période CP
+-- calculée avec une règle de dérogation absente du seed d'origine). Il n'existe
+-- pas de valeur "avant" à restaurer qui soit correcte — restaurer les anciennes
+-- dates réintroduirait le bug (Julie : 6 ans/2029 au lieu de 9 ans/2032).
+-- Une seule ligne concernée en base au moment de l'écriture de cette migration.

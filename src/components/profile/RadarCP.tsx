@@ -3,8 +3,16 @@
 import { useMemo } from 'react';
 import { axeHex } from '@/lib/cp/axeColors';
 
+interface CpSettings {
+  cp_start_date: string;
+  cp_duration_years: number;
+  cp_end_date: string;
+}
+
 interface RadarCPProps {
-  ordreInscriptionDate: string | null;
+  /** Source unique de la période CP (cp_user_settings) — plus de calcul local
+      depuis ordre_inscription_date ici (cf. migration 20260716e). */
+  cpSettings: CpSettings | null;
   actionsParAxe: {
     axe1: number;
     axe2: number;
@@ -15,33 +23,28 @@ interface RadarCPProps {
   autoevalYears?: number[];
 }
 
-export default function RadarCP({ ordreInscriptionDate, actionsParAxe, autoevalYears }: RadarCPProps) {
+export default function RadarCP({ cpSettings, actionsParAxe, autoevalYears }: RadarCPProps) {
 
-  // Calcul de la periode de certification
+  // Periode de certification : lue depuis cp_user_settings (source unique),
+  // plus de recalcul local depuis ordre_inscription_date. cp_end_date est une
+  // borne exclusive (debut + duree ans, ex. 2023-01-01 + 9 ans = 2032-01-01) —
+  // la dernière année civile couverte est donc startYear + duree - 1 (2031),
+  // pas year(cp_end_date) (2032), qui était le bug « +1 » précédent.
   const periode = useMemo(() => {
-    const ordreDate = ordreInscriptionDate ? new Date(ordreInscriptionDate) : null;
-    const seuil2023 = new Date('2023-01-01');
-
-    if (!ordreDate || ordreDate < seuil2023) {
-      // Inscrit avant 2023 -> derogation 9 ans (2023-2032)
-      return {
-        debut: new Date('2023-01-01'),
-        fin: new Date('2032-12-31'),
-        dureeAns: 9,
-        isDerogation: true
-      };
-    } else {
-      // Inscrit apres 2023 -> 6 ans a partir de l'inscription
-      const fin = new Date(ordreDate);
-      fin.setFullYear(fin.getFullYear() + 6);
-      return {
-        debut: ordreDate,
-        fin: fin,
-        dureeAns: 6,
-        isDerogation: false
-      };
+    if (!cpSettings) {
+      return { debut: new Date(), fin: new Date(), dureeAns: 6, isDerogation: false, dernierAnneeCouverte: new Date().getFullYear() };
     }
-  }, [ordreInscriptionDate]);
+    const debut = new Date(cpSettings.cp_start_date);
+    const fin = new Date(cpSettings.cp_end_date);
+    const dureeAns = cpSettings.cp_duration_years;
+    return {
+      debut,
+      fin,
+      dureeAns,
+      isDerogation: dureeAns > 6,
+      dernierAnneeCouverte: debut.getFullYear() + dureeAns - 1,
+    };
+  }, [cpSettings]);
 
   // Calcul du temps restant
   const tempsRestant = useMemo(() => {
@@ -69,8 +72,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe, autoevalY
   const autoevalSet = useMemo(() => new Set(autoevalYears ?? []), [autoevalYears]);
   const anneesPeriode = useMemo(() => {
     const start = periode.debut.getFullYear();
-    const end = periode.fin.getFullYear();
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+    return Array.from({ length: periode.dureeAns }, (_, i) => start + i);
   }, [periode]);
   const anneeCourante = new Date().getFullYear();
 
@@ -109,7 +111,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe, autoevalY
                 ? `${tempsRestant.ans} an${tempsRestant.ans > 1 ? 's' : ''}${tempsRestant.moisRestants > 0 ? ` et ${tempsRestant.moisRestants} mois` : ''} restants`
                 : `${tempsRestant.mois} mois restants`}
             </span>
-            <span>{periode.fin.getFullYear()}</span>
+            <span>{periode.dernierAnneeCouverte}</span>
           </div>
           <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
             <div
