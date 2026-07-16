@@ -107,8 +107,12 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
           </div>
         </div>
 
-        {/* Liste compacte axes */}
-        <div className="rounded-xl overflow-hidden" style={{ border: '0.5px solid rgba(255,255,255,0.08)' }}>
+        {/* Liste compacte axes.
+            Mobile : liste verticale (4 lignes, dividers border-b) — inchange.
+            Desktop (lg:) : grille 2x2, divider vertical entre colonnes
+            (border-r sur les cellules paires) + horizontal entre les 2 rangees
+            (border-b sur les cellules du haut, retire sur la cellule bas-gauche). */}
+        <div className="rounded-xl overflow-hidden lg:grid lg:grid-cols-2" style={{ border: '0.5px solid rgba(255,255,255,0.08)' }}>
           {axes.map((axe, index) => {
             const isComplete = axe.count >= OBJECTIF_PAR_AXE
             const dots = Array.from({ length: OBJECTIF_PAR_AXE }, (_, i) => i < axe.count)
@@ -123,8 +127,8 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
                 key={axe.id}
                 className={`flex items-center gap-3 px-3 py-2.5 ${
                   index < axes.length - 1 ? 'border-b' : ''
-                }`}
-                style={index < axes.length - 1 ? { borderColor: 'rgba(255,255,255,0.08)' } : {}}
+                } ${index % 2 === 0 ? 'lg:border-r' : ''} ${index === 2 ? 'lg:border-b-0' : ''}`}
+                style={{ borderColor: 'rgba(255,255,255,0.08)' }}
               >
                 {/* Pastille */}
                 <div
