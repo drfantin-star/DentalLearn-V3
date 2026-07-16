@@ -60,7 +60,7 @@ export default function MiniPlayer() {
   // Rendu normal (hors focus)
   return (
     <div
-      className="fixed bottom-28 left-3 right-3 z-40 rounded-2xl shadow-2xl overflow-hidden"
+      className="fixed bottom-28 left-3 right-3 lg:left-[16.75rem] z-40 rounded-2xl shadow-2xl overflow-hidden"
       style={{ background: `linear-gradient(135deg, ${state.accentColor}EE, ${state.accentColor}99)` }}
     >
       <div className="flex items-center gap-3 px-3 py-2.5">

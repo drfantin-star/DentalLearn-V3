@@ -93,7 +93,7 @@ export default function ThemePage() {
 
   const { user } = useUser()
   const [formations, setFormations] = useState<Formation[]>([])
-  const [eppAudit, setEppAudit] = useState<EppAudit | null>(null)
+  const [eppAudits, setEppAudits] = useState<EppAudit[]>([])
   const [eppSessions, setEppSessions] = useState<UserEppSession[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<Error | null>(null)
@@ -177,24 +177,25 @@ export default function ThemePage() {
       if (fErr) throw fErr
       setFormations(formationsData || [])
 
-      // 2. Charger l'audit EPP de cette thématique (s'il existe)
+      // 2. Charger les audits EPP de cette thématique (0, 1 ou plusieurs).
+      //    Tri par date de création (le plus ancien en premier) pour un ordre
+      //    d'affichage stable dans la grille.
       const { data: eppData } = await supabase
         .from('epp_audits')
         .select('*')
         .eq('theme_slug', themeSlug)
         .eq('is_published', true)
-        .limit(1)
-        .maybeSingle()
+        .order('created_at', { ascending: true })
 
-      setEppAudit(eppData)
+      setEppAudits(eppData || [])
 
-      // 3. Charger les sessions EPP de l'utilisateur
-      if (user && eppData) {
+      // 3. Charger les sessions EPP de l'utilisateur pour tous ces audits.
+      if (user && eppData && eppData.length > 0) {
         const { data: sessionsData } = await supabase
           .from('user_epp_sessions')
           .select('id, audit_id, tour, started_at, completed_at, score_global')
           .eq('user_id', user.id)
-          .eq('audit_id', eppData.id)
+          .in('audit_id', eppData.map((a: EppAudit) => a.id))
           .order('tour')
 
         if (sessionsData) setEppSessions(sessionsData)
@@ -298,9 +299,11 @@ export default function ThemePage() {
   // EPP Status helpers
   // ============================================
 
-  const getEppStatus = () => {
-    const t1 = eppSessions.find(s => s.tour === 1)
-    const t2 = eppSessions.find(s => s.tour === 2)
+  // Statut calculé à partir des sessions d'UN audit (une thématique peut en
+  // afficher plusieurs). L'appelant filtre `eppSessions` par `audit_id`.
+  const getEppStatus = (sessions: UserEppSession[]) => {
+    const t1 = sessions.find(s => s.tour === 1)
+    const t2 = sessions.find(s => s.tour === 2)
 
     if (t2?.completed_at) return { status: 'completed', label: 'EPP validée', color: 'green' }
     if (t1?.completed_at) return { status: 't1_done', label: 'T1 terminé — T2 en attente', color: 'amber' }
@@ -369,12 +372,10 @@ export default function ThemePage() {
     )
   }
 
-  const eppStatus = getEppStatus()
-
   return (
     <>
       <header className="sticky top-0 z-30" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
-        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
+        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-[1500px] px-4 md:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push(fromPage)}
@@ -387,7 +388,7 @@ export default function ThemePage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-6 min-h-screen" style={{ background: '#0F0F0F' }}>
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-[1500px] px-4 md:px-6 lg:px-8 py-6 space-y-6 min-h-screen" style={{ background: '#0F0F0F' }}>
 
         {/* ============================================ */}
         {/* SECTION 1 : Formation gamifiée (Axe 1) */}
@@ -444,10 +445,15 @@ export default function ThemePage() {
             EPP — Axe 2
           </h2>
 
-          {eppAudit ? (
-            (() => {
-              const eppT1 = eppSessions.find(s => s.tour === 1)
-              const eppT2 = eppSessions.find(s => s.tour === 2)
+          {/* Grille 2 colonnes sur desktop — une carte par audit EPP publié.
+              Mobile : 1 colonne (inchange). */}
+          <div className="grid gap-4 lg:grid-cols-2">
+          {eppAudits.length > 0 ? (
+            eppAudits.map((audit) => {
+              const auditSessions = eppSessions.filter(s => s.audit_id === audit.id)
+              const eppStatus = getEppStatus(auditSessions)
+              const eppT1 = auditSessions.find(s => s.tour === 1)
+              const eppT2 = auditSessions.find(s => s.tour === 2)
               const isValidated = !!eppT2?.completed_at
               const isT2 = !!eppT2 && !eppT2.completed_at
               const ctaLabel = eppStatus.status === 'not_started'
@@ -465,22 +471,23 @@ export default function ThemePage() {
 
               return (
                 <DemarcheCard
+                  key={audit.id}
                   demarche={{
-                    id: eppAudit.id,
+                    id: audit.id,
                     type: 'epp',
-                    title: eppAudit.title,
+                    title: audit.title,
                     subtitle,
                     badge: '',
                     badgeColor: '',
                     accentColor: '',
-                    ctaUrl: `/formation/${themeSlug}/epp`,
+                    ctaUrl: `/formation/${themeSlug}/epp?audit=${audit.slug}`,
                     ctaLabel,
                     category: themeSlug,
                   }}
                   size="large"
                 />
               )
-            })()
+            })
           ) : (
             <div className="glass-card rounded-2xl p-4 opacity-60">
               <div className="flex items-center gap-3">
@@ -494,6 +501,7 @@ export default function ThemePage() {
               </div>
             </div>
           )}
+          </div>
         </section>
 
       </main>

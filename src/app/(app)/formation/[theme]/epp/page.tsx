@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ChevronLeft,
   ChevronRight,
@@ -99,7 +99,11 @@ const THEMES_CONFIG: Record<string, { label: string; icon: string }> = {
 export default function EppPage() {
   const params = useParams<{ theme: string }>()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const themeSlug = params.theme
+  // Slug de l'audit ciblé (une thématique peut en compter plusieurs). Absent
+  // sur les anciens liens : fallback sur le 1er audit publié de la thématique.
+  const auditSlug = searchParams.get('audit')
 
   const [audit, setAudit] = useState<EppAudit | null>(null)
   const [criteria, setCriteria] = useState<EppCriterion[]>([])
@@ -133,21 +137,28 @@ export default function EppPage() {
 
   useEffect(() => {
     loadData()
-  }, [themeSlug])
+  }, [themeSlug, auditSlug])
 
   const loadData = async () => {
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
-      // 1. Charger l'audit EPP de cette thématique
-      const { data: auditData, error: aErr } = await supabase
+      // 1. Charger l'audit EPP ciblé. Si `?audit=<slug>` est présent on résout
+      //    cet audit précis ; sinon (rétro-compat des anciens liens) on prend le
+      //    1er audit publié de la thématique (tri par date de création).
+      const auditQuery = supabase
         .from('epp_audits')
         .select('*')
-        .eq('theme_slug', themeSlug)
         .eq('is_published', true)
-        .limit(1)
-        .maybeSingle()
+
+      const { data: auditData, error: aErr } = auditSlug
+        ? await auditQuery.eq('slug', auditSlug).maybeSingle()
+        : await auditQuery
+            .eq('theme_slug', themeSlug)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle()
 
       if (aErr) throw aErr
 

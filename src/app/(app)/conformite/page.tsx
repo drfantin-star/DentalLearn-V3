@@ -85,7 +85,7 @@ export default function ConformitePage() {
     <>
       {/* Header */}
       <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
+        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-[1500px] px-4 md:px-6 lg:px-8 py-4">
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center">
               <ShieldCheck size={20} className="text-accent" />
@@ -95,7 +95,7 @@ export default function ConformitePage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-6">
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-[1500px] px-4 md:px-6 lg:px-8 py-6 space-y-6">
         {/* Score global */}
         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
           <div className="flex items-center justify-between mb-3">

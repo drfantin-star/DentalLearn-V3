@@ -30,6 +30,7 @@ import { INTEREST_TO_NEWS_THEME, NEWS_SPECIALITE_LABELS } from '@/lib/constants/
 import { NEWS_CUTOUTS_BASE, getSpecialiteColor } from '@/lib/news-cover'
 import CutoutCardRender from '@/components/home/CutoutCardRender'
 import SophieAutopilotCard from '@/components/sophie/SophieAutopilotCard'
+import PageContainer from '@/components/layout/PageContainer'
 
 function formationToForYouItem(f: Formation): ForYouItem {
   const config = getCategoryConfig(f.category)
@@ -417,12 +418,12 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main
-        className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-8 min-h-screen"
-        style={{ background: '#0F0F0F' }}
-      >
-        {/* Sophie / Quiz / Journal — 3 cartes uniformisees */}
-        <section className="flex flex-col gap-3">
+      <main className="min-h-screen" style={{ background: '#0F0F0F' }}>
+       <PageContainer className="py-6 space-y-8">
+        {/* Sophie / Quiz / Journal — 3 cartes uniformisees.
+            Desktop (lg:) : grille 3 colonnes, hauteurs egales (auto-rows-fr +
+            h-full des HomeFeedCard). Mobile inchange (pile verticale). */}
+        <section className="flex flex-col gap-3 lg:grid lg:grid-cols-3 lg:auto-rows-fr lg:gap-4">
           <SophieAutopilotCard />
           <DailyQuizButton
             userId={user?.id}
@@ -613,8 +614,10 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* Explorer — acces rapide aux 3 espaces */}
-        <section>
+        {/* Explorer — acces rapide aux 3 espaces.
+            Masquee sur desktop (lg) : redondante avec les liens de la SideNav.
+            Conservee sur mobile ou il n'y a pas de sidebar. */}
+        <section className="lg:hidden">
           <h2 className="text-base font-bold text-[#e5e5e5] mb-3 flex items-center gap-2">
             🧭 Explorer
           </h2>
@@ -697,6 +700,7 @@ export default function HomePage() {
             </React.Fragment>
           )
         })}
+       </PageContainer>
       </main>
 
       {showDailyQuiz && user && (
