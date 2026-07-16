@@ -35,6 +35,7 @@ export default function RegisterForm() {
   const [rppsWarning, setRppsWarning] = useState<string | null>(null)
   const [isHealthProfessional, setIsHealthProfessional] = useState<boolean | null>(null)
   const [rgpdConsent, setRgpdConsent] = useState(false)
+  const [allowNotifications, setAllowNotifications] = useState(true)
   const [mode, setMode] = useState<Mode>('praticien_solo')
   const [cabinet, setCabinet] = useState<CabinetData>({
     name: '',
@@ -166,6 +167,11 @@ export default function RegisterForm() {
             // peut le recopier dans user_profiles.rpps en V1.5. Pour V1 on
             // l'écrit directement après signup (cf. update plus bas).
             rpps: rpps.trim() || null,
+            // Consentement global aux notifications (case pré-cochée). Lu par le
+            // trigger handle_new_user pour seeder user_notification_preferences
+            // .notifications_enabled (l'utilisateur non vérifié ne peut pas
+            // écrire la table directement au signup à cause de la RLS).
+            notifications_opt_in: allowNotifications,
           },
         },
       })
@@ -487,6 +493,20 @@ export default function RegisterForm() {
                 politique de confidentialité
               </a>{' '}
               et les conditions d&apos;utilisation
+            </span>
+          </label>
+
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allowNotifications}
+              onChange={(e) => setAllowNotifications(e.target.checked)}
+              className="mt-1 w-4 h-4 text-primary focus:ring-primary rounded"
+            />
+            <span className="text-sm text-gray-700">
+              Autoriser l&apos;envoi de notifications (rappels, journal hebdo,
+              nouvelles formations…). Modifiable à tout moment depuis votre espace
+              personnel.
             </span>
           </label>
 
