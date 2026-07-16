@@ -34,13 +34,13 @@ const NAV_ITEMS: NavItem[] = [
   // « Shorts » = route /news (label seul, cf. BottomNav).
   { href: '/news', icon: Newspaper, label: 'Shorts' },
   { href: '/ma-certif', icon: UserCircle, label: 'Ma Certif' },
-  { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
   // Acces direct aux 3 espaces (memes libelles que les cartes "Explorer" de
   // la home, cf. components/home/ExploreRow.tsx). Ces liens remplacent la
   // section "Explorer" de la home sur desktop (masquee en lg).
   { href: '/formation', icon: GraduationCap, label: 'Formations & EPP' },
   { href: '/patient', icon: Users, label: 'Relation patient' },
   { href: '/sante', icon: Heart, label: 'Santé personnelle' },
+  { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
 ]
 
 // Memes conditions que la page Profil (cf. src/app/(app)/profil/page.tsx) : un
