@@ -37,7 +37,7 @@ function PatientPageContent() {
         </p>
       </header>
 
-      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 min-h-screen" style={{ background: '#0F0F0F' }}>
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-[1500px] px-4 md:px-6 lg:px-8 py-6 min-h-screen" style={{ background: '#0F0F0F' }}>
         <BibliothequeBanner
           axe={3}
           href="/patient/bibliotheque"
@@ -47,7 +47,8 @@ function PatientPageContent() {
         <h2 className="text-xl font-black text-white mb-4">
           🔍 Explorer par thème
         </h2>
-        <div className="grid grid-cols-2 gap-3">
+        {/* Desktop : 2 -> 3 colonnes (lg), 4 (xl). Meme modele que /formation. */}
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4 lg:gap-4">
           {axe3Categories.map((cat) => {
             const cutoutUrl = getLabelCutoutUrl(cat)
             return (
