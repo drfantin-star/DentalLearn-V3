@@ -420,8 +420,10 @@ export default function HomePage() {
 
       <main className="min-h-screen" style={{ background: '#0F0F0F' }}>
        <PageContainer className="py-6 space-y-8">
-        {/* Sophie / Quiz / Journal — 3 cartes uniformisees */}
-        <section className="flex flex-col gap-3">
+        {/* Sophie / Quiz / Journal — 3 cartes uniformisees.
+            Desktop (lg:) : grille 3 colonnes, hauteurs egales (auto-rows-fr +
+            h-full des HomeFeedCard). Mobile inchange (pile verticale). */}
+        <section className="flex flex-col gap-3 lg:grid lg:grid-cols-3 lg:auto-rows-fr lg:gap-4">
           <SophieAutopilotCard />
           <DailyQuizButton
             userId={user?.id}
