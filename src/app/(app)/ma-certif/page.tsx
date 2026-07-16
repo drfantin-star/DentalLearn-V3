@@ -109,19 +109,23 @@ export default function MaCertifPage() {
 
       <div className="max-w-2xl lg:max-w-[1500px] mx-auto px-4 lg:px-8 py-6 space-y-6">
 
+        {/* Desktop (lg) : radar a gauche, colonne attestations+actions a droite.
+            Mobile : tout empile (space-y-6) — ordre et espacement inchanges.
+            items-start : la colonne droite ne s'etire pas a la hauteur du radar. */}
+        <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
         {/* Radar CP */}
         <RadarCP
           ordreInscriptionDate={ordreDate}
           actionsParAxe={actionsParAxe}
         />
 
-        {/* Attestations + actions hors Certily — cote a cote sur desktop (lg).
-            Mobile : empilees (grille 1 colonne, gap-6 = ex-espacement space-y-6). */}
-        <div className="grid gap-6 lg:grid-cols-2 lg:gap-4">
+        {/* Attestations (haut) + actions (bas) empilees — colonne droite du
+            bloc radar sur desktop. Mobile : meme espacement qu'avant (24px). */}
+        <div className="space-y-6 lg:space-y-4">
         {/* Mes attestations Certily */}
         <Link
           href="/ma-certif/attestations"
-          className="glass-card transition-premium block p-4 hover:border-white/20 rounded-2xl h-full"
+          className="glass-card transition-premium block p-4 hover:border-white/20 rounded-2xl"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center">
@@ -142,7 +146,7 @@ export default function MaCertifPage() {
         {/* Carte actions hors Certily */}
         <button
           onClick={() => setActionsModalOpen(true)}
-          className="glass-card transition-premium w-full block p-4 hover:border-white/20 rounded-2xl text-left h-full"
+          className="glass-card transition-premium w-full block p-4 hover:border-white/20 rounded-2xl text-left"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-teal-500/15 flex items-center justify-center">
@@ -159,6 +163,7 @@ export default function MaCertifPage() {
             <ChevronRight className="w-5 h-5 text-white/40" />
           </div>
         </button>
+        </div>
         </div>
 
         {/* Modal actions hors Certily */}
