@@ -6,11 +6,11 @@ import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, Loader2, Briefcase, Building2,
   Shield, Presentation, Camera, Save, Lock, Eye, EyeOff,
-  Bell, Mail, Calendar, CheckCircle, AlertCircle, Trash2, X, User,
+  Bell, BellOff, Send, Mail, Calendar, CheckCircle, AlertCircle, Trash2, X, User,
 } from 'lucide-react'
 import InterestsSection from '@/components/interests/InterestsSection'
 import CreateCabinetModal from '@/components/auth/CreateCabinetModal'
-import { PushNotificationToggle } from '@/components/PushNotificationToggle'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { Modal } from '@/components/ui/Modal'
 import Link from 'next/link'
 import type { IntraRole } from '@/lib/auth/rbac'
@@ -56,6 +56,16 @@ export default function ProfilPage() {
   const [weeklyJournal, setWeeklyJournal] = useState(true)
   const [newFormations, setNewFormations] = useState(true)
   const [savingPrefs, setSavingPrefs] = useState(false)
+  const {
+    isSupported: pushSupported,
+    permission: pushPermission,
+    isSubscribed,
+    isLoading: pushLoading,
+    subscribe,
+    unsubscribe,
+  } = usePushNotifications()
+  const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
+  const [testMessage, setTestMessage] = useState<string | null>(null)
 
   // Suppression compte
   const [deletionRequestedAt, setDeletionRequestedAt] = useState<string | null>(null)
@@ -265,6 +275,52 @@ export default function ProfilPage() {
     } finally {
       setSavingPrefs(false)
     }
+  }
+
+  // Interrupteur unifié : consentement de compte (notifications_enabled) +
+  // abonnement push de cet appareil (subscribe/unsubscribe).
+  const masterOn = pushSupported ? (isSubscribed && notificationsEnabled) : notificationsEnabled
+
+  const handleToggleMaster = async () => {
+    if (!user) return
+    const target = !masterOn
+    if (pushSupported) {
+      if (target) {
+        const ok = await subscribe()
+        // Permission refusée / erreur : on ne change pas le consentement,
+        // l'astuce d'aide s'affiche (permission === 'denied').
+        if (ok) await handleTogglePref('notifications_enabled', true)
+      } else {
+        await unsubscribe()
+        await handleTogglePref('notifications_enabled', false)
+      }
+    } else {
+      // Push non supporté sur cet appareil : on ne peut qu'écrire le consentement.
+      await handleTogglePref('notifications_enabled', target)
+    }
+  }
+
+  const handleTestNotification = async () => {
+    setTestStatus('loading')
+    setTestMessage(null)
+    try {
+      const res = await fetch('/api/push/test', { method: 'POST' })
+      const data = await res.json()
+      if (data.success) {
+        setTestStatus('success')
+        setTestMessage('Notification envoyee !')
+      } else {
+        setTestStatus('error')
+        setTestMessage(data.message || 'Erreur')
+      }
+    } catch {
+      setTestStatus('error')
+      setTestMessage('Erreur reseau')
+    }
+    setTimeout(() => {
+      setTestStatus('idle')
+      setTestMessage(null)
+    }, 3000)
   }
 
   const handleRequestDeletion = async () => {
@@ -563,82 +619,118 @@ export default function ProfilPage() {
 
           {/* Corps modal */}
           <div className="px-6 py-5 max-h-[60vh] overflow-y-auto space-y-5">
-            {/* Consentement global — pilote toutes les notifications */}
-            <button
-              onClick={() => { void handleTogglePref('notifications_enabled', !notificationsEnabled) }}
-              disabled={savingPrefs}
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-semibold w-full text-left ${
-                notificationsEnabled
-                  ? 'bg-accent/10 text-accent border border-accent/20'
-                  : 'bg-white/5 text-white/70 hover:bg-white/10'
-              } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <Bell className="w-5 h-5 shrink-0" />
-              <span className="text-sm">Autoriser l&apos;envoi de notifications</span>
-            </button>
+            {/* Interrupteur unifié : consentement de compte + abonnement de cet appareil */}
+            <div className="space-y-2">
+              <button
+                onClick={() => { void handleToggleMaster() }}
+                disabled={savingPrefs || pushLoading || pushPermission === 'denied'}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-semibold w-full text-left ${
+                  masterOn
+                    ? 'bg-accent/10 text-accent border border-accent/20'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                } ${savingPrefs || pushLoading || pushPermission === 'denied' ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {pushLoading ? (
+                  <Loader2 className="w-5 h-5 shrink-0 animate-spin" />
+                ) : masterOn ? (
+                  <Bell className="w-5 h-5 shrink-0" />
+                ) : (
+                  <BellOff className="w-5 h-5 shrink-0" />
+                )}
+                <span className="text-sm">Autoriser l&apos;envoi de notifications</span>
+              </button>
 
-            <div className="pt-4" style={{ borderTop: '0.5px solid #333' }}>
-              <PushNotificationToggle />
+              {pushPermission === 'denied' && (
+                <p className="text-xs text-red-400 px-1">
+                  Notifications bloquees par le navigateur. Autorise-les dans les
+                  parametres de ton navigateur pour les reactiver.
+                </p>
+              )}
+
+              {!pushSupported && (
+                <p className="text-xs text-white/45 px-1">
+                  Les notifications push ne sont pas supportees sur cet appareil.
+                </p>
+              )}
+
+              {isSubscribed && (
+                <button
+                  onClick={() => { void handleTestNotification() }}
+                  disabled={testStatus === 'loading'}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all text-sm w-full text-left ${
+                    testStatus === 'success'
+                      ? 'bg-green-500/10 text-green-400'
+                      : testStatus === 'error'
+                        ? 'bg-red-500/10 text-red-400'
+                        : 'bg-white/5 text-white/60 hover:bg-white/10'
+                  }`}
+                >
+                  {testStatus === 'loading'
+                    ? <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
+                    : <Send className="w-4 h-4 shrink-0" />}
+                  <span>{testMessage || 'Envoyer une notification test'}</span>
+                </button>
+              )}
             </div>
 
-            <div className={`space-y-3 pt-4 ${notificationsEnabled ? '' : 'opacity-40'}`} style={{ borderTop: '0.5px solid #333' }}>
+            <div className={`space-y-3 pt-4 ${masterOn ? '' : 'opacity-40'}`} style={{ borderTop: '0.5px solid #333' }}>
               <p className="text-xs font-medium text-white/55">Preferences de contenu</p>
               <button
                 onClick={() => { void handleTogglePref('daily_reminders', !dailyReminders) }}
-                disabled={savingPrefs || !notificationsEnabled}
+                disabled={savingPrefs || !masterOn}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
                   dailyReminders
                     ? 'bg-accent/10 text-accent border border-accent/20'
                     : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !notificationsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Bell className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Rappel quiz du jour</span>
               </button>
               <button
                 onClick={() => { void handleTogglePref('live_session_reminders', !liveSessionReminders) }}
-                disabled={savingPrefs || !notificationsEnabled}
+                disabled={savingPrefs || !masterOn}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
                   liveSessionReminders
                     ? 'bg-accent/10 text-accent border border-accent/20'
                     : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !notificationsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Bell className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Rappels sessions live</span>
               </button>
               <button
                 onClick={() => { void handleTogglePref('formateur_publications', !formateurPublications) }}
-                disabled={savingPrefs || !notificationsEnabled}
+                disabled={savingPrefs || !masterOn}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
                   formateurPublications
                     ? 'bg-accent/10 text-accent border border-accent/20'
                     : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !notificationsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Bell className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Nouvelles publications formateurs</span>
               </button>
               <button
                 onClick={() => { void handleTogglePref('weekly_journal', !weeklyJournal) }}
-                disabled={savingPrefs || !notificationsEnabled}
+                disabled={savingPrefs || !masterOn}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
                   weeklyJournal
                     ? 'bg-accent/10 text-accent border border-accent/20'
                     : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !notificationsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Bell className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Journal hebdo en ligne</span>
               </button>
               <button
                 onClick={() => { void handleTogglePref('new_formations', !newFormations) }}
-                disabled={savingPrefs || !notificationsEnabled}
+                disabled={savingPrefs || !masterOn}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
                   newFormations
                     ? 'bg-accent/10 text-accent border border-accent/20'
                     : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !notificationsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Bell className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Nouvelle formation en ligne</span>
