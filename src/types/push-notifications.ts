@@ -2,6 +2,7 @@ export type NotificationType =
   | 'leaderboard_result'
   | 'new_sequence'
   | 'new_formation'
+  | 'weekly_journal'
   | 'daily_reminder'
   | 'cold_survey';
 

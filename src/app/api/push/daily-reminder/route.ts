@@ -21,11 +21,14 @@ export async function GET(request: Request) {
 
     console.log('[Daily Reminder] Envoi des rappels quotidiens...');
 
-    // Récupérer les utilisateurs avec rappels activés
+    // Récupérer les utilisateurs avec rappels activés.
+    // notifications_enabled = kill-switch global (consentement à l'inscription) :
+    // on exclut uniquement les lignes explicitement à false (null/absent = opt-in).
     const { data: users, error: usersError } = await supabase
       .from('user_notification_preferences')
       .select('user_id')
-      .eq('daily_reminders', true);
+      .eq('daily_reminders', true)
+      .not('notifications_enabled', 'is', false);
 
     if (usersError) {
       console.error('[Daily Reminder] Erreur:', usersError);

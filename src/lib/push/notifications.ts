@@ -43,6 +43,41 @@ export function createNewSequenceNotification(
   };
 }
 
+export function createWeeklyJournalNotification(
+  journalTitle?: string
+): PushNotificationPayload {
+  return {
+    title: '📰 Nouveau journal hebdo en ligne',
+    body: journalTitle
+      ? `${journalTitle} — écoutez la revue de presse de la semaine.`
+      : 'La revue de presse de la semaine est disponible. Bonne écoute !',
+    icon: DEFAULT_ICON,
+    badge: DEFAULT_BADGE,
+    tag: 'weekly-journal',
+    data: {
+      url: '/',
+      type: 'weekly_journal' as NotificationType
+    }
+  };
+}
+
+export function createNewFormationNotification(
+  formationTitle: string,
+  formationId: string
+): PushNotificationPayload {
+  return {
+    title: '🎓 Nouvelle formation en ligne',
+    body: `${formationTitle} est désormais disponible. Découvrez-la dès maintenant !`,
+    icon: DEFAULT_ICON,
+    badge: DEFAULT_BADGE,
+    tag: `new-formation-${formationId}`,
+    data: {
+      url: `/formation/${formationId}`,
+      type: 'new_formation' as NotificationType
+    }
+  };
+}
+
 export function createDailyReminderNotification(
   streakCount: number,
   sequencesToComplete?: number

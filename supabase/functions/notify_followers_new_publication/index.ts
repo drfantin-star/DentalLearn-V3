@@ -112,13 +112,17 @@ async function run(opts: RunOptions): Promise<RunResult> {
       }
 
       // Préférence utilisateur (row absente = true par défaut)
+      // notifications_enabled = kill-switch global (consentement à l'inscription).
       const { data: prefs } = await supabase
         .from("user_notification_preferences")
-        .select("formateur_publications")
+        .select("notifications_enabled, formateur_publications")
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (prefs !== null && prefs.formateur_publications === false) {
+      if (
+        prefs !== null &&
+        (prefs.notifications_enabled === false || prefs.formateur_publications === false)
+      ) {
         logger.info("notification_skipped_preference", {
           session_id: session.id,
           user_id: userId,

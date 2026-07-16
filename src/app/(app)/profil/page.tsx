@@ -49,8 +49,12 @@ export default function ProfilPage() {
   const [passwordSaving, setPasswordSaving] = useState(false)
 
   // Notifications
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [dailyReminders, setDailyReminders] = useState(true)
   const [liveSessionReminders, setLiveSessionReminders] = useState(true)
   const [formateurPublications, setFormateurPublications] = useState(true)
+  const [weeklyJournal, setWeeklyJournal] = useState(true)
+  const [newFormations, setNewFormations] = useState(true)
   const [savingPrefs, setSavingPrefs] = useState(false)
 
   // Suppression compte
@@ -94,13 +98,17 @@ export default function ProfilPage() {
 
       const { data: prefs } = await supabase
         .from('user_notification_preferences')
-        .select('live_session_reminders, formateur_publications')
+        .select('notifications_enabled, daily_reminders, live_session_reminders, formateur_publications, weekly_journal, new_formations')
         .eq('user_id', session.user.id)
         .maybeSingle()
 
       if (prefs) {
+        if (prefs.notifications_enabled != null) setNotificationsEnabled(prefs.notifications_enabled)
+        if (prefs.daily_reminders != null) setDailyReminders(prefs.daily_reminders)
         if (prefs.live_session_reminders != null) setLiveSessionReminders(prefs.live_session_reminders)
         if (prefs.formateur_publications != null) setFormateurPublications(prefs.formateur_publications)
+        if (prefs.weekly_journal != null) setWeeklyJournal(prefs.weekly_journal)
+        if (prefs.new_formations != null) setNewFormations(prefs.new_formations)
       }
 
       try {
@@ -230,12 +238,25 @@ export default function ProfilPage() {
   }
 
   const handleTogglePref = async (
-    key: 'live_session_reminders' | 'formateur_publications',
+    key:
+      | 'notifications_enabled'
+      | 'daily_reminders'
+      | 'live_session_reminders'
+      | 'formateur_publications'
+      | 'weekly_journal'
+      | 'new_formations',
     value: boolean,
   ) => {
     if (!user) return
-    if (key === 'live_session_reminders') setLiveSessionReminders(value)
-    else setFormateurPublications(value)
+    const setters: Record<typeof key, (v: boolean) => void> = {
+      notifications_enabled: setNotificationsEnabled,
+      daily_reminders: setDailyReminders,
+      live_session_reminders: setLiveSessionReminders,
+      formateur_publications: setFormateurPublications,
+      weekly_journal: setWeeklyJournal,
+      new_formations: setNewFormations,
+    }
+    setters[key](value)
     setSavingPrefs(true)
     try {
       await supabase
@@ -542,33 +563,85 @@ export default function ProfilPage() {
 
           {/* Corps modal */}
           <div className="px-6 py-5 max-h-[60vh] overflow-y-auto space-y-5">
-            <PushNotificationToggle />
+            {/* Consentement global — pilote toutes les notifications */}
+            <button
+              onClick={() => { void handleTogglePref('notifications_enabled', !notificationsEnabled) }}
+              disabled={savingPrefs}
+              className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-semibold w-full text-left ${
+                notificationsEnabled
+                  ? 'bg-accent/10 text-accent border border-accent/20'
+                  : 'bg-white/5 text-white/70 hover:bg-white/10'
+              } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Bell className="w-5 h-5 shrink-0" />
+              <span className="text-sm">Autoriser l&apos;envoi de notifications</span>
+            </button>
 
-            <div className="space-y-3 pt-4" style={{ borderTop: '0.5px solid #333' }}>
+            <div className="pt-4" style={{ borderTop: '0.5px solid #333' }}>
+              <PushNotificationToggle />
+            </div>
+
+            <div className={`space-y-3 pt-4 ${notificationsEnabled ? '' : 'opacity-40'}`} style={{ borderTop: '0.5px solid #333' }}>
               <p className="text-xs font-medium text-white/55">Preferences de contenu</p>
               <button
+                onClick={() => { void handleTogglePref('daily_reminders', !dailyReminders) }}
+                disabled={savingPrefs || !notificationsEnabled}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                  dailyReminders
+                    ? 'bg-accent/10 text-accent border border-accent/20'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                } ${savingPrefs || !notificationsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Bell className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Rappel quiz du jour</span>
+              </button>
+              <button
                 onClick={() => { void handleTogglePref('live_session_reminders', !liveSessionReminders) }}
-                disabled={savingPrefs}
+                disabled={savingPrefs || !notificationsEnabled}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
                   liveSessionReminders
                     ? 'bg-accent/10 text-accent border border-accent/20'
                     : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${savingPrefs || !notificationsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Bell className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Rappels sessions live</span>
               </button>
               <button
                 onClick={() => { void handleTogglePref('formateur_publications', !formateurPublications) }}
-                disabled={savingPrefs}
+                disabled={savingPrefs || !notificationsEnabled}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
                   formateurPublications
                     ? 'bg-accent/10 text-accent border border-accent/20'
                     : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs ? 'opacity-50 cursor-not-allowed' : ''}`}
+                } ${savingPrefs || !notificationsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <Bell className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Nouvelles publications formateurs</span>
+              </button>
+              <button
+                onClick={() => { void handleTogglePref('weekly_journal', !weeklyJournal) }}
+                disabled={savingPrefs || !notificationsEnabled}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                  weeklyJournal
+                    ? 'bg-accent/10 text-accent border border-accent/20'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                } ${savingPrefs || !notificationsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Bell className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Journal hebdo en ligne</span>
+              </button>
+              <button
+                onClick={() => { void handleTogglePref('new_formations', !newFormations) }}
+                disabled={savingPrefs || !notificationsEnabled}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                  newFormations
+                    ? 'bg-accent/10 text-accent border border-accent/20'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                } ${savingPrefs || !notificationsEnabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Bell className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Nouvelle formation en ligne</span>
               </button>
             </div>
           </div>

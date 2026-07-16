@@ -121,13 +121,17 @@ async function run(opts: RunOptions): Promise<RunResult> {
       }
 
       // Préférence utilisateur (row absente = true par défaut)
+      // notifications_enabled = kill-switch global (consentement à l'inscription).
       const { data: prefs } = await supabase
         .from("user_notification_preferences")
-        .select("live_session_reminders")
+        .select("notifications_enabled, live_session_reminders")
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (prefs !== null && prefs.live_session_reminders === false) {
+      if (
+        prefs !== null &&
+        (prefs.notifications_enabled === false || prefs.live_session_reminders === false)
+      ) {
         logger.info("reminder_skipped_preference", {
           session_id: session.id,
           user_id: userId,
