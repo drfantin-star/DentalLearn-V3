@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import BottomNav from '@/components/layout/BottomNav'
+import SideNav from '@/components/layout/SideNav'
 import PWAInstallBanner from '@/components/PWAInstallBanner'
 import MiniPlayer from '@/components/MiniPlayer'
 import AudioQueuePlayer from '@/components/news/AudioQueuePlayer'
@@ -66,7 +67,12 @@ export default function AppShell({
 
   return (
     <FocusModeProvider>
-      <div className="min-h-screen pb-28" style={{ background: '#0F0F0F' }}>
+      {/* Sous lg : DOM/rendu identique a avant (pb-28 pour la pilule mobile).
+          A partir de lg : la SideNav fixe occupe la colonne de gauche (w-64) et
+          le contenu est decale via lg:pl-64. La SideNav se rend d'elle-meme en
+          hidden lg:flex, donc invisible sous lg. */}
+      <div className="min-h-screen pb-28 lg:pl-64" style={{ background: '#0F0F0F' }}>
+        <SideNav />
         {children}
         <PWAInstallBanner />
         <MiniPlayer />

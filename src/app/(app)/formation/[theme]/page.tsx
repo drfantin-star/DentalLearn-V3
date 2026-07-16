@@ -374,7 +374,7 @@ export default function ThemePage() {
   return (
     <>
       <header className="sticky top-0 z-30" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
-        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4">
+        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-[1500px] px-4 md:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
             <button
               onClick={() => router.push(fromPage)}
@@ -387,7 +387,7 @@ export default function ThemePage() {
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-6 min-h-screen" style={{ background: '#0F0F0F' }}>
+      <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-[1500px] px-4 md:px-6 lg:px-8 py-6 space-y-6 min-h-screen" style={{ background: '#0F0F0F' }}>
 
         {/* ============================================ */}
         {/* SECTION 1 : Formation gamifiée (Axe 1) */}
@@ -444,6 +444,9 @@ export default function ThemePage() {
             EPP — Axe 2
           </h2>
 
+          {/* Grille 2 colonnes sur desktop — prete pour plusieurs audits EPP a venir.
+              Mobile : 1 colonne (inchange). */}
+          <div className="grid gap-4 lg:grid-cols-2">
           {eppAudit ? (
             (() => {
               const eppT1 = eppSessions.find(s => s.tour === 1)
@@ -494,6 +497,7 @@ export default function ThemePage() {
               </div>
             </div>
           )}
+          </div>
         </section>
 
       </main>

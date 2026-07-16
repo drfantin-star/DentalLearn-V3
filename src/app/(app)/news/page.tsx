@@ -136,7 +136,7 @@ export default function NewsPage() {
   return (
     <div className="min-h-screen bg-[#0F0F0F]">
       <header className="sticky top-0 z-20 bg-[#0F0F0F]/95 backdrop-blur border-b border-gray-800">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-3xl lg:max-w-[1500px] mx-auto px-4 py-3 flex items-center gap-3">
           <Link
             href="/"
             className="p-2 rounded-full text-white/70 hover:bg-gray-800"
@@ -157,7 +157,7 @@ export default function NewsPage() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto py-5">
+      <main className="max-w-3xl lg:max-w-[1500px] mx-auto py-5">
         {loading ? (
           <div className="px-4 space-y-4">
             <div className="h-5 w-1/3 rounded bg-gray-800 animate-pulse" />
@@ -284,7 +284,9 @@ export default function NewsPage() {
               </p>
             ) : (
               <>
-                <div className="flex flex-col gap-3 px-4">
+                {/* Desktop (lg:) : grille 2 colonnes. Mobile inchange (liste
+                    verticale). Structure interne des cartes non modifiee. */}
+                <div className="flex flex-col gap-3 px-4 lg:grid lg:grid-cols-2 lg:gap-4">
                   {items.map((item) => (
                     <NewsCardItem
                       key={item.id}

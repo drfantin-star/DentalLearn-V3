@@ -107,14 +107,21 @@ export default function MaCertifPage() {
         <p className="text-sm font-semibold text-white/80">Ma Certification Periodique</p>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-2xl lg:max-w-[1500px] mx-auto px-4 lg:px-8 py-6 space-y-6">
 
+        {/* Desktop (lg) : radar a gauche, colonne attestations+actions a droite.
+            Mobile : tout empile (space-y-6) — ordre et espacement inchanges.
+            items-start : la colonne droite ne s'etire pas a la hauteur du radar. */}
+        <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
         {/* Radar CP */}
         <RadarCP
           ordreInscriptionDate={ordreDate}
           actionsParAxe={actionsParAxe}
         />
 
+        {/* Attestations (haut) + actions (bas) empilees — colonne droite du
+            bloc radar sur desktop. Mobile : meme espacement qu'avant (24px). */}
+        <div className="space-y-6 lg:space-y-4">
         {/* Mes attestations Certily */}
         <Link
           href="/ma-certif/attestations"
@@ -156,6 +163,8 @@ export default function MaCertifPage() {
             <ChevronRight className="w-5 h-5 text-white/40" />
           </div>
         </button>
+        </div>
+        </div>
 
         {/* Modal actions hors Certily */}
         {actionsModalOpen && userId && (

@@ -62,7 +62,7 @@ export default function BottomNav() {
     // Barre flottante : le <nav> couvre toute la largeur mais ne capte pas les
     // clics (pointer-events-none) ; seuls la pilule et la loupe sont cliquables,
     // pour laisser passer les taps dans les marges autour de la barre.
-    <nav className={`fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 safe-bottom pointer-events-none ${isFocus ? 'hidden md:block' : ''}`}>
+    <nav className={`fixed bottom-0 left-0 right-0 z-40 px-3 pb-3 safe-bottom pointer-events-none lg:hidden ${isFocus ? 'hidden md:block' : ''}`}>
       <div className="max-w-lg mx-auto flex items-stretch gap-2.5">
         {/* Pilule flottante arrondie contenant les onglets */}
         <div
