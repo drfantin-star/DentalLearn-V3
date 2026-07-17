@@ -243,14 +243,25 @@ export default function EppPage() {
           }
 
           const t1 = sessionsData.find(s => s.tour === 1)
-          if (t1) {
-            setActiveSessionId(t1.id)
+          const t2 = sessionsData.find(s => s.tour === 2)
 
-            // Charger les réponses existantes
+          // Session active pour la restauration : la session non terminée la
+          // plus avancée (T2 prioritaire sur T1 si T2 est en cours), sinon la
+          // plus avancée disponible (pour la vue résultats / reprise du plan
+          // d'actions). Ne JAMAIS cibler T1 en dur ici — c'était la cause du
+          // bug de mélange T1/T2 au rechargement (cf ticket).
+          const active = (t2 && !t2.completed_at) ? t2
+            : (t1 && !t1.completed_at) ? t1
+            : (t2 || t1)
+
+          if (active) {
+            setActiveSessionId(active.id)
+
+            // Charger les réponses existantes de la session active
             const { data: respData } = await supabase
               .from('user_epp_responses')
               .select('dossier_number, criterion_id, response')
-              .eq('session_id', t1.id)
+              .eq('session_id', active.id)
 
             if (respData && respData.length > 0) {
               const loaded: Record<string, Record<string, 'oui' | 'non' | 'na'>> = {}
@@ -261,29 +272,29 @@ export default function EppPage() {
               }
               setResponses(loaded)
 
-              if (t1.completed_at) {
-                // T1 terminé → rester sur présentation (statut T1 + carte T2 +
+              if (active.completed_at) {
+                // Session terminée → rester sur présentation (statut T1/T2 +
                 // bouton "Voir les résultats T1" pour y accéder si besoin)
               } else {
-                // T1 en cours → préparer la reprise (rester sur présentation pour voir la card "Reprendre")
+                // Session en cours → préparer la reprise (rester sur présentation pour voir la card "Reprendre")
                 const maxDossier = Math.max(...respData.map(r => r.dossier_number))
                 const cLen = (criteriaData || []).length
                 const lastComplete = cLen > 0 &&
                   Object.keys(loaded[String(maxDossier)] || {}).length >= cLen
                 setCurrentDossier(lastComplete ? maxDossier + 1 : maxDossier)
-                if (t1.nb_dossiers) setNbDossiers(t1.nb_dossiers)
+                if (active.nb_dossiers) setNbDossiers(active.nb_dossiers)
                 setDossierChoiceConfirmed(true)
                 // Rester sur 'presentation' pour afficher la card de reprise
               }
-            } else if (!t1.completed_at) {
+            } else if (!active.completed_at) {
               // Session en cours sans réponses
-              if (t1.nb_dossiers) {
-                setNbDossiers(t1.nb_dossiers)
+              if (active.nb_dossiers) {
+                setNbDossiers(active.nb_dossiers)
                 setDossierChoiceConfirmed(true)
               }
               // Rester sur 'presentation'
             } else {
-              // T1 terminé sans réponses (edge case) → rester sur présentation
+              // Session terminée sans réponses (edge case) → rester sur présentation
             }
           }
         }
@@ -462,6 +473,7 @@ export default function EppPage() {
 
       // 4. Recharger les sessions et aller aux résultats
       await loadData()
+      setEppState('resultats')
     } catch (err) {
       console.error('Erreur finishT1:', err)
     } finally {
