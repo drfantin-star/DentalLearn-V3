@@ -143,6 +143,10 @@ export default function EppPage() {
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
+      // TEMP DEBUG (ticket epp-tour2-access-unlock) — retirer une fois le
+      // signalement Julie (T1 non reconnu sur "Continuer l'audit") reproduit
+      // et la cause confirmée.
+      console.log('[EppPage loadData] start', { themeSlug, auditSlug, userId: user?.id ?? null })
 
       // 1. Charger l'audit EPP ciblé. Si `?audit=<slug>` est présent on résout
       //    cet audit précis ; sinon (rétro-compat des anciens liens) on prend le
@@ -163,10 +167,13 @@ export default function EppPage() {
       if (aErr) throw aErr
 
       if (!auditData) {
+        console.log('[EppPage loadData] audit introuvable', { auditSlug, themeSlug, aErr })
         setError('Aucun audit EPP disponible pour cette thématique')
         setLoading(false)
         return
       }
+
+      console.log('[EppPage loadData] audit résolu', { auditId: auditData.id, auditSlug: auditData.slug })
 
       setAudit(auditData)
 
@@ -201,12 +208,19 @@ export default function EppPage() {
 
       // 3. Charger les sessions utilisateur
       if (user) {
-        const { data: sessionsData } = await supabase
+        const { data: sessionsData, error: sessErr } = await supabase
           .from('user_epp_sessions')
           .select('id, tour, started_at, completed_at, score_global, nb_dossiers, plan_actions')
           .eq('user_id', user.id)
           .eq('audit_id', auditData.id)
           .order('tour')
+
+        console.log('[EppPage loadData] sessions résolues', {
+          userId: user.id,
+          auditId: auditData.id,
+          sessErr,
+          sessions: (sessionsData || []).map(s => ({ tour: s.tour, completed_at: s.completed_at })),
+        })
 
         if (sessionsData) {
           setSessions(sessionsData)
@@ -248,8 +262,8 @@ export default function EppPage() {
               setResponses(loaded)
 
               if (t1.completed_at) {
-                // T1 terminé → résultats
-                setEppState('resultats')
+                // T1 terminé → rester sur présentation (statut T1 + carte T2 +
+                // bouton "Voir les résultats T1" pour y accéder si besoin)
               } else {
                 // T1 en cours → préparer la reprise (rester sur présentation pour voir la card "Reprendre")
                 const maxDossier = Math.max(...respData.map(r => r.dossier_number))
@@ -269,11 +283,12 @@ export default function EppPage() {
               }
               // Rester sur 'presentation'
             } else {
-              // T1 terminé sans réponses (edge case)
-              setEppState('resultats')
+              // T1 terminé sans réponses (edge case) → rester sur présentation
             }
           }
         }
+      } else {
+        console.log('[EppPage loadData] pas d\'utilisateur résolu à ce chargement, sessions non chargées', { auditId: auditData.id, auditSlug })
       }
     } catch (err) {
       console.error('Erreur loadData EPP:', err)
