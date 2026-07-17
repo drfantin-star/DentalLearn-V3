@@ -133,7 +133,7 @@ export default function TenantCurationPage() {
         Catalogue
       </h1>
       <p className="text-gray-600 mb-6">
-        Épinglez jusqu'à {max} formations Dentalschool dans le catalogue présenté à vos
+        Épinglez jusqu'à {max} formations Certily dans le catalogue présenté à vos
         membres. L'ordre d'affichage suit l'ordre de sélection.
       </p>
 
@@ -147,7 +147,7 @@ export default function TenantCurationPage() {
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6">
           {catalog.length === 0 ? (
             <div className="p-12 text-center text-gray-500">
-              Aucune formation Dentalschool publiée pour le moment.
+              Aucune formation Certily publiée pour le moment.
             </div>
           ) : (
             <ul className="divide-y divide-gray-200">

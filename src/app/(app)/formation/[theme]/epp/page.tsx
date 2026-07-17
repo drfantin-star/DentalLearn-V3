@@ -23,6 +23,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { GenerateAttestationButton } from '@/components/attestations/GenerateAttestationButton'
 import { generatePlanActionsPDF as generatePlanActionsPDFUtil } from '@/lib/epp/generatePlanActionsPDF'
+import { generateComparisonPDF } from '@/lib/epp/generateComparisonPDF'
 
 // ============================================
 // TYPES
@@ -718,6 +719,28 @@ export default function EppPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eppState, t1Session?.id, t2Session?.id])
 
+  const downloadComparisonPDF = async () => {
+    if (!audit || !t1Session || !t2Session || !comparisonRows) return
+    const scoreT1 = t1Session.score_global || 0
+    const scoreT2 = t2Session.score_global || 0
+    const eppValidated = scoreT2 > scoreT1 || (scoreT1 >= 80 && scoreT2 >= scoreT1)
+    await generateComparisonPDF({
+      audit: { title: audit.title, slug: audit.slug },
+      scoreT1,
+      scoreT2,
+      nbDossiersT1: t1Session.nb_dossiers,
+      nbDossiersT2: t2Session.nb_dossiers,
+      eppValidated,
+      criteria: comparisonRows.map(c => ({
+        code: c.code,
+        type: c.type,
+        label: c.label,
+        t1Pct: c.t1Pct,
+        t2Pct: c.t2Pct,
+      })),
+    })
+  }
+
   const getT2Status = (): 'unavailable' | 'done' | 'in_progress' | 'unlocked' | { status: 'locked'; unlockDate: Date } => {
     if (!t1Session?.completed_at) return 'unavailable'
     if (t2Session?.completed_at) return 'done'
@@ -795,7 +818,7 @@ export default function EppPage() {
               </p>
 
               {(audit!.inclusion_criteria?.length > 0 || audit!.exclusion_criteria?.length > 0) && (
-                <div className="space-y-3 mb-4 pt-3 border-t border-teal-100">
+                <div className="space-y-3 mb-4 pt-3 border-t border-teal-100 text-left">
 
                   {audit!.inclusion_criteria?.length > 0 && (
                     <div>
@@ -1054,37 +1077,68 @@ export default function EppPage() {
               </div>
               {comparisonLoading && (
                 <div className="p-6 flex justify-center">
-                  <Loader2 size={20} className="animate-spin text-[#0F7B6C]" />
+                  <Loader2 size={20} className="animate-spin text-teal-700" />
                 </div>
               )}
-              {!comparisonLoading && comparisonRows?.map(c => {
-                const typeBg = c.type === 'R' ? 'bg-purple-100 text-purple-700' :
-                               c.type === 'P' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
-                const delta = (c.t1Pct !== null && c.t2Pct !== null) ? c.t2Pct - c.t1Pct : null
-                const statusLabel = delta === null ? null :
-                  delta > 0 ? '✅ Amélioré' : delta === 0 ? '⚠️ Stable' : '❌ Dégradé'
-                const statusColor = delta === null ? 'text-gray-400' :
-                  delta > 0 ? 'text-green-600' : delta === 0 ? 'text-orange-600' : 'text-red-600'
-                return (
-                  <div key={c.id} className="px-4 py-3 border-b border-gray-50 last:border-0">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${typeBg}`}>{c.code}</span>
-                      <p className="text-xs text-gray-700 flex-1 leading-snug">{c.label}</p>
-                    </div>
-                    <div className="flex items-center gap-4 ml-1 text-xs">
-                      <span className="text-gray-500">T1 : <strong className="text-gray-800">{c.t1Pct !== null ? `${c.t1Pct}%` : 'N/A'}</strong></span>
-                      <span className="text-gray-500">T2 : <strong className="text-gray-800">{c.t2Pct !== null ? `${c.t2Pct}%` : 'N/A'}</strong></span>
-                      {delta !== null && (
-                        <span className={delta >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          {delta >= 0 ? '+' : ''}{delta}%
-                        </span>
-                      )}
-                      {statusLabel && <span className={`ml-auto font-semibold ${statusColor}`}>{statusLabel}</span>}
-                    </div>
+              {!comparisonLoading && comparisonRows && comparisonRows.length > 0 && (
+                <>
+                  {/* En-têtes de colonnes — une seule fois, alignées avec les
+                      valeurs de chaque ligne ci-dessous (grid identique). */}
+                  <div className="grid grid-cols-[1fr_2.5rem_2.5rem_3rem_4.5rem] gap-1 px-4 py-1.5 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                    <span>Critère</span>
+                    <span className="text-center">T1</span>
+                    <span className="text-center">T2</span>
+                    <span className="text-center">Δ</span>
+                    <span className="text-center">Statut</span>
                   </div>
-                )
-              })}
+                  {comparisonRows.map(c => {
+                    const typeBg = c.type === 'R' ? 'bg-purple-100 text-purple-700' :
+                                   c.type === 'P' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                    const delta = (c.t1Pct !== null && c.t2Pct !== null) ? c.t2Pct - c.t1Pct : null
+                    const statusLabel = delta === null ? '—' :
+                      delta > 0 ? '✅ Amélioré' : delta === 0 ? '⚠️ Stable' : '❌ Dégradé'
+                    const statusColor = delta === null ? 'text-gray-400' :
+                      delta > 0 ? 'text-green-600' : delta === 0 ? 'text-orange-600' : 'text-red-600'
+                    return (
+                      <div
+                        key={c.id}
+                        className="grid grid-cols-[1fr_2.5rem_2.5rem_3rem_4.5rem] gap-1 items-center px-4 py-2.5 border-b border-gray-50 last:border-0 text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${typeBg}`}>{c.code}</span>
+                          <p className="text-gray-700 leading-snug truncate">{c.label}</p>
+                        </div>
+                        <span className="text-center text-gray-800 font-medium">
+                          {c.t1Pct !== null ? `${c.t1Pct}%` : 'N/A'}
+                        </span>
+                        <span className="text-center text-gray-800 font-medium">
+                          {c.t2Pct !== null ? `${c.t2Pct}%` : 'N/A'}
+                        </span>
+                        <span className={`text-center font-semibold ${statusColor}`}>
+                          {delta !== null ? `${delta >= 0 ? '+' : ''}${delta}%` : '—'}
+                        </span>
+                        <span className={`text-center font-medium ${statusColor}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
             </div>
+
+            {/* Comparatif — PDF */}
+            {comparisonRows && comparisonRows.length > 0 && (
+              <button
+                onClick={downloadComparisonPDF}
+                className="w-full flex items-center justify-center gap-2 py-2.5
+                  border-2 border-teal-700 text-teal-700 text-sm font-semibold
+                  rounded-2xl hover:bg-teal-50 transition-colors"
+              >
+                <FileDown size={16} />
+                Télécharger le comparatif (PDF)
+              </button>
+            )}
 
             {/* Attestation — bouton inchangé */}
             {audit?.id && (

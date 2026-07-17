@@ -1,4 +1,4 @@
-import { ORGANISME, DENTALSCHOOL_ORGANISME } from './types'
+import { ORGANISME, CERTILY_ORGANISME } from './types'
 import { axePdfRgb } from '../cp/axeColors'
 
 /**
@@ -22,8 +22,8 @@ export interface ActionFAttestationData {
   }
   declaration_date: string | Date // date de la déclaration (= ce jour)
   ressources: ActionFRessourceSnapshot[]
-  verification_code: string // "DL-XXXXXX-XXXX"
-  verify_url?: string // URL publique de vérification, ex. https://app/verify/DL-...
+  verification_code: string // "CL-XXXXXX-XXXX" (ou "DL-..." pour les codes émis avant le rebranding Certily)
+  verify_url?: string // URL publique de vérification, ex. https://app/verify/CL-...
 }
 
 /**
@@ -75,7 +75,7 @@ export async function generateActionFPDF(
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text('DENTALSCHOOL — EROJU SAS', 105, 11, { align: 'center' })
+  doc.text('CERTILY — EROJU SAS', 105, 11, { align: 'center' })
 
   doc.setFontSize(12)
   doc.text("ATTESTATION DE DÉMARCHE D'INFORMATION DU PATIENT", 105, 20, {
@@ -224,7 +224,7 @@ export async function generateActionFPDF(
       { align: 'center' }
     )
     doc.text(
-      `Attestation générée le ${issuedAt} par ${DENTALSCHOOL_ORGANISME}.`,
+      `Attestation générée le ${issuedAt} par ${CERTILY_ORGANISME}.`,
       105,
       289,
       { align: 'center' }

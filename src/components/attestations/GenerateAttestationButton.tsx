@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { generateFormationPDF, getFormationPDFFilename } from '@/lib/attestations/generateFormationPDF'
 import { generateEppPDF, getEppPDFFilename } from '@/lib/attestations/generateEppPDF'
 import { saveAttestation, generateVerificationCode, downloadBlob } from '@/lib/attestations/saveAttestation'
-import { TYPE_CNP_BY_AXE, type AttestationOrganisme } from '@/lib/attestations/types'
+import { TYPE_CNP_BY_AXE, CERTILY_ORGANISME, type AttestationOrganisme } from '@/lib/attestations/types'
 import { SatisfactionSurveyModal } from './SatisfactionSurveyModal'
 
 interface Props {
@@ -152,7 +152,7 @@ export function GenerateAttestationButton({
       let metadata: Parameters<typeof saveAttestation>[0]['metadata']
 
       // T7 — Calcul organisme dynamique selon contexte user × formation.
-      // Pour les EPP, on passe formation_id = null (politique V1 : EPP = Dentalschool).
+      // Pour les EPP, on passe formation_id = null (politique V1 : EPP = Certily).
       const organismeFormationId = type === 'formation_online' ? sourceId : null
       const [organismeName, organismeQualiopi, organismeOdpc] = await Promise.all([
         supabase.rpc('attestation_organisme_for', {
@@ -170,7 +170,7 @@ export function GenerateAttestationButton({
       ])
       if (organismeName.error) throw new Error(`RPC organisme : ${organismeName.error.message}`)
       const organisme: AttestationOrganisme = {
-        nom: (organismeName.data as string | null) ?? 'EROJU SAS — Dentalschool',
+        nom: (organismeName.data as string | null) ?? CERTILY_ORGANISME,
         qualiopi: (organismeQualiopi.data as string | null) ?? null,
         odpc: (organismeOdpc.data as string | null) ?? null,
       }

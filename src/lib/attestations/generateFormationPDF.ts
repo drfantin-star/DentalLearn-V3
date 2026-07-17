@@ -1,7 +1,7 @@
 import {
   ORGANISME,
   AXE_LABELS,
-  DENTALSCHOOL_ORGANISME,
+  CERTILY_ORGANISME,
   type FormationAttestationData,
   type AttestationOrganisme,
 } from './types'
@@ -9,7 +9,7 @@ import { axePdfRgb } from '../cp/axeColors'
 import { SIGNATURE_BASE64, SIGNATURE_RATIO } from './signatureBase64'
 
 const FALLBACK_ORGANISME: AttestationOrganisme = {
-  nom: DENTALSCHOOL_ORGANISME,
+  nom: CERTILY_ORGANISME,
   qualiopi: ORGANISME.qualiopi,
   odpc: ORGANISME.ndpc,
 }
@@ -36,7 +36,7 @@ export async function generateFormationPDF(
     new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
 
   const organisme = data.organisme ?? FALLBACK_ORGANISME
-  const isDentalschool = organisme.nom === DENTALSCHOOL_ORGANISME
+  const isCertily = organisme.nom === CERTILY_ORGANISME
 
   // ── EN-TÊTE (couleur d'axe) ──────────────────────────────────
   doc.setFillColor(...base)
@@ -45,7 +45,7 @@ export async function generateFormationPDF(
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  const headerTitle = isDentalschool ? 'DENTALSCHOOL — EROJU SAS' : organisme.nom.toUpperCase()
+  const headerTitle = isCertily ? 'CERTILY — EROJU SAS' : organisme.nom.toUpperCase()
   doc.text(headerTitle, 105, 12, { align: 'center' })
 
   doc.setFontSize(11)
@@ -62,7 +62,7 @@ export async function generateFormationPDF(
   doc.setTextColor(...darkGray)
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
-  const introIssuer = isDentalschool ? 'Dentalschool — EROJU SAS' : organisme.nom
+  const introIssuer = isCertily ? 'Certily — EROJU SAS' : organisme.nom
   const introText =
     `Le praticien soussigné atteste avoir suivi et complété dans son intégralité ` +
     `la formation continue en ligne dispensée par ${introIssuer}, ` +
@@ -93,12 +93,12 @@ export async function generateFormationPDF(
       ['Profession', data.participant.profession],
       ['Formation suivie', data.formation.title],
       ['Formateur', data.formation.formateur],
-      ...(isDentalschool
+      ...(isCertily
         ? [['Comité scientifique', ORGANISME.comite_scientifique]]
         : []),
       [
         'Organisme formateur',
-        isDentalschool
+        isCertily
           ? `${ORGANISME.nom_court} — Qualiopi N° ${organisme.qualiopi} — ODPC : ${organisme.odpc}`
           : organisme.qualiopi
             ? `${organisme.nom} — Qualiopi N° ${organisme.qualiopi}`
@@ -181,7 +181,7 @@ export async function generateFormationPDF(
 
   const sigWidth = 70
   const sigHeight = sigWidth / SIGNATURE_RATIO
-  if (isDentalschool) {
+  if (isCertily) {
     try {
       doc.addImage(SIGNATURE_BASE64, 'JPEG', 14, sigY + 4, sigWidth, sigHeight)
     } catch (err) {
@@ -223,7 +223,7 @@ export async function generateFormationPDF(
     doc.setFontSize(7)
     doc.setTextColor(150, 150, 150)
     doc.setFont('helvetica', 'normal')
-    if (isDentalschool) {
+    if (isCertily) {
       doc.text(
         `${ORGANISME.nom_court} — ${ORGANISME.adresse} — SIRET ${ORGANISME.siret} — APE ${ORGANISME.ape}`,
         105, 284, { align: 'center' }

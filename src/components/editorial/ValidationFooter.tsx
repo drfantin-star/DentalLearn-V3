@@ -8,7 +8,7 @@ interface ValidationFooterProps {
 }
 
 const EDITORIAL_MENTION =
-  'Production éditoriale Dentalschool — comité scientifique avec assistance IA'
+  'Production éditoriale Certily — comité scientifique avec assistance IA'
 
 function formatDateFR(iso: string): string {
   const d = new Date(iso)

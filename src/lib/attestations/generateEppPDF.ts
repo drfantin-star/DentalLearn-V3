@@ -1,7 +1,7 @@
 import {
   ORGANISME,
   AXE_LABELS,
-  DENTALSCHOOL_ORGANISME,
+  CERTILY_ORGANISME,
   type EppAttestationData,
   type AttestationOrganisme,
 } from './types'
@@ -9,7 +9,7 @@ import { axePdfRgb } from '../cp/axeColors'
 import { SIGNATURE_BASE64, SIGNATURE_RATIO } from './signatureBase64'
 
 const FALLBACK_ORGANISME: AttestationOrganisme = {
-  nom: DENTALSCHOOL_ORGANISME,
+  nom: CERTILY_ORGANISME,
   qualiopi: ORGANISME.qualiopi,
   odpc: ORGANISME.ndpc,
 }
@@ -35,7 +35,7 @@ export async function generateEppPDF(
     new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
 
   const organisme = data.organisme ?? FALLBACK_ORGANISME
-  const isDentalschool = organisme.nom === DENTALSCHOOL_ORGANISME
+  const isCertily = organisme.nom === CERTILY_ORGANISME
 
   // ── EN-TÊTE (Axe 2 — teal) ───────────────────────────────────
   doc.setFillColor(...base)
@@ -44,7 +44,7 @@ export async function generateEppPDF(
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  const headerTitle = isDentalschool ? 'DENTALSCHOOL — EROJU SAS' : organisme.nom.toUpperCase()
+  const headerTitle = isCertily ? 'CERTILY — EROJU SAS' : organisme.nom.toUpperCase()
   doc.text(headerTitle, 105, 12, { align: 'center' })
 
   doc.setFontSize(11)
@@ -92,7 +92,7 @@ export async function generateEppPDF(
       ['Thématique / Audit', data.audit.title],
       [
         'Organisme formateur',
-        isDentalschool
+        isCertily
           ? `${ORGANISME.nom_court} — Qualiopi N° ${organisme.qualiopi}`
           : organisme.qualiopi
             ? `${organisme.nom} — Qualiopi N° ${organisme.qualiopi}`
@@ -140,7 +140,7 @@ export async function generateEppPDF(
 
   const sigWidth = 70
   const sigHeight = sigWidth / SIGNATURE_RATIO
-  if (isDentalschool) {
+  if (isCertily) {
     try {
       doc.addImage(SIGNATURE_BASE64, 'JPEG', 14, sigY + 4, sigWidth, sigHeight)
     } catch (err) {
@@ -180,7 +180,7 @@ export async function generateEppPDF(
     doc.setFontSize(7)
     doc.setTextColor(150, 150, 150)
     doc.setFont('helvetica', 'normal')
-    if (isDentalschool) {
+    if (isCertily) {
       doc.text(
         `${ORGANISME.nom_court} — ${ORGANISME.adresse} — SIRET ${ORGANISME.siret} — APE ${ORGANISME.ape}`,
         105, 284, { align: 'center' }

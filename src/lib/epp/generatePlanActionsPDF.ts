@@ -63,7 +63,7 @@ export async function generatePlanActionsPDF(input: PlanActionsPdfInput): Promis
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text('DENTALSCHOOL — EROJU SAS', 105, 10, { align: 'center' })
+  doc.text('CERTILY — EROJU SAS', 105, 10, { align: 'center' })
 
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
@@ -224,7 +224,7 @@ export async function generatePlanActionsPDF(input: PlanActionsPdfInput): Promis
     doc.setFontSize(7)
     doc.setTextColor(150, 150, 150)
     doc.text(
-      `EROJU SAS — Qualiopi QUA006589 — NDA 52441046544 — Document généré le ${new Date().toLocaleDateString('fr-FR')} — Page ${i}/${pageCount}`,
+      `CERTILY — EROJU SAS — Qualiopi QUA006589 — NDA 52441046544 — Document généré le ${new Date().toLocaleDateString('fr-FR')} — Page ${i}/${pageCount}`,
       105, 290, { align: 'center' }
     )
   }

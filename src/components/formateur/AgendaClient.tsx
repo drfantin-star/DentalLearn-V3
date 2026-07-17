@@ -400,7 +400,7 @@ function EventModal({
           {/* Formation liée */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">
-              Formation Dentalschool liée
+              Formation Certily liée
             </label>
             <select
               value={form.formation_id}
