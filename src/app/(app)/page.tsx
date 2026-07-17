@@ -32,6 +32,7 @@ import CutoutCardRender from '@/components/home/CutoutCardRender'
 import SophieAutopilotCard from '@/components/sophie/SophieAutopilotCard'
 import PageContainer from '@/components/layout/PageContainer'
 import NotificationBell from '@/components/notifications/NotificationBell'
+import { useSignOut } from '@/lib/hooks/useSignOut'
 
 function formationToForYouItem(f: Formation): ForYouItem {
   const config = getCategoryConfig(f.category)
@@ -258,12 +259,7 @@ export default function HomePage() {
     refetchUser()
   }
 
-  const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/login')
-    router.refresh()
-  }
+  const handleSignOut = useSignOut()
 
   // "Pour toi" : formations + EPP du feed, completes avec recentFormations jusqu'a ~8 cartes
   const pourToiItems = useMemo(() => {
@@ -406,13 +402,15 @@ export default function HomePage() {
             <span className="text-white text-xs font-bold">{lifetimeRank?.points ?? 0} pts</span>
           </button>
           {user && <NotificationBell />}
+          {/* Déconnexion retirée du header en mobile (surcharge visuelle) —
+              déplacée dans /profil > Sécurité. Reste visible en desktop (lg+). */}
           {user && (
             <button
               type="button"
               onClick={handleSignOut}
               aria-label="Se deconnecter"
               title="Se deconnecter"
-              className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors"
+              className="hidden lg:flex w-10 h-10 rounded-full bg-white/15 items-center justify-center flex-shrink-0 hover:bg-white/25 transition-colors"
             >
               <LogOut size={20} className="text-white" />
             </button>

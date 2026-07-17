@@ -84,11 +84,11 @@ export default function NotificationBell() {
 
       {open && (
         <>
-          {/* Zone de fermeture au clic extérieur */}
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          {/* Scrim : ferme au clic extérieur + fait ressortir le panneau du fond */}
+          <div className="fixed inset-0 z-40 bg-black/40" onClick={() => setOpen(false)} />
           <div
-            className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden z-50"
-            style={{ background: '#1A1A2E', border: '1px solid rgba(255,255,255,0.12)' }}
+            className="absolute right-0 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl overflow-hidden z-50 shadow-2xl"
+            style={{ background: '#1A1A2E', border: '1px solid rgba(255,255,255,0.16)' }}
           >
             <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <span className="text-sm font-semibold text-white">Notifications</span>
@@ -96,7 +96,7 @@ export default function NotificationBell() {
                 <button
                   type="button"
                   onClick={markAllRead}
-                  className="text-xs font-medium text-white/60 hover:text-white transition-colors"
+                  className="text-xs font-semibold text-white bg-primary/25 border border-primary/50 rounded-lg px-2.5 py-1 hover:bg-primary/35 transition-colors"
                 >
                   Tout marquer lu
                 </button>
@@ -104,9 +104,9 @@ export default function NotificationBell() {
             </div>
             <div className="max-h-96 overflow-y-auto">
               {loading ? (
-                <p className="text-sm text-white/40 text-center py-6">Chargement…</p>
+                <p className="text-sm text-white/70 text-center py-6">Chargement…</p>
               ) : notifications.length === 0 ? (
-                <p className="text-sm text-white/40 text-center py-6">Aucune notification</p>
+                <p className="text-sm text-white/70 text-center py-6">Aucune notification</p>
               ) : (
                 notifications.map(n => {
                   const href = n.metadata?.href
@@ -116,10 +116,10 @@ export default function NotificationBell() {
                       style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}
                     >
                       {!n.read_at && <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
-                      <div className={`flex-1 min-w-0 ${n.read_at ? 'opacity-60' : ''}`}>
-                        {n.title && <p className="text-sm font-medium text-white truncate">{n.title}</p>}
-                        <p className="text-xs text-white/70 mt-0.5 line-clamp-2">{n.message}</p>
-                        <p className="text-[11px] text-white/40 mt-1">{formatDate(n.created_at)}</p>
+                      <div className={`flex-1 min-w-0 ${n.read_at ? 'opacity-70' : ''}`}>
+                        {n.title && <p className="text-sm font-semibold text-white">{n.title}</p>}
+                        <p className="text-sm text-white/85 mt-0.5 whitespace-pre-line">{n.message}</p>
+                        <p className="text-[11px] text-white/60 mt-1">{formatDate(n.created_at)}</p>
                       </div>
                     </div>
                   )

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, Loader2, Briefcase, Building2,
   Shield, Presentation, Camera, Save, Lock, Eye, EyeOff,
-  Bell, BellOff, Send, Mail, Calendar, CheckCircle, AlertCircle, Trash2, X, User,
+  Bell, BellOff, Send, Mail, Calendar, CheckCircle, AlertCircle, Trash2, X, User, LogOut,
 } from 'lucide-react'
 import InterestsSection from '@/components/interests/InterestsSection'
 import CreateCabinetModal from '@/components/auth/CreateCabinetModal'
@@ -14,6 +14,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { Modal } from '@/components/ui/Modal'
 import Link from 'next/link'
 import type { IntraRole } from '@/lib/auth/rbac'
+import { useSignOut } from '@/lib/hooks/useSignOut'
 
 const TENANT_ADMIN_ROLES: ReadonlySet<IntraRole> = new Set<IntraRole>([
   'titulaire',
@@ -25,6 +26,7 @@ export default function ProfilPage() {
   const router = useRouter()
   const supabase = createClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const handleSignOut = useSignOut()
 
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<any>(null)
@@ -875,6 +877,24 @@ export default function ProfilPage() {
               <ChevronLeft className="w-4 h-4 text-white/40 rotate-180" />
             </button>
           )}
+        </div>
+
+        {/* Déconnexion — carte neutre, séparée visuellement de la zone dangereuse
+            (celle-ci est destructive ; se déconnecter est bénin). */}
+        <div className="glass-card rounded-2xl p-5">
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center justify-between w-full py-2 text-left hover:bg-white/5 rounded-xl px-2 -mx-2 transition-premium"
+          >
+            <span className="flex items-center gap-3">
+              <div className="p-2 bg-white/10 rounded-xl">
+                <LogOut className="w-4 h-4 text-white/70" />
+              </div>
+              <span className="text-sm font-medium text-white">Se déconnecter</span>
+            </span>
+            <ChevronRight className="w-4 h-4 text-white/40" />
+          </button>
         </div>
 
         {/* Zone dangereuse */}
