@@ -1475,6 +1475,17 @@ export default function EppPage() {
                     <p className="text-[11px] text-blue-600">En cours</p>
                   )}
                 </div>
+                {t1Session && !t1Session.completed_at && (
+                  <button
+                    onClick={() => {
+                      setDossierChoiceConfirmed(true)
+                      setEppState('saisie')
+                    }}
+                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+                  >
+                    Reprendre
+                  </button>
+                )}
               </div>
             </div>
 
