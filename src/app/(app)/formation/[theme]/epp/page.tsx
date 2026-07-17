@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ChevronLeft,
@@ -146,6 +146,30 @@ export default function EppPage() {
   const [comparisonRows, setComparisonRows] = useState<ComparisonRow[] | null>(null)
   const [comparisonLoading, setComparisonLoading] = useState(false)
 
+  // ============================================
+  // Gardes de concurrence (revue epp-state-review) :
+  // - loadGenRef : loadData() est appelé à la fois par l'effet de montage et
+  //   par finishT1() après une mutation. En StrictMode, l'effet de montage
+  //   s'exécute deux fois ; sans garde, les deux appels tournent en
+  //   concurrence et le dernier à répondre (pas forcément le plus récent
+  //   déclenché) écrase l'état — c'est la cause du "loadData() exécuté deux
+  //   fois" et du risque de mélange T1/T2 au rechargement. Un compteur de
+  //   génération : chaque appel capture son numéro, et toute mise à jour
+  //   d'état est court-circuitée si un appel plus récent a déjà démarré.
+  // - Les refs *InFlightRef ci-dessous sont des gardes anti-double-clic
+  //   synchrones : `savingDossier`/`starting`/`savingPlan` (state React) ne
+  //   se répercutent sur l'attribut `disabled` qu'au prochain rendu, ce qui
+  //   laisse une fenêtre où un double-clic (ou un double-tap) déclenche le
+  //   handler une seconde fois avant que le bouton soit visuellement
+  //   désactivé. Un ref est lu/écrit de façon synchrone, donc fiable pour
+  //   ce garde-fou, contrairement au state.
+  // ============================================
+  const loadGenRef = useRef(0)
+  const comparisonGenRef = useRef(0)
+  const dossierActionInFlightRef = useRef(false)
+  const startingInFlightRef = useRef(false)
+  const planActionsInFlightRef = useRef(false)
+
   const themeConfig = THEMES_CONFIG[themeSlug] || { label: themeSlug, icon: '📚' }
 
   useEffect(() => {
@@ -153,13 +177,21 @@ export default function EppPage() {
   }, [themeSlug, auditSlug])
 
   const loadData = async () => {
+    const myGen = ++loadGenRef.current
+    const isStale = () => loadGenRef.current !== myGen
+
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
+      if (isStale()) {
+        console.log('[EppPage loadData] appel obsolète ignoré (après getUser)', { myGen, current: loadGenRef.current })
+        return
+      }
       // TEMP DEBUG (ticket epp-tour2-access-unlock) — retirer une fois le
       // signalement Julie (T1 non reconnu sur "Continuer l'audit") reproduit
-      // et la cause confirmée.
-      console.log('[EppPage loadData] start', { themeSlug, auditSlug, userId: user?.id ?? null })
+      // et la cause confirmée, et cette revue de la gestion d'état validée
+      // par un parcours T1→T2 complet en conditions réelles.
+      console.log('[EppPage loadData] start', { myGen, themeSlug, auditSlug, userId: user?.id ?? null })
 
       // 1. Charger l'audit EPP ciblé. Si `?audit=<slug>` est présent on résout
       //    cet audit précis ; sinon (rétro-compat des anciens liens) on prend le
@@ -179,6 +211,11 @@ export default function EppPage() {
 
       if (aErr) throw aErr
 
+      if (isStale()) {
+        console.log('[EppPage loadData] appel obsolète ignoré (après résolution audit)', { myGen })
+        return
+      }
+
       if (!auditData) {
         console.log('[EppPage loadData] audit introuvable', { auditSlug, themeSlug, aErr })
         setError('Aucun audit EPP disponible pour cette thématique')
@@ -186,7 +223,7 @@ export default function EppPage() {
         return
       }
 
-      console.log('[EppPage loadData] audit résolu', { auditId: auditData.id, auditSlug: auditData.slug })
+      console.log('[EppPage loadData] audit résolu', { myGen, auditId: auditData.id, auditSlug: auditData.slug })
 
       setAudit(auditData)
 
@@ -228,7 +265,13 @@ export default function EppPage() {
           .eq('audit_id', auditData.id)
           .order('tour')
 
+        if (isStale()) {
+          console.log('[EppPage loadData] appel obsolète ignoré (après résolution sessions)', { myGen })
+          return
+        }
+
         console.log('[EppPage loadData] sessions résolues', {
+          myGen,
           userId: user.id,
           auditId: auditData.id,
           sessErr,
@@ -276,6 +319,11 @@ export default function EppPage() {
               .select('dossier_number, criterion_id, response')
               .eq('session_id', active.id)
 
+            if (isStale()) {
+              console.log('[EppPage loadData] appel obsolète ignoré (après résolution réponses)', { myGen })
+              return
+            }
+
             if (respData && respData.length > 0) {
               const loaded: Record<string, Record<string, 'oui' | 'non' | 'na'>> = {}
               for (const r of respData) {
@@ -315,15 +363,22 @@ export default function EppPage() {
         console.log('[EppPage loadData] pas d\'utilisateur résolu à ce chargement, sessions non chargées', { auditId: auditData.id, auditSlug })
       }
     } catch (err) {
+      if (isStale()) {
+        console.log('[EppPage loadData] erreur d\'un appel obsolète ignorée', { myGen, err })
+        return
+      }
       console.error('Erreur loadData EPP:', err)
       setError('Erreur lors du chargement')
     } finally {
-      setLoading(false)
+      // Un appel obsolète ne doit jamais toucher `loading` : l'appel le plus
+      // récent gère lui-même sa propre fin de chargement.
+      if (!isStale()) setLoading(false)
     }
   }
 
   const startT1 = async () => {
-    if (!audit) return
+    if (!audit || startingInFlightRef.current) return
+    startingInFlightRef.current = true
     setStarting(true)
 
     try {
@@ -332,7 +387,6 @@ export default function EppPage() {
 
       if (!user) {
         setError('Connectez-vous pour démarrer un audit')
-        setStarting(false)
         return
       }
 
@@ -353,16 +407,27 @@ export default function EppPage() {
         setSessions(prev => [...prev, session])
         setEppState('saisie')
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erreur startT1:', err)
-      setError('Erreur lors du démarrage')
+      if (err?.code === '23505') {
+        // Conflit sur idx_user_epp_sessions_unique(user_id, audit_id, tour) :
+        // une session T1 existe déjà (double-clic avant désactivation du
+        // bouton, ou double onglet) — pas une vraie erreur, on recharge
+        // plutôt que d'afficher un écran d'erreur bloquant sur toute la page.
+        console.log('[EppPage startT1] conflit de double-création ignoré, rechargement')
+        await loadData()
+      } else {
+        setError('Erreur lors du démarrage')
+      }
     } finally {
+      startingInFlightRef.current = false
       setStarting(false)
     }
   }
 
   const startT2 = async () => {
-    if (!audit) return
+    if (!audit || startingInFlightRef.current) return
+    startingInFlightRef.current = true
     setStarting(true)
     try {
       const supabase = createClient()
@@ -388,9 +453,15 @@ export default function EppPage() {
         setDossierChoiceConfirmed(false)
         setEppState('saisie')
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erreur startT2:', err)
+      if (err?.code === '23505') {
+        // Cf. startT1 : conflit de double-création, pas une vraie erreur.
+        console.log('[EppPage startT2] conflit de double-création ignoré, rechargement')
+        await loadData()
+      }
     } finally {
+      startingInFlightRef.current = false
       setStarting(false)
     }
   }
@@ -420,14 +491,6 @@ export default function EppPage() {
 
     const supabase = createClient()
 
-    // Supprimer les réponses existantes pour ce dossier (évite les doublons)
-    await supabase
-      .from('user_epp_responses')
-      .delete()
-      .eq('session_id', sessionId)
-      .eq('dossier_number', dossierNumber)
-
-    // Insérer les réponses (toutes si complet, sinon seulement celles définies)
     const rows = criteria
       .filter(c => dossierResp[c.id] !== undefined)
       .map(c => ({
@@ -438,23 +501,37 @@ export default function EppPage() {
       }))
 
     if (rows.length > 0) {
-      const { error: insertErr } = await supabase.from('user_epp_responses').insert(rows)
-      if (insertErr) console.error('Erreur save responses:', insertErr)
+      // Upsert atomique — remplace l'ancien delete-puis-insert (deux allers-
+      // retours non atomiques). Si cette fonction est invoquée deux fois pour
+      // le même dossier (double-clic avant désactivation du bouton, double
+      // montage de l'effet), les deux appels pouvaient chacun supprimer puis
+      // réinsérer, et la seconde insertion violait
+      // idx_user_epp_responses_unique(session_id, dossier_number,
+      // criterion_id) → 409. L'upsert est idempotent : un second appel avec
+      // les mêmes lignes met simplement à jour au lieu d'entrer en conflit.
+      const { error: upsertErr } = await supabase
+        .from('user_epp_responses')
+        .upsert(rows, { onConflict: 'session_id,dossier_number,criterion_id' })
+      if (upsertErr) console.error('Erreur save responses:', upsertErr)
     }
   }
 
   const goNextDossier = async () => {
+    if (dossierActionInFlightRef.current) return
+    dossierActionInFlightRef.current = true
     setSavingDossier(true)
     try {
       await saveDossierResponses(currentDossier)
       setCurrentDossier(prev => prev + 1)
     } finally {
+      dossierActionInFlightRef.current = false
       setSavingDossier(false)
     }
   }
 
   const finishT1 = async () => {
-    if (!activeSessionId) return
+    if (!activeSessionId || dossierActionInFlightRef.current) return
+    dossierActionInFlightRef.current = true
     setSavingDossier(true)
     try {
       // 1. Sauvegarder les réponses du dernier dossier
@@ -490,11 +567,14 @@ export default function EppPage() {
     } catch (err) {
       console.error('Erreur finishT1:', err)
     } finally {
+      dossierActionInFlightRef.current = false
       setSavingDossier(false)
     }
   }
 
   const pauseAudit = async () => {
+    if (dossierActionInFlightRef.current) return
+    dossierActionInFlightRef.current = true
     setSavingDossier(true)
     try {
       // Sauvegarder le dossier en cours (même partiel)
@@ -510,6 +590,7 @@ export default function EppPage() {
       }
       setEppState('presentation')
     } finally {
+      dossierActionInFlightRef.current = false
       setSavingDossier(false)
     }
   }
@@ -529,7 +610,8 @@ export default function EppPage() {
   // Sauvegarder le plan d'actions
   const savePlanActions = async () => {
     const sessionId = activeSessionId || t1Session?.id
-    if (!sessionId) return
+    if (!sessionId || planActionsInFlightRef.current) return
+    planActionsInFlightRef.current = true
     setSavingPlan(true)
     try {
       const supabase = createClient()
@@ -551,6 +633,7 @@ export default function EppPage() {
     } catch (err) {
       console.error('Erreur savePlanActions:', err)
     } finally {
+      planActionsInFlightRef.current = false
       setSavingPlan(false)
     }
   }
@@ -584,6 +667,7 @@ export default function EppPage() {
   // critère (écran résultats affiché une fois le Tour 2 terminé).
   const loadComparisonData = async () => {
     if (!t1Session || !t2Session) return
+    const myGen = ++comparisonGenRef.current
     setComparisonLoading(true)
     try {
       const supabase = createClient()
@@ -591,6 +675,8 @@ export default function EppPage() {
         .from('user_epp_responses')
         .select('session_id, criterion_id, response')
         .in('session_id', [t1Session.id, t2Session.id])
+
+      if (comparisonGenRef.current !== myGen) return
 
       const counts: Record<string, Record<string, { oui: number; non: number }>> = {
         [t1Session.id]: {},
@@ -621,7 +707,7 @@ export default function EppPage() {
     } catch (err) {
       console.error('Erreur loadComparisonData:', err)
     } finally {
-      setComparisonLoading(false)
+      if (comparisonGenRef.current === myGen) setComparisonLoading(false)
     }
   }
 
