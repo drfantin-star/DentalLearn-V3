@@ -3,43 +3,48 @@
 import { useMemo } from 'react';
 import { axeHex } from '@/lib/cp/axeColors';
 
+interface CpSettings {
+  cp_start_date: string;
+  cp_duration_years: number;
+  cp_end_date: string;
+}
+
 interface RadarCPProps {
-  ordreInscriptionDate: string | null;
+  /** Source unique de la période CP (cp_user_settings) — plus de calcul local
+      depuis ordre_inscription_date ici (cf. migration 20260716e). */
+  cpSettings: CpSettings | null;
   actionsParAxe: {
     axe1: number;
     axe2: number;
     axe3: number;
     axe4: number;
   };
+  /** Années civiles où une auto-évaluation santé (axe 4) a été réalisée. */
+  autoevalYears?: number[];
 }
 
-export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCPProps) {
+export default function RadarCP({ cpSettings, actionsParAxe, autoevalYears }: RadarCPProps) {
 
-  // Calcul de la periode de certification
+  // Periode de certification : lue depuis cp_user_settings (source unique),
+  // plus de recalcul local depuis ordre_inscription_date. cp_end_date est une
+  // borne exclusive (debut + duree ans, ex. 2023-01-01 + 9 ans = 2032-01-01) —
+  // la dernière année civile couverte est donc startYear + duree - 1 (2031),
+  // pas year(cp_end_date) (2032), qui était le bug « +1 » précédent.
   const periode = useMemo(() => {
-    const ordreDate = ordreInscriptionDate ? new Date(ordreInscriptionDate) : null;
-    const seuil2023 = new Date('2023-01-01');
-
-    if (!ordreDate || ordreDate < seuil2023) {
-      // Inscrit avant 2023 -> derogation 9 ans (2023-2032)
-      return {
-        debut: new Date('2023-01-01'),
-        fin: new Date('2032-12-31'),
-        dureeAns: 9,
-        isDerogation: true
-      };
-    } else {
-      // Inscrit apres 2023 -> 6 ans a partir de l'inscription
-      const fin = new Date(ordreDate);
-      fin.setFullYear(fin.getFullYear() + 6);
-      return {
-        debut: ordreDate,
-        fin: fin,
-        dureeAns: 6,
-        isDerogation: false
-      };
+    if (!cpSettings) {
+      return { debut: new Date(), fin: new Date(), dureeAns: 6, isDerogation: false, dernierAnneeCouverte: new Date().getFullYear() };
     }
-  }, [ordreInscriptionDate]);
+    const debut = new Date(cpSettings.cp_start_date);
+    const fin = new Date(cpSettings.cp_end_date);
+    const dureeAns = cpSettings.cp_duration_years;
+    return {
+      debut,
+      fin,
+      dureeAns,
+      isDerogation: dureeAns > 6,
+      dernierAnneeCouverte: debut.getFullYear() + dureeAns - 1,
+    };
+  }, [cpSettings]);
 
   // Calcul du temps restant
   const tempsRestant = useMemo(() => {
@@ -61,6 +66,15 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
       ))
     };
   }, [periode]);
+
+  // Sous-ligne axe 4 : une pastille par année civile de la période CP (bornes du
+  // radar), pleine si l'auto-évaluation santé a été réalisée cette année-là.
+  const autoevalSet = useMemo(() => new Set(autoevalYears ?? []), [autoevalYears]);
+  const anneesPeriode = useMemo(() => {
+    const start = periode.debut.getFullYear();
+    return Array.from({ length: periode.dureeAns }, (_, i) => start + i);
+  }, [periode]);
+  const anneeCourante = new Date().getFullYear();
 
   // Objectif : 2 actions minimum par axe
   const OBJECTIF_PAR_AXE = 2;
@@ -97,7 +111,7 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
                 ? `${tempsRestant.ans} an${tempsRestant.ans > 1 ? 's' : ''}${tempsRestant.moisRestants > 0 ? ` et ${tempsRestant.moisRestants} mois` : ''} restants`
                 : `${tempsRestant.mois} mois restants`}
             </span>
-            <span>{periode.fin.getFullYear()}</span>
+            <span>{periode.dernierAnneeCouverte}</span>
           </div>
           <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
             <div
@@ -125,45 +139,84 @@ export default function RadarCP({ ordreInscriptionDate, actionsParAxe }: RadarCP
             return (
               <div
                 key={axe.id}
-                className={`flex items-center gap-3 px-3 py-2.5 ${
+                className={`px-3 py-2.5 ${
                   index < axes.length - 1 ? 'border-b' : ''
                 } ${index % 2 === 0 ? 'lg:border-r' : ''} ${index === 2 ? 'lg:border-b-0' : ''}`}
                 style={{ borderColor: 'rgba(255,255,255,0.08)' }}
               >
-                {/* Pastille */}
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-base"
-                  style={{ background: pastilleBg[axe.id] }}
-                >
-                  {axe.icon}
+                <div className="flex items-center gap-3">
+                  {/* Pastille */}
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-base"
+                    style={{ background: pastilleBg[axe.id] }}
+                  >
+                    {axe.icon}
+                  </div>
+
+                  {/* Label */}
+                  <span className="flex-1 text-sm font-medium text-white">
+                    {axe.label}
+                  </span>
+
+                  {/* Dots progression */}
+                  <div className="flex items-center gap-1.5">
+                    {dots.map((filled, i) => (
+                      <div
+                        key={i}
+                        className="w-2.5 h-2.5 rounded-full transition-all"
+                        style={filled
+                          ? { background: axe.color }
+                          : { border: `2px solid ${axe.color}`, opacity: 0.3 }
+                        }
+                      />
+                    ))}
+                  </div>
+
+                  {/* Compteur */}
+                  <span
+                    className="text-xs font-bold min-w-[32px] text-right"
+                    style={{ color: isComplete ? '#16A34A' : axe.color }}
+                  >
+                    {isComplete ? `${axe.count}/2 ✓` : `${axe.count}/2`}
+                  </span>
                 </div>
 
-                {/* Label */}
-                <span className="flex-1 text-sm font-medium text-white">
-                  {axe.label}
-                </span>
-
-                {/* Dots progression */}
-                <div className="flex items-center gap-1.5">
-                  {dots.map((filled, i) => (
-                    <div
-                      key={i}
-                      className="w-2.5 h-2.5 rounded-full transition-all"
-                      style={filled
-                        ? { background: axe.color }
-                        : { border: `2px solid ${axe.color}`, opacity: 0.3 }
-                      }
-                    />
-                  ))}
-                </div>
-
-                {/* Compteur */}
-                <span
-                  className="text-xs font-bold min-w-[32px] text-right"
-                  style={{ color: isComplete ? '#16A34A' : axe.color }}
-                >
-                  {isComplete ? `${axe.count}/2 ✓` : `${axe.count}/2`}
-                </span>
+                {/* Sous-ligne auto-évaluation annuelle — axe 4 uniquement.
+                    Une pastille par année de la période : pleine = réalisée,
+                    contour vide = année écoulée non réalisée, grisée = à venir. */}
+                {axe.id === 'axe4' && (
+                  <div className="mt-2.5 pt-2.5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div className="mb-1.5 text-[11px] font-medium text-white/55">
+                      Auto-évaluation santé · une par an
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {anneesPeriode.map(year => {
+                        const done = autoevalSet.has(year)
+                        const future = year > anneeCourante
+                        const label = done
+                          ? `${year} ✓ — réalisée`
+                          : future
+                            ? `${year} — à venir`
+                            : `${year} — non réalisée`
+                        return (
+                          <div key={year} className="flex flex-col items-center gap-0.5" title={label}>
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={
+                                done
+                                  ? { background: axe.color }
+                                  : future
+                                    ? { background: 'rgba(255,255,255,0.06)' }
+                                    : { background: 'transparent', border: `1.5px solid ${axe.color}` }
+                              }
+                            />
+                            <span className="text-[8px] text-white/30 tabular-nums">{`’${String(year).slice(2)}`}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )
           })}

@@ -19,6 +19,28 @@ interface CpProgress {
   required_actions: number
 }
 
+interface CpSettings {
+  cp_start_date: string
+  cp_duration_years: number
+  cp_end_date: string
+}
+
+const SEUIL_DEROGATION = new Date('2023-01-01')
+
+/** Règle référentiel : inscription avant 2023 -> dérogation 9 ans (début 2023-01-01) ;
+    inscription à partir de 2023 -> 6 ans depuis la date d'inscription. Même logique
+    que la fonction DB create_cp_settings_for_user (migration 20260716e). */
+function computeCpPeriod(ordreInscriptionDate: string) {
+  const ordreDate = new Date(ordreInscriptionDate)
+  if (ordreDate < SEUIL_DEROGATION) {
+    return { cp_start_date: '2023-01-01', cp_duration_years: 9, cp_end_date: '2032-01-01' }
+  }
+  const startDate = ordreDate.toISOString().slice(0, 10)
+  const endDate = new Date(ordreDate)
+  endDate.setFullYear(endDate.getFullYear() + 6)
+  return { cp_start_date: startDate, cp_duration_years: 6, cp_end_date: endDate.toISOString().slice(0, 10) }
+}
+
 export default function MaCertifPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -27,10 +49,11 @@ export default function MaCertifPage() {
 
   const [loading, setLoading] = useState(true)
   const [actionsParAxe, setActionsParAxe] = useState({ axe1: 0, axe2: 0, axe3: 0, axe4: 0 })
-  const [ordreDate, setOrdreDate] = useState<string | null>(null)
+  const [cpSettings, setCpSettings] = useState<CpSettings | null>(null)
   const [cpProgress, setCpProgress] = useState<CpProgress[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [actionsModalOpen, setActionsModalOpen] = useState(false)
+  const [autoevalYears, setAutoevalYears] = useState<number[]>([])
 
   async function loadCpProgress(uid: string) {
     const { data: cpRows } = await supabase
@@ -61,32 +84,36 @@ export default function MaCertifPage() {
         .eq('id', session.user.id)
         .single()
 
-      if (data) setOrdreDate(data.ordre_inscription_date)
-
-      // Lazy-seed cp_user_settings si absent et date disponible
+      // Lazy-seed cp_user_settings si absent et date disponible (règle dérogation
+      // 9 ans / 6 ans — cf. computeCpPeriod, alignée sur create_cp_settings_for_user).
       if (data?.ordre_inscription_date) {
         const { data: existing } = await supabase
           .from('cp_user_settings')
-          .select('user_id')
+          .select('cp_start_date, cp_duration_years, cp_end_date')
           .eq('user_id', session.user.id)
           .maybeSingle()
         if (!existing) {
-          const ordreRaw = new Date(data.ordre_inscription_date)
-          const cpStart = ordreRaw >= new Date('2023-01-01') ? ordreRaw : new Date('2023-01-01')
-          const startDate = cpStart.toISOString().slice(0, 10)
-          const endDate = new Date(cpStart)
-          endDate.setFullYear(endDate.getFullYear() + 6)
+          const computed = computeCpPeriod(data.ordre_inscription_date)
           await supabase.from('cp_user_settings').insert({
             user_id: session.user.id,
-            cp_start_date: startDate,
-            cp_duration_years: 6,
-            cp_end_date: endDate.toISOString().slice(0, 10),
+            ...computed,
           })
+          setCpSettings(computed)
+        } else {
+          setCpSettings(existing)
         }
       }
 
       // Lire la vue cp_user_progress (socle CP officiel)
       await loadCpProgress(session.user.id)
+
+      // Années d'auto-évaluation santé réalisées (axe 4) pour la sous-ligne du radar.
+      const { data: autoevalRows } = await supabase
+        .from('cp_actions')
+        .select('validation_date')
+        .eq('user_id', session.user.id)
+        .eq('action_type', 'auto_evaluation')
+      setAutoevalYears([...new Set((autoevalRows ?? []).map(r => Number(String(r.validation_date).slice(0, 4))))])
 
       setLoading(false)
     }
@@ -115,8 +142,9 @@ export default function MaCertifPage() {
         <div className="space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start">
         {/* Radar CP */}
         <RadarCP
-          ordreInscriptionDate={ordreDate}
+          cpSettings={cpSettings}
           actionsParAxe={actionsParAxe}
+          autoevalYears={autoevalYears}
         />
 
         {/* Attestations (haut) + actions (bas) empilees — colonne droite du
