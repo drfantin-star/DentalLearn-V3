@@ -1484,17 +1484,6 @@ export default function EppPage() {
                     <p className="text-[11px] text-blue-600">En cours</p>
                   )}
                 </div>
-                {t1Session && !t1Session.completed_at && (
-                  <button
-                    onClick={() => {
-                      setDossierChoiceConfirmed(true)
-                      setEppState('saisie')
-                    }}
-                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-semibold rounded-xl hover:bg-blue-700 transition-colors"
-                  >
-                    Reprendre
-                  </button>
-                )}
               </div>
             </div>
 
@@ -1607,8 +1596,13 @@ export default function EppPage() {
           </div>
         )}
 
-        {/* Reprise audit en cours */}
-        {t1Session && !t1Session.completed_at && Object.keys(responses).length > 0 && (
+        {/* Reprise audit en cours — condition sur la seule session T1 non
+            terminée (pas sur Object.keys(responses).length > 0) : cette
+            dernière ne devenait vraie qu'après la sauvegarde d'au moins un
+            dossier (clic "Dossier suivant"/"Pause"), donc un utilisateur
+            quittant pendant la saisie du tout premier dossier n'avait
+            aucun CTA visible pour reprendre. */}
+        {t1Session && !t1Session.completed_at && (
           <div className="bg-blue-50 rounded-2xl border border-blue-100 p-4">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
