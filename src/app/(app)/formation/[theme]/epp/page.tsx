@@ -932,7 +932,7 @@ export default function EppPage() {
             const typeBg = c.type === 'R' ? 'bg-purple-100 text-purple-700' :
                            c.type === 'P' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
             return (
-              <div key={c.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+              <div key={c.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col">
                 <div className="flex items-start gap-2 mb-3">
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${typeBg}`}>{c.code}</span>
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${typeBg}`}>{c.type}</span>
@@ -943,7 +943,12 @@ export default function EppPage() {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                {/* mt-auto : ancre les boutons en bas de carte même quand la
+                    grille lg: étire la hauteur pour aligner avec une carte
+                    voisine dont l'intitulé fait 1 ligne de plus. Sans effet
+                    quand la carte n'est pas étirée (gap = mb-3 du header,
+                    inchangé). */}
+                <div className="flex gap-2 mt-auto">
                   <button
                     onClick={() => setResponse(c.id, 'oui')}
                     className={`flex-1 h-11 rounded-xl text-sm font-semibold border transition-colors ${
@@ -980,8 +985,12 @@ export default function EppPage() {
           })}
         </main>
 
-        {/* Pied de page fixe */}
-        <div className="fixed left-0 right-0 bg-white border-t border-gray-100 p-4 z-30" style={{ bottom: '64px' }}>
+        {/* Pied de page fixe — lg:left-64 : la SideNav desktop (w-64, cf.
+            AppShell) est fixed et hors du flux normal, donc le lg:pl-64
+            appliqué au contenu ne décale pas cet élément fixed (même
+            convention que MiniPlayer.tsx). Sans ce décalage, la barre déborde
+            sous la sidebar et son contenu centré se retrouve désaxé. */}
+        <div className="fixed left-0 right-0 lg:left-64 bg-white border-t border-gray-100 p-4 z-30" style={{ bottom: '64px' }}>
           <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-5xl">
             <p className="text-xs text-gray-400 text-center mb-2">
               {answeredCount} critères évalués sur {criteria.length}
