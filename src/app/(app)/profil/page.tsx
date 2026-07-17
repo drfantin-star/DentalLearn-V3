@@ -57,6 +57,8 @@ export default function ProfilPage() {
   const [formateurPublications, setFormateurPublications] = useState(true)
   const [weeklyJournal, setWeeklyJournal] = useState(true)
   const [newFormations, setNewFormations] = useState(true)
+  const [cpReminders, setCpReminders] = useState(true)
+  const [autopilotReminders, setAutopilotReminders] = useState(true)
   const [savingPrefs, setSavingPrefs] = useState(false)
   const {
     isSupported: pushSupported,
@@ -110,7 +112,7 @@ export default function ProfilPage() {
 
       const { data: prefs } = await supabase
         .from('user_notification_preferences')
-        .select('notifications_enabled, daily_reminders, live_session_reminders, formateur_publications, weekly_journal, new_formations')
+        .select('notifications_enabled, daily_reminders, live_session_reminders, formateur_publications, weekly_journal, new_formations, cp_reminders, autopilot_reminders')
         .eq('user_id', session.user.id)
         .maybeSingle()
 
@@ -121,6 +123,8 @@ export default function ProfilPage() {
         if (prefs.formateur_publications != null) setFormateurPublications(prefs.formateur_publications)
         if (prefs.weekly_journal != null) setWeeklyJournal(prefs.weekly_journal)
         if (prefs.new_formations != null) setNewFormations(prefs.new_formations)
+        if (prefs.cp_reminders != null) setCpReminders(prefs.cp_reminders)
+        if (prefs.autopilot_reminders != null) setAutopilotReminders(prefs.autopilot_reminders)
       }
 
       try {
@@ -256,7 +260,9 @@ export default function ProfilPage() {
       | 'live_session_reminders'
       | 'formateur_publications'
       | 'weekly_journal'
-      | 'new_formations',
+      | 'new_formations'
+      | 'cp_reminders'
+      | 'autopilot_reminders',
     value: boolean,
   ) => {
     if (!user) return
@@ -267,6 +273,8 @@ export default function ProfilPage() {
       formateur_publications: setFormateurPublications,
       weekly_journal: setWeeklyJournal,
       new_formations: setNewFormations,
+      cp_reminders: setCpReminders,
+      autopilot_reminders: setAutopilotReminders,
     }
     setters[key](value)
     setSavingPrefs(true)
@@ -736,6 +744,30 @@ export default function ProfilPage() {
               >
                 <Bell className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Nouvelle formation en ligne</span>
+              </button>
+              <button
+                onClick={() => { void handleTogglePref('cp_reminders', !cpReminders) }}
+                disabled={savingPrefs || !masterOn}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                  cpReminders
+                    ? 'bg-accent/10 text-accent border border-accent/20'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Bell className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Rappel certification (auto-évaluation)</span>
+              </button>
+              <button
+                onClick={() => { void handleTogglePref('autopilot_reminders', !autopilotReminders) }}
+                disabled={savingPrefs || !masterOn}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                  autopilotReminders
+                    ? 'bg-accent/10 text-accent border border-accent/20'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Bell className="w-5 h-5 shrink-0" />
+                <span className="text-sm">Plan mensuel Sophie</span>
               </button>
             </div>
           </div>
