@@ -69,6 +69,15 @@ interface EppSuggestion {
   sequence_ref: string | null
 }
 
+interface ComparisonRow {
+  id: string
+  code: string
+  type: 'R' | 'P' | 'S'
+  label: string
+  t1Pct: number | null
+  t2Pct: number | null
+}
+
 // ============================================
 // THEMES CONFIG
 // ============================================
@@ -132,6 +141,10 @@ export default function EppPage() {
   const [planSaved, setPlanSaved] = useState(false)
   const [suggestions, setSuggestions] = useState<Record<string, EppSuggestion[]>>({})
   const [checkedSuggestions, setCheckedSuggestions] = useState<Record<string, string[]>>({})
+
+  // Comparaison T1/T2 (écran résultats après Tour 2)
+  const [comparisonRows, setComparisonRows] = useState<ComparisonRow[] | null>(null)
+  const [comparisonLoading, setComparisonLoading] = useState(false)
 
   const themeConfig = THEMES_CONFIG[themeSlug] || { label: themeSlug, icon: '📚' }
 
@@ -565,6 +578,59 @@ export default function EppPage() {
 
   const t1Session = sessions.find(s => s.tour === 1)
   const t2Session = sessions.find(s => s.tour === 2)
+  const activeSession = sessions.find(s => s.id === activeSessionId)
+
+  // Charge les réponses de T1 et T2 pour le tableau de comparaison par
+  // critère (écran résultats affiché une fois le Tour 2 terminé).
+  const loadComparisonData = async () => {
+    if (!t1Session || !t2Session) return
+    setComparisonLoading(true)
+    try {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('user_epp_responses')
+        .select('session_id, criterion_id, response')
+        .in('session_id', [t1Session.id, t2Session.id])
+
+      const counts: Record<string, Record<string, { oui: number; non: number }>> = {
+        [t1Session.id]: {},
+        [t2Session.id]: {},
+      }
+      ;(data || []).forEach(r => {
+        const bucket = counts[r.session_id]
+        if (!bucket) return
+        if (!bucket[r.criterion_id]) bucket[r.criterion_id] = { oui: 0, non: 0 }
+        if (r.response === 'oui') bucket[r.criterion_id].oui++
+        else if (r.response === 'non') bucket[r.criterion_id].non++
+      })
+
+      const pctFor = (sessionId: string, criterionId: string) => {
+        const c = counts[sessionId][criterionId]
+        if (!c || c.oui + c.non === 0) return null
+        return Math.round((c.oui / (c.oui + c.non)) * 100)
+      }
+
+      setComparisonRows(criteria.map(c => ({
+        id: c.id,
+        code: c.code,
+        type: c.type,
+        label: c.label,
+        t1Pct: pctFor(t1Session.id, c.id),
+        t2Pct: pctFor(t2Session.id, c.id),
+      })))
+    } catch (err) {
+      console.error('Erreur loadComparisonData:', err)
+    } finally {
+      setComparisonLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (eppState === 'resultats' && t1Session?.completed_at && t2Session?.completed_at && !comparisonRows) {
+      loadComparisonData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eppState, t1Session?.id, t2Session?.id])
 
   const getT2Status = (): 'unavailable' | 'done' | 'in_progress' | 'unlocked' | { status: 'locked'; unlockDate: Date } => {
     if (!t1Session?.completed_at) return 'unavailable'
@@ -629,7 +695,9 @@ export default function EppPage() {
               <button onClick={() => setEppState('presentation')} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors">
                 <ChevronLeft size={20} className="text-gray-600" />
               </button>
-              <h1 className="text-lg font-bold text-gray-900">Préparation T1</h1>
+              <h1 className="text-lg font-bold text-gray-900">
+                {activeSession?.tour === 2 ? 'Préparation T2' : 'Préparation T1'}
+              </h1>
             </div>
           </header>
           <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
@@ -835,6 +903,119 @@ export default function EppPage() {
   // ============================================
 
   if (eppState === 'resultats' && t1Session?.completed_at) {
+    // Tour 2 terminé → écran de comparaison T1/T2 (référentiel HAS §7.2/7.3),
+    // remplace l'écran résultats T1 seul.
+    if (t2Session?.completed_at) {
+      const scoreT1 = t1Session.score_global || 0
+      const scoreT2 = t2Session.score_global || 0
+      const deltaGlobal = scoreT2 - scoreT1
+      // Critères de validation EPP (référentiel HAS §7.3) : amélioration du
+      // score global, ou score T1 déjà ≥ 80% et resté stable (pas dégradé).
+      const eppValidated = scoreT2 > scoreT1 || (scoreT1 >= 80 && scoreT2 >= scoreT1)
+
+      return (
+        <>
+          <header className="bg-white sticky top-0 z-30 shadow-sm">
+            <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+              <button onClick={() => setEppState('presentation')} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors">
+                <ChevronLeft size={20} className="text-gray-600" />
+              </button>
+              <h1 className="text-lg font-bold text-gray-900">Comparaison Tour 1 / Tour 2</h1>
+            </div>
+          </header>
+
+          <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
+
+            {/* Score global T1 -> T2 */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-4">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{scoreT1.toFixed(0)}%</p>
+                  <p className="text-xs text-gray-500">Score T1</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{scoreT2.toFixed(0)}%</p>
+                  <p className="text-xs text-gray-500">Score T2</p>
+                </div>
+                <div>
+                  <p className={`text-2xl font-bold ${deltaGlobal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {deltaGlobal >= 0 ? '+' : ''}{deltaGlobal.toFixed(0)}%
+                  </p>
+                  <p className="text-xs text-gray-500">Amélioration</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Critères de validation EPP (référentiel HAS §7.3) */}
+            <div className={`rounded-2xl border p-4 flex items-start gap-3 ${
+              eppValidated ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'
+            }`}>
+              {eppValidated
+                ? <CheckCircle2 size={20} className="text-green-600 shrink-0 mt-0.5" />
+                : <AlertCircle size={20} className="text-orange-500 shrink-0 mt-0.5" />
+              }
+              <p className={`text-xs leading-relaxed ${eppValidated ? 'text-green-800' : 'text-orange-800'}`}>
+                {eppValidated
+                  ? 'Critères de validation EPP remplis : amélioration du score global, ou score déjà élevé (≥ 80%) et maintenu.'
+                  : 'Critères de validation EPP non remplis : le score global n\'a pas progressé et n\'était pas déjà ≥ 80%.'}
+              </p>
+            </div>
+
+            {/* Tableau de comparaison par critère */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-900 text-sm">Détail par critère — T1 vs T2</h3>
+              </div>
+              {comparisonLoading && (
+                <div className="p-6 flex justify-center">
+                  <Loader2 size={20} className="animate-spin text-[#0F7B6C]" />
+                </div>
+              )}
+              {!comparisonLoading && comparisonRows?.map(c => {
+                const typeBg = c.type === 'R' ? 'bg-purple-100 text-purple-700' :
+                               c.type === 'P' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                const delta = (c.t1Pct !== null && c.t2Pct !== null) ? c.t2Pct - c.t1Pct : null
+                const statusLabel = delta === null ? null :
+                  delta > 0 ? '✅ Amélioré' : delta === 0 ? '⚠️ Stable' : '❌ Dégradé'
+                const statusColor = delta === null ? 'text-gray-400' :
+                  delta > 0 ? 'text-green-600' : delta === 0 ? 'text-orange-600' : 'text-red-600'
+                return (
+                  <div key={c.id} className="px-4 py-3 border-b border-gray-50 last:border-0">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${typeBg}`}>{c.code}</span>
+                      <p className="text-xs text-gray-700 flex-1 leading-snug">{c.label}</p>
+                    </div>
+                    <div className="flex items-center gap-4 ml-1 text-xs">
+                      <span className="text-gray-500">T1 : <strong className="text-gray-800">{c.t1Pct !== null ? `${c.t1Pct}%` : 'N/A'}</strong></span>
+                      <span className="text-gray-500">T2 : <strong className="text-gray-800">{c.t2Pct !== null ? `${c.t2Pct}%` : 'N/A'}</strong></span>
+                      {delta !== null && (
+                        <span className={delta >= 0 ? 'text-green-600' : 'text-red-600'}>
+                          {delta >= 0 ? '+' : ''}{delta}%
+                        </span>
+                      )}
+                      {statusLabel && <span className={`ml-auto font-semibold ${statusColor}`}>{statusLabel}</span>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Attestation — bouton inchangé */}
+            {audit?.id && (
+              <GenerateAttestationButton
+                type="epp"
+                sourceId={audit.id}
+                label="Télécharger mon attestation EPP"
+                className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-60"
+              />
+            )}
+
+          </main>
+        </>
+      )
+    }
+
+    // Tour 2 pas encore terminé → écran résultats T1 seul (inchangé)
     // Calculs résultats par critère
     const criteriaStats = criteria.map(c => {
       let oui = 0, non = 0, na = 0
