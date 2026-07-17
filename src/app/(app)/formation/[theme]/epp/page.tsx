@@ -800,7 +800,7 @@ export default function EppPage() {
       return (
         <>
           <header className="bg-white sticky top-0 z-30 shadow-sm">
-            <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+            <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-3xl px-4 md:px-6 lg:px-8 py-4 flex items-center gap-3">
               <button onClick={() => setEppState('presentation')} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors">
                 <ChevronLeft size={20} className="text-gray-600" />
               </button>
@@ -809,8 +809,11 @@ export default function EppPage() {
               </h1>
             </div>
           </header>
-          <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
+          <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-3xl px-4 md:px-6 lg:px-8 py-6 space-y-6">
+            {/* Carte recentrée (lg:max-w-xl) : le conteneur s'élargit pour la
+                cohérence de la barre d'en-tête, mais un simple stepper n'a
+                pas besoin de s'étirer sur toute la largeur en desktop. */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center lg:max-w-xl lg:mx-auto">
               <ClipboardCheck size={32} className="text-[#0F7B6C] mx-auto mb-3" />
               <h3 className="font-semibold text-gray-900 mb-1">Combien de dossiers allez-vous évaluer ?</h3>
               <p className="text-xs text-gray-400 mb-6">
@@ -888,7 +891,7 @@ export default function EppPage() {
     return (
       <>
         <header className="bg-white sticky top-0 z-30 shadow-sm">
-          <div className="max-w-lg mx-auto px-4 py-3">
+          <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-5xl px-4 md:px-6 lg:px-8 py-3">
             <div className="flex items-center justify-between mb-2">
               <button
                 onClick={pauseAudit}
@@ -921,7 +924,9 @@ export default function EppPage() {
           </div>
         </header>
 
-        <main className="max-w-lg mx-auto px-4 py-4 space-y-3 pb-36">
+        {/* Grille de critères : 1 colonne mobile (inchangé), 2 colonnes en
+            lg: — hauteurs égales par défaut (pas de items-start). */}
+        <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-5xl px-4 md:px-6 lg:px-8 py-4 pb-36 grid grid-cols-1 lg:grid-cols-2 gap-3">
           {criteria.map((c) => {
             const val = currentResponses[c.id]
             const typeBg = c.type === 'R' ? 'bg-purple-100 text-purple-700' :
@@ -977,7 +982,7 @@ export default function EppPage() {
 
         {/* Pied de page fixe */}
         <div className="fixed left-0 right-0 bg-white border-t border-gray-100 p-4 z-30" style={{ bottom: '64px' }}>
-          <div className="max-w-lg mx-auto">
+          <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-5xl">
             <p className="text-xs text-gray-400 text-center mb-2">
               {answeredCount} critères évalués sur {criteria.length}
             </p>
@@ -1025,7 +1030,7 @@ export default function EppPage() {
       return (
         <>
           <header className="bg-white sticky top-0 z-30 shadow-sm">
-            <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+            <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4 flex items-center gap-3">
               <button onClick={() => setEppState('presentation')} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors">
                 <ChevronLeft size={20} className="text-gray-600" />
               </button>
@@ -1033,7 +1038,7 @@ export default function EppPage() {
             </div>
           </header>
 
-          <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
+          <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-4">
 
             {/* Score global T1 -> T2 */}
             <div className="bg-white rounded-2xl border border-gray-100 p-4">
@@ -1180,7 +1185,7 @@ export default function EppPage() {
     return (
       <>
         <header className="bg-white sticky top-0 z-30 shadow-sm">
-          <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+          <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4 flex items-center gap-3">
             <button onClick={() => setEppState('presentation')} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors">
               <ChevronLeft size={20} className="text-gray-600" />
             </button>
@@ -1188,7 +1193,7 @@ export default function EppPage() {
           </div>
         </header>
 
-        <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-4">
 
           {/* Score global */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center">
@@ -1392,54 +1397,59 @@ export default function EppPage() {
 
       <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-4">
 
-        {/* Description & objectifs */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-          <p className="text-sm text-gray-600 leading-relaxed">{audit.description}</p>
-          <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
-            <span className="flex items-center gap-1">
-              <FileText size={14} />
-              {audit.nb_dossiers_min}-{audit.nb_dossiers_max} dossiers
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock size={14} />
-              Délai T2 : {audit.delai_t2_mois_min}-{audit.delai_t2_mois_max} mois
-            </span>
+        {/* Description & objectifs + Instructions — côte à côte sur desktop,
+            empilées sur mobile (inchangé). Grille par défaut = hauteurs
+            égales entre les deux cartes. */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Description & objectifs */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
+            <p className="text-sm text-gray-600 leading-relaxed">{audit.description}</p>
+            <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+              <span className="flex items-center gap-1">
+                <FileText size={14} />
+                {audit.nb_dossiers_min}-{audit.nb_dossiers_max} dossiers
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock size={14} />
+                Délai T2 : {audit.delai_t2_mois_min}-{audit.delai_t2_mois_max} mois
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* Instructions */}
-        <div className="bg-teal-50 rounded-2xl border border-teal-100 p-4">
-          <div className="flex items-start gap-3">
-            <Info size={18} className="text-teal-600 mt-0.5 shrink-0" />
-            <div className="text-xs text-teal-700 leading-relaxed space-y-2">
-              <p>
-                <strong>Comment fonctionne cet audit EPP ?</strong>
-              </p>
-              <ol className="list-decimal list-inside space-y-1">
-                <li>
-                  <strong>Tour 1 (T1)</strong> — Évaluez votre pratique sur {audit.nb_dossiers_min} à {audit.nb_dossiers_max} dossiers
-                  patients en répondant OUI / NON / NA pour chaque critère.
-                </li>
-                <li>
-                  <strong>Actions d&apos;amélioration</strong> — Identifiez vos axes de progression et
-                  mettez en place des changements dans votre pratique.
-                </li>
-                <li>
-                  <strong>Tour 2 (T2)</strong> — Après un délai de {audit.delai_t2_mois_min} à {audit.delai_t2_mois_max} mois,
-                  réévaluez vos dossiers pour mesurer l&apos;amélioration.
-                </li>
-              </ol>
-              <p className="text-teal-600">
-                La complétion des 2 tours valide l&apos;Axe 2 de votre Certification Périodique.
-              </p>
+          {/* Instructions */}
+          <div className="bg-teal-50 rounded-2xl border border-teal-100 p-4">
+            <div className="flex items-start gap-3">
+              <Info size={18} className="text-teal-600 mt-0.5 shrink-0" />
+              <div className="text-xs text-teal-700 leading-relaxed space-y-2">
+                <p>
+                  <strong>Comment fonctionne cet audit EPP ?</strong>
+                </p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>
+                    <strong>Tour 1 (T1)</strong> — Évaluez votre pratique sur {audit.nb_dossiers_min} à {audit.nb_dossiers_max} dossiers
+                    patients en répondant OUI / NON / NA pour chaque critère.
+                  </li>
+                  <li>
+                    <strong>Actions d&apos;amélioration</strong> — Identifiez vos axes de progression et
+                    mettez en place des changements dans votre pratique.
+                  </li>
+                  <li>
+                    <strong>Tour 2 (T2)</strong> — Après un délai de {audit.delai_t2_mois_min} à {audit.delai_t2_mois_max} mois,
+                    réévaluez vos dossiers pour mesurer l&apos;amélioration.
+                  </li>
+                </ol>
+                <p className="text-teal-600">
+                  La complétion des 2 tours valide l&apos;Axe 2 de votre Certification Périodique.
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Statut Tours (si session existante) */}
+        {/* Statut Tours (si session existante) — côte à côte sur desktop */}
         {(t1Session || t2Session) && (
-          <div className="space-y-2">
+          <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
             {/* Tour 1 status */}
             <div className={`bg-white rounded-2xl border p-3 ${
               t1Session?.completed_at ? 'border-green-200 bg-green-50/30' : 'border-gray-100'
