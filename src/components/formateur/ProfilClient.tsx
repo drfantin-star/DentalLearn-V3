@@ -14,6 +14,8 @@ interface FormateurProfil {
   user_id?: string
   slug?: string | null
   display_name?: string | null
+  first_name?: string | null
+  last_name?: string | null
   bio_long?: string | null
   expertise_tags?: string[] | null
   annees_experience?: number | null
@@ -150,6 +152,8 @@ export default function ProfilClient() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Champs du formulaire (string pour les inputs)
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [bioLong, setBioLong] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [anneesExp, setAnneesExp] = useState('')
@@ -167,6 +171,8 @@ export default function ProfilClient() {
 
   // Hydrate le formulaire depuis le profil chargé
   const hydrateForm = useCallback((p: FormateurProfil) => {
+    setFirstName(p.first_name ?? '')
+    setLastName(p.last_name ?? '')
     setBioLong(p.bio_long ?? '')
     setTags(p.expertise_tags ?? [])
     setAnneesExp(p.annees_experience != null ? String(p.annees_experience) : '')
@@ -237,6 +243,8 @@ export default function ProfilClient() {
     setErrors({})
 
     const payload: FormateurProfilInput = {
+      first_name: firstName || null,
+      last_name: lastName || null,
       bio_long: bioLong || null,
       expertise_tags: tags.length > 0 ? tags : null,
       annees_experience: anneesExp !== '' ? parseInt(anneesExp, 10) : null,
@@ -365,6 +373,37 @@ export default function ProfilClient() {
         {/* ── Informations ──────────────────────────────────────────────── */}
         <Card variant="flat" className="p-6 shadow-sm space-y-5">
           <h2 className="text-base font-bold text-gray-900">Informations</h2>
+
+          {/* Prénom / Nom */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Prénom</label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Julie"
+                maxLength={80}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+              {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nom</label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Fantin"
+                maxLength={80}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+              {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name}</p>}
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 -mt-3">
+            Utilisé pour votre nom affiché (page publique, cartes événements…).
+          </p>
 
           {/* Bio */}
           <div>

@@ -8,6 +8,8 @@ const optionalUrl = z
   .or(z.literal(''))
 
 export const FormateurProfilSchema = z.object({
+  first_name: z.string().max(80, 'Prénom trop long (max 80 caractères)').optional().nullable(),
+  last_name: z.string().max(80, 'Nom trop long (max 80 caractères)').optional().nullable(),
   bio_long: z.string().max(5000, 'Bio trop longue (max 5000 caractères)').optional().nullable(),
   expertise_tags: z
     .array(z.string().min(1).max(50))

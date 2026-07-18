@@ -20,7 +20,16 @@ const AXE1_VALUES = [
 // Axe 3 : toutes les catégories partagent le MÊME dégradé orange (charte
 // section 3 — "un seul dégradé par axe", pas un dégradé par catégorie comme
 // pour l'axe 1). Pareil pour l'axe 4 (rose/violet).
-const AXE3_VALUES = ['communication', 'consentement', 'conflits', 'decision-partagee'] as const
+const AXE3_VALUES = [
+  'communication',
+  'consentement',
+  'conflits',
+  'decision-partagee',
+  'annonce-diagnostic',
+  'education-therapeutique',
+  'ethique-deontologie',
+  'numerique-relation',
+] as const
 const AXE4_VALUES = ['ergonomie', 'stress-burnout', 'risques-pro', 'violences', 'pratique-reflexive'] as const
 const TRANSVERSE_VALUES = ['soft-skills'] as const
 

@@ -85,11 +85,14 @@ export default async function FormateurPublicPage({
 
   return (
     <main className="min-h-screen" style={{ background: '#111' }}>
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      <div className="max-w-5xl mx-auto px-4 py-8 md:grid md:grid-cols-[340px_1fr] md:gap-8 md:items-start">
 
-        {/* ── Header ───────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-5">
-          <div className="w-20 h-20 rounded-full overflow-hidden bg-primary flex items-center justify-center shrink-0">
+        {/* ── Photo — grand format, colonne gauche desktop / en tête mobile ── */}
+        <div className="mb-6 md:mb-0 md:sticky md:top-8">
+          <div
+            className="w-full aspect-[4/3] md:aspect-[3/4] rounded-2xl overflow-hidden bg-primary flex items-center justify-center"
+            style={{ border: '0.5px solid #2a2a2a' }}
+          >
             {p.photo_pro_url ? (
               <img
                 src={p.photo_pro_url}
@@ -97,106 +100,114 @@ export default async function FormateurPublicPage({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <span className="text-white text-xl font-bold">{getInitials(p.display_name)}</span>
+              <span className="text-white text-5xl font-bold">{getInitials(p.display_name)}</span>
             )}
           </div>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-[#e5e5e5]">{p.display_name}</h1>
-            {(p.ville || p.cabinet_nom) && (
-              <p className="text-sm text-[#9ca3af] mt-0.5">
-                {[p.cabinet_nom, p.ville].filter(Boolean).join(' · ')}
-              </p>
-            )}
-            {p.annees_experience != null && (
-              <p className="text-xs text-[#9ca3af] mt-0.5">
-                {p.annees_experience} an{p.annees_experience > 1 ? 's' : ''} d'expérience
-              </p>
-            )}
-          </div>
-          {/* Bouton Suivre — ne pas afficher si l'utilisateur est le formateur */}
-          {user.id !== p.user_id && (
-            <FollowButton
-              slug={p.slug}
-              initialFollowing={initialFollowing}
-              initialCount={initialCount}
-            />
-          )}
         </div>
 
-        {/* ── Bio ──────────────────────────────────────────────────────── */}
-        {p.bio_long && (
-          <section
-            className="rounded-2xl p-5"
-            style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a' }}
-          >
-            <h2 className="text-sm font-bold text-[#e5e5e5] mb-3">À propos</h2>
-            <p className="text-sm text-[#9ca3af] leading-relaxed whitespace-pre-wrap">
-              {p.bio_long}
-            </p>
-          </section>
-        )}
+        {/* ── Colonne contenu ─────────────────────────────────────────── */}
+        <div className="space-y-6 min-w-0">
 
-        {/* ── Spécialités ──────────────────────────────────────────────── */}
-        {p.expertise_tags && p.expertise_tags.length > 0 && (
-          <section
-            className="rounded-2xl p-5"
-            style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a' }}
-          >
-            <h2 className="text-sm font-bold text-[#e5e5e5] mb-3">Spécialités</h2>
-            <div className="flex flex-wrap gap-2">
-              {p.expertise_tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-xs font-medium px-3 py-1 rounded-full"
-                  style={{ background: '#1e1535', color: '#a78bfa' }}
-                >
-                  {getEventCategoryLabel(tag)}
-                </span>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── Réseaux sociaux ──────────────────────────────────────────── */}
-        {(p.linkedin_url || p.instagram_url) && (
-          <section
-            className="rounded-2xl p-5"
-            style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a' }}
-          >
-            <h2 className="text-sm font-bold text-[#e5e5e5] mb-3">Réseaux</h2>
-            <div className="flex gap-4">
-              {p.linkedin_url && (
-                <a
-                  href={p.linkedin_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-[#a78bfa] hover:text-[#c4b5fd] transition-colors font-medium"
-                >
-                  <Linkedin size={16} />
-                  LinkedIn
-                </a>
+          {/* ── Identité ───────────────────────────────────────────────── */}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-[#e5e5e5]">{p.display_name}</h1>
+              {(p.ville || p.cabinet_nom) && (
+                <p className="text-sm text-[#9ca3af] mt-1">
+                  {[p.cabinet_nom, p.ville].filter(Boolean).join(' · ')}
+                </p>
               )}
-              {p.instagram_url && (
-                <a
-                  href={p.instagram_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm text-[#a78bfa] hover:text-[#c4b5fd] transition-colors font-medium"
-                >
-                  <Instagram size={16} />
-                  Instagram
-                </a>
+              {p.annees_experience != null && (
+                <p className="text-xs text-[#9ca3af] mt-1">
+                  {p.annees_experience} an{p.annees_experience > 1 ? 's' : ''} d'expérience
+                </p>
               )}
             </div>
-          </section>
-        )}
+            {/* Bouton Suivre — ne pas afficher si l'utilisateur est le formateur */}
+            {user.id !== p.user_id && (
+              <FollowButton
+                slug={p.slug}
+                initialFollowing={initialFollowing}
+                initialCount={initialCount}
+              />
+            )}
+          </div>
 
-        {/* ── Événements présentiels ───────────────────────────────────── */}
-        <UpcomingEvents formateurUserId={p.user_id} />
+          {/* ── Bio ──────────────────────────────────────────────────────── */}
+          {p.bio_long && (
+            <section
+              className="rounded-2xl p-5"
+              style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a' }}
+            >
+              <h2 className="text-sm font-bold text-[#e5e5e5] mb-3">À propos</h2>
+              <p className="text-sm text-[#9ca3af] leading-relaxed whitespace-pre-wrap">
+                {p.bio_long}
+              </p>
+            </section>
+          )}
 
-        {/* ── Masterclass à venir ──────────────────────────────────────── */}
-        <UpcomingSessions formateurUserId={p.user_id} />
+          {/* ── Spécialités ──────────────────────────────────────────────── */}
+          {p.expertise_tags && p.expertise_tags.length > 0 && (
+            <section
+              className="rounded-2xl p-5"
+              style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a' }}
+            >
+              <h2 className="text-sm font-bold text-[#e5e5e5] mb-3">Spécialités</h2>
+              <div className="flex flex-wrap gap-2">
+                {p.expertise_tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="text-xs font-medium px-3 py-1 rounded-full"
+                    style={{ background: '#1e1535', color: '#a78bfa' }}
+                  >
+                    {getEventCategoryLabel(tag)}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
 
+          {/* ── Réseaux sociaux ──────────────────────────────────────────── */}
+          {(p.linkedin_url || p.instagram_url) && (
+            <section
+              className="rounded-2xl p-5"
+              style={{ background: '#1a1a1a', border: '0.5px solid #2a2a2a' }}
+            >
+              <h2 className="text-sm font-bold text-[#e5e5e5] mb-3">Réseaux</h2>
+              <div className="flex gap-4">
+                {p.linkedin_url && (
+                  <a
+                    href={p.linkedin_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-[#a78bfa] hover:text-[#c4b5fd] transition-colors font-medium"
+                  >
+                    <Linkedin size={16} />
+                    LinkedIn
+                  </a>
+                )}
+                {p.instagram_url && (
+                  <a
+                    href={p.instagram_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm text-[#a78bfa] hover:text-[#c4b5fd] transition-colors font-medium"
+                  >
+                    <Instagram size={16} />
+                    Instagram
+                  </a>
+                )}
+              </div>
+            </section>
+          )}
+
+          {/* ── Événements présentiels ───────────────────────────────────── */}
+          <UpcomingEvents formateurUserId={p.user_id} />
+
+          {/* ── Masterclass à venir ──────────────────────────────────────── */}
+          <UpcomingSessions formateurUserId={p.user_id} />
+
+        </div>
       </div>
     </main>
   )
