@@ -171,6 +171,7 @@ export function useDemarches(userId?: string) {
             ctaUrl: `/formation/${audit.theme_slug}/epp?audit=${audit.slug}`,
             accentColor: 'border-teal-200',
             eppStatus,
+            category: audit.theme_slug || null,
           })
         })
 

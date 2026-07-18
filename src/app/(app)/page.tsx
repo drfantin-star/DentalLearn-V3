@@ -446,7 +446,7 @@ export default function HomePage() {
                       boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
                     }}
                   >
-                    <EppCardBackground />
+                    <EppCardBackground themeSlug={epp.category} />
                     <div
                       style={{
                         position: 'absolute',

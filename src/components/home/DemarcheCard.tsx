@@ -65,7 +65,7 @@ export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCar
       onClick={() => { window.location.href = demarche.ctaUrl }}
       ariaLabel={demarche.title}
       aspect="landscape"
-      fallback={<EppCardBackground />}
+      fallback={<EppCardBackground themeSlug={demarche.category} />}
       topLeft={
         <Badge variant={isValidated ? 'success' : 'epp'} size="md">
           {badgeLabel}
