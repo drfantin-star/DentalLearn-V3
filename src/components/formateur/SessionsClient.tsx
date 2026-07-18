@@ -10,6 +10,8 @@ import { computeSessionStatus, computeSessionStatusLabel, type SessionStatus } f
 import type { FormateurFormation } from '@/lib/auth/rbac'
 import ReviewDecisionModal from '@/components/masterclass/ReviewDecisionModal'
 import DateTimePicker from '@/components/masterclass/DateTimePicker'
+import CategoryBadge from '@/components/masterclass/CategoryBadge'
+import { EVENT_CATEGORY_OPTIONS } from '@/lib/constants/eventCategories'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -27,6 +29,7 @@ interface LiveSession {
   status: string
   is_published: boolean
   formation_id: string | null
+  category: string | null
   registration_count: number
   computed_status: SessionStatus
   created_at: string
@@ -46,6 +49,7 @@ interface FormField {
   zoom_password: string
   capacity: string
   formation_id: string
+  category: string
 }
 
 const EMPTY_FORM: FormField = {
@@ -57,7 +61,7 @@ const EMPTY_FORM: FormField = {
   zoom_password: '',
   capacity: '',
   formation_id: '',
-  is_published: false,
+  category: '',
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -187,6 +191,7 @@ function SessionCard({
         <ReviewStatusBadge session={session} />
         {session.is_published && <Badge variant="success">Publiée</Badge>}
         {session.created_by_role === 'admin' && <Badge variant="info">Proposée par l'administration</Badge>}
+        <CategoryBadge category={session.category} />
       </div>
 
       {session.review_status === 'rejected' && session.review_comment && (
@@ -308,6 +313,7 @@ function SessionModal({
       zoom_password: editing.zoom_password ?? '',
       capacity: editing.capacity != null ? String(editing.capacity) : '',
       formation_id: editing.formation_id ?? '',
+      category: editing.category ?? '',
     }
   })
 
@@ -333,6 +339,7 @@ function SessionModal({
       zoom_password: form.zoom_password || null,
       capacity: form.capacity ? parseInt(form.capacity, 10) : null,
       formation_id: form.formation_id || null,
+      category: form.category || null,
       is_published: false,
     }
 
@@ -496,6 +503,20 @@ function SessionModal({
                 ))}
               </select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Thématique</label>
+            <select
+              value={form.category}
+              onChange={(e) => setField('category', e.target.value)}
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+            >
+              <option value="">Aucune thématique</option>
+              {EVENT_CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
           </div>
 
           {submitError && (

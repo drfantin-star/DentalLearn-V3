@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('live_sessions')
-    .select('id, title, starts_at, duration_min, capacity, live_registrations(count)')
+    .select('id, title, starts_at, duration_min, capacity, category, live_registrations(count)')
     .eq('is_published', true)
     .is('deleted_at', null)
     .neq('status', 'cancelled')

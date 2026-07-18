@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { EVENT_CATEGORY_VALUES } from '@/lib/constants/eventCategories'
 
 export const LiveSessionSchema = z.object({
   title: z.string().min(1, 'Le titre est requis').max(200),
@@ -9,6 +10,7 @@ export const LiveSessionSchema = z.object({
   zoom_password: z.string().max(100).optional().nullable(),
   capacity: z.number().int().positive().optional().nullable(),
   formation_id: z.string().uuid().optional().nullable(),
+  category: z.enum(EVENT_CATEGORY_VALUES).optional().nullable(),
   is_published: z.boolean().default(false),
 })
 
@@ -27,6 +29,7 @@ export const AdminProposeLiveSessionSchema = z.object({
   zoom_password: z.string().max(100).optional().nullable(),
   capacity: z.number().int().positive().optional().nullable(),
   formation_id: z.string().uuid().optional().nullable(),
+  category: z.enum(EVENT_CATEGORY_VALUES).optional().nullable(),
 })
 
 export type AdminProposeLiveSessionPayload = z.infer<typeof AdminProposeLiveSessionSchema>

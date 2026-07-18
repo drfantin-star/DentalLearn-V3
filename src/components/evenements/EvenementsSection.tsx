@@ -76,7 +76,10 @@ export default function EvenementsSection({ items, showVoirTout }: EvenementsSec
               type={item.type}
               title={item.title}
               starts_at={item.starts_at}
+              category={item.category}
               formateur_display_name={item.formateur_display_name}
+              formateur_slug={item.formateur_slug}
+              formateur_photo_url={item.formateur_photo_url}
               onClick={() => { handleItemClick(item) }}
             />
           ))

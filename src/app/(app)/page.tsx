@@ -194,62 +194,18 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchEvenements() {
-      const supabase = createClient()
-      const now = new Date().toISOString()
-      const [{ data: events }, { data: sessions }] = await Promise.all([
-        supabase
-          .from('live_events')
-          .select('id, title, starts_at, formateur_user_id')
-          .eq('is_published', true)
-          .is('deleted_at', null)
-          .gte('starts_at', now)
-          .order('starts_at', { ascending: true })
-          .limit(3),
-        supabase
-          .from('live_sessions')
-          .select('id, title, starts_at, formateur_user_id')
-          .eq('is_published', true)
-          .is('deleted_at', null)
-          .gte('starts_at', now)
-          .neq('status', 'cancelled')
-          .order('starts_at', { ascending: true })
-          .limit(3),
-      ])
-      const allIds = Array.from(
-        new Set(
-          [...(events ?? []), ...(sessions ?? [])]
-            .map((e) => e.formateur_user_id)
-            .filter(Boolean),
-        ),
-      )
-      const profileMap: Record<string, string | null> = {}
-      if (allIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('formateur_profiles')
-          .select('user_id, display_name')
-          .in('user_id', allIds)
-        for (const p of profiles ?? []) {
-          profileMap[p.user_id] = p.display_name ?? null
-        }
+      // Réutilise /api/evenements (même logique que la page /evenements :
+      // dégradé thématique + nom/photo formateur avec bypass RLS pour le
+      // nom même si le profil public n'est pas publié) plutôt que de
+      // dupliquer les requêtes ici.
+      try {
+        const res = await fetch('/api/evenements?limit=3')
+        if (!res.ok) return
+        const data: EvenementItemData[] = await res.json()
+        setEvenements(data.slice(0, 3))
+      } catch {
+        // silencieux — la section est simplement masquée si vide
       }
-      const merged: EvenementItemData[] = [
-        ...(events ?? []).map((e) => ({
-          id: e.id,
-          type: 'presentiel' as const,
-          title: e.title,
-          starts_at: e.starts_at,
-          formateur_display_name: profileMap[e.formateur_user_id] ?? null,
-        })),
-        ...(sessions ?? []).map((s) => ({
-          id: s.id,
-          type: 'virtuel' as const,
-          title: s.title,
-          starts_at: s.starts_at,
-          formateur_display_name: profileMap[s.formateur_user_id] ?? null,
-        })),
-      ]
-      merged.sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-      setEvenements(merged.slice(0, 3))
     }
     void fetchEvenements()
   }, [])

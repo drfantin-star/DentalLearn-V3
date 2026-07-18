@@ -5,6 +5,7 @@ interface CardProps {
   variant?: 'default' | 'flat'
   className?: string
   children: React.ReactNode
+  onClick?: () => void
 }
 
 interface CardSectionProps {
@@ -12,9 +13,10 @@ interface CardSectionProps {
   children: React.ReactNode
 }
 
-export function Card({ variant = 'default', className, children }: CardProps) {
+export function Card({ variant = 'default', className, children, onClick }: CardProps) {
   return (
     <div
+      onClick={onClick}
       className={cn(
         'bg-white rounded-2xl',
         variant === 'default' && 'shadow-lg',

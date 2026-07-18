@@ -7,6 +7,9 @@ import { Card } from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import ReviewDecisionModal from '@/components/masterclass/ReviewDecisionModal'
 import DateTimePicker from '@/components/masterclass/DateTimePicker'
+import CategoryBadge from '@/components/masterclass/CategoryBadge'
+import RegistrationsPanel from '@/components/admin/RegistrationsPanel'
+import { EVENT_CATEGORY_OPTIONS } from '@/lib/constants/eventCategories'
 import { AdminProposeLiveSessionSchema, type AdminProposeLiveSessionPayload } from '@/lib/schemas/live-session'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -22,6 +25,7 @@ interface MasterclassSession {
   capacity: number | null
   is_published: boolean
   formation_id: string | null
+  category: string | null
   registration_count: number
   review_status: ReviewStatus
   created_by_role: 'formateur' | 'admin'
@@ -53,6 +57,7 @@ interface ProposeForm {
   zoom_password: string
   capacity: string
   formation_id: string
+  category: string
 }
 
 const EMPTY_PROPOSE_FORM: ProposeForm = {
@@ -65,6 +70,7 @@ const EMPTY_PROPOSE_FORM: ProposeForm = {
   zoom_password: '',
   capacity: '',
   formation_id: '',
+  category: '',
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -147,6 +153,7 @@ function ProposeModal({
       zoom_password: form.zoom_password || null,
       capacity: form.capacity ? parseInt(form.capacity, 10) : null,
       formation_id: form.formation_id || null,
+      category: form.category || null,
     }
 
     const parsed = AdminProposeLiveSessionSchema.safeParse(payload)
@@ -321,6 +328,20 @@ function ProposeModal({
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Thématique</label>
+            <select
+              value={form.category}
+              onChange={(e) => setField('category', e.target.value)}
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="">Aucune thématique</option>
+              {EVENT_CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
           {submitError && (
             <p className="text-red-500 text-sm bg-red-50 border border-red-200 rounded-xl px-3 py-2">{submitError}</p>
           )}
@@ -345,15 +366,21 @@ function SessionRow({
   session,
   onOpenReview,
   onTogglePublish,
+  onOpenRegistrations,
 }: {
   session: MasterclassSession
   onOpenReview: (s: MasterclassSession) => void
   onTogglePublish: (s: MasterclassSession) => void
+  onOpenRegistrations: (s: MasterclassSession) => void
 }) {
   const awaitingMyDecision = session.awaiting === 'admin'
 
   return (
-    <Card variant="flat" className="p-5 flex flex-col gap-3 shadow-sm">
+    <Card
+      variant="flat"
+      className="p-5 flex flex-col gap-3 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+      onClick={() => onOpenRegistrations(session)}
+    >
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-1.5 text-primary text-sm font-semibold mb-0.5">
@@ -381,6 +408,7 @@ function SessionRow({
         <Badge variant="neutral">
           {session.created_by_role === 'admin' ? 'Créée par l\'administration' : 'Créée par le formateur'}
         </Badge>
+        <CategoryBadge category={session.category} />
       </div>
 
       {session.review_status === 'rejected' && session.review_comment && (
@@ -391,7 +419,7 @@ function SessionRow({
 
       {awaitingMyDecision && (
         <div className="pt-1 border-t border-gray-100">
-          <Button variant="primary" size="sm" onClick={() => onOpenReview(session)} className="flex items-center gap-1.5">
+          <Button variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); onOpenReview(session) }} className="flex items-center gap-1.5">
             <Check size={14} />
             Approuver / Refuser
           </Button>
@@ -402,7 +430,7 @@ function SessionRow({
         <div className="pt-1 border-t border-gray-100">
           {session.created_by_role === 'admin' ? (
             <button
-              onClick={() => onTogglePublish(session)}
+              onClick={(e) => { e.stopPropagation(); onTogglePublish(session) }}
               className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
                 session.is_published
                   ? 'text-orange-600 hover:bg-orange-50'
@@ -432,6 +460,7 @@ export default function MasterclassReviewClient() {
   const [error, setError] = useState<string | null>(null)
   const [proposeOpen, setProposeOpen] = useState(false)
   const [reviewTarget, setReviewTarget] = useState<MasterclassSession | null>(null)
+  const [registrationsTarget, setRegistrationsTarget] = useState<MasterclassSession | null>(null)
   const [toastMsg, setToastMsg] = useState<{ text: string; type: 'error' | 'success' } | null>(null)
 
   const load = useCallback(async () => {
@@ -553,7 +582,13 @@ export default function MasterclassReviewClient() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {sorted.map((session) => (
-            <SessionRow key={session.id} session={session} onOpenReview={setReviewTarget} onTogglePublish={handleTogglePublish} />
+            <SessionRow
+              key={session.id}
+              session={session}
+              onOpenReview={setReviewTarget}
+              onTogglePublish={handleTogglePublish}
+              onOpenRegistrations={setRegistrationsTarget}
+            />
           ))}
         </div>
       )}
@@ -583,6 +618,14 @@ export default function MasterclassReviewClient() {
           title={`"${reviewTarget.title}"`}
           onClose={() => setReviewTarget(null)}
           onSubmit={handleReviewDecision}
+        />
+      )}
+
+      {registrationsTarget && (
+        <RegistrationsPanel
+          sessionId={registrationsTarget.id}
+          sessionTitle={registrationsTarget.title}
+          onClose={() => setRegistrationsTarget(null)}
         />
       )}
     </div>

@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
     p_zoom_password: payload.zoom_password ?? null,
     p_capacity: payload.capacity ?? null,
     p_formation_id: payload.formation_id ?? null,
+    p_category: payload.category ?? null,
   })
 
   if (error) {

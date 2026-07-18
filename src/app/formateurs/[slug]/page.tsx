@@ -107,7 +107,7 @@ export default async function FormateurPublicPage({
               </p>
             )}
             {p.annees_experience != null && (
-              <p className="text-xs text-[#6b7280] mt-0.5">
+              <p className="text-xs text-[#9ca3af] mt-0.5">
                 {p.annees_experience} an{p.annees_experience > 1 ? 's' : ''} d'expérience
               </p>
             )}
