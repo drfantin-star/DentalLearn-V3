@@ -1,10 +1,13 @@
 import { CATEGORY_CONFIG } from '@/lib/supabase/types'
 
 // Sous-ensemble de formations.category pertinent pour un événement/masterclass,
-// groupé par axe (PALETTE_COULEURS_CERTILY.md section 1-4). `radiologie`
-// exclue : dégradé marqué "à définir" (section 1 + point de vigilance 7.3).
-// Doit rester synchronisé avec la CHECK constraint de la migration
-// 20260718g_events_category_axe3_axe4.sql.
+// groupé par axe (docs/PALETTE_COULEURS_CERTILY.md sections 2-5) — ce
+// groupement sert uniquement les <optgroup> du sélecteur admin, plus la
+// couleur (voir eventCategoryGradient.ts : couleur = thème partout, y
+// compris Axe 3/4, depuis le 18/07/2026). `radiologie` exclue : dégradé
+// marqué "à définir" jusqu'au 18/07/2026, désormais défini mais pas encore
+// ouvert aux événements. Doit rester synchronisé avec la CHECK constraint
+// de la migration 20260718i_events_category_axe3_complete.sql.
 
 const AXE1_VALUES = [
   'esthetique',
@@ -17,9 +20,6 @@ const AXE1_VALUES = [
   'numerique',
 ] as const
 
-// Axe 3 : toutes les catégories partagent le MÊME dégradé orange (charte
-// section 3 — "un seul dégradé par axe", pas un dégradé par catégorie comme
-// pour l'axe 1). Pareil pour l'axe 4 (rose/violet).
 const AXE3_VALUES = [
   'communication',
   'consentement',
@@ -41,19 +41,6 @@ export const EVENT_CATEGORY_VALUES = [
 ] as const
 
 export type EventCategory = (typeof EVENT_CATEGORY_VALUES)[number]
-
-// Dégradés partagés par axe (charte section 3), via constantes nommées
-// plutôt que du hex éparpillé dans les composants.
-export const AXE3_GRADIENT = { from: '#F97316', to: '#FBBF24' }
-export const AXE4_GRADIENT = { from: '#EC4899', to: '#A78BFA' }
-
-export function isAxe3Category(category: string): boolean {
-  return (AXE3_VALUES as readonly string[]).includes(category)
-}
-
-export function isAxe4Category(category: string): boolean {
-  return (AXE4_VALUES as readonly string[]).includes(category)
-}
 
 function toOption(value: EventCategory) {
   return { value, label: CATEGORY_CONFIG[value].name }
