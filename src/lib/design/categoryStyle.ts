@@ -42,6 +42,27 @@ const CATEGORY_ALIASES: Record<string, string> = {
   prothese: 'proth',
 }
 
+/**
+ * Les 12 slugs de `news.specialite` (charte §2). Exporté pour que les
+ * consommateurs news (quiz, cover, SVG) sachent distinguer "spécialité
+ * connue" (→ getCategoryStyle) de "spécialité absente" (→ leur propre
+ * fallback news, différent du Neutre générique).
+ */
+export const NEWS_SPECIALITE_SLUGS = [
+  'odf',
+  'implanto',
+  'chir-orale',
+  'endo',
+  'dent-resto',
+  'paro',
+  'proth',
+  'sante-pub',
+  'occluso',
+  'pedo',
+  'gero',
+  'actu-pro',
+] as const
+
 const CATEGORY_STYLES: Record<string, CategoryStyle> = {
   // ── Référentiel clinique unifié news ↔ formations (charte §2) ──────────
   odf: { from: '#C026D3', to: '#E879F9', badge: '#C026D3', label: 'ODF / Orthodontie' },
