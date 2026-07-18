@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ChevronRight, HeartPulse } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { axeHex } from '@/lib/cp/axeColors'
 
 /**
  * Carte d'entrée vers l'auto-évaluation santé, placée sur /sante sous la
@@ -19,7 +20,9 @@ export default function AutoEvalCard({ className }: { className?: string }) {
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F0F]',
         className
       )}
-      style={{ background: 'linear-gradient(135deg, #EC4899, #A78BFA)' }}
+      // Stop clair #A78BFA (violet) non exposé par axeColors.ts (hex/dark
+      // uniquement) — reste littéral, cf. AXE_GRADIENTS[4] (bibliotheque/types.ts).
+      style={{ background: `linear-gradient(135deg, ${axeHex(4)}, #A78BFA)` }}
     >
       <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-white/20">
         <HeartPulse size={22} className="text-white" aria-hidden="true" />

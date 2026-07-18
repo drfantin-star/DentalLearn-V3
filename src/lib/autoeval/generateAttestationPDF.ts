@@ -1,4 +1,5 @@
 import { ORGANISME } from '@/lib/attestations/types'
+import { axeHex, hexToRgb } from '@/lib/cp/axeColors'
 
 export interface AutoevalParticipant {
   nom_complet: string // "Dr NOM Prénom"
@@ -6,7 +7,7 @@ export interface AutoevalParticipant {
   profession: string
 }
 
-const ROSE: [number, number, number] = [236, 72, 153] // #EC4899
+const ROSE: [number, number, number] = hexToRgb(axeHex(4))
 
 function fmtDate(d: string | Date): string {
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })

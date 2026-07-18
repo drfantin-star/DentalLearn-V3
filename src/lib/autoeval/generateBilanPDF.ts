@@ -1,7 +1,8 @@
 import type { AutoevalParticipant } from './generateAttestationPDF'
 import type { AutoevalResults, BlockRecap } from './types'
+import { axeHex, hexToRgb } from '@/lib/cp/axeColors'
 
-const ROSE: [number, number, number] = [236, 72, 153] // #EC4899
+const ROSE: [number, number, number] = hexToRgb(axeHex(4))
 
 export interface BilanData {
   participant: AutoevalParticipant

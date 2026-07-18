@@ -43,8 +43,8 @@ export default function QuestionnaireEditor({ questionnaire, reload }: Props) {
           <ArrowLeft className="h-4 w-4" /> Retour à la Bibliothèque
         </Link>
         <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-[#EC4899]/10 p-2">
-            <ClipboardList className="h-6 w-6 text-[#EC4899]" />
+          <div className="rounded-xl bg-pink-500/10 p-2">
+            <ClipboardList className="h-6 w-6 text-pink-500" />
           </div>
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{questionnaire.titre}</h1>

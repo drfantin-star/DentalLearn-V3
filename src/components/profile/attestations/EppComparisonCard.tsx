@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Download, TrendingUp, Calendar, Loader2 } from 'lucide-react'
 import { downloadEppComparison, type EppComparison } from '@/lib/hooks/useEppComparisons'
+import { axeHex } from '@/lib/cp/axeColors'
 
 interface Props {
   comparison: EppComparison
@@ -43,7 +44,7 @@ export function EppComparisonCard({ comparison, variant = 'standalone' }: Props)
     <div className={cardClass}>
       {/* Header — masque en mode compact, redondant avec l'en-tete du groupe */}
       {!isCompact && (
-        <div className="px-4 py-3" style={{ backgroundImage: 'linear-gradient(135deg, #0F7B6C, #0a5f54)' }}>
+        <div className="px-4 py-3" style={{ backgroundImage: `linear-gradient(135deg, ${axeHex(2)}, #0a5f54)` }}>
           <div className="flex items-center gap-2 text-white">
             <TrendingUp className="w-4 h-4" />
             <span className="text-xs font-semibold uppercase tracking-wide">

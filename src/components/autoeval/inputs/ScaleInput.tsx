@@ -8,7 +8,7 @@ interface Props {
   onChange: (v: AnswerValue) => void
 }
 
-const SELECTED = 'border-[#EC4899] bg-[#EC4899]/15 text-white'
+const SELECTED = 'border-pink-500 bg-pink-500/15 text-white'
 const IDLE = 'border-[#333] bg-[#1a1a1a] text-[#d4d4d4] hover:border-[#555]'
 
 /**
@@ -33,7 +33,7 @@ export default function ScaleInput({ item, value, onChange }: Props) {
           >
             <span
               className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border ${
-                selected ? 'border-[#EC4899] bg-[#EC4899]' : 'border-[#555]'
+                selected ? 'border-pink-500 bg-pink-500' : 'border-[#555]'
               }`}
             >
               {selected && <span className="h-2 w-2 rounded-full bg-white" />}

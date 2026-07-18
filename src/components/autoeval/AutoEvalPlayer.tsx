@@ -124,7 +124,7 @@ export default function AutoEvalPlayer({ questionnaire, onComplete }: Props) {
         </div>
         <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#2a2a2a]">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-[#EC4899] to-[#A78BFA] transition-all"
+            className="h-full rounded-full bg-gradient-to-r from-pink-500 to-violet-400 transition-all"
             style={{ width: `${((blockIndex + (allAnswered ? 1 : 0)) / blocks.length) * 100}%` }}
           />
         </div>
@@ -135,12 +135,12 @@ export default function AutoEvalPlayer({ questionnaire, onComplete }: Props) {
         {block.items.map((item, idx) => (
           <div key={item.id}>
             {headers.has(item.id) && (
-              <h3 className="mb-3 border-l-2 border-[#EC4899] pl-3 text-xs font-black uppercase tracking-wide text-[#EC4899]">
+              <h3 className="mb-3 border-l-2 border-pink-500 pl-3 text-xs font-black uppercase tracking-wide text-pink-500">
                 {headers.get(item.id)}
               </h3>
             )}
             <p className="mb-3 text-sm font-semibold leading-relaxed text-white">
-              <span className="mr-1.5 text-[#EC4899]">{idx + 1}.</span>
+              <span className="mr-1.5 text-pink-500">{idx + 1}.</span>
               {item.libelle}
             </p>
             <ItemInput
@@ -157,7 +157,7 @@ export default function AutoEvalPlayer({ questionnaire, onComplete }: Props) {
         type="button"
         disabled={!allAnswered}
         onClick={() => setShowRecap(true)}
-        className="mt-8 w-full rounded-2xl bg-[#EC4899] py-3.5 text-sm font-bold text-white transition-opacity enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-8 w-full rounded-2xl bg-pink-500 py-3.5 text-sm font-bold text-white transition-opacity enabled:hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {allAnswered ? 'Valider ce volet' : 'Répondez à toutes les questions'}
       </button>

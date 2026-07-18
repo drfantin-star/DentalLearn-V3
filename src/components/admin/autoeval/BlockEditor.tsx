@@ -75,8 +75,8 @@ export default function BlockEditor({ block, onSaved, onError }: BlockEditorProp
 function LockedBlockView({ block }: { block: QuestionnaireBlock }) {
   return (
     <div>
-      <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#EC4899]/30 bg-[#EC4899]/5 px-4 py-3">
-        <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#EC4899]" />
+      <div className="mb-4 flex items-start gap-3 rounded-xl border border-pink-500/30 bg-pink-500/5 px-4 py-3">
+        <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-pink-500" />
         <p className="text-sm text-gray-700">
           <span className="font-semibold">Instrument validé (Copenhagen Burnout Inventory)</span>{' '}
           — non modifiable. Items, options, ordre et règles de scoring sont figés.
