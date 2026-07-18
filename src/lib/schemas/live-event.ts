@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { EVENT_CATEGORY_VALUES } from '@/lib/constants/eventCategories'
 
 export const LiveEventSchema = z.object({
   title: z.string().min(1, 'Le titre est requis').max(200),
@@ -15,6 +16,7 @@ export const LiveEventSchema = z.object({
     .or(z.literal('')),
   capacity: z.number().int().positive().optional().nullable(),
   formation_id: z.string().uuid().optional().nullable(),
+  category: z.enum(EVENT_CATEGORY_VALUES).optional().nullable(),
   is_published: z.boolean().default(false),
 })
 

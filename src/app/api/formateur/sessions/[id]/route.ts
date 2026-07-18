@@ -107,7 +107,7 @@ export async function PATCH(
     .single()
 
   if (error) {
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
   return NextResponse.json(data)
@@ -131,7 +131,7 @@ export async function DELETE(
 
   const { data: session } = await supabase
     .from('live_sessions')
-    .select('id, formateur_user_id, is_published, deleted_at')
+    .select('id, formateur_user_id, is_published, deleted_at, review_status')
     .eq('id', id)
     .single()
 
@@ -147,6 +147,13 @@ export async function DELETE(
   if (session.is_published) {
     return NextResponse.json(
       { error: 'Dépubliez cette session avant de la supprimer' },
+      { status: 409 }
+    )
+  }
+
+  if (!isAdmin && !['draft', 'rejected'].includes(session.review_status)) {
+    return NextResponse.json(
+      { error: 'Seules les masterclass en brouillon ou refusées peuvent être supprimées. Annulez-la si elle est déjà validée.' },
       { status: 409 }
     )
   }
@@ -169,7 +176,7 @@ export async function DELETE(
     .eq('id', id)
 
   if (error) {
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

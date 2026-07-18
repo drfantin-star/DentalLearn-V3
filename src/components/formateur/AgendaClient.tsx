@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import type { FormateurFormation } from '@/lib/auth/rbac'
+import CategoryBadge from '@/components/masterclass/CategoryBadge'
+import { EVENT_CATEGORY_GROUPS } from '@/lib/constants/eventCategories'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -22,6 +24,7 @@ interface LiveEvent {
   capacity: number | null
   is_published: boolean
   formation_id: string | null
+  category: string | null
   created_at: string
   updated_at: string
 }
@@ -36,6 +39,7 @@ interface FormField {
   external_registration_url: string
   capacity: string
   formation_id: string
+  category: string
   is_published: boolean
 }
 
@@ -49,6 +53,7 @@ const EMPTY_FORM: FormField = {
   external_registration_url: '',
   capacity: '',
   formation_id: '',
+  category: '',
   is_published: false,
 }
 
@@ -131,12 +136,15 @@ function EventCard({
       {/* Titre */}
       <h3 className="text-base font-bold text-gray-900 leading-snug">{event.title}</h3>
 
-      {/* Badge formation */}
-      {formation && (
-        <span className="self-start text-xs bg-[#EDE9FF] text-primary font-medium px-2.5 py-1 rounded-full">
-          {formation.title}
-        </span>
-      )}
+      {/* Badge formation + thématique */}
+      <div className="flex flex-wrap items-center gap-2">
+        {formation && (
+          <span className="self-start text-xs bg-[#EDE9FF] text-primary font-medium px-2.5 py-1 rounded-full">
+            {formation.title}
+          </span>
+        )}
+        <CategoryBadge category={event.category} />
+      </div>
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
@@ -209,6 +217,7 @@ function EventModal({
       external_registration_url: editing.external_registration_url ?? '',
       capacity: editing.capacity != null ? String(editing.capacity) : '',
       formation_id: editing.formation_id ?? '',
+      category: editing.category ?? '',
       is_published: editing.is_published,
     }
   })
@@ -235,6 +244,7 @@ function EventModal({
       external_registration_url: form.external_registration_url || null,
       capacity: form.capacity ? parseInt(form.capacity, 10) : null,
       formation_id: form.formation_id || null,
+      category: form.category || null,
       is_published: publishOverride,
     }
 
@@ -308,7 +318,7 @@ function EventModal({
               onChange={(e) => setField('title', e.target.value)}
               maxLength={200}
               placeholder="Ex : Formation parodontologie avancée"
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                 fieldErrors.title ? 'border-red-400' : 'border-gray-300'
               }`}
             />
@@ -327,7 +337,7 @@ function EventModal({
               onChange={(e) => setField('description', e.target.value)}
               rows={3}
               placeholder="Programme, objectifs pédagogiques…"
-              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
 
@@ -343,7 +353,7 @@ function EventModal({
                 onChange={(e) => setField('location_city', e.target.value)}
                 maxLength={120}
                 placeholder="Paris"
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.location_city ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -361,7 +371,7 @@ function EventModal({
                 onChange={(e) => setField('location_venue', e.target.value)}
                 maxLength={200}
                 placeholder="Hôtel Marriott, salle A"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -376,7 +386,7 @@ function EventModal({
                 type="datetime-local"
                 value={form.starts_at}
                 onChange={(e) => setField('starts_at', e.target.value)}
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.starts_at ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -392,7 +402,7 @@ function EventModal({
                 type="datetime-local"
                 value={form.ends_at}
                 onChange={(e) => setField('ends_at', e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -416,6 +426,25 @@ function EventModal({
             </select>
           </div>
 
+          {/* Thématique */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Thématique</label>
+            <select
+              value={form.category}
+              onChange={(e) => setField('category', e.target.value)}
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
+            >
+              <option value="">Aucune thématique</option>
+              {EVENT_CATEGORY_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+
           {/* URL d'inscription + Capacité */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -427,7 +456,7 @@ function EventModal({
                 value={form.external_registration_url}
                 onChange={(e) => setField('external_registration_url', e.target.value)}
                 placeholder="https://..."
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.external_registration_url ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -447,7 +476,7 @@ function EventModal({
                 onChange={(e) => setField('capacity', e.target.value)}
                 min={1}
                 placeholder="Ex : 20"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>

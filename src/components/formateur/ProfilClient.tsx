@@ -5,6 +5,7 @@ import { Camera, ExternalLink, Loader2, X } from 'lucide-react'
 import { FormateurProfilSchema, type FormateurProfilInput } from '@/lib/schemas/formateur-profil'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { EVENT_CATEGORY_GROUPS, getEventCategoryLabel } from '@/lib/constants/eventCategories'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +14,8 @@ interface FormateurProfil {
   user_id?: string
   slug?: string | null
   display_name?: string | null
+  first_name?: string | null
+  last_name?: string | null
   bio_long?: string | null
   expertise_tags?: string[] | null
   annees_experience?: number | null
@@ -68,64 +71,71 @@ function resizeImageIfNeeded(file: File): Promise<Blob> {
   })
 }
 
-// ─── Sous-composant : input "tags" ────────────────────────────────────────────
+// ─── Sous-composant : multi-sélection "Spécialités" (référentiel thématiques) ─
+//
+// La saisie ne propose que le référentiel (EVENT_CATEGORY_GROUPS, groupé par
+// axe). Les tags déjà en base hors référentiel (ancienne saisie libre) restent
+// affichés et supprimables, mais ne peuvent plus être ajoutés depuis ce champ.
 
-function TagInput({
+function SpecialitesSelect({
   tags,
   onChange,
 }: {
   tags: string[]
   onChange: (tags: string[]) => void
 }) {
-  const [input, setInput] = useState('')
-
   function addTag(value: string) {
-    const trimmed = value.trim()
-    if (!trimmed || tags.includes(trimmed) || tags.length >= 20) return
-    onChange([...tags, trimmed])
-    setInput('')
+    if (!value || tags.includes(value) || tags.length >= 20) return
+    onChange([...tags, value])
   }
 
   function removeTag(tag: string) {
     onChange(tags.filter((t) => t !== tag))
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault()
-      addTag(input)
-    } else if (e.key === 'Backspace' && !input && tags.length > 0) {
-      removeTag(tags[tags.length - 1])
-    }
-  }
-
   return (
-    <div className="flex flex-wrap gap-2 p-2 rounded-lg border border-gray-200 bg-white min-h-[42px]">
-      {tags.map((tag) => (
-        <span
-          key={tag}
-          className="flex items-center gap-1 bg-[#EDE9FF] text-primary text-xs font-medium px-2.5 py-1 rounded-full"
-        >
-          {tag}
-          <button
-            type="button"
-            onClick={() => removeTag(tag)}
-            className="hover:text-red-500 transition-colors"
-            aria-label={`Supprimer ${tag}`}
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2 p-2 rounded-lg border border-gray-200 bg-white min-h-[42px]">
+        {tags.length === 0 && (
+          <span className="text-sm text-gray-400 px-1 py-1">Aucune spécialité sélectionnée</span>
+        )}
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className="flex items-center gap-1 bg-[#EDE9FF] text-primary text-xs font-medium px-2.5 py-1 rounded-full"
           >
-            <X size={11} />
-          </button>
-        </span>
-      ))}
-      <input
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onBlur={() => addTag(input)}
-        placeholder={tags.length === 0 ? 'Implantologie, Endodontie…' : ''}
-        className="flex-1 min-w-[140px] text-sm outline-none text-gray-900 placeholder:text-gray-400 bg-transparent"
-      />
+            {getEventCategoryLabel(tag)}
+            <button
+              type="button"
+              onClick={() => removeTag(tag)}
+              className="hover:text-red-500 transition-colors"
+              aria-label={`Supprimer ${getEventCategoryLabel(tag)}`}
+            >
+              <X size={11} />
+            </button>
+          </span>
+        ))}
+      </div>
+      <select
+        value=""
+        onChange={(e) => addTag(e.target.value)}
+        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+      >
+        <option value="">+ Ajouter une spécialité…</option>
+        {EVENT_CATEGORY_GROUPS.map((group) => {
+          const remaining = group.options.filter((opt) => !tags.includes(opt.value))
+          if (remaining.length === 0) return null
+          return (
+            <optgroup key={group.label} label={group.label}>
+              {remaining.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </optgroup>
+          )
+        })}
+      </select>
     </div>
   )
 }
@@ -142,6 +152,8 @@ export default function ProfilClient() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Champs du formulaire (string pour les inputs)
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [bioLong, setBioLong] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [anneesExp, setAnneesExp] = useState('')
@@ -159,6 +171,8 @@ export default function ProfilClient() {
 
   // Hydrate le formulaire depuis le profil chargé
   const hydrateForm = useCallback((p: FormateurProfil) => {
+    setFirstName(p.first_name ?? '')
+    setLastName(p.last_name ?? '')
     setBioLong(p.bio_long ?? '')
     setTags(p.expertise_tags ?? [])
     setAnneesExp(p.annees_experience != null ? String(p.annees_experience) : '')
@@ -229,6 +243,8 @@ export default function ProfilClient() {
     setErrors({})
 
     const payload: FormateurProfilInput = {
+      first_name: firstName || null,
+      last_name: lastName || null,
       bio_long: bioLong || null,
       expertise_tags: tags.length > 0 ? tags : null,
       annees_experience: anneesExp !== '' ? parseInt(anneesExp, 10) : null,
@@ -358,6 +374,37 @@ export default function ProfilClient() {
         <Card variant="flat" className="p-6 shadow-sm space-y-5">
           <h2 className="text-base font-bold text-gray-900">Informations</h2>
 
+          {/* Prénom / Nom */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Prénom</label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Julie"
+                maxLength={80}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+              {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name}</p>}
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1.5">Nom</label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Fantin"
+                maxLength={80}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              />
+              {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name}</p>}
+            </div>
+          </div>
+          <p className="text-xs text-gray-400 -mt-3">
+            Utilisé pour votre nom affiché (page publique, cartes événements…).
+          </p>
+
           {/* Bio */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Bio</label>
@@ -366,7 +413,7 @@ export default function ProfilClient() {
               onChange={(e) => setBioLong(e.target.value)}
               rows={5}
               placeholder="Présentez votre parcours, votre expertise, votre approche pédagogique…"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
             />
             {errors.bio_long && <p className="text-red-500 text-xs mt-1">{errors.bio_long}</p>}
           </div>
@@ -375,9 +422,9 @@ export default function ProfilClient() {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Spécialités{' '}
-              <span className="font-normal text-gray-400">(Entrée ou virgule pour ajouter)</span>
+              <span className="font-normal text-gray-400">(référentiel thématiques)</span>
             </label>
-            <TagInput tags={tags} onChange={setTags} />
+            <SpecialitesSelect tags={tags} onChange={setTags} />
             {errors.expertise_tags && (
               <p className="text-red-500 text-xs mt-1">{errors.expertise_tags}</p>
             )}
@@ -395,7 +442,7 @@ export default function ProfilClient() {
               value={anneesExp}
               onChange={(e) => setAnneesExp(e.target.value)}
               placeholder="Ex : 12"
-              className="w-32 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="w-32 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
             {errors.annees_experience && (
               <p className="text-red-500 text-xs mt-1">{errors.annees_experience}</p>
@@ -411,7 +458,7 @@ export default function ProfilClient() {
               onChange={(e) => setVille(e.target.value)}
               placeholder="Paris"
               maxLength={120}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </div>
 
@@ -426,7 +473,7 @@ export default function ProfilClient() {
               onChange={(e) => setCabinetNom(e.target.value)}
               placeholder="Cabinet dentaire du Louvre"
               maxLength={200}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </div>
         </Card>
@@ -444,7 +491,7 @@ export default function ProfilClient() {
               value={linkedinUrl}
               onChange={(e) => setLinkedinUrl(e.target.value)}
               placeholder="https://linkedin.com/in/..."
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
             {errors.linkedin_url && (
               <p className="text-red-500 text-xs mt-1">{errors.linkedin_url}</p>
@@ -460,7 +507,7 @@ export default function ProfilClient() {
               value={instagramUrl}
               onChange={(e) => setInstagramUrl(e.target.value)}
               placeholder="https://instagram.com/..."
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
             {errors.instagram_url && (
               <p className="text-red-500 text-xs mt-1">{errors.instagram_url}</p>

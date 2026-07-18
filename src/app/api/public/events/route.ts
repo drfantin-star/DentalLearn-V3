@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('live_events')
-    .select('id, title, location_city, starts_at, ends_at, external_registration_url')
+    .select('id, title, location_city, starts_at, ends_at, external_registration_url, category')
     .eq('is_published', true)
     .is('deleted_at', null)
     .gte('starts_at', new Date().toISOString())

@@ -173,3 +173,37 @@ body {
 }
 .animate-wave1 { animation: wave1 2.4s linear infinite; }
 .animate-wave2 { animation: wave2 3.2s linear infinite; }
+
+/* === react-day-picker — thème Certily (token accent/teal, jamais de hex) ===
+   Le popover est clair (bg-white) mais .rdp-day_button a `color: inherit` —
+   sans override explicite il hérite du `color: #e5e5e5` posé globalement sur
+   body (thème sombre par défaut), donc tous les jours SAUF "aujourd'hui"
+   (qui a son propre --rdp-today-color) paraissaient délavés/inactifs. */
+.dlv-daypicker.rdp-root {
+  --rdp-accent-color: theme('colors.accent.DEFAULT');
+  --rdp-accent-background-color: theme('colors.accent.DEFAULT' / 12%);
+  --rdp-today-color: theme('colors.accent.DEFAULT');
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-day_button-height: 34px;
+  --rdp-day_button-width: 34px;
+  color: theme('colors.gray.900');
+}
+
+/* Jours futurs (et aujourd'hui) cliquables : texte lisible + hover teal. */
+.dlv-daypicker .rdp-day_button:not(:disabled):hover {
+  background-color: theme('colors.accent.DEFAULT' / 12%);
+  color: theme('colors.accent.DEFAULT');
+}
+
+/* Jour sélectionné : rempli teal plein, texte blanc — sans ambiguïté. */
+.dlv-daypicker .rdp-selected .rdp-day_button {
+  background-color: theme('colors.accent.DEFAULT');
+  color: white;
+}
+
+/* Jours passés : grisés et non cliquables (curseur explicite). */
+.dlv-daypicker .rdp-day_button:disabled {
+  color: theme('colors.gray.300');
+  cursor: not-allowed;
+}

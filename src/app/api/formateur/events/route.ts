@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase
     .from('live_events')
     .select(
-      'id, title, description, location_city, location_venue, starts_at, ends_at, external_registration_url, capacity, is_published, formation_id, created_at, updated_at'
+      'id, title, description, location_city, location_venue, starts_at, ends_at, external_registration_url, capacity, category, is_published, formation_id, created_at, updated_at'
     )
     .eq('formateur_user_id', user.id)
     .is('deleted_at', null)

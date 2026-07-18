@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Calendar, CalendarDays, ChevronLeft, ChevronRight, LogOut, Sparkles } from 'lucide-react'
+import { BookOpen, ChevronLeft, ChevronRight, LogOut, Sparkles } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
 import { getCategoryConfig } from '@/lib/supabase/types'
@@ -14,6 +14,7 @@ import DailyQuizModal from '@/components/home/DailyQuizModal'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 import { JournalWeekCard } from '@/components/home/JournalWeekCard'
 import { HomeHeroCard } from '@/components/home/HomeHeroCard'
+import EvenementsCarousel from '@/components/home/EvenementsCarousel'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
 import ForYouCard from '@/components/home/ForYouCard'
@@ -194,62 +195,18 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchEvenements() {
-      const supabase = createClient()
-      const now = new Date().toISOString()
-      const [{ data: events }, { data: sessions }] = await Promise.all([
-        supabase
-          .from('live_events')
-          .select('id, title, starts_at, formateur_user_id')
-          .eq('is_published', true)
-          .is('deleted_at', null)
-          .gte('starts_at', now)
-          .order('starts_at', { ascending: true })
-          .limit(3),
-        supabase
-          .from('live_sessions')
-          .select('id, title, starts_at, formateur_user_id')
-          .eq('is_published', true)
-          .is('deleted_at', null)
-          .gte('starts_at', now)
-          .neq('status', 'cancelled')
-          .order('starts_at', { ascending: true })
-          .limit(3),
-      ])
-      const allIds = Array.from(
-        new Set(
-          [...(events ?? []), ...(sessions ?? [])]
-            .map((e) => e.formateur_user_id)
-            .filter(Boolean),
-        ),
-      )
-      const profileMap: Record<string, string | null> = {}
-      if (allIds.length > 0) {
-        const { data: profiles } = await supabase
-          .from('formateur_profiles')
-          .select('user_id, display_name')
-          .in('user_id', allIds)
-        for (const p of profiles ?? []) {
-          profileMap[p.user_id] = p.display_name ?? null
-        }
+      // Réutilise /api/evenements (même logique que la page /evenements :
+      // dégradé thématique + nom/photo formateur avec bypass RLS pour le
+      // nom même si le profil public n'est pas publié) plutôt que de
+      // dupliquer les requêtes ici.
+      try {
+        const res = await fetch('/api/evenements?limit=10')
+        if (!res.ok) return
+        const data: EvenementItemData[] = await res.json()
+        setEvenements(data)
+      } catch {
+        // silencieux — la section est simplement masquée si vide
       }
-      const merged: EvenementItemData[] = [
-        ...(events ?? []).map((e) => ({
-          id: e.id,
-          type: 'presentiel' as const,
-          title: e.title,
-          starts_at: e.starts_at,
-          formateur_display_name: profileMap[e.formateur_user_id] ?? null,
-        })),
-        ...(sessions ?? []).map((s) => ({
-          id: s.id,
-          type: 'virtuel' as const,
-          title: s.title,
-          starts_at: s.starts_at,
-          formateur_display_name: profileMap[s.formateur_user_id] ?? null,
-        })),
-      ]
-      merged.sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-      setEvenements(merged.slice(0, 3))
     }
     void fetchEvenements()
   }, [])
@@ -608,23 +565,10 @@ export default function HomePage() {
           <ExploreRow />
         </section>
 
-        {/* Evenements — masque si vide */}
-        {evenements.length > 0 && (
-          <section>
-            <HomeHeroCard
-              surface="neutral"
-              icon={<Calendar size={26} />}
-              eyebrow="Evenements"
-              title={evenements[0].title}
-              compact
-              cta={{
-                label: 'Voir le calendrier',
-                icon: <CalendarDays size={15} />,
-                onClick: () => router.push('/evenements'),
-              }}
-            />
-          </section>
-        )}
+        {/* Evenements — masque si vide. Meme carrousel (MediaCard) que les
+            autres rangees de la home ; carte "Agenda" cliquable en fin de
+            carrousel a la place du lien "Voir tout". */}
+        <EvenementsCarousel items={evenements} />
 
         {/* Actualites — eclatees par theme (Session 1bis) */}
         {recentNews.length > 0 && renderNewsRow('Les dernieres actus', recentNews, true, undefined, undefined, true)}
