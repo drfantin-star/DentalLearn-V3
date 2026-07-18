@@ -13,7 +13,7 @@ import { motion } from 'framer-motion'
  *    (T8-D), sans défilement.
  *
  * Design tokens : alignés avec Grid/Figures (couleurs ds-turquoise pour
- * emphasis, axe3 pour warning, fond `--color-bg-card`). Responsive : stack
+ * emphasis, amber-500 pour warning, fond `--color-bg-card`). Responsive : stack
  * en colonne unique < 640px (sm:grid-cols-2 desktop).
  *
  * Ajout strictement additif — les 6 templates existants ne sont pas touchés.
@@ -149,7 +149,7 @@ export function Recap({
       {/* Footer : limites (warning compact) */}
       {caveats && caveats.trim().length > 0 && (
         <footer className="mt-3 sm:mt-4 pt-3 border-t border-white/5">
-          <p className={`${kickerClass} uppercase tracking-wider text-axe3 font-semibold mb-1`}>
+          <p className={`${kickerClass} uppercase tracking-wider text-amber-500 font-semibold mb-1`}>
             Limites
           </p>
           <p className={caveatsClass}>
