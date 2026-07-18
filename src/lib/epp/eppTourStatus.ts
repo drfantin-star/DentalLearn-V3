@@ -48,7 +48,7 @@ export function getEppStatusBadgeLabel(status: EppTourStatus): string {
     case 't1_in_progress':
       return 'Tour 1 en cours'
     case 't1_done_waiting_t2':
-      return 'Tour 1 terminé · Tour 2 en attente'
+      return 'Tour 2 en attente'
     case 't2_in_progress':
       return 'Tour 2 en cours'
     case 'completed':

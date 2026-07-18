@@ -5,15 +5,16 @@ import Badge from '@/components/ui/Badge'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 import MediaCard from '@/components/home/MediaCard'
 import type { MediaCardSize } from '@/components/home/MediaCard'
+import EppCardBackground from '@/components/home/EppCardBackground'
 
 interface DemarcheCardProps {
   demarche: DemarcheEnCours
   size?: MediaCardSize
 }
 
-// Degrade teal EPP — valeurs historiques de ce fichier (restaurees a
-// l'identique, pas de nouveau litteral), utilise pour tous les statuts.
-const EPP_GRADIENT = 'linear-gradient(135deg, #0F766E, #2DD4BF)'
+// Pastille CTA — meme degrade teal que la carte EPP de "Reprendre"
+// (cf. EppCardBackground), pour rester dans la meme famille visuelle.
+const EPP_CTA_GRADIENT = 'linear-gradient(135deg, #0F766E, #2DD4BF)'
 
 export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCardProps) {
   // --- Formation cards: landscape ---
@@ -64,7 +65,7 @@ export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCar
       onClick={() => { window.location.href = demarche.ctaUrl }}
       ariaLabel={demarche.title}
       aspect="landscape"
-      fallback={<div style={{ position: 'absolute', inset: 0, background: EPP_GRADIENT }} />}
+      fallback={<EppCardBackground />}
       topLeft={
         <Badge variant={isValidated ? 'success' : 'epp'} size="md">
           {badgeLabel}
@@ -88,7 +89,7 @@ export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCar
       </p>
       <div
         style={{
-          background: EPP_GRADIENT,
+          background: EPP_CTA_GRADIENT,
           color: 'white',
           fontSize: '11px',
           fontWeight: 600,
