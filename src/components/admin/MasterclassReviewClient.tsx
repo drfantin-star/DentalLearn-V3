@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import ReviewDecisionModal from '@/components/masterclass/ReviewDecisionModal'
+import DateTimePicker from '@/components/masterclass/DateTimePicker'
 import { AdminProposeLiveSessionSchema, type AdminProposeLiveSessionPayload } from '@/lib/schemas/live-session'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -243,13 +244,11 @@ function ProposeModal({
               <label className="block text-sm font-semibold text-gray-700 mb-1">
                 Date et heure <span className="text-red-500">*</span>
               </label>
-              <input
-                type="datetime-local"
+              <DateTimePicker
                 value={form.starts_at}
-                onChange={(e) => setField('starts_at', e.target.value)}
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 ${
-                  fieldErrors.starts_at ? 'border-red-400' : 'border-gray-300'
-                }`}
+                onChange={(v) => setField('starts_at', v)}
+                error={Boolean(fieldErrors.starts_at)}
+                disablePast
               />
               {fieldErrors.starts_at && <p className="text-red-500 text-xs mt-1">{fieldErrors.starts_at}</p>}
             </div>
@@ -342,7 +341,15 @@ function ProposeModal({
 
 // ─── Carte session ────────────────────────────────────────────────────────────
 
-function SessionRow({ session, onOpenReview }: { session: MasterclassSession; onOpenReview: (s: MasterclassSession) => void }) {
+function SessionRow({
+  session,
+  onOpenReview,
+  onTogglePublish,
+}: {
+  session: MasterclassSession
+  onOpenReview: (s: MasterclassSession) => void
+  onTogglePublish: (s: MasterclassSession) => void
+}) {
   const awaitingMyDecision = session.awaiting === 'admin'
 
   return (
@@ -388,6 +395,27 @@ function SessionRow({ session, onOpenReview }: { session: MasterclassSession; on
             <Check size={14} />
             Approuver / Refuser
           </Button>
+        </div>
+      )}
+
+      {session.review_status === 'approved' && (
+        <div className="pt-1 border-t border-gray-100">
+          {session.created_by_role === 'admin' ? (
+            <button
+              onClick={() => onTogglePublish(session)}
+              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                session.is_published
+                  ? 'text-orange-600 hover:bg-orange-50'
+                  : 'text-primary hover:bg-[#EDE9FF]'
+              }`}
+            >
+              {session.is_published ? 'Dépublier' : 'Publier'}
+            </button>
+          ) : (
+            !session.is_published && (
+              <Badge variant="warning">Approuvée — en attente de publication par le formateur</Badge>
+            )
+          )}
         </div>
       )}
     </Card>
@@ -474,6 +502,20 @@ export default function MasterclassReviewClient() {
     await load()
   }
 
+  async function handleTogglePublish(session: MasterclassSession) {
+    const res = await fetch(`/api/admin/masterclass/${session.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_published: !session.is_published }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      showToast(body.error ?? 'Impossible de modifier le statut.')
+      return
+    }
+    await load()
+  }
+
   const sorted = sortSessions(sessions)
   const pendingCount = sessions.filter((s) => s.awaiting === 'admin').length
 
@@ -511,7 +553,7 @@ export default function MasterclassReviewClient() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {sorted.map((session) => (
-            <SessionRow key={session.id} session={session} onOpenReview={setReviewTarget} />
+            <SessionRow key={session.id} session={session} onOpenReview={setReviewTarget} onTogglePublish={handleTogglePublish} />
           ))}
         </div>
       )}

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Calendar, CalendarDays, ChevronLeft, ChevronRight, LogOut, Sparkles } from 'lucide-react'
+import { BookOpen, Calendar, ChevronLeft, ChevronRight, LogOut, Sparkles } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
 import { getCategoryConfig } from '@/lib/supabase/types'
@@ -14,6 +14,7 @@ import DailyQuizModal from '@/components/home/DailyQuizModal'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 import { JournalWeekCard } from '@/components/home/JournalWeekCard'
 import { HomeHeroCard } from '@/components/home/HomeHeroCard'
+import HomeEventCard from '@/components/home/HomeEventCard'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
 import ForYouCard from '@/components/home/ForYouCard'
@@ -624,21 +625,24 @@ export default function HomePage() {
           <ExploreRow />
         </section>
 
-        {/* Evenements — masque si vide */}
+        {/* Evenements — masque si vide. Grille de cartes (hauteurs egales),
+            meme langage visuel que HomeHeroCard (eyebrow / titre dominant /
+            CTA en bas) plutot qu'une tuile hero generique unique. */}
         {evenements.length > 0 && (
           <section>
-            <HomeHeroCard
-              surface="neutral"
-              icon={<Calendar size={26} />}
-              eyebrow="Evenements"
-              title={evenements[0].title}
-              compact
-              cta={{
-                label: 'Voir le calendrier',
-                icon: <CalendarDays size={15} />,
-                onClick: () => router.push('/evenements'),
-              }}
-            />
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2">
+                <Calendar size={18} className="text-violet-400" /> Événements
+              </h2>
+              <Link href="/evenements" className="text-sm font-semibold text-primary hover:text-primary-hover transition-colors">
+                Voir tout →
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:auto-rows-fr gap-3">
+              {evenements.map((item) => (
+                <HomeEventCard key={item.id} item={item} />
+              ))}
+            </div>
           </section>
         )}
 

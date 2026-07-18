@@ -173,3 +173,14 @@ body {
 }
 .animate-wave1 { animation: wave1 2.4s linear infinite; }
 .animate-wave2 { animation: wave2 3.2s linear infinite; }
+
+/* === react-day-picker — thème Certily (token accent/teal, jamais de hex) === */
+.dlv-daypicker.rdp-root {
+  --rdp-accent-color: theme('colors.accent.DEFAULT');
+  --rdp-accent-background-color: theme('colors.accent.DEFAULT' / 12%);
+  --rdp-today-color: theme('colors.accent.DEFAULT');
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-day_button-height: 34px;
+  --rdp-day_button-width: 34px;
+}

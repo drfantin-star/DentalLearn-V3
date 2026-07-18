@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -30,6 +30,24 @@ export default function FormateurShell({ children }: { children: React.ReactNode
   const pathname = usePathname()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [masterclassPendingCount, setMasterclassPendingCount] = useState(0)
+
+  const loadPendingCount = useCallback(async () => {
+    const supabase = createClient()
+    const { count } = await supabase
+      .from('live_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('awaiting', 'formateur')
+      .is('deleted_at', null)
+    setMasterclassPendingCount(count ?? 0)
+  }, [])
+
+  useEffect(() => {
+    loadPendingCount()
+    function onFocus() { loadPendingCount() }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [loadPendingCount])
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -61,6 +79,7 @@ export default function FormateurShell({ children }: { children: React.ReactNode
           {NAV_ITEMS.map((item) => {
             const active = isActive(item.href)
             const Icon = item.icon
+            const badgeCount = item.href === '/formateur/sessions' ? masterclassPendingCount : 0
             return (
               <li key={item.href}>
                 <Link
@@ -71,7 +90,12 @@ export default function FormateurShell({ children }: { children: React.ReactNode
                   }`}
                 >
                   <Icon className="w-5 h-5" />
-                  {item.label}
+                  <span className="flex-1">{item.label}</span>
+                  {badgeCount > 0 && (
+                    <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                      {badgeCount}
+                    </span>
+                  )}
                 </Link>
               </li>
             )
@@ -101,7 +125,7 @@ export default function FormateurShell({ children }: { children: React.ReactNode
   )
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100" style={{ colorScheme: 'light' }}>
       {/* Mobile top bar */}
       <header className="lg:hidden sticky top-0 z-30 bg-primary text-white flex items-center justify-between px-4 py-3 shadow-md">
         <button

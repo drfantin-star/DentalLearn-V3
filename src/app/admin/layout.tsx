@@ -31,6 +31,7 @@ export default function AdminLayout({
 }) {
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  const [masterclassPendingCount, setMasterclassPendingCount] = useState(0);
   const router = useRouter();
   const supabase = createClient();
 
@@ -41,7 +42,7 @@ export default function AdminLayout({
   const checkAdminAccess = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       if (!session) {
         router.push('/login');
         return;
@@ -56,12 +57,22 @@ export default function AdminLayout({
       }
 
       setIsAdmin(true);
+      loadMasterclassPendingCount();
     } catch (error) {
       console.error('Erreur vérification admin:', error);
       setIsAdmin(false);
     } finally {
       setLoading(false);
     }
+  };
+
+  const loadMasterclassPendingCount = async () => {
+    const { count } = await supabase
+      .from('live_sessions')
+      .select('id', { count: 'exact', head: true })
+      .eq('awaiting', 'admin')
+      .is('deleted_at', null);
+    setMasterclassPendingCount(count ?? 0);
   };
 
   const handleLogout = async () => {
@@ -71,7 +82,7 @@ export default function AdminLayout({
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center" style={{ colorScheme: 'light' }}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
@@ -79,7 +90,7 @@ export default function AdminLayout({
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center" style={{ colorScheme: 'light' }}>
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md text-center">
           <Shield className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Accès refusé</h1>
@@ -98,7 +109,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 flex">
+    <div className="min-h-screen bg-gray-100 flex" style={{ colorScheme: 'light' }}>
       {/* Sidebar */}
       <aside className="w-64 bg-primary text-white flex flex-col">
         <div className="p-6 border-b border-white/10">
@@ -186,7 +197,12 @@ export default function AdminLayout({
                 className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
               >
                 <Video className="w-5 h-5" />
-                Masterclass
+                <span className="flex-1">Masterclass</span>
+                {masterclassPendingCount > 0 && (
+                  <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+                    {masterclassPendingCount}
+                  </span>
+                )}
               </Link>
             </li>
             <li>

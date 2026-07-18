@@ -41,10 +41,10 @@ export default function EvenementItem({
         {type === 'presentiel' ? <MapPin size={16} /> : <Video size={16} />}
       </div>
       <div className="flex-1 min-w-0 space-y-1">
-        <p className="text-xs text-gray-500 capitalize">{dateStr}</p>
+        <p className="text-xs text-neutral-400 capitalize">{dateStr}</p>
         <p className="text-sm font-semibold text-neutral-200 leading-snug line-clamp-2">{title}</p>
         {formateur_display_name && (
-          <p className="text-xs text-gray-500">{formateur_display_name}</p>
+          <p className="text-xs text-neutral-400">{formateur_display_name}</p>
         )}
       </div>
       <div className="shrink-0">
