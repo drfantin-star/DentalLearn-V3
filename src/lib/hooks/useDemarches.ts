@@ -91,50 +91,49 @@ export function useDemarches(userId?: string) {
         }).filter(Boolean) as DemarcheEnCours[]
 
         // =============================================
-        // EPP — Sessions en cours + T1 complétés sans T2
+        // EPP — audits en cours (T1 et/ou T2 non tous deux complétés)
         // =============================================
 
-        // Sessions en cours (T1 ou T2 non complétés)
-        const { data: sessEnCours, error: sessError } = await supabase
+        // Toutes les sessions EPP de l'utilisateur, tours et états confondus —
+        // le statut d'un audit ne peut se calculer correctement qu'en
+        // regardant T1 ET T2 ensemble (cf. getEppTourStatus).
+        const { data: allEppSessions, error: sessError } = await supabase
           .from('user_epp_sessions')
           .select('id, tour, started_at, completed_at, audit_id')
           .eq('user_id', userId)
-          .is('completed_at', null)
           .order('started_at', { ascending: false })
-          .limit(2)
 
-        console.log('[useDemarches] epp sessions en cours:', sessEnCours, sessError)
+        console.log('[useDemarches] epp sessions:', allEppSessions, sessError)
 
-        // Sessions T1 complétées sans T2 démarré (phase d'attente)
-        const { data: sessT1Completes, error: sessT1Error } = await supabase
-          .from('user_epp_sessions')
-          .select('id, tour, started_at, completed_at, audit_id')
-          .eq('user_id', userId)
-          .eq('tour', 1)
-          .not('completed_at', 'is', null)
-          .order('started_at', { ascending: false })
-          .limit(2)
+        // Regroupe par audit_id
+        const sessionsByAudit = new Map<string, typeof allEppSessions>()
+        for (const session of allEppSessions || []) {
+          const list = sessionsByAudit.get(session.audit_id) || []
+          list.push(session)
+          sessionsByAudit.set(session.audit_id, list)
+        }
 
-        console.log('[useDemarches] epp sessions T1 complétées:', sessT1Completes, sessT1Error)
+        // Statut par audit, en excluant les audits entièrement complétés
+        // (T1 + T2) — ce ne sont plus des "démarches en cours".
+        const auditsEnCours: Array<{ auditId: string; status: EppTourStatus; latestSession: NonNullable<typeof allEppSessions>[number] }> = []
+        sessionsByAudit.forEach((sessions, auditId) => {
+          if (!sessions) return
+          const status = getEppTourStatus(sessions)
+          if (status === 'completed' || status === 'not_started') return
+          const latestSession = [...sessions].sort((a, b) => (b.started_at || '').localeCompare(a.started_at || ''))[0]
+          auditsEnCours.push({ auditId, status, latestSession })
+        })
 
-        // Filtrer : garder T1 complétés seulement si pas de T2 existant
-        const auditIdsAvecT2 = (sessEnCours || [])
-          .filter(s => s.tour === 2)
-          .map(s => s.audit_id)
-
-        const sessT1SansT2 = (sessT1Completes || [])
-          .filter(s => !auditIdsAvecT2.includes(s.audit_id))
-
-        // Toutes les sessions EPP à afficher
-        const toutesSessionsEpp = [
-          ...(sessEnCours || []),
-          ...sessT1SansT2
-        ]
+        // Les plus récemment actifs d'abord, limite à 2 (comme avant)
+        auditsEnCours.sort((a, b) => {
+          const aKey = a.latestSession.completed_at || a.latestSession.started_at || ''
+          const bKey = b.latestSession.completed_at || b.latestSession.started_at || ''
+          return bKey.localeCompare(aKey)
+        })
+        const auditsRetenus = auditsEnCours.slice(0, 2)
 
         // Charger les audits associés
-        const auditIds = toutesSessionsEpp
-          .map(s => s.audit_id)
-          .filter(Boolean)
+        const auditIds = auditsRetenus.map(a => a.auditId)
 
         let auditsDetails: any[] = []
 
@@ -150,23 +149,21 @@ export function useDemarches(userId?: string) {
 
         // Construire les cartes EPP
         const eppCards: DemarcheEnCours[] = []
-        toutesSessionsEpp.forEach(session => {
-          const audit = auditsDetails.find((a: any) => a.id === session.audit_id)
+        auditsRetenus.forEach(({ auditId, status: eppStatus, latestSession }) => {
+          const audit = auditsDetails.find((a: any) => a.id === auditId)
           if (!audit) return
 
-          // Chaque audit ne contribue qu'une session à cette liste (cf.
-          // filtrage ci-dessus), donc son statut se dérive directement de
-          // cette session seule.
-          const eppStatus = getEppTourStatus([{ tour: session.tour, completed_at: session.completed_at }])
-          const isEnAttente = eppStatus === 't1_done_waiting_t2'
+          const subtitle = eppStatus === 't1_done_waiting_t2'
+            ? 'Tour 1 complété · En attente du Tour 2 · Axe 2'
+            : eppStatus === 't2_in_progress'
+              ? 'Tour 2 en cours · Axe 2'
+              : 'Tour 1 en cours · Axe 2'
 
           eppCards.push({
-            id: session.id,
+            id: latestSession.id,
             type: 'epp',
             title: audit.title,
-            subtitle: isEnAttente
-              ? 'Tour 1 complété · En attente du Tour 2 · Axe 2'
-              : `Tour ${session.tour} en cours · Axe 2`,
+            subtitle,
             badge: 'EPP',
             badgeColor: 'bg-[#0F7B6C]',
             icon: '📋',
