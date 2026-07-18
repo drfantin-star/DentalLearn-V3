@@ -261,7 +261,7 @@ export default function FormationPage() {
 
   return (
     <>
-      <header className="bg-gradient-to-br from-[#1E40AF] to-[#3B82F6] px-4 py-4">
+      <header className="bg-gradient-to-br from-[#8B5CF6] to-[#A78BFA] px-4 py-4">
         <div className="flex items-center gap-3 mb-1">
           <button
             onClick={() => router.push('/')}

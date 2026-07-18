@@ -35,7 +35,7 @@ export interface BibliothequeRessourceRow {
 // Dégradés d'accent par axe — alignés sur les <header> des pages d'axe
 // (cf. /formation, /patient, /sante) pour une cohérence visuelle directe.
 export const AXE_GRADIENTS: Record<AxeId, { from: string; to: string }> = {
-  1: { from: '#1E40AF', to: '#3B82F6' }, // Pratiques cliniques (bleu)
+  1: { from: '#8B5CF6', to: '#A78BFA' }, // Pratiques cliniques (violet — charte Axe 1)
   3: { from: '#F97316', to: '#FBBF24' }, // Relation patient (orange)
   4: { from: '#EC4899', to: '#A78BFA' }, // Santé praticien (rose)
 }
