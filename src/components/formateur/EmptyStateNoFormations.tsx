@@ -10,7 +10,7 @@ export default function EmptyStateNoFormations() {
         Aucune formation rattachée
       </h2>
       <p className="text-gray-600 max-w-md">
-        Vous n&apos;êtes rattaché à aucune formation. Contactez Dentalschool si
+        Vous n&apos;êtes rattaché à aucune formation. Contactez Certily si
         c&apos;est une erreur.
       </p>
     </div>

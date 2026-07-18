@@ -1,7 +1,7 @@
 import {
   ORGANISME,
   AXE_LABELS,
-  DENTALSCHOOL_ORGANISME,
+  CERTILY_ORGANISME,
   type EppAttestationData,
   type AttestationOrganisme,
 } from './types'
@@ -9,7 +9,7 @@ import { axePdfRgb } from '../cp/axeColors'
 import { SIGNATURE_BASE64, SIGNATURE_RATIO } from './signatureBase64'
 
 const FALLBACK_ORGANISME: AttestationOrganisme = {
-  nom: DENTALSCHOOL_ORGANISME,
+  nom: CERTILY_ORGANISME,
   qualiopi: ORGANISME.qualiopi,
   odpc: ORGANISME.ndpc,
 }
@@ -35,7 +35,7 @@ export async function generateEppPDF(
     new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
 
   const organisme = data.organisme ?? FALLBACK_ORGANISME
-  const isDentalschool = organisme.nom === DENTALSCHOOL_ORGANISME
+  const isCertily = organisme.nom === CERTILY_ORGANISME
 
   // ── EN-TÊTE (Axe 2 — teal) ───────────────────────────────────
   doc.setFillColor(...base)
@@ -44,7 +44,7 @@ export async function generateEppPDF(
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(18)
   doc.setFont('helvetica', 'bold')
-  const headerTitle = isDentalschool ? 'DENTALSCHOOL — EROJU SAS' : organisme.nom.toUpperCase()
+  const headerTitle = isCertily ? 'CERTILY — EROJU SAS' : organisme.nom.toUpperCase()
   doc.text(headerTitle, 105, 12, { align: 'center' })
 
   doc.setFontSize(11)
@@ -92,7 +92,7 @@ export async function generateEppPDF(
       ['Thématique / Audit', data.audit.title],
       [
         'Organisme formateur',
-        isDentalschool
+        isCertily
           ? `${ORGANISME.nom_court} — Qualiopi N° ${organisme.qualiopi}`
           : organisme.qualiopi
             ? `${organisme.nom} — Qualiopi N° ${organisme.qualiopi}`
@@ -105,7 +105,7 @@ export async function generateEppPDF(
       ['Date Tour 2 (T2)', fmtDate(data.tours.t2_completed_at)],
       ['Dossiers T2', `${data.tours.t2_nb_dossiers} dossiers évalués`],
       ['Score conformité T2', `${data.tours.t2_score.toFixed(0)} %`],
-      ['Progression T1 → T2', deltaStr],
+      ['Progression T1 vers T2', deltaStr],
     ],
   })
 
@@ -121,13 +121,20 @@ export async function generateEppPDF(
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.setTextColor(22, 163, 74)
-  doc.text('✓ EPP VALIDÉE — AXE 2 CERTIFICATION PÉRIODIQUE', 105, valY + 8, { align: 'center' })
+  // Pas de glyphe "✓" ici : caractère absent de WinAnsiEncoding (police
+  // standard jsPDF), il corrompt l'encodage de toute la ligne — chaque
+  // lettre suivante se retrouve séparée d'un espace parasite ("E P P..."),
+  // d'où le débordement hors du cadre constaté. Cf. même bug avec "→"
+  // ci-dessous et dans les autres PDF EPP (vérifié avec un dump du flux PDF
+  // brut : le caractère non supporté n'est pas juste substitué, il décale
+  // l'encodage de la chaîne entière).
+  doc.text('EPP VALIDÉE — AXE 2 CERTIFICATION PÉRIODIQUE', 105, valY + 8, { align: 'center' })
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(22, 101, 52)
   doc.text(
-    `T1 : ${data.tours.t1_score.toFixed(0)} % → T2 : ${data.tours.t2_score.toFixed(0)} % | Progression : ${deltaStr}`,
+    `T1 : ${data.tours.t1_score.toFixed(0)} % vers T2 : ${data.tours.t2_score.toFixed(0)} % | Progression : ${deltaStr}`,
     105, valY + 15, { align: 'center' }
   )
 
@@ -140,7 +147,7 @@ export async function generateEppPDF(
 
   const sigWidth = 70
   const sigHeight = sigWidth / SIGNATURE_RATIO
-  if (isDentalschool) {
+  if (isCertily) {
     try {
       doc.addImage(SIGNATURE_BASE64, 'JPEG', 14, sigY + 4, sigWidth, sigHeight)
     } catch (err) {
@@ -180,7 +187,7 @@ export async function generateEppPDF(
     doc.setFontSize(7)
     doc.setTextColor(150, 150, 150)
     doc.setFont('helvetica', 'normal')
-    if (isDentalschool) {
+    if (isCertily) {
       doc.text(
         `${ORGANISME.nom_court} — ${ORGANISME.adresse} — SIRET ${ORGANISME.siret} — APE ${ORGANISME.ape}`,
         105, 284, { align: 'center' }

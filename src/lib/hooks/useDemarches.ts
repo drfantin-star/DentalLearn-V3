@@ -165,7 +165,7 @@ export function useDemarches(userId?: string) {
             badgeColor: 'bg-[#0F7B6C]',
             icon: '📋',
             ctaLabel: isEnAttente ? 'Voir mon audit' : "Continuer l'audit",
-            ctaUrl: `/formation/${audit.theme_slug}/epp`,
+            ctaUrl: `/formation/${audit.theme_slug}/epp?audit=${audit.slug}`,
             accentColor: 'border-teal-200',
           })
         })

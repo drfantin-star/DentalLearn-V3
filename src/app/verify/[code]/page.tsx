@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import Link from 'next/link'
 import { CheckCircle2, XCircle, Shield, Calendar, User, FileText } from 'lucide-react'
 
 // Route publique — pas de auth middleware
@@ -64,7 +63,7 @@ export default async function VerifyPage({
             <Shield className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-xl font-bold text-gray-900">Vérification d'attestation</h1>
-          <p className="text-sm text-gray-500 mt-1">Dentalschool — EROJU SAS</p>
+          <p className="text-sm text-gray-500 mt-1">Certily — EROJU SAS</p>
         </div>
 
         {/* Résultat */}
@@ -138,7 +137,7 @@ export default async function VerifyPage({
             <div className="p-6">
               <p className="text-sm text-gray-700 mb-3">
                 Le code <span className="font-mono font-semibold">{code.toUpperCase()}</span> ne
-                correspond à aucune attestation émise par Dentalschool.
+                correspond à aucune attestation émise par Certily.
               </p>
               <p className="text-xs text-gray-500">
                 Vérifiez la saisie. Si le problème persiste, contactez{' '}
@@ -154,11 +153,6 @@ export default async function VerifyPage({
         <div className="mt-6 text-center text-xs text-gray-400 space-y-1">
           <p>EROJU SAS — 76 Bd Meusnier de Querlon, 44000 Nantes</p>
           <p>SIRET 95271921900018 — APE 8559A</p>
-          <p>
-            <Link href="https://www.dentalschool.fr" className="text-[#0F7B6C] hover:underline">
-              www.dentalschool.fr
-            </Link>
-          </p>
         </div>
       </div>
     </div>
@@ -204,8 +198,8 @@ export async function generateMetadata({
 }) {
   const { code } = await params
   return {
-    title: `Vérification d'attestation ${code.toUpperCase()} | Dentalschool`,
-    description: 'Vérifiez l\'authenticité d\'une attestation de formation Dentalschool.',
+    title: `Vérification d'attestation ${code.toUpperCase()} | Certily`,
+    description: 'Vérifiez l\'authenticité d\'une attestation de formation Certily.',
     robots: { index: false, follow: false },  // pas d'indexation Google
   }
 }

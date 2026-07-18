@@ -95,12 +95,14 @@ export async function saveAttestation(
 }
 
 /**
- * Génère un code de vérification unique au format DL-XXXXXX-XXXX.
+ * Génère un code de vérification unique au format CL-XXXXXX-XXXX.
+ * Les codes DL-XXXXXX-XXXX émis avant le rebranding Certily restent valides
+ * (la validation/lookup sur /verify ne dépend pas du préfixe).
  */
 export function generateVerificationCode(): string {
   const part1 = Date.now().toString(36).toUpperCase().slice(-6)
   const part2 = Math.random().toString(36).toUpperCase().slice(-4)
-  return `DL-${part1}-${part2}`
+  return `CL-${part1}-${part2}`
 }
 
 /**

@@ -134,7 +134,7 @@ export default function ReclamationPage() {
           </Link>
           <h1 className="text-2xl font-bold text-gray-900">Formulaire de réclamation</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Dentalschool — EROJU SAS · Qualiopi QUA006589
+            Certily — EROJU SAS · Qualiopi QUA006589
           </p>
         </div>
 

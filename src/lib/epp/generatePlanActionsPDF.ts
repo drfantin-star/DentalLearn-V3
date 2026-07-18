@@ -63,7 +63,7 @@ export async function generatePlanActionsPDF(input: PlanActionsPdfInput): Promis
   doc.setTextColor(255, 255, 255)
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text('DENTALSCHOOL — EROJU SAS', 105, 10, { align: 'center' })
+  doc.text('CERTILY — EROJU SAS', 105, 10, { align: 'center' })
 
   doc.setFontSize(10)
   doc.setFont('helvetica', 'normal')
@@ -184,8 +184,12 @@ export async function generatePlanActionsPDF(input: PlanActionsPdfInput): Promis
         .filter(s => checkedIds.includes(s.id))
         .map(s => `• ${s.text}`)
 
+      // "-" plutôt que "→" : le glyphe flèche est absent de WinAnsiEncoding
+      // (police standard jsPDF) et corrompt l'encodage de toute la ligne
+      // plutôt que d'être simplement omis (espace parasite entre chaque
+      // lettre suivante — même bug que dans les autres PDF EPP).
       const freeText = planActions[c.code]
-        ? [`→ ${planActions[c.code]}`]
+        ? [`- ${planActions[c.code]}`]
         : []
 
       const allActions = [...checkedTexts, ...freeText]
@@ -224,7 +228,7 @@ export async function generatePlanActionsPDF(input: PlanActionsPdfInput): Promis
     doc.setFontSize(7)
     doc.setTextColor(150, 150, 150)
     doc.text(
-      `EROJU SAS — Qualiopi QUA006589 — NDA 52441046544 — Document généré le ${new Date().toLocaleDateString('fr-FR')} — Page ${i}/${pageCount}`,
+      `CERTILY — EROJU SAS — Qualiopi QUA006589 — NDA 52441046544 — Document généré le ${new Date().toLocaleDateString('fr-FR')} — Page ${i}/${pageCount}`,
       105, 290, { align: 'center' }
     )
   }

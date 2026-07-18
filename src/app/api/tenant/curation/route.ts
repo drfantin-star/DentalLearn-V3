@@ -115,7 +115,7 @@ export async function POST(request: Request) {
       }
       if ((validRows?.length ?? 0) !== ids.length) {
         return NextResponse.json(
-          { error: 'Une ou plusieurs formations ne sont pas dans le catalogue Dentalschool publié' },
+          { error: 'Une ou plusieurs formations ne sont pas dans le catalogue Certily publié' },
           { status: 400 }
         )
       }

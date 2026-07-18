@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ChevronLeft,
@@ -23,6 +23,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { GenerateAttestationButton } from '@/components/attestations/GenerateAttestationButton'
 import { generatePlanActionsPDF as generatePlanActionsPDFUtil } from '@/lib/epp/generatePlanActionsPDF'
+import { generateComparisonPDF } from '@/lib/epp/generateComparisonPDF'
 
 // ============================================
 // TYPES
@@ -67,6 +68,15 @@ interface EppSuggestion {
   sort_order: number
   text: string
   sequence_ref: string | null
+}
+
+interface ComparisonRow {
+  id: string
+  code: string
+  type: 'R' | 'P' | 'S'
+  label: string
+  t1Pct: number | null
+  t2Pct: number | null
 }
 
 // ============================================
@@ -133,6 +143,34 @@ export default function EppPage() {
   const [suggestions, setSuggestions] = useState<Record<string, EppSuggestion[]>>({})
   const [checkedSuggestions, setCheckedSuggestions] = useState<Record<string, string[]>>({})
 
+  // Comparaison T1/T2 (écran résultats après Tour 2)
+  const [comparisonRows, setComparisonRows] = useState<ComparisonRow[] | null>(null)
+  const [comparisonLoading, setComparisonLoading] = useState(false)
+
+  // ============================================
+  // Gardes de concurrence (revue epp-state-review) :
+  // - loadGenRef : loadData() est appelé à la fois par l'effet de montage et
+  //   par finishT1() après une mutation. En StrictMode, l'effet de montage
+  //   s'exécute deux fois ; sans garde, les deux appels tournent en
+  //   concurrence et le dernier à répondre (pas forcément le plus récent
+  //   déclenché) écrase l'état — c'est la cause du "loadData() exécuté deux
+  //   fois" et du risque de mélange T1/T2 au rechargement. Un compteur de
+  //   génération : chaque appel capture son numéro, et toute mise à jour
+  //   d'état est court-circuitée si un appel plus récent a déjà démarré.
+  // - Les refs *InFlightRef ci-dessous sont des gardes anti-double-clic
+  //   synchrones : `savingDossier`/`starting`/`savingPlan` (state React) ne
+  //   se répercutent sur l'attribut `disabled` qu'au prochain rendu, ce qui
+  //   laisse une fenêtre où un double-clic (ou un double-tap) déclenche le
+  //   handler une seconde fois avant que le bouton soit visuellement
+  //   désactivé. Un ref est lu/écrit de façon synchrone, donc fiable pour
+  //   ce garde-fou, contrairement au state.
+  // ============================================
+  const loadGenRef = useRef(0)
+  const comparisonGenRef = useRef(0)
+  const dossierActionInFlightRef = useRef(false)
+  const startingInFlightRef = useRef(false)
+  const planActionsInFlightRef = useRef(false)
+
   const themeConfig = THEMES_CONFIG[themeSlug] || { label: themeSlug, icon: '📚' }
 
   useEffect(() => {
@@ -140,9 +178,21 @@ export default function EppPage() {
   }, [themeSlug, auditSlug])
 
   const loadData = async () => {
+    const myGen = ++loadGenRef.current
+    const isStale = () => loadGenRef.current !== myGen
+
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
+      if (isStale()) {
+        console.log('[EppPage loadData] appel obsolète ignoré (après getUser)', { myGen, current: loadGenRef.current })
+        return
+      }
+      // TEMP DEBUG (ticket epp-tour2-access-unlock) — retirer une fois le
+      // signalement Julie (T1 non reconnu sur "Continuer l'audit") reproduit
+      // et la cause confirmée, et cette revue de la gestion d'état validée
+      // par un parcours T1→T2 complet en conditions réelles.
+      console.log('[EppPage loadData] start', { myGen, themeSlug, auditSlug, userId: user?.id ?? null })
 
       // 1. Charger l'audit EPP ciblé. Si `?audit=<slug>` est présent on résout
       //    cet audit précis ; sinon (rétro-compat des anciens liens) on prend le
@@ -162,11 +212,19 @@ export default function EppPage() {
 
       if (aErr) throw aErr
 
+      if (isStale()) {
+        console.log('[EppPage loadData] appel obsolète ignoré (après résolution audit)', { myGen })
+        return
+      }
+
       if (!auditData) {
+        console.log('[EppPage loadData] audit introuvable', { auditSlug, themeSlug, aErr })
         setError('Aucun audit EPP disponible pour cette thématique')
         setLoading(false)
         return
       }
+
+      console.log('[EppPage loadData] audit résolu', { myGen, auditId: auditData.id, auditSlug: auditData.slug })
 
       setAudit(auditData)
 
@@ -201,12 +259,25 @@ export default function EppPage() {
 
       // 3. Charger les sessions utilisateur
       if (user) {
-        const { data: sessionsData } = await supabase
+        const { data: sessionsData, error: sessErr } = await supabase
           .from('user_epp_sessions')
           .select('id, tour, started_at, completed_at, score_global, nb_dossiers, plan_actions')
           .eq('user_id', user.id)
           .eq('audit_id', auditData.id)
           .order('tour')
+
+        if (isStale()) {
+          console.log('[EppPage loadData] appel obsolète ignoré (après résolution sessions)', { myGen })
+          return
+        }
+
+        console.log('[EppPage loadData] sessions résolues', {
+          myGen,
+          userId: user.id,
+          auditId: auditData.id,
+          sessErr,
+          sessions: (sessionsData || []).map(s => ({ tour: s.tour, completed_at: s.completed_at })),
+        })
 
         if (sessionsData) {
           setSessions(sessionsData)
@@ -229,14 +300,30 @@ export default function EppPage() {
           }
 
           const t1 = sessionsData.find(s => s.tour === 1)
-          if (t1) {
-            setActiveSessionId(t1.id)
+          const t2 = sessionsData.find(s => s.tour === 2)
 
-            // Charger les réponses existantes
+          // Session active pour la restauration : la session non terminée la
+          // plus avancée (T2 prioritaire sur T1 si T2 est en cours), sinon la
+          // plus avancée disponible (pour la vue résultats / reprise du plan
+          // d'actions). Ne JAMAIS cibler T1 en dur ici — c'était la cause du
+          // bug de mélange T1/T2 au rechargement (cf ticket).
+          const active = (t2 && !t2.completed_at) ? t2
+            : (t1 && !t1.completed_at) ? t1
+            : (t2 || t1)
+
+          if (active) {
+            setActiveSessionId(active.id)
+
+            // Charger les réponses existantes de la session active
             const { data: respData } = await supabase
               .from('user_epp_responses')
               .select('dossier_number, criterion_id, response')
-              .eq('session_id', t1.id)
+              .eq('session_id', active.id)
+
+            if (isStale()) {
+              console.log('[EppPage loadData] appel obsolète ignoré (après résolution réponses)', { myGen })
+              return
+            }
 
             if (respData && respData.length > 0) {
               const loaded: Record<string, Record<string, 'oui' | 'non' | 'na'>> = {}
@@ -247,44 +334,52 @@ export default function EppPage() {
               }
               setResponses(loaded)
 
-              if (t1.completed_at) {
-                // T1 terminé → résultats
-                setEppState('resultats')
+              if (active.completed_at) {
+                // Session terminée → rester sur présentation (statut T1/T2 +
+                // bouton "Voir les résultats T1" pour y accéder si besoin)
               } else {
-                // T1 en cours → préparer la reprise (rester sur présentation pour voir la card "Reprendre")
+                // Session en cours → préparer la reprise (rester sur présentation pour voir la card "Reprendre")
                 const maxDossier = Math.max(...respData.map(r => r.dossier_number))
                 const cLen = (criteriaData || []).length
                 const lastComplete = cLen > 0 &&
                   Object.keys(loaded[String(maxDossier)] || {}).length >= cLen
                 setCurrentDossier(lastComplete ? maxDossier + 1 : maxDossier)
-                if (t1.nb_dossiers) setNbDossiers(t1.nb_dossiers)
+                if (active.nb_dossiers) setNbDossiers(active.nb_dossiers)
                 setDossierChoiceConfirmed(true)
                 // Rester sur 'presentation' pour afficher la card de reprise
               }
-            } else if (!t1.completed_at) {
+            } else if (!active.completed_at) {
               // Session en cours sans réponses
-              if (t1.nb_dossiers) {
-                setNbDossiers(t1.nb_dossiers)
+              if (active.nb_dossiers) {
+                setNbDossiers(active.nb_dossiers)
                 setDossierChoiceConfirmed(true)
               }
               // Rester sur 'presentation'
             } else {
-              // T1 terminé sans réponses (edge case)
-              setEppState('resultats')
+              // Session terminée sans réponses (edge case) → rester sur présentation
             }
           }
         }
+      } else {
+        console.log('[EppPage loadData] pas d\'utilisateur résolu à ce chargement, sessions non chargées', { auditId: auditData.id, auditSlug })
       }
     } catch (err) {
+      if (isStale()) {
+        console.log('[EppPage loadData] erreur d\'un appel obsolète ignorée', { myGen, err })
+        return
+      }
       console.error('Erreur loadData EPP:', err)
       setError('Erreur lors du chargement')
     } finally {
-      setLoading(false)
+      // Un appel obsolète ne doit jamais toucher `loading` : l'appel le plus
+      // récent gère lui-même sa propre fin de chargement.
+      if (!isStale()) setLoading(false)
     }
   }
 
   const startT1 = async () => {
-    if (!audit) return
+    if (!audit || startingInFlightRef.current) return
+    startingInFlightRef.current = true
     setStarting(true)
 
     try {
@@ -293,7 +388,6 @@ export default function EppPage() {
 
       if (!user) {
         setError('Connectez-vous pour démarrer un audit')
-        setStarting(false)
         return
       }
 
@@ -314,16 +408,27 @@ export default function EppPage() {
         setSessions(prev => [...prev, session])
         setEppState('saisie')
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erreur startT1:', err)
-      setError('Erreur lors du démarrage')
+      if (err?.code === '23505') {
+        // Conflit sur idx_user_epp_sessions_unique(user_id, audit_id, tour) :
+        // une session T1 existe déjà (double-clic avant désactivation du
+        // bouton, ou double onglet) — pas une vraie erreur, on recharge
+        // plutôt que d'afficher un écran d'erreur bloquant sur toute la page.
+        console.log('[EppPage startT1] conflit de double-création ignoré, rechargement')
+        await loadData()
+      } else {
+        setError('Erreur lors du démarrage')
+      }
     } finally {
+      startingInFlightRef.current = false
       setStarting(false)
     }
   }
 
   const startT2 = async () => {
-    if (!audit) return
+    if (!audit || startingInFlightRef.current) return
+    startingInFlightRef.current = true
     setStarting(true)
     try {
       const supabase = createClient()
@@ -349,9 +454,15 @@ export default function EppPage() {
         setDossierChoiceConfirmed(false)
         setEppState('saisie')
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erreur startT2:', err)
+      if (err?.code === '23505') {
+        // Cf. startT1 : conflit de double-création, pas une vraie erreur.
+        console.log('[EppPage startT2] conflit de double-création ignoré, rechargement')
+        await loadData()
+      }
     } finally {
+      startingInFlightRef.current = false
       setStarting(false)
     }
   }
@@ -381,14 +492,6 @@ export default function EppPage() {
 
     const supabase = createClient()
 
-    // Supprimer les réponses existantes pour ce dossier (évite les doublons)
-    await supabase
-      .from('user_epp_responses')
-      .delete()
-      .eq('session_id', sessionId)
-      .eq('dossier_number', dossierNumber)
-
-    // Insérer les réponses (toutes si complet, sinon seulement celles définies)
     const rows = criteria
       .filter(c => dossierResp[c.id] !== undefined)
       .map(c => ({
@@ -399,23 +502,37 @@ export default function EppPage() {
       }))
 
     if (rows.length > 0) {
-      const { error: insertErr } = await supabase.from('user_epp_responses').insert(rows)
-      if (insertErr) console.error('Erreur save responses:', insertErr)
+      // Upsert atomique — remplace l'ancien delete-puis-insert (deux allers-
+      // retours non atomiques). Si cette fonction est invoquée deux fois pour
+      // le même dossier (double-clic avant désactivation du bouton, double
+      // montage de l'effet), les deux appels pouvaient chacun supprimer puis
+      // réinsérer, et la seconde insertion violait
+      // idx_user_epp_responses_unique(session_id, dossier_number,
+      // criterion_id) → 409. L'upsert est idempotent : un second appel avec
+      // les mêmes lignes met simplement à jour au lieu d'entrer en conflit.
+      const { error: upsertErr } = await supabase
+        .from('user_epp_responses')
+        .upsert(rows, { onConflict: 'session_id,dossier_number,criterion_id' })
+      if (upsertErr) console.error('Erreur save responses:', upsertErr)
     }
   }
 
   const goNextDossier = async () => {
+    if (dossierActionInFlightRef.current) return
+    dossierActionInFlightRef.current = true
     setSavingDossier(true)
     try {
       await saveDossierResponses(currentDossier)
       setCurrentDossier(prev => prev + 1)
     } finally {
+      dossierActionInFlightRef.current = false
       setSavingDossier(false)
     }
   }
 
   const finishT1 = async () => {
-    if (!activeSessionId) return
+    if (!activeSessionId || dossierActionInFlightRef.current) return
+    dossierActionInFlightRef.current = true
     setSavingDossier(true)
     try {
       // 1. Sauvegarder les réponses du dernier dossier
@@ -447,14 +564,18 @@ export default function EppPage() {
 
       // 4. Recharger les sessions et aller aux résultats
       await loadData()
+      setEppState('resultats')
     } catch (err) {
       console.error('Erreur finishT1:', err)
     } finally {
+      dossierActionInFlightRef.current = false
       setSavingDossier(false)
     }
   }
 
   const pauseAudit = async () => {
+    if (dossierActionInFlightRef.current) return
+    dossierActionInFlightRef.current = true
     setSavingDossier(true)
     try {
       // Sauvegarder le dossier en cours (même partiel)
@@ -470,6 +591,7 @@ export default function EppPage() {
       }
       setEppState('presentation')
     } finally {
+      dossierActionInFlightRef.current = false
       setSavingDossier(false)
     }
   }
@@ -489,7 +611,8 @@ export default function EppPage() {
   // Sauvegarder le plan d'actions
   const savePlanActions = async () => {
     const sessionId = activeSessionId || t1Session?.id
-    if (!sessionId) return
+    if (!sessionId || planActionsInFlightRef.current) return
+    planActionsInFlightRef.current = true
     setSavingPlan(true)
     try {
       const supabase = createClient()
@@ -511,6 +634,7 @@ export default function EppPage() {
     } catch (err) {
       console.error('Erreur savePlanActions:', err)
     } finally {
+      planActionsInFlightRef.current = false
       setSavingPlan(false)
     }
   }
@@ -538,6 +662,84 @@ export default function EppPage() {
 
   const t1Session = sessions.find(s => s.tour === 1)
   const t2Session = sessions.find(s => s.tour === 2)
+  const activeSession = sessions.find(s => s.id === activeSessionId)
+
+  // Charge les réponses de T1 et T2 pour le tableau de comparaison par
+  // critère (écran résultats affiché une fois le Tour 2 terminé).
+  const loadComparisonData = async () => {
+    if (!t1Session || !t2Session) return
+    const myGen = ++comparisonGenRef.current
+    setComparisonLoading(true)
+    try {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('user_epp_responses')
+        .select('session_id, criterion_id, response')
+        .in('session_id', [t1Session.id, t2Session.id])
+
+      if (comparisonGenRef.current !== myGen) return
+
+      const counts: Record<string, Record<string, { oui: number; non: number }>> = {
+        [t1Session.id]: {},
+        [t2Session.id]: {},
+      }
+      ;(data || []).forEach(r => {
+        const bucket = counts[r.session_id]
+        if (!bucket) return
+        if (!bucket[r.criterion_id]) bucket[r.criterion_id] = { oui: 0, non: 0 }
+        if (r.response === 'oui') bucket[r.criterion_id].oui++
+        else if (r.response === 'non') bucket[r.criterion_id].non++
+      })
+
+      const pctFor = (sessionId: string, criterionId: string) => {
+        const c = counts[sessionId][criterionId]
+        if (!c || c.oui + c.non === 0) return null
+        return Math.round((c.oui / (c.oui + c.non)) * 100)
+      }
+
+      setComparisonRows(criteria.map(c => ({
+        id: c.id,
+        code: c.code,
+        type: c.type,
+        label: c.label,
+        t1Pct: pctFor(t1Session.id, c.id),
+        t2Pct: pctFor(t2Session.id, c.id),
+      })))
+    } catch (err) {
+      console.error('Erreur loadComparisonData:', err)
+    } finally {
+      if (comparisonGenRef.current === myGen) setComparisonLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (eppState === 'resultats' && t1Session?.completed_at && t2Session?.completed_at && !comparisonRows) {
+      loadComparisonData()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eppState, t1Session?.id, t2Session?.id])
+
+  const downloadComparisonPDF = async () => {
+    if (!audit || !t1Session || !t2Session || !comparisonRows) return
+    const scoreT1 = t1Session.score_global || 0
+    const scoreT2 = t2Session.score_global || 0
+    const eppValidated = scoreT2 > scoreT1 || (scoreT1 >= 80 && scoreT2 >= scoreT1)
+    await generateComparisonPDF({
+      audit: { title: audit.title, slug: audit.slug },
+      scoreT1,
+      scoreT2,
+      nbDossiersT1: t1Session.nb_dossiers,
+      nbDossiersT2: t2Session.nb_dossiers,
+      eppValidated,
+      criteria: comparisonRows.map(c => ({
+        code: c.code,
+        type: c.type,
+        label: c.label,
+        t1Pct: c.t1Pct,
+        t2Pct: c.t2Pct,
+      })),
+    })
+  }
 
   const getT2Status = (): 'unavailable' | 'done' | 'in_progress' | 'unlocked' | { status: 'locked'; unlockDate: Date } => {
     if (!t1Session?.completed_at) return 'unavailable'
@@ -598,15 +800,20 @@ export default function EppPage() {
       return (
         <>
           <header className="bg-white sticky top-0 z-30 shadow-sm">
-            <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+            <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-3xl px-4 md:px-6 lg:px-8 py-4 flex items-center gap-3">
               <button onClick={() => setEppState('presentation')} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors">
                 <ChevronLeft size={20} className="text-gray-600" />
               </button>
-              <h1 className="text-lg font-bold text-gray-900">Préparation T1</h1>
+              <h1 className="text-lg font-bold text-gray-900">
+                {activeSession?.tour === 2 ? 'Préparation T2' : 'Préparation T1'}
+              </h1>
             </div>
           </header>
-          <main className="max-w-lg mx-auto px-4 py-6 space-y-6">
-            <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center">
+          <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-3xl px-4 md:px-6 lg:px-8 py-6 space-y-6">
+            {/* Carte recentrée (lg:max-w-xl) : le conteneur s'élargit pour la
+                cohérence de la barre d'en-tête, mais un simple stepper n'a
+                pas besoin de s'étirer sur toute la largeur en desktop. */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center lg:max-w-xl lg:mx-auto">
               <ClipboardCheck size={32} className="text-[#0F7B6C] mx-auto mb-3" />
               <h3 className="font-semibold text-gray-900 mb-1">Combien de dossiers allez-vous évaluer ?</h3>
               <p className="text-xs text-gray-400 mb-6">
@@ -614,7 +821,7 @@ export default function EppPage() {
               </p>
 
               {(audit!.inclusion_criteria?.length > 0 || audit!.exclusion_criteria?.length > 0) && (
-                <div className="space-y-3 mb-4 pt-3 border-t border-teal-100">
+                <div className="space-y-3 mb-4 pt-3 border-t border-teal-100 text-left">
 
                   {audit!.inclusion_criteria?.length > 0 && (
                     <div>
@@ -684,7 +891,7 @@ export default function EppPage() {
     return (
       <>
         <header className="bg-white sticky top-0 z-30 shadow-sm">
-          <div className="max-w-lg mx-auto px-4 py-3">
+          <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-5xl px-4 md:px-6 lg:px-8 py-3">
             <div className="flex items-center justify-between mb-2">
               <button
                 onClick={pauseAudit}
@@ -717,13 +924,15 @@ export default function EppPage() {
           </div>
         </header>
 
-        <main className="max-w-lg mx-auto px-4 py-4 space-y-3 pb-36">
+        {/* Grille de critères : 1 colonne mobile (inchangé), 2 colonnes en
+            lg: — hauteurs égales par défaut (pas de items-start). */}
+        <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-5xl px-4 md:px-6 lg:px-8 py-4 pb-36 grid grid-cols-1 lg:grid-cols-2 gap-3">
           {criteria.map((c) => {
             const val = currentResponses[c.id]
             const typeBg = c.type === 'R' ? 'bg-purple-100 text-purple-700' :
                            c.type === 'P' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
             return (
-              <div key={c.id} className="bg-white rounded-2xl border border-gray-100 p-4">
+              <div key={c.id} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col">
                 <div className="flex items-start gap-2 mb-3">
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${typeBg}`}>{c.code}</span>
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${typeBg}`}>{c.type}</span>
@@ -734,7 +943,12 @@ export default function EppPage() {
                     )}
                   </div>
                 </div>
-                <div className="flex gap-2">
+                {/* mt-auto : ancre les boutons en bas de carte même quand la
+                    grille lg: étire la hauteur pour aligner avec une carte
+                    voisine dont l'intitulé fait 1 ligne de plus. Sans effet
+                    quand la carte n'est pas étirée (gap = mb-3 du header,
+                    inchangé). */}
+                <div className="flex gap-2 mt-auto">
                   <button
                     onClick={() => setResponse(c.id, 'oui')}
                     className={`flex-1 h-11 rounded-xl text-sm font-semibold border transition-colors ${
@@ -771,9 +985,13 @@ export default function EppPage() {
           })}
         </main>
 
-        {/* Pied de page fixe */}
-        <div className="fixed left-0 right-0 bg-white border-t border-gray-100 p-4 z-30" style={{ bottom: '64px' }}>
-          <div className="max-w-lg mx-auto">
+        {/* Pied de page fixe — lg:left-64 : la SideNav desktop (w-64, cf.
+            AppShell) est fixed et hors du flux normal, donc le lg:pl-64
+            appliqué au contenu ne décale pas cet élément fixed (même
+            convention que MiniPlayer.tsx). Sans ce décalage, la barre déborde
+            sous la sidebar et son contenu centré se retrouve désaxé. */}
+        <div className="fixed left-0 right-0 lg:left-64 bg-white border-t border-gray-100 p-4 z-30" style={{ bottom: '64px' }}>
+          <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-5xl">
             <p className="text-xs text-gray-400 text-center mb-2">
               {answeredCount} critères évalués sur {criteria.length}
             </p>
@@ -808,6 +1026,150 @@ export default function EppPage() {
   // ============================================
 
   if (eppState === 'resultats' && t1Session?.completed_at) {
+    // Tour 2 terminé → écran de comparaison T1/T2 (référentiel HAS §7.2/7.3),
+    // remplace l'écran résultats T1 seul.
+    if (t2Session?.completed_at) {
+      const scoreT1 = t1Session.score_global || 0
+      const scoreT2 = t2Session.score_global || 0
+      const deltaGlobal = scoreT2 - scoreT1
+      // Critères de validation EPP (référentiel HAS §7.3) : amélioration du
+      // score global, ou score T1 déjà ≥ 80% et resté stable (pas dégradé).
+      const eppValidated = scoreT2 > scoreT1 || (scoreT1 >= 80 && scoreT2 >= scoreT1)
+
+      return (
+        <>
+          <header className="bg-white sticky top-0 z-30 shadow-sm">
+            <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4 flex items-center gap-3">
+              <button onClick={() => setEppState('presentation')} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors">
+                <ChevronLeft size={20} className="text-gray-600" />
+              </button>
+              <h1 className="text-lg font-bold text-gray-900">Comparaison Tour 1 / Tour 2</h1>
+            </div>
+          </header>
+
+          <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-4">
+
+            {/* Score global T1 -> T2 */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-4">
+              <div className="grid grid-cols-3 gap-3 text-center">
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{scoreT1.toFixed(0)}%</p>
+                  <p className="text-xs text-gray-500">Score T1</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{scoreT2.toFixed(0)}%</p>
+                  <p className="text-xs text-gray-500">Score T2</p>
+                </div>
+                <div>
+                  <p className={`text-2xl font-bold ${deltaGlobal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {deltaGlobal >= 0 ? '+' : ''}{deltaGlobal.toFixed(0)}%
+                  </p>
+                  <p className="text-xs text-gray-500">Amélioration</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Critères de validation EPP (référentiel HAS §7.3) */}
+            <div className={`rounded-2xl border p-4 flex items-start gap-3 ${
+              eppValidated ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'
+            }`}>
+              {eppValidated
+                ? <CheckCircle2 size={20} className="text-green-600 shrink-0 mt-0.5" />
+                : <AlertCircle size={20} className="text-orange-500 shrink-0 mt-0.5" />
+              }
+              <p className={`text-xs leading-relaxed ${eppValidated ? 'text-green-800' : 'text-orange-800'}`}>
+                {eppValidated
+                  ? 'Critères de validation EPP remplis : amélioration du score global, ou score déjà élevé (≥ 80%) et maintenu.'
+                  : 'Critères de validation EPP non remplis : le score global n\'a pas progressé et n\'était pas déjà ≥ 80%.'}
+              </p>
+            </div>
+
+            {/* Tableau de comparaison par critère */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100">
+                <h3 className="font-semibold text-gray-900 text-sm">Détail par critère — T1 vs T2</h3>
+              </div>
+              {comparisonLoading && (
+                <div className="p-6 flex justify-center">
+                  <Loader2 size={20} className="animate-spin text-teal-700" />
+                </div>
+              )}
+              {!comparisonLoading && comparisonRows && comparisonRows.length > 0 && (
+                <>
+                  {/* En-têtes de colonnes — une seule fois, alignées avec les
+                      valeurs de chaque ligne ci-dessous (grid identique). */}
+                  <div className="grid grid-cols-[1fr_2.5rem_2.5rem_3rem_4.5rem] gap-1 px-4 py-1.5 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                    <span>Critère</span>
+                    <span className="text-center">T1</span>
+                    <span className="text-center">T2</span>
+                    <span className="text-center">Δ</span>
+                    <span className="text-center">Statut</span>
+                  </div>
+                  {comparisonRows.map(c => {
+                    const typeBg = c.type === 'R' ? 'bg-purple-100 text-purple-700' :
+                                   c.type === 'P' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                    const delta = (c.t1Pct !== null && c.t2Pct !== null) ? c.t2Pct - c.t1Pct : null
+                    const statusLabel = delta === null ? '—' :
+                      delta > 0 ? '✅ Amélioré' : delta === 0 ? '⚠️ Stable' : '❌ Dégradé'
+                    const statusColor = delta === null ? 'text-gray-400' :
+                      delta > 0 ? 'text-green-600' : delta === 0 ? 'text-orange-600' : 'text-red-600'
+                    return (
+                      <div
+                        key={c.id}
+                        className="grid grid-cols-[1fr_2.5rem_2.5rem_3rem_4.5rem] gap-1 items-center px-4 py-2.5 border-b border-gray-50 last:border-0 text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${typeBg}`}>{c.code}</span>
+                          <p className="text-gray-700 leading-snug truncate">{c.label}</p>
+                        </div>
+                        <span className="text-center text-gray-800 font-medium">
+                          {c.t1Pct !== null ? `${c.t1Pct}%` : 'N/A'}
+                        </span>
+                        <span className="text-center text-gray-800 font-medium">
+                          {c.t2Pct !== null ? `${c.t2Pct}%` : 'N/A'}
+                        </span>
+                        <span className={`text-center font-semibold ${statusColor}`}>
+                          {delta !== null ? `${delta >= 0 ? '+' : ''}${delta}%` : '—'}
+                        </span>
+                        <span className={`text-center font-medium ${statusColor}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </>
+              )}
+            </div>
+
+            {/* Comparatif — PDF */}
+            {comparisonRows && comparisonRows.length > 0 && (
+              <button
+                onClick={downloadComparisonPDF}
+                className="w-full flex items-center justify-center gap-2 py-2.5
+                  border-2 border-teal-700 text-teal-700 text-sm font-semibold
+                  rounded-2xl hover:bg-teal-50 transition-colors"
+              >
+                <FileDown size={16} />
+                Télécharger le comparatif (PDF)
+              </button>
+            )}
+
+            {/* Attestation — bouton inchangé */}
+            {audit?.id && (
+              <GenerateAttestationButton
+                type="epp"
+                sourceId={audit.id}
+                label="Télécharger mon attestation EPP"
+                className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 text-white text-sm font-semibold rounded-xl hover:bg-green-700 transition-colors disabled:opacity-60"
+              />
+            )}
+
+          </main>
+        </>
+      )
+    }
+
+    // Tour 2 pas encore terminé → écran résultats T1 seul (inchangé)
     // Calculs résultats par critère
     const criteriaStats = criteria.map(c => {
       let oui = 0, non = 0, na = 0
@@ -832,7 +1194,7 @@ export default function EppPage() {
     return (
       <>
         <header className="bg-white sticky top-0 z-30 shadow-sm">
-          <div className="max-w-lg mx-auto px-4 py-4 flex items-center gap-3">
+          <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-4 flex items-center gap-3">
             <button onClick={() => setEppState('presentation')} className="p-2 -ml-2 hover:bg-gray-50 rounded-xl transition-colors">
               <ChevronLeft size={20} className="text-gray-600" />
             </button>
@@ -840,7 +1202,7 @@ export default function EppPage() {
           </div>
         </header>
 
-        <main className="max-w-lg mx-auto px-4 py-6 space-y-4">
+        <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-4">
 
           {/* Score global */}
           <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center">
@@ -1044,54 +1406,59 @@ export default function EppPage() {
 
       <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-4xl xl:max-w-6xl px-4 md:px-6 lg:px-8 py-6 space-y-4">
 
-        {/* Description & objectifs */}
-        <div className="bg-white rounded-2xl border border-gray-100 p-4">
-          <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-          <p className="text-sm text-gray-600 leading-relaxed">{audit.description}</p>
-          <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
-            <span className="flex items-center gap-1">
-              <FileText size={14} />
-              {audit.nb_dossiers_min}-{audit.nb_dossiers_max} dossiers
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock size={14} />
-              Délai T2 : {audit.delai_t2_mois_min}-{audit.delai_t2_mois_max} mois
-            </span>
+        {/* Description & objectifs + Instructions — côte à côte sur desktop,
+            empilées sur mobile (inchangé). Grille par défaut = hauteurs
+            égales entre les deux cartes. */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Description & objectifs */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+            <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
+            <p className="text-sm text-gray-600 leading-relaxed">{audit.description}</p>
+            <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+              <span className="flex items-center gap-1">
+                <FileText size={14} />
+                {audit.nb_dossiers_min}-{audit.nb_dossiers_max} dossiers
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock size={14} />
+                Délai T2 : {audit.delai_t2_mois_min}-{audit.delai_t2_mois_max} mois
+              </span>
+            </div>
           </div>
-        </div>
 
-        {/* Instructions */}
-        <div className="bg-teal-50 rounded-2xl border border-teal-100 p-4">
-          <div className="flex items-start gap-3">
-            <Info size={18} className="text-teal-600 mt-0.5 shrink-0" />
-            <div className="text-xs text-teal-700 leading-relaxed space-y-2">
-              <p>
-                <strong>Comment fonctionne cet audit EPP ?</strong>
-              </p>
-              <ol className="list-decimal list-inside space-y-1">
-                <li>
-                  <strong>Tour 1 (T1)</strong> — Évaluez votre pratique sur {audit.nb_dossiers_min} à {audit.nb_dossiers_max} dossiers
-                  patients en répondant OUI / NON / NA pour chaque critère.
-                </li>
-                <li>
-                  <strong>Actions d&apos;amélioration</strong> — Identifiez vos axes de progression et
-                  mettez en place des changements dans votre pratique.
-                </li>
-                <li>
-                  <strong>Tour 2 (T2)</strong> — Après un délai de {audit.delai_t2_mois_min} à {audit.delai_t2_mois_max} mois,
-                  réévaluez vos dossiers pour mesurer l&apos;amélioration.
-                </li>
-              </ol>
-              <p className="text-teal-600">
-                La complétion des 2 tours valide l&apos;Axe 2 de votre Certification Périodique.
-              </p>
+          {/* Instructions */}
+          <div className="bg-teal-50 rounded-2xl border border-teal-100 p-4">
+            <div className="flex items-start gap-3">
+              <Info size={18} className="text-teal-600 mt-0.5 shrink-0" />
+              <div className="text-xs text-teal-700 leading-relaxed space-y-2">
+                <p>
+                  <strong>Comment fonctionne cet audit EPP ?</strong>
+                </p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>
+                    <strong>Tour 1 (T1)</strong> — Évaluez votre pratique sur {audit.nb_dossiers_min} à {audit.nb_dossiers_max} dossiers
+                    patients en répondant OUI / NON / NA pour chaque critère.
+                  </li>
+                  <li>
+                    <strong>Actions d&apos;amélioration</strong> — Identifiez vos axes de progression et
+                    mettez en place des changements dans votre pratique.
+                  </li>
+                  <li>
+                    <strong>Tour 2 (T2)</strong> — Après un délai de {audit.delai_t2_mois_min} à {audit.delai_t2_mois_max} mois,
+                    réévaluez vos dossiers pour mesurer l&apos;amélioration.
+                  </li>
+                </ol>
+                <p className="text-teal-600">
+                  La complétion des 2 tours valide l&apos;Axe 2 de votre Certification Périodique.
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Statut Tours (si session existante) */}
+        {/* Statut Tours (si session existante) — côte à côte sur desktop */}
         {(t1Session || t2Session) && (
-          <div className="space-y-2">
+          <div className="space-y-2 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3">
             {/* Tour 1 status */}
             <div className={`bg-white rounded-2xl border p-3 ${
               t1Session?.completed_at ? 'border-green-200 bg-green-50/30' : 'border-gray-100'
@@ -1229,8 +1596,13 @@ export default function EppPage() {
           </div>
         )}
 
-        {/* Reprise audit en cours */}
-        {t1Session && !t1Session.completed_at && Object.keys(responses).length > 0 && (
+        {/* Reprise audit en cours — condition sur la seule session T1 non
+            terminée (pas sur Object.keys(responses).length > 0) : cette
+            dernière ne devenait vraie qu'après la sauvegarde d'au moins un
+            dossier (clic "Dossier suivant"/"Pause"), donc un utilisateur
+            quittant pendant la saisie du tout premier dossier n'avait
+            aucun CTA visible pour reprendre. */}
+        {t1Session && !t1Session.completed_at && (
           <div className="bg-blue-50 rounded-2xl border border-blue-100 p-4">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
