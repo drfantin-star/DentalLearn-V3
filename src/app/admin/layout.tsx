@@ -19,7 +19,8 @@ import {
   Star,
   UserCheck,
   FileAudio,
-  Library
+  Library,
+  ArrowLeft
 } from 'lucide-react';
 
 export default function AdminLayout({
@@ -280,7 +281,14 @@ export default function AdminLayout({
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-white/10 space-y-2">
+          <Link
+            href="/"
+            className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors w-full text-left text-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Retour à la plateforme
+          </Link>
           <button
             onClick={handleLogout}
             className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors w-full"

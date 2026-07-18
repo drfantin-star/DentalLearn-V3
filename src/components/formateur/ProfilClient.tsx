@@ -366,7 +366,7 @@ export default function ProfilClient() {
               onChange={(e) => setBioLong(e.target.value)}
               rows={5}
               placeholder="Présentez votre parcours, votre expertise, votre approche pédagogique…"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none"
             />
             {errors.bio_long && <p className="text-red-500 text-xs mt-1">{errors.bio_long}</p>}
           </div>
@@ -395,7 +395,7 @@ export default function ProfilClient() {
               value={anneesExp}
               onChange={(e) => setAnneesExp(e.target.value)}
               placeholder="Ex : 12"
-              className="w-32 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="w-32 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
             {errors.annees_experience && (
               <p className="text-red-500 text-xs mt-1">{errors.annees_experience}</p>
@@ -411,7 +411,7 @@ export default function ProfilClient() {
               onChange={(e) => setVille(e.target.value)}
               placeholder="Paris"
               maxLength={120}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </div>
 
@@ -426,7 +426,7 @@ export default function ProfilClient() {
               onChange={(e) => setCabinetNom(e.target.value)}
               placeholder="Cabinet dentaire du Louvre"
               maxLength={200}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
           </div>
         </Card>
@@ -444,7 +444,7 @@ export default function ProfilClient() {
               value={linkedinUrl}
               onChange={(e) => setLinkedinUrl(e.target.value)}
               placeholder="https://linkedin.com/in/..."
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
             {errors.linkedin_url && (
               <p className="text-red-500 text-xs mt-1">{errors.linkedin_url}</p>
@@ -460,7 +460,7 @@ export default function ProfilClient() {
               value={instagramUrl}
               onChange={(e) => setInstagramUrl(e.target.value)}
               placeholder="https://instagram.com/..."
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white placeholder:text-gray-400 outline-none focus:border-primary focus:ring-1 focus:ring-primary"
             />
             {errors.instagram_url && (
               <p className="text-red-500 text-xs mt-1">{errors.instagram_url}</p>

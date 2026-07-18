@@ -319,7 +319,7 @@ function SessionModal({
               onChange={(e) => setField('title', e.target.value)}
               maxLength={200}
               placeholder="Ex : Implantologie avancée — cas complexes"
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                 fieldErrors.title ? 'border-red-400' : 'border-gray-300'
               }`}
             />
@@ -334,7 +334,7 @@ function SessionModal({
               onChange={(e) => setField('description', e.target.value)}
               rows={3}
               placeholder="Programme, objectifs pédagogiques…"
-              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
 
@@ -348,7 +348,7 @@ function SessionModal({
                 type="datetime-local"
                 value={form.starts_at}
                 onChange={(e) => setField('starts_at', e.target.value)}
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.starts_at ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -364,7 +364,7 @@ function SessionModal({
                 onChange={(e) => setField('duration_min', e.target.value)}
                 min={1}
                 placeholder="60"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -378,7 +378,7 @@ function SessionModal({
                 value={form.zoom_url}
                 onChange={(e) => setField('zoom_url', e.target.value)}
                 placeholder="https://zoom.us/j/..."
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.zoom_url ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -392,7 +392,7 @@ function SessionModal({
                 onChange={(e) => setField('zoom_password', e.target.value)}
                 maxLength={100}
                 placeholder="Optionnel"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -407,7 +407,7 @@ function SessionModal({
                 onChange={(e) => setField('capacity', e.target.value)}
                 min={1}
                 placeholder="Ex : 30"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
             <div>

@@ -308,7 +308,7 @@ function EventModal({
               onChange={(e) => setField('title', e.target.value)}
               maxLength={200}
               placeholder="Ex : Formation parodontologie avancée"
-              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+              className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                 fieldErrors.title ? 'border-red-400' : 'border-gray-300'
               }`}
             />
@@ -327,7 +327,7 @@ function EventModal({
               onChange={(e) => setField('description', e.target.value)}
               rows={3}
               placeholder="Programme, objectifs pédagogiques…"
-              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
 
@@ -343,7 +343,7 @@ function EventModal({
                 onChange={(e) => setField('location_city', e.target.value)}
                 maxLength={120}
                 placeholder="Paris"
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.location_city ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -361,7 +361,7 @@ function EventModal({
                 onChange={(e) => setField('location_venue', e.target.value)}
                 maxLength={200}
                 placeholder="Hôtel Marriott, salle A"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -376,7 +376,7 @@ function EventModal({
                 type="datetime-local"
                 value={form.starts_at}
                 onChange={(e) => setField('starts_at', e.target.value)}
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.starts_at ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -392,7 +392,7 @@ function EventModal({
                 type="datetime-local"
                 value={form.ends_at}
                 onChange={(e) => setField('ends_at', e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
@@ -427,7 +427,7 @@ function EventModal({
                 value={form.external_registration_url}
                 onChange={(e) => setField('external_registration_url', e.target.value)}
                 placeholder="https://..."
-                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                className={`w-full border rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 ${
                   fieldErrors.external_registration_url ? 'border-red-400' : 'border-gray-300'
                 }`}
               />
@@ -447,7 +447,7 @@ function EventModal({
                 onChange={(e) => setField('capacity', e.target.value)}
                 min={1}
                 placeholder="Ex : 20"
-                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
           </div>
