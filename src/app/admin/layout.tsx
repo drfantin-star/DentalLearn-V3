@@ -20,7 +20,8 @@ import {
   UserCheck,
   FileAudio,
   Library,
-  ArrowLeft
+  ArrowLeft,
+  Video
 } from 'lucide-react';
 
 export default function AdminLayout({
@@ -177,6 +178,15 @@ export default function AdminLayout({
               >
                 <UserCheck className="w-5 h-5" />
                 Formateurs
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/admin/masterclass"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <Video className="w-5 h-5" />
+                Masterclass
               </Link>
             </li>
             <li>

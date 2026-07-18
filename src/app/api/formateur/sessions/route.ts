@@ -87,12 +87,14 @@ export async function POST(request: NextRequest) {
       formateur_user_id: user.id,
       status: 'scheduled',
       zoom_url: payload.zoom_url || null,
+      created_by_role: 'formateur',
+      review_status: 'draft',
     })
     .select()
     .single()
 
   if (error) {
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
   return NextResponse.json(data, { status: 201 })

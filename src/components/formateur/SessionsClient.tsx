@@ -1,15 +1,18 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Video, Plus, Pencil, Trash2, X, AlertTriangle, Users } from 'lucide-react'
+import { Video, Plus, Pencil, Trash2, X, AlertTriangle, Users, Send, Check, Ban } from 'lucide-react'
 import { LiveSessionSchema, type LiveSessionPayload } from '@/lib/schemas/live-session'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { computeSessionStatus, computeSessionStatusLabel, type SessionStatus } from '@/lib/utils/session-status'
 import type { FormateurFormation } from '@/lib/auth/rbac'
+import ReviewDecisionModal from '@/components/masterclass/ReviewDecisionModal'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+type ReviewStatus = 'draft' | 'pending_review' | 'approved' | 'rejected'
 
 interface LiveSession {
   id: string
@@ -27,6 +30,10 @@ interface LiveSession {
   computed_status: SessionStatus
   created_at: string
   updated_at: string
+  review_status: ReviewStatus
+  created_by_role: 'formateur' | 'admin'
+  awaiting: 'admin' | 'formateur' | null
+  review_comment: string | null
 }
 
 interface FormField {
@@ -38,7 +45,6 @@ interface FormField {
   zoom_password: string
   capacity: string
   formation_id: string
-  is_published: boolean
 }
 
 const EMPTY_FORM: FormField = {
@@ -101,6 +107,30 @@ function StatusBadge({ session }: { session: LiveSession }) {
   )
 }
 
+// ─── Badge validation croisée ─────────────────────────────────────────────────
+
+const REVIEW_STATUS_LABEL: Record<ReviewStatus, string> = {
+  draft: 'Brouillon',
+  pending_review: 'En attente de validation',
+  approved: 'Approuvée',
+  rejected: 'Refusée',
+}
+
+const REVIEW_STATUS_VARIANT: Record<ReviewStatus, 'neutral' | 'warning' | 'success' | 'danger'> = {
+  draft: 'neutral',
+  pending_review: 'warning',
+  approved: 'success',
+  rejected: 'danger',
+}
+
+function ReviewStatusBadge({ session }: { session: LiveSession }) {
+  return (
+    <Badge variant={REVIEW_STATUS_VARIANT[session.review_status]}>
+      {REVIEW_STATUS_LABEL[session.review_status]}
+    </Badge>
+  )
+}
+
 // ─── SessionCard ──────────────────────────────────────────────────────────────
 
 function SessionCard({
@@ -110,6 +140,8 @@ function SessionCard({
   onCancel,
   onDelete,
   onTogglePublish,
+  onSubmitForReview,
+  onOpenReview,
 }: {
   session: LiveSession
   formations: FormateurFormation[]
@@ -117,9 +149,15 @@ function SessionCard({
   onCancel: (s: LiveSession) => void
   onDelete: (s: LiveSession) => void
   onTogglePublish: (s: LiveSession) => void
+  onSubmitForReview: (s: LiveSession) => void
+  onOpenReview: (s: LiveSession) => void
 }) {
   const formation = formations.find((f) => f.id === session.formation_id)
   const isCancelled = computeSessionStatus(session) === 'cancelled'
+  const isEditable = session.created_by_role === 'formateur' && ['draft', 'rejected'].includes(session.review_status)
+  const canSubmit = session.created_by_role === 'formateur' && ['draft', 'rejected'].includes(session.review_status)
+  const canDelete = ['draft', 'rejected'].includes(session.review_status)
+  const awaitingMyDecision = session.created_by_role === 'admin' && session.review_status === 'pending_review' && session.awaiting === 'formateur'
 
   return (
     <Card variant="flat" className="p-5 flex flex-col gap-3 shadow-sm">
@@ -139,16 +177,22 @@ function SessionCard({
 
       <h3 className="text-base font-bold text-gray-900 leading-snug">{session.title}</h3>
 
-      <div className="flex items-center gap-3 text-xs text-gray-500">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
         <span className="flex items-center gap-1">
           <Users size={12} />
           {session.registration_count}
           {session.capacity != null ? ` / ${session.capacity} places` : ' inscrits'}
         </span>
-        <Badge variant={session.is_published ? 'success' : 'neutral'}>
-          {session.is_published ? 'Publié' : 'Brouillon'}
-        </Badge>
+        <ReviewStatusBadge session={session} />
+        {session.is_published && <Badge variant="success">Publiée</Badge>}
+        {session.created_by_role === 'admin' && <Badge variant="info">Proposée par l'administration</Badge>}
       </div>
+
+      {session.review_status === 'rejected' && session.review_comment && (
+        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          Motif du refus : {session.review_comment}
+        </p>
+      )}
 
       {formation && (
         <span className="self-start text-xs bg-[#EDE9FF] text-primary font-medium px-2.5 py-1 rounded-full">
@@ -157,37 +201,54 @@ function SessionCard({
       )}
 
       <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-gray-100">
-        {!isCancelled && (
-          <>
-            <Button variant="ghost" size="sm" onClick={() => onEdit(session)} className="flex items-center gap-1.5">
-              <Pencil size={14} />
-              Éditer
-            </Button>
-            <button
-              onClick={() => onTogglePublish(session)}
-              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
-                session.is_published
-                  ? 'text-orange-600 hover:bg-orange-50'
-                  : 'text-primary hover:bg-[#EDE9FF]'
-              }`}
-            >
-              {session.is_published ? 'Dépublier' : 'Publier'}
-            </button>
-            <button
-              onClick={() => onCancel(session)}
-              className="flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-700 px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-colors"
-            >
-              Annuler
-            </button>
-          </>
+        {awaitingMyDecision && (
+          <Button variant="primary" size="sm" onClick={() => onOpenReview(session)} className="flex items-center gap-1.5">
+            <Check size={14} />
+            Accepter / Refuser
+          </Button>
         )}
-        <button
-          onClick={() => onDelete(session)}
-          className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors ml-auto"
-        >
-          <Trash2 size={14} />
-          Supprimer
-        </button>
+        {!isCancelled && canSubmit && (
+          <Button variant="primary" size="sm" onClick={() => onSubmitForReview(session)} className="flex items-center gap-1.5">
+            <Send size={14} />
+            Soumettre pour validation
+          </Button>
+        )}
+        {!isCancelled && isEditable && (
+          <Button variant="ghost" size="sm" onClick={() => onEdit(session)} className="flex items-center gap-1.5">
+            <Pencil size={14} />
+            Éditer
+          </Button>
+        )}
+        {!isCancelled && (session.is_published || session.review_status === 'approved') && (
+          <button
+            onClick={() => onTogglePublish(session)}
+            className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg transition-colors ${
+              session.is_published
+                ? 'text-orange-600 hover:bg-orange-50'
+                : 'text-primary hover:bg-[#EDE9FF]'
+            }`}
+          >
+            {session.is_published ? 'Dépublier' : 'Publier'}
+          </button>
+        )}
+        {!isCancelled && (
+          <button
+            onClick={() => onCancel(session)}
+            className="flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-700 px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-colors"
+          >
+            <Ban size={14} />
+            Annuler
+          </button>
+        )}
+        {canDelete && (
+          <button
+            onClick={() => onDelete(session)}
+            className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors ml-auto"
+          >
+            <Trash2 size={14} />
+            Supprimer
+          </button>
+        )}
       </div>
     </Card>
   )
@@ -235,7 +296,6 @@ function SessionModal({
       zoom_password: editing.zoom_password ?? '',
       capacity: editing.capacity != null ? String(editing.capacity) : '',
       formation_id: editing.formation_id ?? '',
-      is_published: editing.is_published,
     }
   })
 
@@ -248,7 +308,10 @@ function SessionModal({
     setFieldErrors((prev) => ({ ...prev, [key]: '' }))
   }
 
-  async function handleSubmit(publishOverride: boolean) {
+  async function handleSubmit() {
+    // La publication passe désormais par le workflow de validation (bouton
+    // "Soumettre pour validation" puis "Publier" une fois approuvée) : la
+    // sauvegarde du formulaire reste toujours en brouillon.
     const payload: Record<string, unknown> = {
       title: form.title,
       description: form.description || null,
@@ -258,7 +321,7 @@ function SessionModal({
       zoom_password: form.zoom_password || null,
       capacity: form.capacity ? parseInt(form.capacity, 10) : null,
       formation_id: form.formation_id || null,
-      is_published: publishOverride,
+      is_published: false,
     }
 
     const parsed = LiveSessionSchema.safeParse(payload)
@@ -436,15 +499,8 @@ function SessionModal({
           <Button variant="secondary" size="md" onClick={onClose} disabled={submitting} className="flex-1">
             Annuler
           </Button>
-          <button
-            onClick={() => handleSubmit(false)}
-            disabled={submitting}
-            className="flex-1 py-2.5 rounded-xl border border-primary text-sm font-semibold text-primary hover:bg-[#EDE9FF] transition-colors disabled:opacity-50"
-          >
+          <Button variant="primary" size="md" onClick={() => handleSubmit()} disabled={submitting} className="flex-1">
             {submitting ? 'Enregistrement…' : 'Enregistrer en brouillon'}
-          </button>
-          <Button variant="primary" size="md" onClick={() => handleSubmit(true)} disabled={submitting} className="flex-1">
-            {submitting ? 'Publication…' : 'Publier'}
           </Button>
         </div>
       </div>
@@ -463,6 +519,7 @@ export default function SessionsClient() {
     open: false,
     editing: null,
   })
+  const [reviewTarget, setReviewTarget] = useState<LiveSession | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toastMsg, setToastMsg] = useState<{ text: string; type: 'error' | 'success' } | null>(null)
@@ -588,10 +645,38 @@ export default function SessionsClient() {
     })
 
     if (!res.ok) {
-      showToast('Impossible de modifier le statut.')
+      const body = await res.json().catch(() => ({}))
+      showToast(body.error ?? 'Impossible de modifier le statut.')
       return
     }
 
+    await reloadSessions()
+  }
+
+  async function handleSubmitForReview(session: LiveSession) {
+    const res = await fetch(`/api/formateur/sessions/${session.id}/submit`, { method: 'POST' })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      showToast(body.error ?? 'Impossible de soumettre cette masterclass.')
+      return
+    }
+    showToast('Masterclass soumise pour validation.', 'success')
+    await reloadSessions()
+  }
+
+  async function handleReviewDecision(decision: 'approved' | 'rejected', comment: string | null) {
+    if (!reviewTarget) return
+    const res = await fetch(`/api/formateur/sessions/${reviewTarget.id}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision, comment }),
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}))
+      throw new Error(body.error ?? 'Erreur serveur')
+    }
+    setReviewTarget(null)
+    showToast(decision === 'approved' ? 'Proposition acceptée.' : 'Proposition refusée.', 'success')
     await reloadSessions()
   }
 
@@ -647,6 +732,8 @@ export default function SessionsClient() {
               onCancel={handleCancel}
               onDelete={handleDelete}
               onTogglePublish={handleTogglePublish}
+              onSubmitForReview={handleSubmitForReview}
+              onOpenReview={setReviewTarget}
             />
           ))}
         </div>
@@ -669,6 +756,14 @@ export default function SessionsClient() {
           formations={formations}
           onClose={() => setModal({ open: false, editing: null })}
           onSave={handleSave}
+        />
+      )}
+
+      {reviewTarget && (
+        <ReviewDecisionModal
+          title={`"${reviewTarget.title}"`}
+          onClose={() => setReviewTarget(null)}
+          onSubmit={handleReviewDecision}
         />
       )}
     </div>
