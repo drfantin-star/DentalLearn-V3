@@ -150,7 +150,10 @@ export async function generateFormationPDF(
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.setTextColor(22, 163, 74)
-  doc.text("✓ FORMATION VALIDÉE — 100 % COMPLÉTÉE", 105, valY + 8, { align: 'center' })
+  // Pas de "✓" — cf. generateEppPDF.ts : glyphe absent de WinAnsiEncoding,
+  // corrompt l'encodage de toute la ligne (espace parasite entre chaque
+  // lettre suivante) plutôt que d'être simplement omis.
+  doc.text("FORMATION VALIDÉE — 100 % COMPLÉTÉE", 105, valY + 8, { align: 'center' })
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)

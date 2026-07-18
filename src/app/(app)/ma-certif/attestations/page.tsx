@@ -10,6 +10,8 @@ import { AttestationEmptyState } from '@/components/profile/attestations/Attesta
 import AutoevalAttestationTab from '@/components/profile/attestations/AutoevalAttestationTab'
 import { EppActionPlanCard } from '@/components/profile/attestations/EppActionPlanCard'
 import { useEppActionPlans } from '@/lib/hooks/useEppActionPlans'
+import { EppComparisonCard } from '@/components/profile/attestations/EppComparisonCard'
+import { useEppComparisons } from '@/lib/hooks/useEppComparisons'
 
 type TabType = 'formation_online' | 'epp' | 'action_cnp_info_patient' | 'autoeval'
 
@@ -18,6 +20,7 @@ export default function MaCertifAttestationsPage() {
   const { formationOnline, epp, actionF, loading, error } = useUserAttestations()
   const autoeval = useAutoevalCompletions()
   const { plans: actionPlans, loading: plansLoading } = useEppActionPlans()
+  const { comparisons, loading: comparisonsLoading } = useEppComparisons()
 
   const currentList =
     activeTab === 'formation_online'
@@ -142,7 +145,7 @@ export default function MaCertifAttestationsPage() {
             )}
 
             {!loading && !error && currentList.length === 0 &&
-              !(activeTab === 'epp' && (actionPlans.length > 0 || plansLoading)) && (
+              !(activeTab === 'epp' && (actionPlans.length > 0 || plansLoading || comparisons.length > 0 || comparisonsLoading)) && (
               <AttestationEmptyState type={activeTab} />
             )}
 
@@ -163,6 +166,20 @@ export default function MaCertifAttestationsPage() {
                 <div className="space-y-3">
                   {actionPlans.map(plan => (
                     <EppActionPlanCard key={plan.sessionId} plan={plan} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Comparatifs T1/T2 EPP sauvegardes (EPP complete) */}
+            {!error && activeTab === 'epp' && comparisons.length > 0 && (
+              <div className={(currentList.length > 0 || actionPlans.length > 0) ? 'mt-8' : ''}>
+                <h2 className="text-sm font-semibold text-white/70 mb-3 px-1">
+                  Comparatifs T1/T2 sauvegardes
+                </h2>
+                <div className="space-y-3">
+                  {comparisons.map(comparison => (
+                    <EppComparisonCard key={comparison.auditId} comparison={comparison} />
                   ))}
                 </div>
               </div>

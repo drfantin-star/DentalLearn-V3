@@ -82,7 +82,7 @@ export async function generateComparisonPDF(input: ComparisonPdfInput): Promise<
       ['Dossiers T2', `${nbDossiersT2 ?? '—'} dossiers`],
       ['Score global T1', `${scoreT1.toFixed(0)}%`],
       ['Score global T2', `${scoreT2.toFixed(0)}%`],
-      ['Amélioration T1 → T2', deltaStr],
+      ['Amélioration T1 vers T2', deltaStr],
       ['Organisme', 'EROJU SAS — Certification Qualiopi N° QUA006589 — NDA : 52441046544'],
     ],
     didParseCell: (data: any) => {
@@ -143,7 +143,11 @@ export async function generateComparisonPDF(input: ComparisonPdfInput): Promise<
       5: { cellWidth: 16, halign: 'center' as const },
       6: { cellWidth: 30, halign: 'center' as const },
     },
-    head: [['N°', 'Type', 'Critère', 'T1', 'T2', 'Δ', 'Statut']],
+    // "Δ" (delta grec) absent de WinAnsiEncoding — rendu vide dans un PDF
+    // jsPDF standard (vérifié : glyphe purement omis ici, contrairement à
+    // "→"/"✓" qui corrompent l'encodage du reste de la chaîne). "Écart"
+    // en toutes lettres, sans risque.
+    head: [['N°', 'Type', 'Critère', 'T1', 'T2', 'Écart', 'Statut']],
     body: rows.map(r => [
       r.code, r.type, r.label, r.t1, r.t2,
       r.delta !== null ? `${r.delta >= 0 ? '+' : ''}${r.delta}%` : '—',

@@ -184,8 +184,12 @@ export async function generatePlanActionsPDF(input: PlanActionsPdfInput): Promis
         .filter(s => checkedIds.includes(s.id))
         .map(s => `• ${s.text}`)
 
+      // "-" plutôt que "→" : le glyphe flèche est absent de WinAnsiEncoding
+      // (police standard jsPDF) et corrompt l'encodage de toute la ligne
+      // plutôt que d'être simplement omis (espace parasite entre chaque
+      // lettre suivante — même bug que dans les autres PDF EPP).
       const freeText = planActions[c.code]
-        ? [`→ ${planActions[c.code]}`]
+        ? [`- ${planActions[c.code]}`]
         : []
 
       const allActions = [...checkedTexts, ...freeText]

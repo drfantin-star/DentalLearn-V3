@@ -105,7 +105,7 @@ export async function generateEppPDF(
       ['Date Tour 2 (T2)', fmtDate(data.tours.t2_completed_at)],
       ['Dossiers T2', `${data.tours.t2_nb_dossiers} dossiers évalués`],
       ['Score conformité T2', `${data.tours.t2_score.toFixed(0)} %`],
-      ['Progression T1 → T2', deltaStr],
+      ['Progression T1 vers T2', deltaStr],
     ],
   })
 
@@ -121,13 +121,20 @@ export async function generateEppPDF(
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(11)
   doc.setTextColor(22, 163, 74)
-  doc.text('✓ EPP VALIDÉE — AXE 2 CERTIFICATION PÉRIODIQUE', 105, valY + 8, { align: 'center' })
+  // Pas de glyphe "✓" ici : caractère absent de WinAnsiEncoding (police
+  // standard jsPDF), il corrompt l'encodage de toute la ligne — chaque
+  // lettre suivante se retrouve séparée d'un espace parasite ("E P P..."),
+  // d'où le débordement hors du cadre constaté. Cf. même bug avec "→"
+  // ci-dessous et dans les autres PDF EPP (vérifié avec un dump du flux PDF
+  // brut : le caractère non supporté n'est pas juste substitué, il décale
+  // l'encodage de la chaîne entière).
+  doc.text('EPP VALIDÉE — AXE 2 CERTIFICATION PÉRIODIQUE', 105, valY + 8, { align: 'center' })
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(22, 101, 52)
   doc.text(
-    `T1 : ${data.tours.t1_score.toFixed(0)} % → T2 : ${data.tours.t2_score.toFixed(0)} % | Progression : ${deltaStr}`,
+    `T1 : ${data.tours.t1_score.toFixed(0)} % vers T2 : ${data.tours.t2_score.toFixed(0)} % | Progression : ${deltaStr}`,
     105, valY + 15, { align: 'center' }
   )
 
