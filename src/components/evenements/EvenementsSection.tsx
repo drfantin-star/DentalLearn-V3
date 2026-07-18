@@ -1,11 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import EvenementItem from './EvenementItem'
+import EventDetailModal from './EventDetailModal'
 import type { EvenementItemData } from '@/types/evenements'
 
 type FilterType = 'tous' | 'presentiel' | 'virtuel'
@@ -18,26 +16,11 @@ const FILTERS: { key: FilterType; label: string }[] = [
 
 interface EvenementsSectionProps {
   items: EvenementItemData[]
-  showVoirTout?: boolean
 }
 
-export default function EvenementsSection({ items, showVoirTout }: EvenementsSectionProps) {
-  const router = useRouter()
+export default function EvenementsSection({ items }: EvenementsSectionProps) {
   const [filter, setFilter] = useState<FilterType>('tous')
-  const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
-
-  function showToast(text: string, type: 'success' | 'error' = 'success') {
-    setToast({ text, type })
-    setTimeout(() => setToast(null), 5000)
-  }
-
-  function handleItemClick(item: EvenementItemData) {
-    if (item.type === 'virtuel') {
-      router.push(`/sessions/${item.id}`)
-    } else {
-      showToast('Contactez le formateur pour vous inscrire')
-    }
-  }
+  const [detailTarget, setDetailTarget] = useState<EvenementItemData | null>(null)
 
   const filteredItems = filter === 'tous'
     ? items
@@ -80,34 +63,14 @@ export default function EvenementsSection({ items, showVoirTout }: EvenementsSec
               formateur_display_name={item.formateur_display_name}
               formateur_slug={item.formateur_slug}
               formateur_photo_url={item.formateur_photo_url}
-              onClick={() => { handleItemClick(item) }}
+              onClick={() => setDetailTarget(item)}
             />
           ))
         )}
       </div>
 
-      {/* Lien "Voir tout" */}
-      {showVoirTout && items.length > 0 && (
-        <Link
-          href="/evenements"
-          className="block text-center text-sm font-semibold text-primary hover:text-primary-hover transition-colors py-1"
-        >
-          Voir tout →
-        </Link>
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div
-          className={cn(
-            'fixed bottom-24 left-1/2 -translate-x-1/2 z-50 text-white text-sm font-semibold',
-            'px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2',
-            toast.type === 'error' ? 'bg-red-600' : 'bg-green-600',
-          )}
-        >
-          {toast.type === 'error' && <AlertTriangle size={16} />}
-          {toast.text}
-        </div>
+      {detailTarget && (
+        <EventDetailModal item={detailTarget} onClose={() => setDetailTarget(null)} />
       )}
     </div>
   )

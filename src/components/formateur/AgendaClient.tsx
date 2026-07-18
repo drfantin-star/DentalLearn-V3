@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import type { FormateurFormation } from '@/lib/auth/rbac'
 import CategoryBadge from '@/components/masterclass/CategoryBadge'
-import { EVENT_CATEGORY_OPTIONS } from '@/lib/constants/eventCategories'
+import { EVENT_CATEGORY_GROUPS } from '@/lib/constants/eventCategories'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -435,8 +435,12 @@ function EventModal({
               className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
             >
               <option value="">Aucune thématique</option>
-              {EVENT_CATEGORY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              {EVENT_CATEGORY_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

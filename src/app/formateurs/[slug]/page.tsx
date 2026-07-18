@@ -4,6 +4,7 @@ import { Linkedin, Instagram } from 'lucide-react'
 import UpcomingEvents from '@/components/UpcomingEvents'
 import UpcomingSessions from '@/components/UpcomingSessions'
 import { FollowButton } from '@/components/formateur/FollowButton'
+import { getEventCategoryLabel } from '@/lib/constants/eventCategories'
 
 export const dynamic = 'force-dynamic'
 
@@ -149,7 +150,7 @@ export default async function FormateurPublicPage({
                   className="text-xs font-medium px-3 py-1 rounded-full"
                   style={{ background: '#1e1535', color: '#a78bfa' }}
                 >
-                  {tag}
+                  {getEventCategoryLabel(tag)}
                 </span>
               ))}
             </div>

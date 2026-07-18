@@ -5,6 +5,7 @@ import { Camera, ExternalLink, Loader2, X } from 'lucide-react'
 import { FormateurProfilSchema, type FormateurProfilInput } from '@/lib/schemas/formateur-profil'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { EVENT_CATEGORY_GROUPS, getEventCategoryLabel } from '@/lib/constants/eventCategories'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -68,64 +69,71 @@ function resizeImageIfNeeded(file: File): Promise<Blob> {
   })
 }
 
-// ─── Sous-composant : input "tags" ────────────────────────────────────────────
+// ─── Sous-composant : multi-sélection "Spécialités" (référentiel thématiques) ─
+//
+// La saisie ne propose que le référentiel (EVENT_CATEGORY_GROUPS, groupé par
+// axe). Les tags déjà en base hors référentiel (ancienne saisie libre) restent
+// affichés et supprimables, mais ne peuvent plus être ajoutés depuis ce champ.
 
-function TagInput({
+function SpecialitesSelect({
   tags,
   onChange,
 }: {
   tags: string[]
   onChange: (tags: string[]) => void
 }) {
-  const [input, setInput] = useState('')
-
   function addTag(value: string) {
-    const trimmed = value.trim()
-    if (!trimmed || tags.includes(trimmed) || tags.length >= 20) return
-    onChange([...tags, trimmed])
-    setInput('')
+    if (!value || tags.includes(value) || tags.length >= 20) return
+    onChange([...tags, value])
   }
 
   function removeTag(tag: string) {
     onChange(tags.filter((t) => t !== tag))
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter' || e.key === ',') {
-      e.preventDefault()
-      addTag(input)
-    } else if (e.key === 'Backspace' && !input && tags.length > 0) {
-      removeTag(tags[tags.length - 1])
-    }
-  }
-
   return (
-    <div className="flex flex-wrap gap-2 p-2 rounded-lg border border-gray-200 bg-white min-h-[42px]">
-      {tags.map((tag) => (
-        <span
-          key={tag}
-          className="flex items-center gap-1 bg-[#EDE9FF] text-primary text-xs font-medium px-2.5 py-1 rounded-full"
-        >
-          {tag}
-          <button
-            type="button"
-            onClick={() => removeTag(tag)}
-            className="hover:text-red-500 transition-colors"
-            aria-label={`Supprimer ${tag}`}
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-2 p-2 rounded-lg border border-gray-200 bg-white min-h-[42px]">
+        {tags.length === 0 && (
+          <span className="text-sm text-gray-400 px-1 py-1">Aucune spécialité sélectionnée</span>
+        )}
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className="flex items-center gap-1 bg-[#EDE9FF] text-primary text-xs font-medium px-2.5 py-1 rounded-full"
           >
-            <X size={11} />
-          </button>
-        </span>
-      ))}
-      <input
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onBlur={() => addTag(input)}
-        placeholder={tags.length === 0 ? 'Implantologie, Endodontie…' : ''}
-        className="flex-1 min-w-[140px] text-sm outline-none text-gray-900 placeholder:text-gray-400 bg-transparent"
-      />
+            {getEventCategoryLabel(tag)}
+            <button
+              type="button"
+              onClick={() => removeTag(tag)}
+              className="hover:text-red-500 transition-colors"
+              aria-label={`Supprimer ${getEventCategoryLabel(tag)}`}
+            >
+              <X size={11} />
+            </button>
+          </span>
+        ))}
+      </div>
+      <select
+        value=""
+        onChange={(e) => addTag(e.target.value)}
+        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 bg-white outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+      >
+        <option value="">+ Ajouter une spécialité…</option>
+        {EVENT_CATEGORY_GROUPS.map((group) => {
+          const remaining = group.options.filter((opt) => !tags.includes(opt.value))
+          if (remaining.length === 0) return null
+          return (
+            <optgroup key={group.label} label={group.label}>
+              {remaining.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </optgroup>
+          )
+        })}
+      </select>
     </div>
   )
 }
@@ -375,9 +383,9 @@ export default function ProfilClient() {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Spécialités{' '}
-              <span className="font-normal text-gray-400">(Entrée ou virgule pour ajouter)</span>
+              <span className="font-normal text-gray-400">(référentiel thématiques)</span>
             </label>
-            <TagInput tags={tags} onChange={setTags} />
+            <SpecialitesSelect tags={tags} onChange={setTags} />
             {errors.expertise_tags && (
               <p className="text-red-500 text-xs mt-1">{errors.expertise_tags}</p>
             )}

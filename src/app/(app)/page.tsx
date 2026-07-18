@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { BookOpen, Calendar, ChevronLeft, ChevronRight, LogOut, Sparkles } from 'lucide-react'
+import { BookOpen, ChevronLeft, ChevronRight, LogOut, Sparkles } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { createClient } from '@/lib/supabase/client'
 import { getCategoryConfig } from '@/lib/supabase/types'
@@ -14,7 +14,7 @@ import DailyQuizModal from '@/components/home/DailyQuizModal'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 import { JournalWeekCard } from '@/components/home/JournalWeekCard'
 import { HomeHeroCard } from '@/components/home/HomeHeroCard'
-import HomeEventCard from '@/components/home/HomeEventCard'
+import EvenementsCarousel from '@/components/home/EvenementsCarousel'
 import NewsCardItem from '@/components/news/NewsCardItem'
 import NewsModal from '@/components/news/NewsModal'
 import ForYouCard from '@/components/home/ForYouCard'
@@ -199,10 +199,10 @@ export default function HomePage() {
       // nom même si le profil public n'est pas publié) plutôt que de
       // dupliquer les requêtes ici.
       try {
-        const res = await fetch('/api/evenements?limit=3')
+        const res = await fetch('/api/evenements?limit=10')
         if (!res.ok) return
         const data: EvenementItemData[] = await res.json()
-        setEvenements(data.slice(0, 3))
+        setEvenements(data)
       } catch {
         // silencieux — la section est simplement masquée si vide
       }
@@ -581,26 +581,10 @@ export default function HomePage() {
           <ExploreRow />
         </section>
 
-        {/* Evenements — masque si vide. Grille de cartes (hauteurs egales),
-            meme langage visuel que HomeHeroCard (eyebrow / titre dominant /
-            CTA en bas) plutot qu'une tuile hero generique unique. */}
-        {evenements.length > 0 && (
-          <section>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-bold text-[#e5e5e5] flex items-center gap-2">
-                <Calendar size={18} className="text-violet-400" /> Événements
-              </h2>
-              <Link href="/evenements" className="text-sm font-semibold text-primary hover:text-primary-hover transition-colors">
-                Voir tout →
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 lg:auto-rows-fr gap-3">
-              {evenements.map((item) => (
-                <HomeEventCard key={item.id} item={item} />
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Evenements — masque si vide. Meme carrousel (MediaCard) que les
+            autres rangees de la home ; carte "Agenda" cliquable en fin de
+            carrousel a la place du lien "Voir tout". */}
+        <EvenementsCarousel items={evenements} />
 
         {/* Actualites — eclatees par theme (Session 1bis) */}
         {recentNews.length > 0 && renderNewsRow('Les dernieres actus', recentNews, true, undefined, undefined, true)}

@@ -11,7 +11,7 @@ import type { FormateurFormation } from '@/lib/auth/rbac'
 import ReviewDecisionModal from '@/components/masterclass/ReviewDecisionModal'
 import DateTimePicker from '@/components/masterclass/DateTimePicker'
 import CategoryBadge from '@/components/masterclass/CategoryBadge'
-import { EVENT_CATEGORY_OPTIONS } from '@/lib/constants/eventCategories'
+import { EVENT_CATEGORY_GROUPS } from '@/lib/constants/eventCategories'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -159,8 +159,10 @@ function SessionCard({
 }) {
   const formation = formations.find((f) => f.id === session.formation_id)
   const isCancelled = computeSessionStatus(session) === 'cancelled'
-  const isEditable = session.created_by_role === 'formateur' && ['draft', 'rejected'].includes(session.review_status)
-  const canSubmit = session.created_by_role === 'formateur' && ['draft', 'rejected'].includes(session.review_status)
+  const isOwnDraftOrRejected = session.created_by_role === 'formateur' && ['draft', 'rejected'].includes(session.review_status)
+  const isReeditableApproved = session.created_by_role === 'formateur' && session.review_status === 'approved' && !session.is_published
+  const isEditable = isOwnDraftOrRejected || isReeditableApproved
+  const canSubmit = isOwnDraftOrRejected
   const canDelete = ['draft', 'rejected'].includes(session.review_status)
   const awaitingMyDecision = session.created_by_role === 'admin' && session.review_status === 'pending_review' && session.awaiting === 'formateur'
 
@@ -389,6 +391,15 @@ function SessionModal({
           </button>
         </div>
 
+        {editing && editing.review_status === 'approved' && !editing.is_published && (
+          <div className="mx-5 mt-4 flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 text-sm">
+            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+            <span>
+              Modifier repassera cette masterclass en brouillon (revalidation nécessaire avant republication).
+            </span>
+          </div>
+        )}
+
         <div className="p-5 space-y-4">
           {/* Titre */}
           <div>
@@ -513,8 +524,12 @@ function SessionModal({
               className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white"
             >
               <option value="">Aucune thématique</option>
-              {EVENT_CATEGORY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              {EVENT_CATEGORY_GROUPS.map((group) => (
+                <optgroup key={group.label} label={group.label}>
+                  {group.options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>

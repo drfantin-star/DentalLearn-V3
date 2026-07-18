@@ -5,7 +5,29 @@ import type { EvenementItemData } from '@/types/evenements'
 
 export const dynamic = 'force-dynamic'
 
-type EventRow = { id: string; title: string; starts_at: string; formateur_user_id: string; category: string | null }
+type EventRow = {
+  id: string
+  title: string
+  description: string | null
+  starts_at: string
+  ends_at: string | null
+  location_city: string | null
+  location_venue: string | null
+  external_registration_url: string | null
+  capacity: number | null
+  formateur_user_id: string
+  category: string | null
+}
+type SessionRow = {
+  id: string
+  title: string
+  description: string | null
+  starts_at: string
+  duration_min: number | null
+  capacity: number | null
+  formateur_user_id: string
+  category: string | null
+}
 type ProfileRow = { user_id: string; display_name: string | null; slug: string | null; photo_pro_url: string | null; is_published: boolean }
 
 const ALLOWED_TYPES = new Set(['all', 'presentiel', 'virtuel'])
@@ -29,7 +51,7 @@ export async function GET(request: NextRequest) {
     type !== 'virtuel'
       ? supabase
           .from('live_events')
-          .select('id, title, starts_at, formateur_user_id, category')
+          .select('id, title, description, starts_at, ends_at, location_city, location_venue, external_registration_url, capacity, formateur_user_id, category')
           .eq('is_published', true)
           .is('deleted_at', null)
           .gte('starts_at', now)
@@ -39,7 +61,7 @@ export async function GET(request: NextRequest) {
     type !== 'presentiel'
       ? supabase
           .from('live_sessions')
-          .select('id, title, starts_at, formateur_user_id, category')
+          .select('id, title, description, starts_at, duration_min, capacity, formateur_user_id, category')
           .eq('is_published', true)
           .is('deleted_at', null)
           .gte('starts_at', now)
@@ -50,7 +72,7 @@ export async function GET(request: NextRequest) {
   ])
 
   const events: EventRow[] = (eventsResult.data ?? []) as EventRow[]
-  const sessions: EventRow[] = (sessionsResult.data ?? []) as EventRow[]
+  const sessions: SessionRow[] = (sessionsResult.data ?? []) as SessionRow[]
 
   const allUserIds = Array.from(new Set(
     [...events, ...sessions].map((e) => e.formateur_user_id).filter(Boolean)
@@ -86,7 +108,14 @@ export async function GET(request: NextRequest) {
       id: e.id,
       type: 'presentiel' as const,
       title: e.title,
+      description: e.description,
       starts_at: e.starts_at,
+      ends_at: e.ends_at,
+      duration_min: null,
+      location_city: e.location_city,
+      location_venue: e.location_venue,
+      capacity: e.capacity,
+      external_registration_url: e.external_registration_url,
       category: e.category,
       ...formateurFields(e.formateur_user_id),
     })),
@@ -94,7 +123,14 @@ export async function GET(request: NextRequest) {
       id: s.id,
       type: 'virtuel' as const,
       title: s.title,
+      description: s.description,
       starts_at: s.starts_at,
+      ends_at: null,
+      duration_min: s.duration_min,
+      location_city: null,
+      location_venue: null,
+      capacity: s.capacity,
+      external_registration_url: null,
       category: s.category,
       ...formateurFields(s.formateur_user_id),
     })),
