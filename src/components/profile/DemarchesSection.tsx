@@ -37,7 +37,7 @@ export default function DemarchesSection({ demarches, loading }: DemarchesSectio
             ref={scrollRef}
             className="flex gap-3 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4"
           >
-            {demarches.map(d => <DemarcheCard key={d.id} demarche={d} size="large" layout="carousel" />)}
+            {demarches.map(d => <DemarcheCard key={d.id} demarche={d} size="large" />)}
           </div>
           <button
             onClick={scrollRight}

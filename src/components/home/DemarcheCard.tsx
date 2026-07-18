@@ -1,20 +1,21 @@
 import React from 'react'
-import { ArrowRight } from 'lucide-react'
 import type { DemarcheEnCours } from '@/lib/hooks/useDemarches'
 import { getEppStatusBadgeLabel } from '@/lib/epp/eppTourStatus'
-import { axeBannerStyle } from '@/lib/cp/axeColors'
+import Badge from '@/components/ui/Badge'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
-import { mediaCardSizeStyle } from '@/components/home/MediaCard'
+import MediaCard from '@/components/home/MediaCard'
 import type { MediaCardSize } from '@/components/home/MediaCard'
 
 interface DemarcheCardProps {
   demarche: DemarcheEnCours
   size?: MediaCardSize
-  /** 'carousel' (defaut) : largeur fixe (Mes demarches en cours). 'grid' : remplit sa cellule (page thematique). */
-  layout?: 'carousel' | 'grid'
 }
 
-export default function DemarcheCard({ demarche, size = 'default', layout = 'carousel' }: DemarcheCardProps) {
+// Degrade teal EPP — valeurs historiques de ce fichier (restaurees a
+// l'identique, pas de nouveau litteral), utilise pour tous les statuts.
+const EPP_GRADIENT = 'linear-gradient(135deg, #0F766E, #2DD4BF)'
+
+export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCardProps) {
   // --- Formation cards: landscape ---
   if (demarche.type === 'formation') {
     const formation = {
@@ -41,8 +42,12 @@ export default function DemarcheCard({ demarche, size = 'default', layout = 'car
     )
   }
 
-  // EPP card — modele "carte home" (badge de statut / titre dominant qui
-  // remplit / CTA pleine largeur en bas), identique sur toutes les surfaces.
+  // EPP card — meme gabarit que la tuile formation voisine (MediaCard,
+  // taille par defaut : FormationCardOverlay ignore de toute facon son
+  // prop `size`, cf. commentaire du fichier). Fond teal constant, badge de
+  // statut en surimpression (seul endroit ou l'accent vert "valide"
+  // apparait), CTA en pastille en bas — anatomie identique aux autres
+  // tuiles media de l'app (NewsCardItem, etc.).
   // Etat derive en priorite de `eppStatus` (source unique de verite, cf.
   // src/lib/epp/eppTourStatus.ts) ; repli sur le texte du subtitle si un
   // appelant ne le fournit pas encore.
@@ -54,41 +59,46 @@ export default function DemarcheCard({ demarche, size = 'default', layout = 'car
     ? getEppStatusBadgeLabel(eppStatus)
     : demarche.subtitle || 'Audit EPP'
 
-  // Fond : couleur d'axe existante (axe 2 = EPP) pour les etats en cours,
-  // classes Tailwind emerald (deja la convention "valide" du reste de
-  // l'app) pour l'etat complete — aucun nouveau litteral hex.
-  const outerStyle: React.CSSProperties = layout === 'carousel'
-    ? { ...mediaCardSizeStyle('landscape', size), aspectRatio: undefined, minHeight: 190 }
-    : {}
-  if (!isValidated) {
-    outerStyle.background = axeBannerStyle(2)
-  }
-
   return (
-    <div
-      className={[
-        'relative flex flex-col min-w-0 rounded-2xl p-4 shadow-md overflow-hidden',
-        layout === 'carousel' ? 'flex-shrink-0 snap-start' : 'w-full h-full min-h-[190px]',
-        isValidated ? 'bg-gradient-to-br from-emerald-600 to-emerald-500' : '',
-      ].join(' ')}
-      style={{ border: '0.5px solid #333', ...outerStyle }}
+    <MediaCard
+      onClick={() => { window.location.href = demarche.ctaUrl }}
+      ariaLabel={demarche.title}
+      aspect="landscape"
+      fallback={<div style={{ position: 'absolute', inset: 0, background: EPP_GRADIENT }} />}
+      topLeft={
+        <Badge variant={isValidated ? 'success' : 'epp'} size="md">
+          {badgeLabel}
+        </Badge>
+      }
     >
-      <p className="text-xs font-bold uppercase tracking-widest text-white/70">
-        {badgeLabel}
+      <p
+        style={{
+          fontSize: '13px',
+          fontWeight: 700,
+          color: 'white',
+          lineHeight: 1.25,
+          textShadow: '0 2px 6px rgba(0,0,0,0.7)',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}
+      >
+        {demarche.title}
       </p>
-      <div className="flex flex-1 items-center">
-        <h3 className="text-2xl font-semibold leading-tight text-white line-clamp-2">
-          {demarche.title}
-        </h3>
-      </div>
-      <button
-        type="button"
-        onClick={() => { window.location.href = demarche.ctaUrl }}
-        className="w-full rounded-xl flex items-center justify-center gap-1.5 font-bold transition-colors py-3 text-sm bg-white/20 text-white hover:bg-white/30 active:bg-white/40"
+      <div
+        style={{
+          background: EPP_GRADIENT,
+          color: 'white',
+          fontSize: '11px',
+          fontWeight: 600,
+          textAlign: 'center',
+          padding: '5px 7px',
+          borderRadius: '10px',
+        }}
       >
         {demarche.ctaLabel}
-        <ArrowRight size={16} />
-      </button>
-    </div>
+      </div>
+    </MediaCard>
   )
 }

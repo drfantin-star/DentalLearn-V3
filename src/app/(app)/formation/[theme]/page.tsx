@@ -436,8 +436,10 @@ export default function ThemePage() {
 
           {/* Grille 2 colonnes sur desktop — une carte par audit EPP publié.
               Mobile : 1 colonne (inchange). auto-rows-fr : hauteurs egales
-              sur toutes les rangees a partir de 3 audits. */}
-          <div className="grid gap-4 lg:grid-cols-2 lg:auto-rows-fr">
+              sur toutes les rangees a partir de 3 audits. justify-items-start :
+              les tuiles gardent leur gabarit fixe (comme la tuile formation
+              voisine), pas d'etirement pleine largeur dans leur cellule. */}
+          <div className="grid gap-4 lg:grid-cols-2 lg:auto-rows-fr justify-items-start">
           {eppAudits.length > 0 ? (
             eppAudits.map((audit) => {
               const auditSessions = eppSessions.filter(s => s.audit_id === audit.id)
@@ -469,7 +471,6 @@ export default function ThemePage() {
                     eppStatus,
                   }}
                   size="large"
-                  layout="grid"
                 />
               )
             })
