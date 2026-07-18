@@ -5,6 +5,7 @@ import type { UserInterests } from '@/lib/supabase/types'
 import type { NewsCard } from '@/types/news'
 import type { ForYouItem, ForYouType } from '@/types/forYou'
 import { fetchForYouNews } from '@/lib/news/forYouNews'
+import { getEppTourStatus } from '@/lib/epp/eppTourStatus'
 
 export const dynamic = 'force-dynamic'
 
@@ -103,7 +104,7 @@ export async function GET() {
     // ── Sources pédagogiques (client SSR session, RLS appliquée) ──────────
     // News lues séparément via fonction serveur partagée (colonnes sûres) —
     // jamais d'URL relative serveur→serveur.
-    const [formationsRes, eppRes, questRes, ficheRes, news] = await Promise.all([
+    const [formationsRes, eppRes, eppSessionsRes, questRes, ficheRes, news] = await Promise.all([
       supabase
         .from('formations')
         .select('id, title, slug, category, axe_cp, cover_image_url, cover_cutout_url, created_at')
@@ -112,6 +113,10 @@ export async function GET() {
         .from('epp_audits')
         .select('id, title, slug, theme_slug')
         .eq('is_published', true),
+      supabase
+        .from('user_epp_sessions')
+        .select('audit_id, tour, completed_at')
+        .eq('user_id', user.id),
       supabase
         .from('questionnaires')
         .select('id, titre, slug, axe_cp, time_estimate_min')
@@ -122,6 +127,19 @@ export async function GET() {
         recentLimit: NEWS_FETCH_LIMIT,
       }),
     ])
+
+    // EPP complétées (T1+T2) : plus des "démarches", exclues du bucket epp.
+    const eppSessionsByAudit = new Map<string, { tour: number; completed_at: string | null }[]>()
+    for (const row of eppSessionsRes.data ?? []) {
+      const list = eppSessionsByAudit.get(row.audit_id) || []
+      list.push({ tour: row.tour, completed_at: row.completed_at })
+      eppSessionsByAudit.set(row.audit_id, list)
+    }
+    const completedEppAuditIds = new Set(
+      [...eppSessionsByAudit.entries()]
+        .filter(([, sessions]) => getEppTourStatus(sessions) === 'completed')
+        .map(([auditId]) => auditId)
+    )
 
     // Buckets par type — score : category match = 2, axe match = 1.
     const buckets: Record<'formation' | 'epp' | 'autoeval' | 'fiche', Scored[]> = {
@@ -157,6 +175,7 @@ export async function GET() {
     }
 
     for (const e of eppRes.data ?? []) {
+      if (completedEppAuditIds.has(e.id)) continue
       const catMatch = e.theme_slug != null && catSet.has(e.theme_slug)
       const axeMatch = axeSet.has(2)
       if (!catMatch && !axeMatch) continue
@@ -168,7 +187,7 @@ export async function GET() {
           id: `epp-${e.id}`,
           type: 'epp',
           title: e.title,
-          href: `/formation/${e.theme_slug}/epp`,
+          href: `/formation/${e.theme_slug}/epp?audit=${e.slug}`,
           axe: 2,
           category: e.theme_slug,
           matchReason: `Parce que ${reasonLabel} vous intéresse`,

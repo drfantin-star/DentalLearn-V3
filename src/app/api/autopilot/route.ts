@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { CATEGORY_CONFIG } from '@/lib/supabase/types'
+import { getEppTourStatus } from '@/lib/epp/eppTourStatus'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,11 +51,11 @@ interface NormalizedItem {
 // ── DB row helpers ────────────────────────────────────────────────────────────
 
 interface UserFormationRow { formation_id: string }
-interface UserEppRow { audit_id: string }
+interface UserEppRow { audit_id: string; tour: number; completed_at: string | null }
 interface AutoevalCompletionRow { questionnaire_id: string }
 interface UserAttestationRow { axe_cp: number; type: string }
 interface FormationRow { id: string; title: string; slug: string; category: string; axe_cp: number }
-interface EppAuditRow { id: string; title: string; theme_slug: string }
+interface EppAuditRow { id: string; title: string; slug: string; theme_slug: string }
 interface QuestionnaireRow { id: string; titre: string }
 interface AxeRow { id: number; short_name: string }
 interface PlanRow {
@@ -113,16 +114,27 @@ async function eppProvider(
 ): Promise<NormalizedItem[]> {
   if (cpSlugs.length === 0) return []
 
-  const { data: doneRows } = await supabase
+  const { data: sessionRows } = await supabase
     .from('user_epp_sessions')
-    .select('audit_id')
+    .select('audit_id, tour, completed_at')
     .eq('user_id', userId)
-    .not('completed_at', 'is', null)
-  const doneIds = new Set((doneRows as UserEppRow[] ?? []).map((r) => r.audit_id))
+  const sessionsByAudit = new Map<string, { tour: number; completed_at: string | null }[]>()
+  for (const row of (sessionRows as UserEppRow[] ?? [])) {
+    const list = sessionsByAudit.get(row.audit_id) || []
+    list.push({ tour: row.tour, completed_at: row.completed_at })
+    sessionsByAudit.set(row.audit_id, list)
+  }
+  // Un audit n'est "fait" (exclu du plan) que si T1 ET T2 sont completes —
+  // un T1 seul doit rester propose comme demarche a reprendre.
+  const doneIds = new Set(
+    [...sessionsByAudit.entries()]
+      .filter(([, sessions]) => getEppTourStatus(sessions) === 'completed')
+      .map(([auditId]) => auditId)
+  )
 
   const { data: audits } = await supabase
     .from('epp_audits')
-    .select('id, title, theme_slug')
+    .select('id, title, slug, theme_slug')
     .eq('is_published', true)
     .in('theme_slug', cpSlugs)
 
@@ -134,7 +146,7 @@ async function eppProvider(
       ref_key: `epp:${a.id}`,
       axe_id: 2,
       title: a.title,
-      href: `/formation/${a.theme_slug}/epp`,
+      href: `/formation/${a.theme_slug}/epp?audit=${a.slug}`,
       est_minutes: EST.epp,
     }))
 }

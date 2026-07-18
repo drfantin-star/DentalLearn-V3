@@ -20,6 +20,7 @@ import ForYouCard from '@/components/home/ForYouCard'
 import ExploreRow from '@/components/home/ExploreRow'
 import { useDemarches } from '@/lib/hooks/useDemarches'
 import { mediaCardSizeStyle } from '@/components/home/MediaCard'
+import EppCardBackground from '@/components/home/EppCardBackground'
 import type { JournalEpisode, NewsCard } from '@/types/news'
 import type { ForYouItem } from '@/types/forYou'
 import type { EvenementItemData } from '@/types/evenements'
@@ -488,24 +489,7 @@ export default function HomePage() {
                       boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
                     }}
                   >
-                    <div
-                      aria-hidden
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background:
-                          'radial-gradient(ellipse at 70% 40%, #0F7B6Ccc 0%, #0F7B6C44 55%, #0d0d1a 100%)',
-                      }}
-                    />
-                    <div
-                      aria-hidden
-                      style={{
-                        position: 'absolute',
-                        inset: 0,
-                        background:
-                          'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 60%, rgba(0,0,0,0.35) 100%)',
-                      }}
-                    />
+                    <EppCardBackground />
                     <div
                       style={{
                         position: 'absolute',

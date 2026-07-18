@@ -6,10 +6,13 @@ import { downloadEppActionPlan, type EppActionPlan } from '@/lib/hooks/useEppAct
 
 interface Props {
   plan: EppActionPlan
+  /** 'compact' : utilisé dans un EppAuditGroupCard, masque le bandeau/titre déjà affichés au niveau du groupe. */
+  variant?: 'standalone' | 'compact'
 }
 
-export function EppActionPlanCard({ plan }: Props) {
+export function EppActionPlanCard({ plan, variant = 'standalone' }: Props) {
   const [downloading, setDownloading] = useState(false)
+  const isCompact = variant === 'compact'
 
   const nbAxes = Object.values(plan.planActions).filter(
     (e) => (e?.text && e.text.trim().length > 0) || (e?.checked_suggestion_ids?.length ?? 0) > 0
@@ -32,23 +35,29 @@ export function EppActionPlanCard({ plan }: Props) {
     }
   }
 
+  const cardClass = isCompact
+    ? 'transition-premium'
+    : 'glass-card transition-premium rounded-2xl overflow-hidden'
+
   return (
-    <div className="glass-card transition-premium rounded-2xl overflow-hidden">
-      {/* Header */}
-      <div className="px-4 py-3" style={{ backgroundImage: 'linear-gradient(135deg, #0F7B6C, #0a5f54)' }}>
-        <div className="flex items-center gap-2 text-white">
-          <ClipboardList className="w-4 h-4" />
-          <span className="text-xs font-semibold uppercase tracking-wide">
-            Plan d&apos;actions EPP
-          </span>
+    <div className={cardClass}>
+      {/* Header — masque en mode compact, redondant avec l'en-tete du groupe */}
+      {!isCompact && (
+        <div className="px-4 py-3" style={{ backgroundImage: 'linear-gradient(135deg, #0F7B6C, #0a5f54)' }}>
+          <div className="flex items-center gap-2 text-white">
+            <ClipboardList className="w-4 h-4" />
+            <span className="text-xs font-semibold uppercase tracking-wide">
+              Plan d&apos;actions EPP
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Corps */}
-      <div className="p-4 space-y-3">
+      <div className={isCompact ? 'p-3 space-y-2' : 'p-4 space-y-3'}>
         <div>
-          <h3 className="font-bold text-white text-[15px] leading-tight">
-            {plan.auditTitle}
+          <h3 className={isCompact ? 'text-xs font-semibold uppercase tracking-wide text-white/55' : 'font-bold text-white text-[15px] leading-tight'}>
+            {isCompact ? "Plan d'actions" : plan.auditTitle}
           </h3>
           <p className="text-xs text-white/55 mt-0.5">Tour 1 — Actions d&apos;amelioration</p>
         </div>
