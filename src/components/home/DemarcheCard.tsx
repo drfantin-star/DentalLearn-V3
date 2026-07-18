@@ -38,9 +38,16 @@ export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCar
   }
 
   // EPP card — format paysage 3/2, anneau ancre a droite
+  // Etat visuel derive en priorite de `eppStatus` (source unique de verite,
+  // cf. src/lib/epp/eppTourStatus.ts) ; repli sur le texte du subtitle si un
+  // appelant ne le fournit pas encore.
   const eppColor = '#0F766E'
-  const isValidated = demarche.subtitle?.includes('validé') || false
-  const isT2 = demarche.subtitle?.includes('Tour 2') || false
+  const isValidated = demarche.eppStatus
+    ? demarche.eppStatus === 'completed'
+    : demarche.subtitle?.includes('validé') || false
+  const isT2 = demarche.eppStatus
+    ? demarche.eppStatus === 't2_in_progress'
+    : demarche.subtitle?.includes('Tour 2') || false
   const eppGradient = isValidated
     ? 'linear-gradient(135deg, #059669, #10B981)'
     : `linear-gradient(135deg, ${eppColor}, #2DD4BF)`

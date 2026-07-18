@@ -8,6 +8,8 @@ import type { UserAttestation } from '@/lib/hooks/useUserAttestations'
 
 interface AttestationCardProps {
   attestation: UserAttestation
+  /** 'compact' : utilisé dans un EppAuditGroupCard, masque le bandeau/titre déjà affichés au niveau du groupe. */
+  variant?: 'standalone' | 'compact'
 }
 
 const AXE_LABELS: Record<number, string> = {
@@ -17,8 +19,9 @@ const AXE_LABELS: Record<number, string> = {
   4: 'Axe 4 — Sante praticien',
 }
 
-export function AttestationCard({ attestation }: AttestationCardProps) {
+export function AttestationCard({ attestation, variant = 'standalone' }: AttestationCardProps) {
   const [downloading, setDownloading] = useState(false)
+  const isCompact = variant === 'compact'
 
   const isFormation = attestation.type === 'formation_online'
   const isEpp = attestation.type === 'epp'
@@ -63,42 +66,48 @@ export function AttestationCard({ attestation }: AttestationCardProps) {
     })
   }
 
+  const cardClass = isCompact
+    ? 'transition-premium'
+    : 'glass-card transition-premium rounded-2xl overflow-hidden'
+
   return (
-    <div className="glass-card transition-premium rounded-2xl overflow-hidden">
-      {/* Header colore selon axe (style inline : derive de la palette CP) */}
-      <div className="px-4 py-3" style={{ backgroundImage: axeBannerBg }}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white">
-            {isFormation ? (
-              <Award className="w-4 h-4" />
-            ) : isActionF ? (
-              <ShieldCheck className="w-4 h-4" />
-            ) : (
-              <Shield className="w-4 h-4" />
+    <div className={cardClass}>
+      {/* Header colore selon axe (style inline : derive de la palette CP) — masque en mode compact, redondant avec l'en-tete du groupe */}
+      {!isCompact && (
+        <div className="px-4 py-3" style={{ backgroundImage: axeBannerBg }}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-white">
+              {isFormation ? (
+                <Award className="w-4 h-4" />
+              ) : isActionF ? (
+                <ShieldCheck className="w-4 h-4" />
+              ) : (
+                <Shield className="w-4 h-4" />
+              )}
+              <span className="text-xs font-semibold uppercase tracking-wide">
+                {isFormation
+                  ? 'Formation en ligne'
+                  : isActionF
+                    ? "Demarche d'information patient"
+                    : 'Audit EPP'}
+              </span>
+            </div>
+            {axeLabel && (
+              <span className="text-xs text-white/90 font-medium">
+                {axeLabel}
+              </span>
             )}
-            <span className="text-xs font-semibold uppercase tracking-wide">
-              {isFormation
-                ? 'Formation en ligne'
-                : isActionF
-                  ? "Demarche d'information patient"
-                  : 'Audit EPP'}
-            </span>
           </div>
-          {axeLabel && (
-            <span className="text-xs text-white/90 font-medium">
-              {axeLabel}
-            </span>
-          )}
         </div>
-      </div>
+      )}
 
       {/* Corps */}
-      <div className="p-4 space-y-3">
+      <div className={isCompact ? 'p-3 space-y-2' : 'p-4 space-y-3'}>
         <div>
-          <h3 className="font-bold text-white text-[15px] leading-tight">
-            {attestation.title}
+          <h3 className={isCompact ? 'text-xs font-semibold uppercase tracking-wide text-white/55' : 'font-bold text-white text-[15px] leading-tight'}>
+            {isCompact ? 'Attestation' : attestation.title}
           </h3>
-          {attestation.formateur && (
+          {!isCompact && attestation.formateur && (
             <p className="text-xs text-white/55 mt-0.5">
               {attestation.formateur}
             </p>

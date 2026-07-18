@@ -6,10 +6,13 @@ import { downloadEppComparison, type EppComparison } from '@/lib/hooks/useEppCom
 
 interface Props {
   comparison: EppComparison
+  /** 'compact' : utilisé dans un EppAuditGroupCard, masque le bandeau/titre déjà affichés au niveau du groupe. */
+  variant?: 'standalone' | 'compact'
 }
 
-export function EppComparisonCard({ comparison }: Props) {
+export function EppComparisonCard({ comparison, variant = 'standalone' }: Props) {
   const [downloading, setDownloading] = useState(false)
+  const isCompact = variant === 'compact'
 
   const scoreT1 = comparison.scoreT1 ?? 0
   const scoreT2 = comparison.scoreT2 ?? 0
@@ -32,23 +35,29 @@ export function EppComparisonCard({ comparison }: Props) {
     }
   }
 
+  const cardClass = isCompact
+    ? 'transition-premium'
+    : 'glass-card transition-premium rounded-2xl overflow-hidden'
+
   return (
-    <div className="glass-card transition-premium rounded-2xl overflow-hidden">
-      {/* Header */}
-      <div className="px-4 py-3" style={{ backgroundImage: 'linear-gradient(135deg, #0F7B6C, #0a5f54)' }}>
-        <div className="flex items-center gap-2 text-white">
-          <TrendingUp className="w-4 h-4" />
-          <span className="text-xs font-semibold uppercase tracking-wide">
-            Comparatif T1 / T2
-          </span>
+    <div className={cardClass}>
+      {/* Header — masque en mode compact, redondant avec l'en-tete du groupe */}
+      {!isCompact && (
+        <div className="px-4 py-3" style={{ backgroundImage: 'linear-gradient(135deg, #0F7B6C, #0a5f54)' }}>
+          <div className="flex items-center gap-2 text-white">
+            <TrendingUp className="w-4 h-4" />
+            <span className="text-xs font-semibold uppercase tracking-wide">
+              Comparatif T1 / T2
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Corps */}
-      <div className="p-4 space-y-3">
+      <div className={isCompact ? 'p-3 space-y-2' : 'p-4 space-y-3'}>
         <div>
-          <h3 className="font-bold text-white text-[15px] leading-tight">
-            {comparison.auditTitle}
+          <h3 className={isCompact ? 'text-xs font-semibold uppercase tracking-wide text-white/55' : 'font-bold text-white text-[15px] leading-tight'}>
+            {isCompact ? 'Comparatif T1 / T2' : comparison.auditTitle}
           </h3>
           <p className="text-xs text-white/55 mt-0.5">EPP complète — Tour 1 et Tour 2</p>
         </div>

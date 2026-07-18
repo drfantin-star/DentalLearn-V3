@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { getEppTourStatus, getEppCtaLabel, type EppTourStatus } from '@/lib/epp/eppTourStatus'
 
 export interface DemarcheEnCours {
   id: string
@@ -18,6 +19,7 @@ export interface DemarcheEnCours {
   accentColor: string  // classe Tailwind border-xxx
   coverImageUrl?: string | null
   category?: string | null
+  eppStatus?: EppTourStatus  // uniquement pertinent quand type === 'epp'
 }
 
 export function useDemarches(userId?: string) {
@@ -152,7 +154,11 @@ export function useDemarches(userId?: string) {
           const audit = auditsDetails.find((a: any) => a.id === session.audit_id)
           if (!audit) return
 
-          const isEnAttente = session.tour === 1 && session.completed_at !== null
+          // Chaque audit ne contribue qu'une session à cette liste (cf.
+          // filtrage ci-dessus), donc son statut se dérive directement de
+          // cette session seule.
+          const eppStatus = getEppTourStatus([{ tour: session.tour, completed_at: session.completed_at }])
+          const isEnAttente = eppStatus === 't1_done_waiting_t2'
 
           eppCards.push({
             id: session.id,
@@ -164,9 +170,10 @@ export function useDemarches(userId?: string) {
             badge: 'EPP',
             badgeColor: 'bg-[#0F7B6C]',
             icon: '📋',
-            ctaLabel: isEnAttente ? 'Voir mon audit' : "Continuer l'audit",
+            ctaLabel: getEppCtaLabel(eppStatus),
             ctaUrl: `/formation/${audit.theme_slug}/epp?audit=${audit.slug}`,
             accentColor: 'border-teal-200',
+            eppStatus,
           })
         })
 

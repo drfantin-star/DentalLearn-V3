@@ -8,10 +8,10 @@ import { useAutoevalCompletions } from '@/lib/autoeval/useAutoevalCompletions'
 import { AttestationCard } from '@/components/profile/attestations/AttestationCard'
 import { AttestationEmptyState } from '@/components/profile/attestations/AttestationEmptyState'
 import AutoevalAttestationTab from '@/components/profile/attestations/AutoevalAttestationTab'
-import { EppActionPlanCard } from '@/components/profile/attestations/EppActionPlanCard'
 import { useEppActionPlans } from '@/lib/hooks/useEppActionPlans'
-import { EppComparisonCard } from '@/components/profile/attestations/EppComparisonCard'
 import { useEppComparisons } from '@/lib/hooks/useEppComparisons'
+import { EppAuditGroupCard } from '@/components/profile/attestations/EppAuditGroupCard'
+import { groupEppDocumentsByAudit } from '@/lib/epp/groupEppDocuments'
 
 type TabType = 'formation_online' | 'epp' | 'action_cnp_info_patient' | 'autoeval'
 
@@ -22,20 +22,20 @@ export default function MaCertifAttestationsPage() {
   const { plans: actionPlans, loading: plansLoading } = useEppActionPlans()
   const { comparisons, loading: comparisonsLoading } = useEppComparisons()
 
+  const eppGroups = groupEppDocumentsByAudit(epp, actionPlans, comparisons)
+
   const currentList =
     activeTab === 'formation_online'
       ? formationOnline
-      : activeTab === 'epp'
-        ? epp
-        : activeTab === 'action_cnp_info_patient'
-          ? actionF
-          : []
+      : activeTab === 'action_cnp_info_patient'
+        ? actionF
+        : []
 
   return (
     <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
       {/* Header */}
       <div className="sticky top-0 z-10" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+        <div className="max-w-2xl mx-auto md:max-w-2xl lg:max-w-3xl px-4 py-3 flex items-center gap-3">
           <Link
             href="/ma-certif"
             className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-premium"
@@ -54,7 +54,7 @@ export default function MaCertifAttestationsPage() {
         </div>
 
         {/* Tabs */}
-        <div className="max-w-2xl mx-auto px-4">
+        <div className="max-w-2xl mx-auto md:max-w-2xl lg:max-w-3xl px-4">
           <div className="flex gap-1 p-1 rounded-xl" style={{ background: '#111111' }}>
             <button
               onClick={() => setActiveTab('formation_online')}
@@ -122,7 +122,7 @@ export default function MaCertifAttestationsPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-2xl mx-auto px-4 py-4">
+      <div className="max-w-2xl mx-auto md:max-w-2xl lg:max-w-[1500px] px-4 lg:px-8 py-4">
         {activeTab === 'autoeval' ? (
           <AutoevalAttestationTab
             count={autoeval.count}
@@ -132,7 +132,7 @@ export default function MaCertifAttestationsPage() {
           />
         ) : (
           <>
-            {loading && (
+            {(loading || (activeTab === 'epp' && (plansLoading || comparisonsLoading))) && (
               <div className="flex items-center justify-center py-16">
                 <Loader2 className="w-6 h-6 animate-spin text-white/40" />
               </div>
@@ -144,48 +144,32 @@ export default function MaCertifAttestationsPage() {
               </div>
             )}
 
-            {!loading && !error && currentList.length === 0 &&
-              !(activeTab === 'epp' && (actionPlans.length > 0 || plansLoading || comparisons.length > 0 || comparisonsLoading)) && (
+            {!loading && !error && activeTab === 'epp' && !plansLoading && !comparisonsLoading && eppGroups.length === 0 && (
               <AttestationEmptyState type={activeTab} />
             )}
 
-            {!loading && !error && currentList.length > 0 && (
-              <div className="space-y-3">
+            {!loading && !error && activeTab === 'epp' && !plansLoading && !comparisonsLoading && eppGroups.length > 0 && (
+              <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4">
+                {eppGroups.map(group => (
+                  <EppAuditGroupCard key={group.auditId} group={group} />
+                ))}
+              </div>
+            )}
+
+            {activeTab !== 'epp' && !loading && !error && currentList.length === 0 && (
+              <AttestationEmptyState type={activeTab} />
+            )}
+
+            {activeTab !== 'epp' && !loading && !error && currentList.length > 0 && (
+              <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4">
                 {currentList.map(attestation => (
                   <AttestationCard key={attestation.id} attestation={attestation} />
                 ))}
               </div>
             )}
 
-            {/* Plans d'action EPP sauvegardes (Tour 1) */}
-            {!error && activeTab === 'epp' && actionPlans.length > 0 && (
-              <div className={currentList.length > 0 ? 'mt-8' : ''}>
-                <h2 className="text-sm font-semibold text-white/70 mb-3 px-1">
-                  Plans d&apos;action sauvegardes
-                </h2>
-                <div className="space-y-3">
-                  {actionPlans.map(plan => (
-                    <EppActionPlanCard key={plan.sessionId} plan={plan} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Comparatifs T1/T2 EPP sauvegardes (EPP complete) */}
-            {!error && activeTab === 'epp' && comparisons.length > 0 && (
-              <div className={(currentList.length > 0 || actionPlans.length > 0) ? 'mt-8' : ''}>
-                <h2 className="text-sm font-semibold text-white/70 mb-3 px-1">
-                  Comparatifs T1/T2 sauvegardes
-                </h2>
-                <div className="space-y-3">
-                  {comparisons.map(comparison => (
-                    <EppComparisonCard key={comparison.auditId} comparison={comparison} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {!loading && !error && currentList.length > 0 && (
+            {!loading && !error &&
+              ((activeTab === 'epp' && eppGroups.length > 0) || (activeTab !== 'epp' && currentList.length > 0)) && (
               <div className="mt-8 p-4 rounded-xl text-xs text-white/55" style={{ background: 'rgba(255,255,255,0.05)' }}>
                 <p className="font-medium text-white mb-1">
                   A propos de vos attestations

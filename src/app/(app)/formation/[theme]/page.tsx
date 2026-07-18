@@ -23,6 +23,7 @@ import type { IntroSessionResult } from '@/components/formation/EnrollmentCTA'
 import SequencePlayer from '@/components/formation/SequencePlayer'
 import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 import DemarcheCard from '@/components/home/DemarcheCard'
+import { getEppTourStatus, getEppCtaLabel } from '@/lib/epp/eppTourStatus'
 
 // ============================================
 // THEMES CONFIG
@@ -299,18 +300,6 @@ export default function ThemePage() {
   // EPP Status helpers
   // ============================================
 
-  // Statut calculé à partir des sessions d'UN audit (une thématique peut en
-  // afficher plusieurs). L'appelant filtre `eppSessions` par `audit_id`.
-  const getEppStatus = (sessions: UserEppSession[]) => {
-    const t1 = sessions.find(s => s.tour === 1)
-    const t2 = sessions.find(s => s.tour === 2)
-
-    if (t2?.completed_at) return { status: 'completed', label: 'EPP validée', color: 'green' }
-    if (t1?.completed_at) return { status: 't1_done', label: 'T1 terminé — T2 en attente', color: 'amber' }
-    if (t1) return { status: 't1_started', label: 'T1 en cours', color: 'blue' }
-    return { status: 'not_started', label: 'Non commencé', color: 'gray' }
-  }
-
   // ============================================
   // RENDU — Sequence Player
   // ============================================
@@ -451,19 +440,12 @@ export default function ThemePage() {
           {eppAudits.length > 0 ? (
             eppAudits.map((audit) => {
               const auditSessions = eppSessions.filter(s => s.audit_id === audit.id)
-              const eppStatus = getEppStatus(auditSessions)
+              const eppStatus = getEppTourStatus(auditSessions)
               const eppT1 = auditSessions.find(s => s.tour === 1)
-              const eppT2 = auditSessions.find(s => s.tour === 2)
-              const isValidated = !!eppT2?.completed_at
-              const isT2 = !!eppT2 && !eppT2.completed_at
-              const ctaLabel = eppStatus.status === 'not_started'
-                ? "Commencer l'audit"
-                : isValidated
-                ? 'Voir attestation'
-                : "Continuer l'audit"
-              const subtitle = isValidated
+              const ctaLabel = getEppCtaLabel(eppStatus)
+              const subtitle = eppStatus === 'completed'
                 ? 'validé'
-                : isT2
+                : eppStatus === 't2_in_progress'
                 ? 'Tour 2 en cours'
                 : eppT1?.completed_at
                 ? 'Tour 1 terminé'
@@ -483,6 +465,7 @@ export default function ThemePage() {
                     ctaUrl: `/formation/${themeSlug}/epp?audit=${audit.slug}`,
                     ctaLabel,
                     category: themeSlug,
+                    eppStatus,
                   }}
                   size="large"
                 />
