@@ -37,9 +37,9 @@ export interface BibliothequeRessourceRow {
 // Stops assombris par rapport aux couleurs de charte brutes pour adoucir
 // le contraste sur fond sombre (#0F0F0F) sans changer la teinte.
 export const AXE_GRADIENTS: Record<AxeId, { from: string; to: string }> = {
-  1: { from: '#5B21B6', to: '#7C3AED' }, // Pratiques cliniques (violet-800 → violet-600)
-  3: { from: '#9A3412', to: '#C2410C' }, // Relation patient (orange-900 → orange-700)
-  4: { from: '#9D174D', to: '#7C3AED' }, // Santé praticien (pink-900 → violet-600)
+  1: { from: '#0d0d0d', to: '#8B5CF6' }, // Pratiques cliniques (noir → violet Axe 1)
+  3: { from: '#0d0d0d', to: '#D97706' }, // Relation patient (noir → orange Axe 3)
+  4: { from: '#0d0d0d', to: '#EC4899' }, // Santé praticien (noir → rose Axe 4)
 }
 
 // Sous-titres par défaut du bandeau, selon l'axe.

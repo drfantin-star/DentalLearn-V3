@@ -23,7 +23,7 @@ function SantePageContent() {
 
   return (
     <>
-      <header className="bg-gradient-to-br from-[#9D174D] to-[#7C3AED] px-4 py-4">
+      <header className="bg-gradient-to-br from-[#0d0d0d] to-[#EC4899] px-4 py-4">
         <div className="flex items-center gap-3 mb-1">
           <button
             onClick={() => router.push('/')}
