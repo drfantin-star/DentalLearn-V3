@@ -7,7 +7,7 @@ import {
   Home,
   Newspaper,
   UserCircle,
-  ShieldCheck,
+  Wrench,
   GraduationCap,
   Users,
   Heart,
@@ -40,7 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/formation', icon: GraduationCap, label: 'Formations & EPP' },
   { href: '/patient', icon: Users, label: 'Relation patient' },
   { href: '/sante', icon: Heart, label: 'Santé personnelle' },
-  { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
+  { href: '/outils', icon: Wrench, label: 'Boîte à outils' },
 ]
 
 // Memes conditions que la page Profil (cf. src/app/(app)/profil/page.tsx) : un

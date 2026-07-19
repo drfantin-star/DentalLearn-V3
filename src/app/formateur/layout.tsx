@@ -1,5 +1,6 @@
 import { requireFormateurOrRedirect } from '@/lib/auth/guards'
 import FormateurShell from '@/components/formateur/FormateurShell'
+import DesktopOnly from '@/components/layout/DesktopOnly'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,5 +13,9 @@ export default async function FormateurLayout({
   // /403 si ni formateur ni super_admin (Dr Fantin reste autorisée).
   await requireFormateurOrRedirect('/formateur/dashboard')
 
-  return <FormateurShell>{children}</FormateurShell>
+  return (
+    <DesktopOnly title="Espace Formateur">
+      <FormateurShell>{children}</FormateurShell>
+    </DesktopOnly>
+  )
 }

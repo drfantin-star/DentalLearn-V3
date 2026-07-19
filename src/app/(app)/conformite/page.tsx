@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { useCabinetCompliance, deriveEffectiveStatus } from '@/lib/hooks/useCabinetCompliance'
 import CategoryItemsModal from '@/components/conformite/CategoryItemsModal'
+import DesktopOnly from '@/components/layout/DesktopOnly'
 import type { CabinetComplianceCategory } from '@/lib/supabase/types'
 
 // Noms d'icônes lucide stockés en base (cabinet_compliance_categories.icon).
@@ -85,7 +86,7 @@ export default function ConformitePage() {
   const global = computeStats()
 
   return (
-    <>
+    <DesktopOnly title="Conformité cabinet">
       {/* Header */}
       <header className="bg-gradient-to-br from-[#0d0d0d] to-[#0F7B6C] px-4 py-4">
         <div className="flex items-center gap-3 mb-1">
@@ -98,7 +99,11 @@ export default function ConformitePage() {
           <h1 className="text-2xl font-black text-white">Conformité</h1>
         </div>
         <p className="text-sm font-semibold text-white/80 mt-1 leading-relaxed">
-          Conformité réglementaire de votre cabinet · Axe 2 de la certification périodique
+          Conformité réglementaire de votre cabinet
+        </p>
+        <p className="text-xs text-white/70 mt-1 leading-relaxed">
+          Outil d&apos;aide à la sécurisation juridique et administrative de votre cabinet.
+          Ne valide pas d&apos;action de certification périodique.
         </p>
       </header>
 
@@ -197,23 +202,6 @@ export default function ConformitePage() {
             </div>
           )}
         </section>
-
-        {/* Générateur DUERP */}
-        <div className="bg-gradient-to-br from-accent to-accent-hover rounded-2xl p-5 text-white">
-          <div className="flex items-start gap-3">
-            <FileText size={24} className="shrink-0 mt-0.5" />
-            <div>
-              <h3 className="font-bold text-base mb-1">Générateur DUERP</h3>
-              <p className="text-white/80 text-xs leading-relaxed mb-3">
-                Générez votre Document Unique d&apos;Évaluation des Risques
-                Professionnels adapté à l&apos;odontologie.
-              </p>
-              <button className="px-4 py-2 bg-white text-accent rounded-xl text-sm font-bold hover:bg-white/90 transition-colors">
-                Bientôt disponible
-              </button>
-            </div>
-          </div>
-        </div>
       </main>
 
       <CategoryItemsModal
@@ -225,6 +213,6 @@ export default function ConformitePage() {
         todayISO={todayISO}
         onSetStatus={setItemStatus}
       />
-    </>
+    </DesktopOnly>
   )
 }
