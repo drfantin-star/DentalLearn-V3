@@ -37,7 +37,7 @@ export const LIT_CARD_CLASS =
  * `highlight` retombe volontairement sur le style neutre du template.
  */
 const RENDERED_VARIANT_CLASS: Record<'warning' | 'success', string> = {
-  warning: 'bg-axe3/15 border-axe3/40 text-axe3',
+  warning: 'bg-amber-500/15 border-amber-500/40 text-amber-500',
   success: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300',
 }
 

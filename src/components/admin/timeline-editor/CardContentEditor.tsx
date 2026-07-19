@@ -156,7 +156,7 @@ export function CardContentEditor({
                 }}
                 className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
                   active
-                    ? 'bg-ds-turquoise text-axe3'
+                    ? 'bg-ds-turquoise text-amber-500'
                     : 'bg-white/5 text-[color:var(--color-text-secondary)] hover:bg-white/10'
                 }`}
               >

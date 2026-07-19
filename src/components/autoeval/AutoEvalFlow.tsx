@@ -22,7 +22,7 @@ export default function AutoEvalFlow() {
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <Loader2 className="animate-spin text-[#EC4899]" size={28} />
+        <Loader2 className="animate-spin text-pink-500" size={28} />
       </div>
     )
   }

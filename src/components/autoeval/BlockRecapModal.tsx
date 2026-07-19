@@ -44,7 +44,7 @@ export default function BlockRecapModal({ recap, isLast, onContinue }: Props) {
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-4">
       <div className="flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl bg-[#1a1a1a] sm:rounded-3xl">
         {/* Header */}
-        <div className="bg-gradient-to-br from-[#EC4899] to-[#A78BFA] px-5 py-4">
+        <div className="bg-gradient-to-br from-pink-500 to-violet-400 px-5 py-4">
           <p className="text-xs font-semibold text-white/80">Point d'étape</p>
           <h3 className="text-lg font-black text-white">{recap.titre}</h3>
         </div>
@@ -101,7 +101,7 @@ export default function BlockRecapModal({ recap, isLast, onContinue }: Props) {
           <button
             type="button"
             onClick={onContinue}
-            className="w-full rounded-2xl bg-[#EC4899] py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+            className="w-full rounded-2xl bg-pink-500 py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
           >
             {isLast ? 'Voir ma synthèse' : 'Continuer'}
           </button>

@@ -8,7 +8,7 @@ interface Props {
   onChange: (v: AnswerValue) => void
 }
 
-const SELECTED = 'border-[#EC4899] bg-[#EC4899]/15 text-white'
+const SELECTED = 'border-pink-500 bg-pink-500/15 text-white'
 const IDLE = 'border-[#333] bg-[#1a1a1a] text-[#d4d4d4] hover:border-[#555]'
 
 /** Oui / Non (deux boutons côte à côte). */

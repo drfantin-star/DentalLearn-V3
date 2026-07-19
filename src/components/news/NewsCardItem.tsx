@@ -67,17 +67,17 @@ export default function NewsCardItem({ news, onClick, variant, hideCover = false
       >
         <div className="relative w-20 h-20 flex-shrink-0">
           {/* Halo diffus — frere du cercle clippe, sinon rogne par overflow-hidden.
-              Meme montage que le medaillon HomeFeedCard (alpha ~0.38 = suffixe 61). */}
+              Intensite reduite (33 = 20 %) et scale abaisse (1.08) pour
+              adoucir le flash sur fond sombre sans perdre la lisibilite. */}
           <div
             aria-hidden
             className="absolute inset-0 rounded-full blur-xl pointer-events-none"
-            style={{ background: `${gridColor}61`, transform: 'scale(1.15)' }}
+            style={{ background: `${gridColor}33`, transform: 'scale(1.08)' }}
           />
-          {/* Anneau fin + clip rond — couleur dynamique par specialite,
-              d'ou le box-shadow inline (equivalent visuel du ring-2 Home). */}
+          {/* Anneau 1px semi-transparent — discret mais lisible. */}
           <div
             className="relative w-full h-full rounded-full overflow-hidden"
-            style={{ boxShadow: `0 0 0 2px ${gridColor}` }}
+            style={{ boxShadow: `0 0 0 1px ${gridColor}88` }}
           >
             {gridCutout ? (
               <CutoutCardRender

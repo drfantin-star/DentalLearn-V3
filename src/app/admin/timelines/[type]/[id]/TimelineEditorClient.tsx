@@ -571,7 +571,7 @@ export function TimelineEditorClient({
             type="button"
             onClick={handleSave}
             disabled={!isDirty || isSaving || !timeline || editorLocked}
-            className="rounded-lg bg-ds-turquoise px-4 py-1.5 text-xs font-semibold text-axe3 hover:bg-ds-turquoise-dark disabled:opacity-50"
+            className="rounded-lg bg-ds-turquoise px-4 py-1.5 text-xs font-semibold text-amber-500 hover:bg-ds-turquoise-dark disabled:opacity-50"
           >
             {isSaving ? 'Sauvegarde…' : 'Enregistrer'}
           </button>

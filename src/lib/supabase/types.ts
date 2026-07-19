@@ -3,6 +3,8 @@
 // Adapté à la structure réelle de la BDD
 // ============================================
 
+import { getCategoryStyle } from '@/lib/design/categoryStyle'
+
 // ─────────────────────────────────────────────
 // FORMATIONS
 // ─────────────────────────────────────────────
@@ -304,10 +306,14 @@ export interface CategoryConfig {
   type: 'cp' | 'axe3' | 'axe4' | 'bonus'
 }
 
-export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
+/**
+ * Configuration statique par catégorie/thème — le dégradé de couleur est
+ * injecté depuis `getCategoryStyle` (source unique, voir plus bas) : ce
+ * literal ne porte plus de hex.
+ */
+const CATEGORY_CONFIG_BASE: Record<string, Omit<CategoryConfig, 'gradient'>> = {
   esthetique: {
     emoji: '✨',
-    gradient: { from: '#6366F1', to: '#818CF8' },
     bgColor: 'bg-violet-50',
     textColor: 'text-violet-600',
     isCP: true,
@@ -318,7 +324,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   restauratrice: {
     emoji: '🦷',
-    gradient: { from: '#0F766E', to: '#2DD4BF' },
     bgColor: 'bg-amber-50',
     textColor: 'text-amber-700',
     isCP: true,
@@ -329,7 +334,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   chirurgie: {
     emoji: '💉',
-    gradient: { from: '#1D4ED8', to: '#60A5FA' },
     bgColor: 'bg-rose-50',
     textColor: 'text-rose-600',
     isCP: true,
@@ -340,7 +344,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   implant: {
     emoji: '🔩',
-    gradient: { from: '#065F46', to: '#10B981' },
     bgColor: 'bg-green-50',
     textColor: 'text-green-600',
     isCP: true,
@@ -351,7 +354,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   prothese: {
     emoji: '👄',
-    gradient: { from: '#0E7490', to: '#22D3EE' },
     bgColor: 'bg-orange-50',
     textColor: 'text-orange-600',
     isCP: true,
@@ -362,7 +364,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   parodontologie: {
     emoji: '🧬',
-    gradient: { from: '#7C3AED', to: '#A78BFA' },
     bgColor: 'bg-pink-50',
     textColor: 'text-pink-600',
     isCP: true,
@@ -373,7 +374,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   endodontie: {
     emoji: '🔬',
-    gradient: { from: '#134E4A', to: '#14B8A6' },
     bgColor: 'bg-indigo-50',
     textColor: 'text-indigo-600',
     isCP: true,
@@ -384,7 +384,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   radiologie: {
     emoji: '🩻',
-    gradient: { from: '#1E40AF', to: '#3B82F6' },
     bgColor: 'bg-teal-50',
     textColor: 'text-teal-600',
     isCP: true,
@@ -395,7 +394,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   numerique: {
     emoji: '🤖',
-    gradient: { from: '#155E75', to: '#67E8F9' },
     bgColor: 'bg-indigo-50',
     textColor: 'text-indigo-600',
     isCP: true,
@@ -406,7 +404,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   management: {
     emoji: '💼',
-    gradient: { from: '#78716C', to: '#A8A29E' },
     bgColor: 'bg-stone-50',
     textColor: 'text-stone-600',
     isCP: false,
@@ -416,7 +413,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   organisation: {
     emoji: '📋',
-    gradient: { from: '#64748B', to: '#94A3B8' },
     bgColor: 'bg-slate-50',
     textColor: 'text-slate-600',
     isCP: false,
@@ -426,7 +422,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   'soft-skills': {
     emoji: '🌿',
-    gradient: { from: '#4D7C0F', to: '#84CC16' },
     bgColor: 'bg-yellow-50',
     textColor: 'text-yellow-700',
     isCP: false,
@@ -438,7 +433,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   // ── AXE 3 — Relation Patient ──────────────────
   communication: {
     emoji: '🗣️',
-    gradient: { from: '#F97316', to: '#FB923C' },
     bgColor: 'bg-orange-50',
     textColor: 'text-orange-600',
     isCP: true,
@@ -449,7 +443,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   consentement: {
     emoji: '📋',
-    gradient: { from: '#F59E0B', to: '#FBBF24' },
     bgColor: 'bg-amber-50',
     textColor: 'text-amber-700',
     isCP: true,
@@ -460,7 +453,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   conflits: {
     emoji: '🤝',
-    gradient: { from: '#EF4444', to: '#F87171' },
     bgColor: 'bg-red-50',
     textColor: 'text-red-600',
     isCP: true,
@@ -471,7 +463,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   'decision-partagee': {
     emoji: '⚖️',
-    gradient: { from: '#D97706', to: '#F59E0B' },
     bgColor: 'bg-amber-50',
     textColor: 'text-amber-700',
     isCP: true,
@@ -482,7 +473,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   'annonce-diagnostic': {
     emoji: '💬',
-    gradient: { from: '#B45309', to: '#D97706' },
     bgColor: 'bg-orange-50',
     textColor: 'text-orange-700',
     isCP: true,
@@ -493,7 +483,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   'education-therapeutique': {
     emoji: '🎓',
-    gradient: { from: '#92400E', to: '#B45309' },
     bgColor: 'bg-orange-50',
     textColor: 'text-orange-800',
     isCP: true,
@@ -504,7 +493,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   'ethique-deontologie': {
     emoji: '⚕️',
-    gradient: { from: '#F59E0B', to: '#FCD34D' },
     bgColor: 'bg-yellow-50',
     textColor: 'text-yellow-700',
     isCP: true,
@@ -515,7 +503,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   'numerique-relation': {
     emoji: '📱',
-    gradient: { from: '#78716C', to: '#A8A29E' },
     bgColor: 'bg-stone-50',
     textColor: 'text-stone-600',
     isCP: true,
@@ -528,7 +515,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   // ── AXE 4 — Santé Praticien ───────────────────
   ergonomie: {
     emoji: '🪑',
-    gradient: { from: '#EC4899', to: '#F472B6' },
     bgColor: 'bg-pink-50',
     textColor: 'text-pink-600',
     isCP: true,
@@ -539,7 +525,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   'stress-burnout': {
     emoji: '🧠',
-    gradient: { from: '#8B5CF6', to: '#A78BFA' },
     bgColor: 'bg-violet-50',
     textColor: 'text-violet-600',
     isCP: true,
@@ -550,7 +535,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   'risques-pro': {
     emoji: '⚠️',
-    gradient: { from: '#EF4444', to: '#F87171' },
     bgColor: 'bg-red-50',
     textColor: 'text-red-600',
     isCP: true,
@@ -561,7 +545,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   violences: {
     emoji: '🛡️',
-    gradient: { from: '#DC2626', to: '#EF4444' },
     bgColor: 'bg-red-50',
     textColor: 'text-red-700',
     isCP: true,
@@ -572,7 +555,6 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
   },
   'pratique-reflexive': {
     emoji: '🔍',
-    gradient: { from: '#6366F1', to: '#818CF8' },
     bgColor: 'bg-indigo-50',
     textColor: 'text-indigo-600',
     isCP: true,
@@ -582,6 +564,18 @@ export const CATEGORY_CONFIG: Record<string, CategoryConfig> = {
     type: 'axe4',
   },
 }
+
+/**
+ * CATEGORY_CONFIG final : le dégradé de chaque entrée vient de
+ * `getCategoryStyle(slug)` (source unique, `docs/PALETTE_COULEURS_CERTILY.md`),
+ * jamais d'un hex recopié ici.
+ */
+export const CATEGORY_CONFIG: Record<string, CategoryConfig> = Object.fromEntries(
+  Object.entries(CATEGORY_CONFIG_BASE).map(([slug, cfg]) => {
+    const { from, to } = getCategoryStyle(slug)
+    return [slug, { ...cfg, gradient: { from, to } }]
+  })
+)
 
 export const DEFAULT_CATEGORY_CONFIG: CategoryConfig = {
   emoji: '📚',

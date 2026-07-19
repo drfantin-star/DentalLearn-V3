@@ -1,24 +1,15 @@
 'use client'
 
 import React from 'react'
+import { getCategoryStyle, NEWS_SPECIALITE_SLUGS } from '@/lib/design/categoryStyle'
+import { NEWS_DEFAULT_COLOR } from '@/lib/news-cover'
 
-export const SPECIALITE_COLORS: Record<string, string> = {
-  // Alignés palette Certily (Option A — 03/07/2026)
-  'dent-resto': '#F59E0B',  // amber  — Dentisterie Restauratrice
-  'paro':       '#EC4899',  // rose   — Parodontologie
-  'implanto':   '#10B981',  // vert   — Implantologie
-  'chir-orale': '#EF4444',  // rouge  — Chirurgie Orale
-  'endo':       '#6366F1',  // indigo — Endodontie
-  'proth':      '#F97316',  // orange — Prothèse
-  // Couleurs non utilisées ailleurs dans la palette
-  'odf':        '#8B5CF6',  // violet
-  'occluso':    '#0F7B6C',  // teal Axe 2
-  'sante-pub':  '#155E75',  // cyan foncé
-  'pedo':       '#1E2A9A',  // bleu Klein
-  'gero':       '#A78BFA',  // violet clair
-  'actu-pro':   '#0F7B6C',  // teal Axe 2 (actu pro = pratiques)
-}
-export const NEWS_DEFAULT_COLOR = '#1A1A2E'
+// Derive de getCategoryStyle (source unique, docs/PALETTE_COULEURS_CERTILY.md
+// §2) — plus de hex tape ici depuis le chantier unification (18/07/2026).
+export const SPECIALITE_COLORS: Record<string, string> = Object.fromEntries(
+  NEWS_SPECIALITE_SLUGS.map((slug) => [slug, getCategoryStyle(slug).from])
+)
+export { NEWS_DEFAULT_COLOR }
 const DEFAULT_COLOR = NEWS_DEFAULT_COLOR
 
 interface Props {

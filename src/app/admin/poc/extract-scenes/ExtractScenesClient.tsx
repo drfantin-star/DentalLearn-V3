@@ -502,7 +502,7 @@ export function ExtractScenesClient({ sequences, initialSequenceId }: Props) {
               type="button"
               onClick={handleExtract}
               disabled={loading || sequences.length === 0}
-              className="rounded-lg bg-ds-turquoise px-4 py-2 text-sm font-semibold text-axe3 disabled:opacity-50"
+              className="rounded-lg bg-ds-turquoise px-4 py-2 text-sm font-semibold text-amber-500 disabled:opacity-50"
             >
               {loading
                 ? dryRun

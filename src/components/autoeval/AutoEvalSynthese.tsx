@@ -114,7 +114,7 @@ export default function AutoEvalSynthese({ questionnaire, answers }: Props) {
                 key={`${p.label}-${i}`}
                 className="flex items-center gap-3 rounded-2xl border border-[#333] bg-[#1a1a1a] p-3.5"
               >
-                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-[#EC4899]/15 text-sm font-bold text-[#EC4899]">
+                <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-pink-500/15 text-sm font-bold text-pink-500">
                   {i + 1}
                 </span>
                 <span className="text-sm font-semibold text-white">{p.label}</span>
@@ -137,7 +137,7 @@ export default function AutoEvalSynthese({ questionnaire, answers }: Props) {
       )}
 
       {/* Clôture positive */}
-      <p className="mt-6 rounded-2xl bg-gradient-to-br from-[#EC4899]/15 to-[#A78BFA]/15 p-4 text-sm font-semibold leading-relaxed text-white">
+      <p className="mt-6 rounded-2xl bg-gradient-to-br from-pink-500/15 to-violet-400/15 p-4 text-sm font-semibold leading-relaxed text-white">
         Prendre soin de soi est la première condition de soins de qualité. Vous venez de faire un
         pas — c'est déjà ça.
       </p>
@@ -149,7 +149,7 @@ export default function AutoEvalSynthese({ questionnaire, answers }: Props) {
             type="button"
             onClick={handleBilan}
             disabled={!participant || generating !== null}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#EC4899] bg-[#EC4899]/10 py-3.5 text-sm font-bold text-[#EC4899] transition-opacity enabled:hover:opacity-90 disabled:opacity-40"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-pink-500 bg-pink-500/10 py-3.5 text-sm font-bold text-pink-500 transition-opacity enabled:hover:opacity-90 disabled:opacity-40"
           >
             <FileText size={18} />
             {generating === 'bilan' ? 'Génération…' : 'Télécharger mon bilan'}
@@ -165,7 +165,7 @@ export default function AutoEvalSynthese({ questionnaire, answers }: Props) {
           type="button"
           onClick={handleAttestation}
           disabled={!participant || generating !== null}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#EC4899] py-3.5 text-sm font-bold text-white transition-opacity enabled:hover:opacity-90 disabled:opacity-40"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-pink-500 py-3.5 text-sm font-bold text-white transition-opacity enabled:hover:opacity-90 disabled:opacity-40"
         >
           <Download size={18} />
           {generating === 'attestation' ? 'Génération…' : 'Télécharger mon attestation'}

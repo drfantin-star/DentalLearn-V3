@@ -8,8 +8,8 @@ type AccentVariant = 'teal' | 'violet' | 'amber'
 
 const ACCENT: Record<AccentVariant, { halo: string; ringClass: string; eyebrowClass: string }> = {
   teal:   { halo: 'rgba(0,209,193,0.38)',   ringClass: 'ring-accent',      eyebrowClass: 'text-accent' },
-  violet: { halo: 'rgba(124,58,237,0.38)',  ringClass: 'ring-quiz-accent', eyebrowClass: 'text-quiz-accent' },
-  amber:  { halo: 'rgba(245,158,11,0.38)',  ringClass: 'ring-axe3',        eyebrowClass: 'text-axe3' },
+  violet: { halo: 'rgba(124,58,237,0.38)',  ringClass: 'ring-violet-600',  eyebrowClass: 'text-violet-600' },
+  amber:  { halo: 'rgba(245,158,11,0.38)',  ringClass: 'ring-amber-500',   eyebrowClass: 'text-amber-500' },
 }
 
 interface HomeFeedCardProps {

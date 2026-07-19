@@ -420,7 +420,7 @@ function AddConceptModal({
                 at_sec: atSecNum,
               })
             }
-            className="rounded-lg bg-ds-turquoise px-3 py-1.5 text-xs font-semibold text-axe3 hover:bg-ds-turquoise-dark disabled:opacity-40"
+            className="rounded-lg bg-ds-turquoise px-3 py-1.5 text-xs font-semibold text-amber-500 hover:bg-ds-turquoise-dark disabled:opacity-40"
           >
             Ajouter
           </button>

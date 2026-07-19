@@ -57,7 +57,7 @@ export function RegenerateConfirmModal({ onCancel, onConfirm }: Props) {
         <button
           type="button"
           onClick={onConfirm}
-          className="rounded-lg bg-ds-turquoise px-3 py-1.5 text-xs font-semibold text-axe3 hover:bg-ds-turquoise-dark"
+          className="rounded-lg bg-ds-turquoise px-3 py-1.5 text-xs font-semibold text-amber-500 hover:bg-ds-turquoise-dark"
         >
           Confirmer
         </button>

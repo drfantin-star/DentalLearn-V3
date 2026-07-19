@@ -18,17 +18,17 @@ export default function ResourceCard({ card }: { card: RoutingCard }) {
     <div
       className={`rounded-2xl border p-4 ${
         sensitive
-          ? 'border-[#A78BFA]/40 bg-[#A78BFA]/10'
+          ? 'border-violet-400/40 bg-violet-400/10'
           : 'border-[#333] bg-[#1a1a1a]'
       }`}
     >
       <div className="flex items-start gap-3">
         <div
           className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${
-            sensitive ? 'bg-[#A78BFA]/20' : 'bg-[#EC4899]/15'
+            sensitive ? 'bg-violet-400/20' : 'bg-pink-500/15'
           }`}
         >
-          <Icon size={20} className={sensitive ? 'text-[#A78BFA]' : 'text-[#EC4899]'} />
+          <Icon size={20} className={sensitive ? 'text-violet-400' : 'text-pink-500'} />
         </div>
         <div className="min-w-0 flex-1">
           <h4 className="text-sm font-bold text-white">{card.title}</h4>
@@ -38,7 +38,7 @@ export default function ResourceCard({ card }: { card: RoutingCard }) {
               href={card.href}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-[#EC4899] hover:underline"
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-pink-500 hover:underline"
             >
               En savoir plus <ExternalLink size={13} />
             </a>

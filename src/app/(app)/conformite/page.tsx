@@ -1,8 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   ShieldCheck,
+  ChevronLeft,
   FileText,
   ChevronRight,
   Radio,
@@ -43,6 +45,7 @@ function categoryIcon(name: string | null): LucideIcon {
 }
 
 export default function ConformitePage() {
+  const router = useRouter()
   const { categories, items, progressByItem, loading, setItemStatus } =
     useCabinetCompliance()
   const [openCategory, setOpenCategory] =
@@ -84,15 +87,19 @@ export default function ConformitePage() {
   return (
     <>
       {/* Header */}
-      <header className="bg-white sticky top-0 z-30 shadow-sm">
-        <div className="max-w-lg mx-auto md:max-w-2xl lg:max-w-[1500px] px-4 md:px-6 lg:px-8 py-4">
-          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center">
-              <ShieldCheck size={20} className="text-accent" />
-            </div>
-            Conformité
-          </h1>
+      <header className="bg-gradient-to-br from-[#0d0d0d] to-[#0F7B6C] px-4 py-4">
+        <div className="flex items-center gap-3 mb-1">
+          <button
+            onClick={() => router.push('/')}
+            className="p-2 -ml-2 hover:bg-white/20 rounded-xl transition-colors"
+          >
+            <ChevronLeft size={20} className="text-white" />
+          </button>
+          <h1 className="text-2xl font-black text-white">Conformité</h1>
         </div>
+        <p className="text-sm font-semibold text-white/80 mt-1 leading-relaxed">
+          Conformité réglementaire de votre cabinet · Axe 2 de la certification périodique
+        </p>
       </header>
 
       <main className="max-w-lg mx-auto md:max-w-2xl lg:max-w-[1500px] px-4 md:px-6 lg:px-8 py-6 space-y-6">

@@ -24,6 +24,7 @@ export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCar
       title: demarche.title,
       category: demarche.category ?? '',
       cover_image_url: demarche.coverImageUrl ?? null,
+      cover_cutout_url: demarche.coverCutoutUrl ?? null,
       slug: demarche.ctaUrl.split('/').pop() ?? '',
     } as any
 
@@ -65,7 +66,7 @@ export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCar
       onClick={() => { window.location.href = demarche.ctaUrl }}
       ariaLabel={demarche.title}
       aspect="landscape"
-      fallback={<EppCardBackground />}
+      fallback={<EppCardBackground themeSlug={demarche.category} />}
       topLeft={
         <Badge variant={isValidated ? 'success' : 'epp'} size="md">
           {badgeLabel}

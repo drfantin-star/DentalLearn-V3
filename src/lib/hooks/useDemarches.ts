@@ -18,6 +18,7 @@ export interface DemarcheEnCours {
   ctaUrl: string
   accentColor: string  // classe Tailwind border-xxx
   coverImageUrl?: string | null
+  coverCutoutUrl?: string | null
   category?: string | null
   eppStatus?: EppTourStatus  // uniquement pertinent quand type === 'epp'
 }
@@ -58,7 +59,7 @@ export function useDemarches(userId?: string) {
         if (formationIds.length > 0) {
           const { data: fData, error: fError } = await supabase
             .from('formations')
-            .select('id, title, slug, category, total_sequences, cover_image_url')
+            .select('id, title, slug, category, total_sequences, cover_image_url, cover_cutout_url')
             .in('id', formationIds)
             .eq('is_published', true)
 
@@ -86,6 +87,7 @@ export function useDemarches(userId?: string) {
             ctaUrl: `/formation/${f.category}?formation=${f.slug}`,
             accentColor: 'border-purple-200',
             coverImageUrl: f.cover_image_url || null,
+            coverCutoutUrl: f.cover_cutout_url || null,
             category: f.category || null,
           }
         }).filter(Boolean) as DemarcheEnCours[]
@@ -171,6 +173,7 @@ export function useDemarches(userId?: string) {
             ctaUrl: `/formation/${audit.theme_slug}/epp?audit=${audit.slug}`,
             accentColor: 'border-teal-200',
             eppStatus,
+            category: audit.theme_slug || null,
           })
         })
 

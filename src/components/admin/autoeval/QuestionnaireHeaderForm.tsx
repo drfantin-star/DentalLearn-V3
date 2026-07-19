@@ -100,7 +100,7 @@ export default function QuestionnaireHeaderForm({ questionnaire, onSaved, onErro
             aria-label="Activer ou désactiver le questionnaire"
             onClick={() => setActif((v) => !v)}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
-              actif ? 'bg-[#EC4899]' : 'bg-gray-300'
+              actif ? 'bg-pink-500' : 'bg-gray-300'
             }`}
           >
             <span

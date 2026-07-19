@@ -25,7 +25,7 @@ export default function AutoEvalIntro({ questionnaire, onStart }: Props) {
 
       <div className="mt-5 space-y-3">
         <div className="flex items-start gap-3 rounded-2xl border border-[#333] bg-[#1a1a1a] p-3.5">
-          <Clock size={18} className="mt-0.5 flex-shrink-0 text-[#EC4899]" />
+          <Clock size={18} className="mt-0.5 flex-shrink-0 text-pink-500" />
           <p className="text-xs leading-relaxed text-[#d4d4d4]">
             Comptez 15 à 20 minutes, à faire d'une seule traite.
           </p>
@@ -38,7 +38,7 @@ export default function AutoEvalIntro({ questionnaire, onStart }: Props) {
           </p>
         </div>
         <div className="flex items-start gap-3 rounded-2xl border border-[#333] bg-[#1a1a1a] p-3.5">
-          <Lock size={18} className="mt-0.5 flex-shrink-0 text-[#A78BFA]" />
+          <Lock size={18} className="mt-0.5 flex-shrink-0 text-violet-400" />
           <p className="text-xs leading-relaxed text-[#d4d4d4]">
             Vos réponses restent sur votre appareil et ne sont partagées avec personne. Seule la
             date de réalisation est conservée, pour votre attestation.
@@ -49,7 +49,7 @@ export default function AutoEvalIntro({ questionnaire, onStart }: Props) {
       <button
         type="button"
         onClick={onStart}
-        className="mt-6 w-full rounded-2xl bg-[#EC4899] py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
+        className="mt-6 w-full rounded-2xl bg-pink-500 py-3.5 text-sm font-bold text-white transition-opacity hover:opacity-90"
       >
         Commencer
       </button>

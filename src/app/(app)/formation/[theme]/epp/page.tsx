@@ -24,6 +24,7 @@ import { createClient } from '@/lib/supabase/client'
 import { GenerateAttestationButton } from '@/components/attestations/GenerateAttestationButton'
 import { generatePlanActionsPDF as generatePlanActionsPDFUtil } from '@/lib/epp/generatePlanActionsPDF'
 import { generateComparisonPDF } from '@/lib/epp/generateComparisonPDF'
+import { getCategoryStyle } from '@/lib/design/categoryStyle'
 
 // ============================================
 // TYPES
@@ -172,6 +173,7 @@ export default function EppPage() {
   const planActionsInFlightRef = useRef(false)
 
   const themeConfig = THEMES_CONFIG[themeSlug] || { label: themeSlug, icon: '📚' }
+  const themeColor = getCategoryStyle(themeSlug).from
 
   useEffect(() => {
     loadData()
@@ -768,7 +770,7 @@ export default function EppPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#0F7B6C]" />
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: themeColor }} />
       </div>
     )
   }
@@ -814,7 +816,7 @@ export default function EppPage() {
                 cohérence de la barre d'en-tête, mais un simple stepper n'a
                 pas besoin de s'étirer sur toute la largeur en desktop. */}
             <div className="bg-white rounded-2xl border border-gray-100 p-6 text-center lg:max-w-xl lg:mx-auto">
-              <ClipboardCheck size={32} className="text-[#0F7B6C] mx-auto mb-3" />
+              <ClipboardCheck size={32} className="mx-auto mb-3" style={{ color: themeColor }} />
               <h3 className="font-semibold text-gray-900 mb-1">Combien de dossiers allez-vous évaluer ?</h3>
               <p className="text-xs text-gray-400 mb-6">
                 Entre {audit.nb_dossiers_min} et {audit.nb_dossiers_max} dossiers patients
@@ -866,7 +868,7 @@ export default function EppPage() {
                 >
                   <Minus size={18} className="text-gray-600" />
                 </button>
-                <span className="text-4xl font-bold text-[#0F7B6C] w-16 text-center">{nbDossiers}</span>
+                <span className="text-4xl font-bold w-16 text-center" style={{ color: themeColor }}>{nbDossiers}</span>
                 <button
                   onClick={() => setNbDossiers(prev => Math.min(audit.nb_dossiers_max, prev + 1))}
                   disabled={nbDossiers >= audit.nb_dossiers_max}
@@ -877,7 +879,8 @@ export default function EppPage() {
               </div>
               <button
                 onClick={() => setDossierChoiceConfirmed(true)}
-                className="w-full py-3 bg-[#0F7B6C] text-white text-sm font-semibold rounded-2xl hover:bg-[#0a5f54] transition-colors active:scale-[0.98]"
+                className="w-full py-3 text-white text-sm font-semibold rounded-2xl hover:opacity-90 transition-opacity active:scale-[0.98]"
+                style={{ backgroundColor: themeColor }}
               >
                 Commencer la saisie
               </button>
@@ -917,8 +920,8 @@ export default function EppPage() {
             </div>
             <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#0F7B6C] rounded-full transition-all duration-300"
-                style={{ width: `${(currentDossier / nbDossiers) * 100}%` }}
+                className="h-full rounded-full transition-all duration-300"
+                style={{ backgroundColor: themeColor, width: `${(currentDossier / nbDossiers) * 100}%` }}
               />
             </div>
           </div>
@@ -999,7 +1002,8 @@ export default function EppPage() {
               <button
                 onClick={finishT1}
                 disabled={!allAnswered || savingDossier}
-                className="w-full py-3 bg-[#0F7B6C] text-white text-sm font-semibold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2 transition-colors hover:bg-[#0a5f54] active:scale-[0.98]"
+                className="w-full py-3 text-white text-sm font-semibold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98]"
+                style={{ backgroundColor: themeColor }}
               >
                 {savingDossier ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
                 Terminer et voir les résultats
@@ -1008,7 +1012,8 @@ export default function EppPage() {
               <button
                 onClick={goNextDossier}
                 disabled={!allAnswered || savingDossier}
-                className="w-full py-3 bg-[#0F7B6C] text-white text-sm font-semibold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2 transition-colors hover:bg-[#0a5f54] active:scale-[0.98]"
+                className="w-full py-3 text-white text-sm font-semibold rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2 hover:opacity-90 transition-opacity active:scale-[0.98]"
+                style={{ backgroundColor: themeColor }}
               >
                 {savingDossier ? <Loader2 size={16} className="animate-spin" /> : null}
                 Dossier suivant
@@ -1290,11 +1295,12 @@ export default function EppPage() {
                                   : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
                               }`}
                             >
-                              <span className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center ${
-                                checked.includes(s.id)
-                                  ? 'bg-[#0F7B6C] border-[#0F7B6C] text-white'
-                                  : 'border-gray-300'
-                              }`}>
+                              <span
+                                className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center ${
+                                  checked.includes(s.id) ? 'text-white' : 'border-gray-300'
+                                }`}
+                                style={checked.includes(s.id) ? { backgroundColor: themeColor, borderColor: themeColor } : undefined}
+                              >
                                 {checked.includes(s.id) && <CheckCircle2 size={10} />}
                               </span>
                               <span className="flex-1">
@@ -1324,8 +1330,9 @@ export default function EppPage() {
               <button
                 onClick={generatePlanActionsPDF}
                 className="w-full flex items-center justify-center gap-2 py-2.5
-                  border-2 border-[#0F7B6C] text-[#0F7B6C] text-sm font-semibold
-                  rounded-2xl hover:bg-teal-50 transition-colors"
+                  border-2 text-sm font-semibold
+                  rounded-2xl hover:opacity-80 transition-opacity"
+                style={{ borderColor: themeColor, color: themeColor }}
               >
                 <FileDown size={16} />
                 Télécharger le plan d&apos;actions (PDF)
@@ -1336,8 +1343,9 @@ export default function EppPage() {
                 className={`w-full mt-1 h-12 text-sm font-semibold rounded-xl disabled:opacity-50 flex items-center justify-center gap-2 transition-all ${
                   planSaved
                     ? 'bg-green-500 text-white'
-                    : 'bg-[#0F7B6C] text-white hover:bg-[#0a5f54]'
+                    : 'text-white hover:opacity-90'
                 }`}
+                style={planSaved ? undefined : { backgroundColor: themeColor }}
               >
                 {savingPlan ? (
                   <Loader2 size={16} className="animate-spin" />
@@ -1363,7 +1371,8 @@ export default function EppPage() {
             </p>
             <Link
               href={`/formation/${themeSlug}`}
-              className="inline-block px-6 py-2.5 bg-[#0F7B6C] text-white text-sm font-semibold rounded-xl hover:bg-[#0a5f54] transition-colors"
+              className="inline-block px-6 py-2.5 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition-opacity"
+              style={{ backgroundColor: themeColor }}
             >
               Retour à la thématique
             </Link>
@@ -1391,7 +1400,7 @@ export default function EppPage() {
             </Link>
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center">
-                <ClipboardCheck size={18} className="text-[#0F7B6C]" />
+                <ClipboardCheck size={18} style={{ color: themeColor }} />
               </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-900">{audit.title}</h1>
@@ -1470,7 +1479,7 @@ export default function EppPage() {
                   {t1Session?.completed_at ? (
                     <CheckCircle2 size={16} className="text-green-600" />
                   ) : (
-                    <span className="text-xs font-bold text-[#0F7B6C]">T1</span>
+                    <span className="text-xs font-bold" style={{ color: themeColor }}>T1</span>
                   )}
                 </div>
                 <div className="flex-1">
@@ -1517,7 +1526,7 @@ export default function EppPage() {
                       {isDone
                         ? <CheckCircle2 size={18} className="text-green-600" />
                         : isUnlocked || isInProgress
-                          ? <span className="text-xs font-bold text-[#0F7B6C]">T2</span>
+                          ? <span className="text-xs font-bold" style={{ color: themeColor }}>T2</span>
                           : <Lock size={16} className="text-gray-400" />
                       }
                     </div>
@@ -1554,7 +1563,8 @@ export default function EppPage() {
                       <button
                         onClick={startT2}
                         disabled={starting}
-                        className="px-3 py-1.5 bg-[#0F7B6C] text-white text-xs font-semibold rounded-xl hover:bg-[#0a5f54] transition-colors disabled:opacity-50"
+                        className="px-3 py-1.5 text-white text-xs font-semibold rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50"
+                        style={{ backgroundColor: themeColor }}
                       >
                         Démarrer
                       </button>
@@ -1631,7 +1641,8 @@ export default function EppPage() {
         {t1Session?.completed_at && !t2Session?.completed_at && (
           <button
             onClick={() => setEppState('resultats')}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-[#0F7B6C] text-white text-sm font-semibold rounded-2xl hover:bg-[#0a5f54] transition-colors active:scale-[0.98] shadow-sm"
+            className="w-full flex items-center justify-center gap-2 py-3 text-white text-sm font-semibold rounded-2xl hover:opacity-90 transition-opacity active:scale-[0.98] shadow-sm"
+            style={{ backgroundColor: themeColor }}
           >
             <ClipboardCheck size={18} />
             Voir les résultats T1
@@ -1694,7 +1705,8 @@ export default function EppPage() {
           <button
             onClick={startT1}
             disabled={starting}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-[#0F7B6C] text-white text-sm font-semibold rounded-2xl hover:bg-[#0a5f54] transition-colors active:scale-[0.98] disabled:opacity-50 shadow-sm"
+            className="w-full flex items-center justify-center gap-2 py-3 text-white text-sm font-semibold rounded-2xl hover:opacity-90 transition-opacity active:scale-[0.98] disabled:opacity-50 shadow-sm"
+            style={{ backgroundColor: themeColor }}
           >
             {starting ? (
               <Loader2 size={18} className="animate-spin" />

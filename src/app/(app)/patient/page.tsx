@@ -22,7 +22,7 @@ function PatientPageContent() {
 
   return (
     <>
-      <header className="bg-gradient-to-br from-[#F97316] to-[#FBBF24] px-4 py-4">
+      <header className="bg-gradient-to-br from-[#0d0d0d] to-[#D97706] px-4 py-4">
         <div className="flex items-center gap-3 mb-1">
           <button
             onClick={() => router.push('/')}

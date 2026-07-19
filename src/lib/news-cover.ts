@@ -1,4 +1,5 @@
 import type { NewsCard } from '@/types/news'
+import { getCategoryStyle, NEWS_SPECIALITE_SLUGS } from '@/lib/design/categoryStyle'
 
 export const NEWS_COVERS_BASE = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ui-assets/news-covers`
 export const NEWS_CUTOUTS_BASE = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/ui-assets/news-covers-cutouts`
@@ -29,14 +30,12 @@ export function getNewsCutoutUrl(
   return undefined
 }
 
-// Alignes palette Certily (Option A — 03/07/2026)
-const SPEC_COLORS: Record<string, string> = {
-  'dent-resto': '#F59E0B', 'paro': '#EC4899', 'implanto': '#10B981',
-  'chir-orale': '#EF4444', 'odf': '#8B5CF6', 'endo': '#6366F1',
-  'occluso': '#0F7B6C', 'proth': '#F97316', 'sante-pub': '#155E75',
-  'pedo': '#1E2A9A', 'gero': '#A78BFA', 'actu-pro': '#0F7B6C',
-}
-const DEFAULT_SPEC_COLOR = '#1A1A2E'
+// Couleur de fond par defaut d'une news sans specialite/theme reconnu — un
+// bleu nuit propre a la surface news, distinct du neutre systeme
+// #6B7280 (cf. getCategoryStyle). Source unique : reexporte par
+// NewsCardSVG.tsx plutot que redeclare.
+export const NEWS_DEFAULT_COLOR = '#1A1A2E'
+const DEFAULT_SPEC_COLOR = NEWS_DEFAULT_COLOR
 
 function darkenHex(hex: string, amount: number): string {
   const m = hex.replace('#', '')
@@ -48,11 +47,14 @@ function darkenHex(hex: string, amount: number): string {
 
 /** Retourne le degrade CSS 135deg base sur la specialite. */
 export function getSpecialiteGradient(specialite: string | null): string {
-  const accent = (specialite && SPEC_COLORS[specialite]) || DEFAULT_SPEC_COLOR
+  const accent = getSpecialiteColor(specialite)
   return `linear-gradient(135deg, ${accent}, ${darkenHex(accent, 0.35)})`
 }
 
 /** Retourne la couleur de base (from) pour un degrade radial. */
 export function getSpecialiteColor(specialite: string | null): string {
-  return (specialite && SPEC_COLORS[specialite]) || DEFAULT_SPEC_COLOR
+  if (specialite && (NEWS_SPECIALITE_SLUGS as readonly string[]).includes(specialite)) {
+    return getCategoryStyle(specialite).from
+  }
+  return DEFAULT_SPEC_COLOR
 }

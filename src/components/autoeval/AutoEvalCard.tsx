@@ -3,12 +3,14 @@
 import Link from 'next/link'
 import { ChevronRight, HeartPulse } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { AXE_GRADIENTS } from '@/lib/bibliotheque/types'
 
 /**
  * Carte d'entrée vers l'auto-évaluation santé, placée sur /sante sous la
- * bibliothèque. Même traitement visuel que BibliothequeBanner (dégradé rose/violet).
+ * bibliothèque. Même recette que BibliothequeBanner : AXE_GRADIENTS[4].
  */
 export default function AutoEvalCard({ className }: { className?: string }) {
+  const { from, to } = AXE_GRADIENTS[4]
   return (
     <Link
       href="/sante/auto-evaluation"
@@ -19,7 +21,7 @@ export default function AutoEvalCard({ className }: { className?: string }) {
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0F0F0F]',
         className
       )}
-      style={{ background: 'linear-gradient(135deg, #EC4899, #A78BFA)' }}
+      style={{ background: `linear-gradient(135deg, ${from}, ${to})` }}
     >
       <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-white/20">
         <HeartPulse size={22} className="text-white" aria-hidden="true" />
