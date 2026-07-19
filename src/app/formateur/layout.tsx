@@ -14,7 +14,7 @@ export default async function FormateurLayout({
   await requireFormateurOrRedirect('/formateur/dashboard')
 
   return (
-    <DesktopOnly title="Espace Formateur">
+    <DesktopOnly title="Espace Formateur" variant="espace">
       <FormateurShell>{children}</FormateurShell>
     </DesktopOnly>
   )

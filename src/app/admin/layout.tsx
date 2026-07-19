@@ -111,7 +111,7 @@ export default function AdminLayout({
   }
 
   return (
-    <DesktopOnly title="Administration">
+    <DesktopOnly title="Administration" variant="espace">
     <div className="min-h-screen bg-gray-100 flex" style={{ colorScheme: 'light' }}>
       {/* Sidebar */}
       <aside className="w-64 bg-primary text-white flex flex-col">
