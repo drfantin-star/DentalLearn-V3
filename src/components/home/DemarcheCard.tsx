@@ -24,6 +24,7 @@ export default function DemarcheCard({ demarche, size = 'default' }: DemarcheCar
       title: demarche.title,
       category: demarche.category ?? '',
       cover_image_url: demarche.coverImageUrl ?? null,
+      cover_cutout_url: demarche.coverCutoutUrl ?? null,
       slug: demarche.ctaUrl.split('/').pop() ?? '',
     } as any
 
