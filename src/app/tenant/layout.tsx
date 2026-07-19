@@ -56,7 +56,7 @@ export default async function TenantLayout({
   }
 
   return (
-    <DesktopOnly title="Mon cabinet">
+    <DesktopOnly title="Mon cabinet" variant="espace">
       <TenantShell org={org}>{children}</TenantShell>
     </DesktopOnly>
   )

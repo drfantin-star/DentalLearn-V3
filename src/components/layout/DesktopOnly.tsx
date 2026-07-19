@@ -6,9 +6,10 @@ import { Laptop } from 'lucide-react'
 interface DesktopOnlyProps {
   children: React.ReactNode
   title?: string
+  variant?: 'outil' | 'espace'
 }
 
-export default function DesktopOnly({ children, title }: DesktopOnlyProps) {
+export default function DesktopOnly({ children, title, variant = 'outil' }: DesktopOnlyProps) {
   const [isMobile, setIsMobile] = useState<boolean | null>(null)
 
   useEffect(() => {
@@ -27,7 +28,7 @@ export default function DesktopOnly({ children, title }: DesktopOnlyProps) {
     return <>{children}</>
   }
 
-  const subject = title ?? 'Cet outil'
+  const subject = title ?? (variant === 'espace' ? 'Cet espace' : 'Cet outil')
 
   return (
     <div
@@ -37,14 +38,28 @@ export default function DesktopOnly({ children, title }: DesktopOnlyProps) {
       <div className="mb-6 p-4 rounded-2xl bg-accent/10">
         <Laptop size={40} className="text-accent" />
       </div>
-      <h1 className="text-xl font-black text-white mb-4">
-        Cet outil t&apos;attend sur ton ordinateur
-      </h1>
-      <p className="text-sm text-white/70 leading-relaxed max-w-xs">
-        {subject} demande de la saisie, des documents et des échéances à
-        suivre. On a préféré te l&apos;offrir en grand format plutôt
-        qu&apos;à l&apos;étroit.
-      </p>
+      {variant === 'espace' ? (
+        <>
+          <h1 className="text-xl font-black text-white mb-4">
+            Cet espace t&apos;attend sur ton ordinateur
+          </h1>
+          <p className="text-sm text-white/70 leading-relaxed max-w-xs">
+            {subject} est conçu pour le grand écran : tableaux, listes et
+            réglages y sont bien plus confortables.
+          </p>
+        </>
+      ) : (
+        <>
+          <h1 className="text-xl font-black text-white mb-4">
+            Cet outil t&apos;attend sur ton ordinateur
+          </h1>
+          <p className="text-sm text-white/70 leading-relaxed max-w-xs">
+            {subject} demande de la saisie, des documents et des échéances à
+            suivre. On a préféré te l&apos;offrir en grand format plutôt
+            qu&apos;à l&apos;étroit.
+          </p>
+        </>
+      )}
       <p className="text-sm text-white/70 leading-relaxed max-w-xs mt-4">
         Connecte-toi sur ton ordinateur avec le même compte pour y accéder.
       </p>

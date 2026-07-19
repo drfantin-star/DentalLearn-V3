@@ -822,9 +822,11 @@ export default function ProfilPage() {
           </button>
         )}
 
-        {/* Mes espaces — visible si super_admin et/ou formateur, desktop uniquement */}
+        {/* Mes espaces — visible si super_admin et/ou formateur.
+            Cartes visibles à toutes les largeurs ; sur mobile, le clic mène à
+            l'écran « Disponible sur ordinateur » (layouts enveloppés DesktopOnly). */}
         {showEspacesSection && (
-          <section className="hidden lg:block">
+          <section>
             <h2 className="text-base font-bold text-white mb-1">Mes espaces</h2>
             <p className="text-xs text-white/55 mb-3">Accedez a vos espaces dedies selon vos roles.</p>
             <div className="space-y-3">
