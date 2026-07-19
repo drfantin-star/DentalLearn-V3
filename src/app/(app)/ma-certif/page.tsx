@@ -130,7 +130,7 @@ export default function MaCertifPage() {
     <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
 
       {/* Header */}
-      <header className="bg-gradient-to-br from-[#0d0d0d] via-[#8B5CF6] to-[#0F7B6C] px-4 py-4">
+      <header className="bg-gradient-to-br from-[#0d0d0d] to-[#1D4ED8] px-4 py-4">
         <div className="flex items-center gap-3 mb-1">
           <button
             onClick={() => router.push('/')}

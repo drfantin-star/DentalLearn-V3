@@ -93,7 +93,7 @@ export default function RadarCP({ cpSettings, actionsParAxe, autoevalYears }: Ra
     <div className="glass-card rounded-2xl overflow-hidden">
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary to-accent px-4 py-3 glow-accent">
+      <div className="px-4 py-3" style={{ background: 'linear-gradient(135deg, #1D4ED8, #60A5FA)' }}>
         <h3 className="text-white font-bold text-sm">Certification Periodique</h3>
         <p className="text-white/70 text-xs">
           {periode.isDerogation ? 'Premier cycle (derogation 9 ans)' : 'Cycle standard (6 ans)'}
@@ -115,8 +115,8 @@ export default function RadarCP({ cpSettings, actionsParAxe, autoevalYears }: Ra
           </div>
           <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all duration-500"
-              style={{ width: `${tempsRestant.pourcentageEcoule}%` }}
+              className="h-full rounded-full transition-all duration-500"
+              style={{ width: `${tempsRestant.pourcentageEcoule}%`, background: 'linear-gradient(90deg, #1D4ED8, #60A5FA)' }}
             />
           </div>
         </div>
