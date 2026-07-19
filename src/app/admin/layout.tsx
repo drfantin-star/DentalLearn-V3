@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import DesktopOnly from '@/components/layout/DesktopOnly';
 import Link from 'next/link';
 import {
   LayoutDashboard,
@@ -21,7 +22,8 @@ import {
   FileAudio,
   Library,
   ArrowLeft,
-  Video
+  Video,
+  Wrench,
 } from 'lucide-react';
 
 export default function AdminLayout({
@@ -109,6 +111,7 @@ export default function AdminLayout({
   }
 
   return (
+    <DesktopOnly title="Administration">
     <div className="min-h-screen bg-gray-100 flex" style={{ colorScheme: 'light' }}>
       {/* Sidebar */}
       <aside className="w-64 bg-primary text-white flex flex-col">
@@ -297,6 +300,15 @@ export default function AdminLayout({
             </li>
             <li>
               <Link
+                href="/admin/outils"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
+              >
+                <Wrench className="w-5 h-5" />
+                Boîte à outils
+              </Link>
+            </li>
+            <li>
+              <Link
                 href="/admin/test-mode"
                 className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition-colors"
               >
@@ -330,5 +342,6 @@ export default function AdminLayout({
         {children}
       </main>
     </div>
+    </DesktopOnly>
   );
 }

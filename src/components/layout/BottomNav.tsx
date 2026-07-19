@@ -6,7 +6,7 @@ import {
   Home,
   Newspaper,
   UserCircle,
-  ShieldCheck,
+  Wrench,
   Search,
   type LucideIcon,
 } from 'lucide-react'
@@ -23,7 +23,7 @@ const BASE_TABS: NavTab[] = [
   // « Shorts » = ex-onglet « Actus » : label seul renommé, route /news inchangée.
   { href: '/news', icon: Newspaper, label: 'Shorts' },
   { href: '/ma-certif', icon: UserCircle, label: 'Ma Certif' },
-  { href: '/conformite', icon: ShieldCheck, label: 'Conformité' },
+  { href: '/outils', icon: Wrench, label: 'Boîte à outils' },
 ]
 
 export default function BottomNav() {

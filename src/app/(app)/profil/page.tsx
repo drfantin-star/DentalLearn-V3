@@ -59,6 +59,7 @@ export default function ProfilPage() {
   const [newFormations, setNewFormations] = useState(true)
   const [cpReminders, setCpReminders] = useState(true)
   const [autopilotReminders, setAutopilotReminders] = useState(true)
+  const [newTools, setNewTools] = useState(true)
   const [savingPrefs, setSavingPrefs] = useState(false)
   const {
     isSupported: pushSupported,
@@ -112,7 +113,7 @@ export default function ProfilPage() {
 
       const { data: prefs } = await supabase
         .from('user_notification_preferences')
-        .select('notifications_enabled, daily_reminders, live_session_reminders, formateur_publications, weekly_journal, new_formations, cp_reminders, autopilot_reminders')
+        .select('notifications_enabled, daily_reminders, live_session_reminders, formateur_publications, weekly_journal, new_formations, cp_reminders, autopilot_reminders, new_tools')
         .eq('user_id', session.user.id)
         .maybeSingle()
 
@@ -125,6 +126,7 @@ export default function ProfilPage() {
         if (prefs.new_formations != null) setNewFormations(prefs.new_formations)
         if (prefs.cp_reminders != null) setCpReminders(prefs.cp_reminders)
         if (prefs.autopilot_reminders != null) setAutopilotReminders(prefs.autopilot_reminders)
+        if (prefs.new_tools != null) setNewTools(prefs.new_tools)
       }
 
       try {
@@ -262,7 +264,8 @@ export default function ProfilPage() {
       | 'weekly_journal'
       | 'new_formations'
       | 'cp_reminders'
-      | 'autopilot_reminders',
+      | 'autopilot_reminders'
+      | 'new_tools',
     value: boolean,
   ) => {
     if (!user) return
@@ -275,6 +278,7 @@ export default function ProfilPage() {
       new_formations: setNewFormations,
       cp_reminders: setCpReminders,
       autopilot_reminders: setAutopilotReminders,
+      new_tools: setNewTools,
     }
     setters[key](value)
     setSavingPrefs(true)
@@ -769,6 +773,21 @@ export default function ProfilPage() {
                 <Bell className="w-5 h-5 shrink-0" />
                 <span className="text-sm">Plan mensuel Sophie</span>
               </button>
+              <button
+                onClick={() => { void handleTogglePref('new_tools', !newTools) }}
+                disabled={savingPrefs || !masterOn}
+                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                  newTools
+                    ? 'bg-accent/10 text-accent border border-accent/20'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <Bell className="w-5 h-5 shrink-0" />
+                <div className="flex-1 text-left">
+                  <div className="text-sm">Nouveaux outils</div>
+                  <div className="text-xs opacity-60 font-normal">Être prévenu quand un nouvel outil arrive dans la boîte à outils.</div>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -803,9 +822,9 @@ export default function ProfilPage() {
           </button>
         )}
 
-        {/* Mes espaces — visible si super_admin et/ou formateur */}
+        {/* Mes espaces — visible si super_admin et/ou formateur, desktop uniquement */}
         {showEspacesSection && (
-          <section>
+          <section className="hidden lg:block">
             <h2 className="text-base font-bold text-white mb-1">Mes espaces</h2>
             <p className="text-xs text-white/55 mb-3">Accedez a vos espaces dedies selon vos roles.</p>
             <div className="space-y-3">

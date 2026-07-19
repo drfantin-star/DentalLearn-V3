@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import DesktopOnly from '@/components/layout/DesktopOnly'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getUserOrg, getUserIntraRole } from '@/lib/auth/rbac'
@@ -54,5 +55,9 @@ export default async function TenantLayout({
     branding_primary_color: null,
   }
 
-  return <TenantShell org={org}>{children}</TenantShell>
+  return (
+    <DesktopOnly title="Mon cabinet">
+      <TenantShell org={org}>{children}</TenantShell>
+    </DesktopOnly>
+  )
 }
