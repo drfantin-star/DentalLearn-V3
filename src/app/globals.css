@@ -257,4 +257,36 @@ body {
 
   .print-notes { font-size: 8px; color: #334155; margin: 2mm 0; }
   .print-footer { font-size: 6.5px; color: #94a3b8; margin-top: 3mm; border-top: 0.5px solid #e2e8f0; padding-top: 1mm; }
+
+  /* Sections Anamnèse / Facteurs de risque / Sondage / Synthèse.
+     Structure portée par bordures + texte (pas de fond) pour rester lisible
+     même quand « Graphiques d'arrière-plan » est décoché à l'impression. */
+  .print-section { margin-bottom: 3mm; }
+  .print-section > h2 {
+    font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.4px;
+    color: #be185d; border-bottom: 0.5px solid #f9a8d4; padding-bottom: 0.5mm; margin: 0 0 1mm;
+    break-after: avoid;
+  }
+  /* Chaque arcade reste d'un seul tenant ; la section Sondage (deux grandes
+     tables) peut se répartir sur deux pages sans laisser de page blanche. */
+  .print-chart { break-inside: avoid; }
+
+  .print-anamnese { display: grid; grid-template-columns: 1fr 1fr; column-gap: 4mm; row-gap: 0.5mm; break-inside: avoid; }
+  .print-anamnese > div { font-size: 8px; color: #334155; break-inside: avoid; }
+  .print-anamnese b { color: #0f172a; }
+
+  .print-risk { width: 100%; border-collapse: collapse; break-inside: avoid; }
+  .print-risk th, .print-risk td { border: 0.5px solid #cbd5e1; font-size: 8px; padding: 0.6mm 1.5mm; text-align: left; }
+  .print-risk th { font-weight: 700; }
+  .print-risk td.score, .print-risk th.score { text-align: right; font-weight: 700; width: 16mm; white-space: nowrap; }
+  .print-risk .prp-row td { font-weight: 700; color: #be185d; }
+  .print-comment { font-size: 8px; color: #334155; margin: 1mm 0 0; }
+
+  .print-cascade { display: flex; gap: 2mm; break-inside: avoid; }
+  .print-cascade > div { flex: 1; border: 0.5px solid #cbd5e1; border-radius: 4px; padding: 1mm 1.5mm; font-size: 8px; color: #334155; }
+  .print-cascade span { display: block; font-size: 6.5px; text-transform: uppercase; letter-spacing: 0.3px; color: #64748b; }
+  .print-cascade b { display: block; color: #0f172a; }
+
+  .print-synthese-diag { font-size: 8px; color: #334155; margin: 0 0 1.5mm; }
+  .print-synthese-diag b { color: #be185d; }
 }
