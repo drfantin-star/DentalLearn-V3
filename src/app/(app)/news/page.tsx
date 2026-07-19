@@ -135,26 +135,20 @@ export default function NewsPage() {
 
   return (
     <div className="min-h-screen bg-[#0F0F0F]">
-      <header className="sticky top-0 z-20 bg-[#0F0F0F]/95 backdrop-blur border-b border-gray-800">
-        <div className="max-w-3xl lg:max-w-[1500px] mx-auto px-4 py-3 flex items-center gap-3">
+      <header className="bg-gradient-to-br from-[#0d0d0d] to-[#6B7280] px-4 py-4">
+        <div className="flex items-center gap-3 mb-1">
           <Link
             href="/"
-            className="p-2 rounded-full text-white/70 hover:bg-gray-800"
-            aria-label="Retour a l'accueil"
+            className="p-2 -ml-2 hover:bg-white/20 rounded-xl transition-colors"
+            aria-label="Retour à l'accueil"
           >
-            <ChevronLeft size={22} />
+            <ChevronLeft size={20} className="text-white" />
           </Link>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-bold text-white truncate">
-              Actualités scientifiques
-            </h1>
-            <p className="text-xs text-white/55 truncate">
-              {loading || total === 0
-                ? 'Toutes les dernières publications dentaires'
-                : `${items.length} sur ${total} articles`}
-            </p>
-          </div>
+          <h1 className="text-2xl font-black text-white">Actualités scientifiques</h1>
         </div>
+        <p className="text-sm font-semibold text-white/80 mt-1 leading-relaxed">
+          Dernières publications et synthèses dentaires scientifiques
+        </p>
       </header>
 
       <main className="max-w-3xl lg:max-w-[1500px] mx-auto py-5">

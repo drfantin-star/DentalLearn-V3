@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { Award, ChevronRight, ClipboardCheck, Loader2, X } from 'lucide-react'
+import { Award, ChevronLeft, ChevronRight, ClipboardCheck, Loader2, X } from 'lucide-react'
 import Link from 'next/link'
 import RadarCP from '@/components/profile/RadarCP'
 import DemarchesSection from '@/components/profile/DemarchesSection'
@@ -130,8 +130,19 @@ export default function MaCertifPage() {
     <div className="min-h-screen pb-24" style={{ background: '#0F0F0F' }}>
 
       {/* Header */}
-      <header className="bg-gradient-to-br from-primary to-accent px-5 py-4">
-        <p className="text-sm font-semibold text-white/80">Ma Certification Periodique</p>
+      <header className="bg-gradient-to-br from-[#0d0d0d] via-[#8B5CF6] to-[#0F7B6C] px-4 py-4">
+        <div className="flex items-center gap-3 mb-1">
+          <button
+            onClick={() => router.push('/')}
+            className="p-2 -ml-2 hover:bg-white/20 rounded-xl transition-colors"
+          >
+            <ChevronLeft size={20} className="text-white" />
+          </button>
+          <h1 className="text-2xl font-black text-white">Ma Certification Périodique</h1>
+        </div>
+        <p className="text-sm font-semibold text-white/80 mt-1 leading-relaxed">
+          Suivi de vos actions de formation continue · 4 axes de la certification périodique
+        </p>
       </header>
 
       <div className="max-w-2xl lg:max-w-[1500px] mx-auto px-4 lg:px-8 py-6 space-y-6">
