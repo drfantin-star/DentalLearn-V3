@@ -1,13 +1,15 @@
+'use client'
+
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { PatientFile, Bilan } from '@/lib/perio/types';
 import { emptyPatientFile } from '@/lib/perio/types';
 import { computeStats } from '@/lib/perio/calc';
 import { demoFile } from '@/lib/perio/demo';
-import Charting from '@/components/Charting';
-import RiskPanel from '@/components/RiskPanel';
-import Synthesis from '@/components/Synthesis';
-import Anamnesis from '@/components/Anamnesis';
-import PrintView from '@/components/PrintView';
+import Charting from '@/components/perio/Charting';
+import RiskPanel from '@/components/perio/RiskPanel';
+import Synthesis from '@/components/perio/Synthesis';
+import Anamnesis from '@/components/perio/Anamnesis';
+import PrintView from '@/components/perio/PrintView';
 import type { EntryMode } from '@/lib/perio/path';
 
 const TABS = [
@@ -24,7 +26,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 // Sauvegarde fichier (.json) masquée pour l'instant — passer à true pour réactiver
 const SHOW_FILE_SAVE = false;
 
-export default function App() {
+export default function BilanParodontalApp() {
   const [file, setFile] = useState<PatientFile>(() => emptyPatientFile(today()));
   const [bi, setBi] = useState(0);
   const [tab, setTab] = useState<TabId>('anamnese');
@@ -56,6 +58,15 @@ export default function App() {
       ...f,
       bilans: f.bilans.map((b, i) => (i === bi ? { ...b, ...patch } : b)),
     }));
+  };
+
+  // Charge le cas d'exemple. Écrase les saisies en cours : on confirme si le
+  // formulaire n'est pas vide (aucune donnée n'est stockée, la démo remplace le state).
+  const loadDemo = () => {
+    if (isDirty && !window.confirm("Charger le cas d'exemple remplacera vos saisies en cours. Continuer ?")) return;
+    setFile(demoFile());
+    setBi(0);
+    setTab('synthese');
   };
 
   const exportJson = () => {
@@ -107,7 +118,7 @@ export default function App() {
           <div className="flex items-center gap-1.5 ml-auto">
             <input type="date" value={bilan.date} onChange={e => setBilan({ date: e.target.value })}
               className="text-xs border border-slate-200 rounded px-1.5 py-1 text-slate-600 outline-none focus:border-pink-400" />
-            <button onClick={() => { setFile(demoFile()); setBi(0); setTab('synthese'); }}
+            <button onClick={loadDemo}
               className="text-xs px-2.5 py-1.5 rounded border border-slate-200 text-slate-500 hover:bg-slate-50" title="Charger un cas d'exemple">Exemple</button>
             {SHOW_FILE_SAVE && (
               <>

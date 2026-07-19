@@ -207,3 +207,54 @@ body {
   color: theme('colors.gray.300');
   cursor: not-allowed;
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Bilan parodontal (/outils/bilan-parodontal) — styles d'impression.
+   Blocs @media print portés tels quels depuis le module d'origine.
+   L'harmonisation typographique avec le standard de fiches Certily est un
+   chantier séparé, volontairement hors périmètre ici.
+   ────────────────────────────────────────────────────────────────────────── */
+#print-view { display: none; }
+
+@media print {
+  /* Scope : n'imprimer que la feuille A4 du bilan, jamais le chrome Certily
+     (SideNav/BottomNav/MiniPlayer de l'AppShell n'ont pas la classe .no-print).
+     Le sélecteur :has() restreint la règle aux seules pages contenant
+     #print-view : l'impression des autres pages Certily reste intacte. */
+  body:has(#print-view) * { visibility: hidden; }
+  body:has(#print-view) #print-view,
+  body:has(#print-view) #print-view * { visibility: visible; }
+  body:has(#print-view) #print-view {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  .no-print { display: none !important; }
+  body { background: white; }
+  #print-view { display: block; font-family: 'Avenir Next', 'Segoe UI', system-ui, sans-serif; color: #1e293b; padding: 4mm; }
+  @page { size: A4 portrait; margin: 8mm; }
+
+  .print-header { display: flex; justify-content: space-between; gap: 6mm; align-items: flex-start; margin-bottom: 3mm; }
+  .print-header h1 { font-size: 14px; font-weight: 800; margin: 0 0 1mm; }
+  .print-header p { font-size: 9px; margin: 0; color: #475569; }
+  .print-diag { text-align: right; border: 1.5px solid #EC4899; border-radius: 6px; padding: 2mm 3mm; }
+  .print-diag strong { display: block; font-size: 11px; color: #BE185D; }
+  .print-diag span { font-size: 8px; color: #475569; }
+
+  .print-indices { width: 100%; border-collapse: collapse; margin-bottom: 3mm; }
+  .print-indices td { font-size: 8px; border: 0.5px solid #cbd5e1; padding: 1mm 1.5mm; text-align: center; }
+
+  .print-chart { border-collapse: collapse; margin-bottom: 3mm; width: 100%; table-layout: fixed; }
+  .print-chart th, .print-chart td { border: 0.4px solid #cbd5e1; font-size: 6px; text-align: center; padding: 0.4mm 0; overflow: hidden; }
+  .print-chart th { font-weight: 700; font-size: 7px; background: #f8fafc; }
+  .print-chart th.absent { background: #e2e8f0; color: #94a3b8; text-decoration: line-through; }
+  .print-chart td.absent { background: #f1f5f9; }
+  .print-chart td.warn { background: #fef3c7; }
+  .print-chart td.high { background: #fee2e2; font-weight: 700; }
+  .print-chart .lbl { width: 11mm; font-size: 6px; text-align: left; padding-left: 1mm; color: #64748b; white-space: nowrap; }
+
+  .print-notes { font-size: 8px; color: #334155; margin: 2mm 0; }
+  .print-footer { font-size: 6.5px; color: #94a3b8; margin-top: 3mm; border-top: 0.5px solid #e2e8f0; padding-top: 1mm; }
+}

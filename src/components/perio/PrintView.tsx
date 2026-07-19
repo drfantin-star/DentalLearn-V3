@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react';
 import type { Bilan, PatientInfo, Tooth } from '@/lib/perio/types';
 import { MAX_TEETH, MAND_TEETH } from '@/lib/perio/types';
