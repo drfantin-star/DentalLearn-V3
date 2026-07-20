@@ -128,7 +128,8 @@ export default function EditFormationPage() {
   };
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
 
     setUploading(true);
@@ -166,19 +167,25 @@ export default function EditFormationPage() {
       alert('Erreur lors de l\'upload');
     } finally {
       setUploading(false);
+      // Réinitialise l'input pour autoriser la re-sélection du même fichier
+      // (sinon onChange ne se redéclenche pas). Couvre succès et chemins d'erreur.
+      input.value = '';
     }
   };
 
   const handleBiblioUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
 
     if (file.type !== 'application/pdf') {
       alert('Format invalide : seuls les fichiers PDF sont acceptés.');
+      input.value = '';
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
       alert('PDF trop lourd (5 Mo max).');
+      input.value = '';
       return;
     }
 
@@ -212,6 +219,9 @@ export default function EditFormationPage() {
       alert('Erreur lors de l\'upload');
     } finally {
       setUploadingBiblio(false);
+      // Réinitialise l'input pour autoriser la re-sélection du même fichier
+      // (sinon onChange ne se redéclenche pas). Couvre succès et chemins d'erreur.
+      input.value = '';
     }
   };
 
