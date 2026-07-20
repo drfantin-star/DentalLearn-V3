@@ -237,7 +237,7 @@ export default function AdminCsMembersPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Comité scientifique</h1>
             <p className="text-sm text-gray-500">
-              Membres validateurs éditoriaux (Ticket E Qualiopi #21 + IA Act §50.4)
+              Membres validateurs éditoriaux (Ticket E Qualiopi #21 + article 50 §4 du règlement européen sur l'IA)
             </p>
           </div>
         </div>
@@ -299,11 +299,6 @@ export default function AdminCsMembersPage() {
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-primary text-white">
                               <ShieldCheck size={11} />
                               Lead
-                            </span>
-                          )}
-                          {!m.user_id && (
-                            <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
-                              Externe
                             </span>
                           )}
                           {!m.active && (
@@ -383,11 +378,6 @@ export default function AdminCsMembersPage() {
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-primary text-white">
                           <ShieldCheck size={11} />
                           Lead
-                        </span>
-                      )}
-                      {!m.user_id && (
-                        <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-800">
-                          Externe
                         </span>
                       )}
                       {!m.active && (
