@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react';
 import type { Anamnese, PatientInfo } from '@/lib/perio/types';
 

@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react';
 import type { Bilan } from '@/lib/perio/types';
 import { computeStats, type BilanStats } from '@/lib/perio/calc';
