@@ -30,6 +30,7 @@ import {
 import AudioPlayer from './AudioPlayer'
 import EnrichedAudioPlayer, { type EnrichedPlayerTab } from './EnrichedAudioPlayer'
 import TreasureChest from '@/components/sequences/TreasureChest'
+import PostVictoryPushPrompt from '@/components/push/PostVictoryPushPrompt'
 import CaseStudyQuestion from '@/components/questions/CaseStudyQuestion'
 import { parseCaseStudyData } from '@/lib/questions/parseCaseStudyData'
 import { useAudio } from '@/context/AudioContext'
@@ -1795,6 +1796,10 @@ export default function SequencePlayer({
                 </button>
               </div>
             )}
+            {/* Prompt post-victoire push (auto-gaté, mobile only, une fois) */}
+            <div className="mx-auto max-w-xs text-left">
+              <PostVictoryPushPrompt />
+            </div>
           </div>
         )}
       </div>

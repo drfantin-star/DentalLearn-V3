@@ -46,7 +46,6 @@ export async function POST(request: Request) {
         user_id: user.id,
         push_enabled: true,
         leaderboard_results: true,
-        new_sequences: true,
         daily_reminders: true
       });
     } else {

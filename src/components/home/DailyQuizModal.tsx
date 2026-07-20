@@ -16,6 +16,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import Confetti from '@/components/Confetti'
+import PostVictoryPushPrompt from '@/components/push/PostVictoryPushPrompt'
 import CaseStudyQuestion from '@/components/questions/CaseStudyQuestion'
 import { parseCaseStudyData } from '@/lib/questions/parseCaseStudyData'
 
@@ -704,6 +705,9 @@ export default function DailyQuizModal({
                 "Voir mes stats →"
               )}
             </button>
+
+            {/* Prompt post-victoire push (auto-gaté, mobile only, une fois) */}
+            <PostVictoryPushPrompt />
           </div>
         </div>
       </div>
