@@ -8,7 +8,7 @@
 
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { isFormateur, isSuperAdmin } from '@/lib/auth/rbac'
+import { hasRole, isFormateur, isSuperAdmin } from '@/lib/auth/rbac'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -36,16 +36,21 @@ export async function GET() {
     )
   }
 
-  const [memberResult, superAdminFlag, formateurFlag] = await Promise.all([
-    supabase
-      .from('organization_members')
-      .select('intra_role, org_id, status')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .maybeSingle(),
-    isSuperAdmin(user.id),
-    isFormateur(user.id),
-  ])
+  const [memberResult, superAdminFlag, formateurFlag, csMemberFlag] =
+    await Promise.all([
+      supabase
+        .from('organization_members')
+        .select('intra_role, org_id, status')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .maybeSingle(),
+      isSuperAdmin(user.id),
+      isFormateur(user.id),
+      // Même logique que le garde requireCsMemberOrRedirect du layout /cs
+      // (rôle cs_member ; le rattachement cs_members actif est vérifié plus
+      // loin côté écran de signature).
+      hasRole(user.id, 'cs_member'),
+    ])
 
   const { data, error } = memberResult
 
@@ -63,6 +68,7 @@ export async function GET() {
       orgless: !data,
       is_super_admin: superAdminFlag,
       is_formateur: formateurFlag,
+      is_cs_member: csMemberFlag,
     },
     { headers: NO_STORE_HEADERS }
   )

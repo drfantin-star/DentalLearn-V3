@@ -14,6 +14,7 @@ import {
   Shield,
   Presentation,
   Briefcase,
+  BadgeCheck,
   type LucideIcon,
 } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
@@ -63,6 +64,7 @@ export default function SideNav() {
   const [intraRole, setIntraRole] = useState<IntraRole | null>(null)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [isFormateur, setIsFormateur] = useState(false)
+  const [isCsMember, setIsCsMember] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -74,6 +76,7 @@ export default function SideNav() {
         setIntraRole((json.intra_role as IntraRole | null) ?? null)
         setIsSuperAdmin(Boolean(json.is_super_admin))
         setIsFormateur(Boolean(json.is_formateur))
+        setIsCsMember(Boolean(json.is_cs_member))
       } catch {
         // Fail silencieux : espaces masques si indisponible (idem Profil).
       }
@@ -101,7 +104,10 @@ export default function SideNav() {
   }
 
   const showTenantLink = !!intraRole && TENANT_ADMIN_ROLES.has(intraRole)
-  const showEspaces = isSuperAdmin || isFormateur || showTenantLink
+  // Comité scientifique : visible pour un membre CS ou un super_admin — même
+  // logique que le garde requireCsMemberOrRedirect du layout /cs.
+  const showCsLink = isCsMember || isSuperAdmin
+  const showEspaces = isSuperAdmin || isFormateur || showTenantLink || showCsLink
 
   // Memes routes et conditions que les cartes « Mes espaces » de la page Profil.
   const espaces: NavItem[] = [
@@ -110,6 +116,9 @@ export default function SideNav() {
       : []),
     ...(isFormateur
       ? [{ href: '/formateur/dashboard', icon: Presentation, label: 'Espace Formateur' }]
+      : []),
+    ...(showCsLink
+      ? [{ href: '/cs', icon: BadgeCheck, label: 'Comité scientifique' }]
       : []),
     ...(showTenantLink
       ? [{ href: '/tenant/admin', icon: Briefcase, label: 'Mon cabinet' }]

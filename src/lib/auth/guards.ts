@@ -3,6 +3,41 @@ import { createClient } from '@/lib/supabase/server'
 import { hasRole, isSuperAdmin } from '@/lib/auth/rbac'
 
 /**
+ * Espace Comité Scientifique (/cs) — Gate Server Component, sur le même
+ * modèle que `requireFormateurOrRedirect`. `redirect()` vers `/login?next=…`
+ * si non connecté, vers `/403` si le user n'est ni `cs_member` ni
+ * `super_admin` (Dr Fantin, super_admin, reste autorisée).
+ *
+ * Retourne le `userId` autorisé.
+ */
+export async function requireCsMemberOrRedirect(
+  currentPath?: string
+): Promise<string> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    const target = currentPath
+      ? `/login?next=${encodeURIComponent(currentPath)}`
+      : '/login'
+    redirect(target)
+  }
+
+  const [isCs, isSA] = await Promise.all([
+    hasRole(user.id, 'cs_member'),
+    isSuperAdmin(user.id),
+  ])
+
+  if (!isCs && !isSA) {
+    redirect('/403')
+  }
+
+  return user.id
+}
+
+/**
  * Sprint 2 — Guard pour Server Components. À appeler en tête d'un layout
  * ou d'une page server-side : il `redirect()` vers `/login?next=…` si non
  * connecté, vers `/403` si le user n'est ni `formateur` ni `super_admin`.

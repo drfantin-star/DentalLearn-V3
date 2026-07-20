@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, Loader2, Briefcase, Building2,
-  Shield, Presentation, Camera, Save, Lock, Eye, EyeOff,
+  Shield, Presentation, BadgeCheck, Camera, Save, Lock, Eye, EyeOff,
   Bell, BellOff, Send, Mail, Calendar, CheckCircle, AlertCircle, Trash2, X, User, LogOut,
 } from 'lucide-react'
 import InterestsSection from '@/components/interests/InterestsSection'
@@ -88,6 +88,7 @@ export default function ProfilPage() {
   const [orgless, setOrgless] = useState(false)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [isFormateur, setIsFormateur] = useState(false)
+  const [isCsMember, setIsCsMember] = useState(false)
   const [showCabinetModal, setShowCabinetModal] = useState(false)
 
   useEffect(() => {
@@ -137,6 +138,7 @@ export default function ProfilPage() {
           setOrgless(Boolean(json.orgless))
           setIsSuperAdmin(Boolean(json.is_super_admin))
           setIsFormateur(Boolean(json.is_formateur))
+          setIsCsMember(Boolean(json.is_cs_member))
         }
       } catch {
         // Fail silencieux : cartes masquees si indisponible
@@ -379,6 +381,7 @@ export default function ProfilPage() {
         setOrgless(Boolean(json.orgless))
         setIsSuperAdmin(Boolean(json.is_super_admin))
         setIsFormateur(Boolean(json.is_formateur))
+        setIsCsMember(Boolean(json.is_cs_member))
       }
     } catch {
       // Fail silencieux
@@ -395,7 +398,11 @@ export default function ProfilPage() {
 
   const showTenantLink = intraRole && TENANT_ADMIN_ROLES.has(intraRole)
   const showUpgradeCard = !loading && orgless && !intraRole
-  const showEspacesSection = isSuperAdmin || isFormateur || showTenantLink
+  // Comité scientifique : visible pour un membre CS ou un super_admin — même
+  // logique que le garde requireCsMemberOrRedirect du layout /cs.
+  const showCsLink = isCsMember || isSuperAdmin
+  const showEspacesSection =
+    isSuperAdmin || isFormateur || showTenantLink || showCsLink
 
   if (loading) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center pb-24">
@@ -853,6 +860,20 @@ export default function ProfilPage() {
                     <div className="flex-1">
                       <div className="font-semibold text-white text-sm">Espace Formateur</div>
                       <div className="text-xs text-white/55">Suivez vos formations animees, masterclass et profil public.</div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-white/40" />
+                  </div>
+                </Link>
+              )}
+              {showCsLink && (
+                <Link href="/cs" className="glass-card transition-premium block p-4 hover:border-white/20 rounded-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+                      <BadgeCheck className="w-5 h-5 text-[#8B5CF6]" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold text-white text-sm">Comité scientifique</div>
+                      <div className="text-xs text-white/55">Validez les contenus publiés et co-signez les validations éditoriales.</div>
                     </div>
                     <ChevronRight className="w-5 h-5 text-white/40" />
                   </div>
