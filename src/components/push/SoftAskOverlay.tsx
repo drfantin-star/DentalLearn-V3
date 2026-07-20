@@ -2,7 +2,7 @@
 
 // Soft-ask plein écran, affiché UNE seule fois par appareil (piloté par
 // softask_shown_at en base). Rendu par le provider quand les conditions sont
-// réunies (canPush && !subscribed && softask_shown_at IS NULL && mobile).
+// réunies (canPush && !subscribed && softask_shown_at IS NULL && isTouchDevice).
 //
 // « Oui » → prompt système + abonnement (flux existant). « Plus tard » →
 // softask_dismissed_count += 1. Dans les deux cas softask_shown_at = now().
@@ -41,8 +41,7 @@ export default function SoftAskOverlay() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col items-center justify-center px-6"
-      style={{ background: 'rgba(10,10,10,0.96)', backdropFilter: 'blur(6px)' }}
+      className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/95 px-6 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label="Activer les notifications"

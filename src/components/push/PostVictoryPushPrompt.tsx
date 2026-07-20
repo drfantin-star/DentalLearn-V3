@@ -5,8 +5,8 @@
 // lit le context et décide seul de s'afficher — le handler de complétion ne
 // déclenche rien (pas de prop-drilling, race-free).
 //
-// Gate : canPush && !subscribed && softask_dismissed_count <= 1 && !softAskOpen.
-// Un refus ici (compteur → 2) coupe toute demande automatique ultérieure.
+// Gate : canPush && !subscribed && isTouchDevice && softask_dismissed_count <= 1
+// && !softAskOpen. Un refus ici (compteur → 2) coupe toute demande auto ultérieure.
 
 import { useState } from 'react'
 import { Bell, Loader2, X } from 'lucide-react'
@@ -18,6 +18,7 @@ export default function PostVictoryPushPrompt() {
     canPush,
     subscribed,
     softAskOpen,
+    isTouchDevice,
     prefs,
     subscribe,
     markDismissed,
@@ -26,11 +27,14 @@ export default function PostVictoryPushPrompt() {
   const [busy, setBusy] = useState(false)
   const [dismissed, setDismissed] = useState(false)
 
+  // isTouchDevice : sans ce gate, le prompt s'afficherait sur desktop (où
+  // canPush est vrai) — interdit (§4.6, le desktop ne demande jamais).
   const visible =
     !dismissed &&
     canPush &&
     !subscribed &&
     !softAskOpen &&
+    isTouchDevice &&
     prefs !== null &&
     prefs.softask_dismissed_count <= 1
 

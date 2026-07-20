@@ -17,6 +17,17 @@ export function isIOS(): boolean {
   )
 }
 
+// Appareil tactile (mobile OU tablette). C'est le bon gate pour les surfaces
+// push : contrairement à une media-query de largeur, il n'exclut pas l'iPad
+// PWA en paysage (1024px), pourtant parfaitement capable de recevoir des push.
+// Valeur stable sur la session → aucune réactivité nécessaire.
+// Limite assumée : un laptop Windows tactile passera vrai (cas marginal accepté,
+// pas de détection d'OS pour ne pas complexifier).
+export function isTouchDevice(): boolean {
+  if (typeof window === 'undefined') return false
+  return navigator.maxTouchPoints > 0
+}
+
 export function isStandalone(): boolean {
   if (typeof window === 'undefined') return false
   return (

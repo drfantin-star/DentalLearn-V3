@@ -23,7 +23,7 @@ import React, {
 import { usePathname } from 'next/navigation'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { createClient } from '@/lib/supabase/client'
-import { canRequestPush } from '@/lib/push/capability'
+import { canRequestPush, isTouchDevice } from '@/lib/push/capability'
 import SoftAskOverlay from '@/components/push/SoftAskOverlay'
 
 // Segments plein écran où le soft-ask ne doit pas s'afficher (cf. AppShell).
@@ -33,12 +33,12 @@ export interface OrchestratorPrefs {
   notifications_enabled: boolean
   softask_shown_at: string | null
   softask_dismissed_count: number
-  prefs_snapshot: Record<string, boolean> | null
 }
 
 interface NotificationOrchestratorValue {
   canPush: boolean
   isMobileSurface: boolean
+  isTouchDevice: boolean
   isSupported: boolean
   permission: 'prompt' | 'granted' | 'denied' | 'unsupported'
   subscribed: boolean
@@ -76,6 +76,7 @@ export function NotificationOrchestratorProvider({
   const [prefs, setPrefs] = useState<OrchestratorPrefs | null>(null)
   const [canPush, setCanPush] = useState(false)
   const [isMobileSurface, setIsMobileSurface] = useState(false)
+  const [touchDevice, setTouchDevice] = useState(false)
   const [softAskOpen, setSoftAskOpen] = useState(false)
 
   const isFullscreenRoute = FULLSCREEN_SEGMENTS.some(
@@ -88,7 +89,8 @@ export function NotificationOrchestratorProvider({
     setCanPush(canRequestPush())
   }, [permission, isSupported])
 
-  // Surface (mobile vs desktop) via matchMedia, réactif, sans storage.
+  // Surface (mobile vs desktop) via matchMedia, réactif : réservé à l'AFFICHAGE
+  // (QrAppCard desktop-only, bascule onboarding). PAS le gate des surfaces push.
   useEffect(() => {
     if (typeof window === 'undefined') return
     const mql = window.matchMedia('(max-width: 1023px)')
@@ -98,12 +100,18 @@ export function NotificationOrchestratorProvider({
     return () => mql.removeEventListener('change', apply)
   }, [])
 
+  // Appareil tactile (mobile OU tablette) : LE gate des surfaces push. Stable
+  // sur la session, calculé une fois.
+  useEffect(() => {
+    setTouchDevice(isTouchDevice())
+  }, [])
+
   const fetchPrefs = useCallback(
     async (uid: string) => {
       const { data } = await supabase
         .from('user_notification_preferences')
         .select(
-          'notifications_enabled, softask_shown_at, softask_dismissed_count, prefs_snapshot',
+          'notifications_enabled, softask_shown_at, softask_dismissed_count',
         )
         .eq('user_id', uid)
         .maybeSingle()
@@ -111,8 +119,6 @@ export function NotificationOrchestratorProvider({
         notifications_enabled: data?.notifications_enabled ?? true,
         softask_shown_at: data?.softask_shown_at ?? null,
         softask_dismissed_count: data?.softask_dismissed_count ?? 0,
-        prefs_snapshot:
-          (data?.prefs_snapshot as Record<string, boolean> | null) ?? null,
       })
     },
     [supabase],
@@ -147,7 +153,7 @@ export function NotificationOrchestratorProvider({
     if (!prefs) return
     if (isLoading) return
     if (isFullscreenRoute) return
-    if (!canPush || isSubscribed || !isMobileSurface) return
+    if (!canPush || isSubscribed || !touchDevice) return
     if (prefs.softask_shown_at !== null) return
     softAskArmedRef.current = true
     setSoftAskOpen(true)
@@ -157,7 +163,7 @@ export function NotificationOrchestratorProvider({
     isFullscreenRoute,
     canPush,
     isSubscribed,
-    isMobileSurface,
+    touchDevice,
   ])
 
   // Persistance « soft-ask affiché » — idempotente, une seule écriture.
@@ -208,6 +214,7 @@ export function NotificationOrchestratorProvider({
   const value: NotificationOrchestratorValue = {
     canPush,
     isMobileSurface,
+    isTouchDevice: touchDevice,
     isSupported,
     permission,
     subscribed: isSubscribed,

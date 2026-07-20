@@ -5,7 +5,7 @@
 // oui (notifications_enabled), mais cet appareil n'a jamais été abonné.
 //
 // Gate : canPush && !subscribed && notifications_enabled === true &&
-//        softask_dismissed_count >= 2 && isMobileSurface.
+//        softask_dismissed_count >= 2 && isTouchDevice.
 // Composant auto-gaté : à monter sans condition côté page.
 
 import { useState } from 'react'
@@ -16,7 +16,7 @@ export default function HomeDevicePushBanner() {
   const {
     canPush,
     subscribed,
-    isMobileSurface,
+    isTouchDevice,
     prefs,
     subscribe,
   } = useNotificationOrchestrator()
@@ -26,7 +26,7 @@ export default function HomeDevicePushBanner() {
   const visible =
     canPush &&
     !subscribed &&
-    isMobileSurface &&
+    isTouchDevice &&
     prefs !== null &&
     prefs.notifications_enabled === true &&
     prefs.softask_dismissed_count >= 2

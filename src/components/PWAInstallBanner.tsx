@@ -16,7 +16,7 @@ export default function PWAInstallBanner() {
     softAskOpen,
     canPush,
     subscribed,
-    isMobileSurface,
+    isTouchDevice,
     prefs: pushPrefs,
   } = useNotificationOrchestrator();
   const [showBanner, setShowBanner] = useState(false);
@@ -127,7 +127,7 @@ export default function PWAInstallBanner() {
     softAskOpen ||
     (canPush &&
       !subscribed &&
-      isMobileSurface &&
+      isTouchDevice &&
       pushPrefs !== null &&
       pushPrefs.softask_shown_at === null);
 

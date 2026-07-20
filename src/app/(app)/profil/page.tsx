@@ -23,8 +23,7 @@ const TENANT_ADMIN_ROLES: ReadonlySet<IntraRole> = new Set<IntraRole>([
 ])
 
 // Les 9 sous-préférences (après suppression de new_sequences), groupées en
-// 3 familles pour la modale « Personnaliser ». C'est aussi la liste capturée
-// dans prefs_snapshot lors de la coupure du maître.
+// 3 familles pour la modale « Personnaliser ».
 type PrefKey =
   | 'daily_reminders'
   | 'cp_reminders'
@@ -74,8 +73,6 @@ const NOTIF_FAMILIES: NotifFamily[] = [
   },
 ]
 
-const PREF_KEYS: PrefKey[] = NOTIF_FAMILIES.flatMap((f) => f.keys.map((k) => k.key))
-
 export default function ProfilPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -115,7 +112,6 @@ export default function ProfilPage() {
   const [autopilotReminders, setAutopilotReminders] = useState(true)
   const [newTools, setNewTools] = useState(true)
   const [leaderboardResults, setLeaderboardResults] = useState(true)
-  const [prefsSnapshot, setPrefsSnapshot] = useState<Record<string, boolean> | null>(null)
   const [savingPrefs, setSavingPrefs] = useState(false)
   const [showCustomize, setShowCustomize] = useState(false)
   // Interrupteur push partagé via le provider unique (une seule registration SW,
@@ -174,7 +170,7 @@ export default function ProfilPage() {
 
       const { data: prefs } = await supabase
         .from('user_notification_preferences')
-        .select('notifications_enabled, daily_reminders, live_session_reminders, formateur_publications, weekly_journal, new_formations, cp_reminders, autopilot_reminders, new_tools, leaderboard_results, prefs_snapshot')
+        .select('notifications_enabled, daily_reminders, live_session_reminders, formateur_publications, weekly_journal, new_formations, cp_reminders, autopilot_reminders, new_tools, leaderboard_results')
         .eq('user_id', session.user.id)
         .maybeSingle()
 
@@ -189,7 +185,6 @@ export default function ProfilPage() {
         if (prefs.autopilot_reminders != null) setAutopilotReminders(prefs.autopilot_reminders)
         if (prefs.new_tools != null) setNewTools(prefs.new_tools)
         if (prefs.leaderboard_results != null) setLeaderboardResults(prefs.leaderboard_results)
-        setPrefsSnapshot((prefs.prefs_snapshot as Record<string, boolean> | null) ?? null)
       }
 
       try {
@@ -360,54 +355,20 @@ export default function ProfilPage() {
   // abonnement push de cet appareil (subscribe/unsubscribe).
   const masterOn = pushSupported ? (isSubscribed && notificationsEnabled) : notificationsEnabled
 
-  // Coupure : snapshot des 9 valeurs → notifications_enabled=false. Les colonnes
-  // individuelles ne sont PAS modifiées (le kill-switch suffit). Le snapshot
-  // permet de tout retrouver au rallumage (ex. retour de vacances).
-  const cutMaster = async () => {
+  // Kill-switch de compte : notifications_enabled. Les colonnes individuelles
+  // ne sont jamais touchées → un retour de « coupure » retrouve la config
+  // exacte gratuitement (pas de snapshot nécessaire).
+  const writeMaster = async (value: boolean) => {
     if (!user) return
-    const snapshot: Record<string, boolean> = {}
-    PREF_KEYS.forEach((k) => { snapshot[k] = prefValues[k] })
-    setNotificationsEnabled(false)
-    setPrefsSnapshot(snapshot)
+    setNotificationsEnabled(value)
     setSavingPrefs(true)
     try {
       await supabase
         .from('user_notification_preferences')
         .upsert(
-          { user_id: user.id, prefs_snapshot: snapshot, notifications_enabled: false },
+          { user_id: user.id, notifications_enabled: value },
           { onConflict: 'user_id' },
         )
-    } finally {
-      setSavingPrefs(false)
-    }
-    await refreshOrchestrator()
-  }
-
-  // Rallumage : notifications_enabled=true. Si un snapshot existe, on restaure
-  // les valeurs puis on le vide. Sinon on ne touche qu'au consentement (on ne
-  // force JAMAIS les sous-préférences à true).
-  const restoreMaster = async () => {
-    if (!user) return
-    setNotificationsEnabled(true)
-    setSavingPrefs(true)
-    try {
-      if (prefsSnapshot) {
-        PREF_KEYS.forEach((k) => prefSetters[k](prefsSnapshot[k] ?? true))
-        await supabase
-          .from('user_notification_preferences')
-          .upsert(
-            { user_id: user.id, notifications_enabled: true, prefs_snapshot: null, ...prefsSnapshot },
-            { onConflict: 'user_id' },
-          )
-        setPrefsSnapshot(null)
-      } else {
-        await supabase
-          .from('user_notification_preferences')
-          .upsert(
-            { user_id: user.id, notifications_enabled: true },
-            { onConflict: 'user_id' },
-          )
-      }
     } finally {
       setSavingPrefs(false)
     }
@@ -424,10 +385,10 @@ export default function ProfilPage() {
         const ok = await subscribe()
         if (!ok) return
       }
-      await restoreMaster()
+      await writeMaster(true)
     } else {
       if (pushSupported) await unsubscribe()
-      await cutMaster()
+      await writeMaster(false)
     }
   }
 
@@ -810,7 +771,7 @@ export default function ProfilPage() {
             </div>
 
             {/* Personnaliser — replié par défaut, 3 familles visibles d'un coup */}
-            <div className={`pt-4 ${masterOn ? '' : 'opacity-40'}`} style={{ borderTop: '0.5px solid #333' }}>
+            <div className={`border-t border-white/10 pt-4 ${masterOn ? '' : 'opacity-40'}`}>
               <button
                 onClick={() => setShowCustomize((v) => !v)}
                 disabled={!masterOn}
