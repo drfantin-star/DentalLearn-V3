@@ -5,6 +5,7 @@ import type { Anamnese, Bilan, PatientInfo, RiskInput, Tooth } from '@/lib/perio
 import { MAX_TEETH, MAND_TEETH } from '@/lib/perio/types';
 import { computeStats } from '@/lib/perio/calc';
 import { sitePA } from '@/lib/perio/calc';
+import { Radar } from '@/components/perio/RiskPanel';
 
 // ── Vue impression A4 (masquée à l'écran) ──
 // Restitue le bilan complet : Anamnèse · Facteurs de risque · Sondage · Synthèse.
@@ -116,6 +117,13 @@ function RiskPrint({ risk, stats }: { risk: RiskInput; stats: ReturnType<typeof 
           </tr>
         </tbody>
       </table>
+      <div className="print-radar">
+        <Radar
+          scores={sc as unknown as Record<string, number>}
+          objectif={{ ...sc, pp: 2, bop: 2 } as unknown as Record<string, number>}
+        />
+        <p className="print-radar-legend">Profil de risque /10 — trait plein : actuel · pointillé : objectif</p>
+      </div>
       {risk.commentaires && <p className="print-comment"><b>Commentaires :</b> {risk.commentaires}</p>}
     </section>
   );

@@ -282,6 +282,12 @@ body {
   .print-risk .prp-row td { font-weight: 700; color: #be185d; }
   .print-comment { font-size: 8px; color: #334155; margin: 1mm 0 0; }
 
+  /* Radar de risque (SVG vectoriel réutilisé depuis RiskPanel) : au premier
+     plan, donc imprimé même avec « Graphiques d'arrière-plan » décoché. */
+  .print-radar { width: 52mm; margin: 1.5mm 0 0; break-inside: avoid; }
+  .print-radar svg { width: 52mm; height: auto; max-width: none; }
+  .print-radar-legend { font-size: 6.5px; color: #64748b; margin: 0.5mm 0 0; }
+
   .print-cascade { display: flex; gap: 2mm; break-inside: avoid; }
   .print-cascade > div { flex: 1; border: 0.5px solid #cbd5e1; border-radius: 4px; padding: 1mm 1.5mm; font-size: 8px; color: #334155; }
   .print-cascade span { display: block; font-size: 6.5px; text-transform: uppercase; letter-spacing: 0.3px; color: #64748b; }

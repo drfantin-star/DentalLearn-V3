@@ -15,7 +15,7 @@ const AXES = [
   { key: 'bop', label: 'BOP' },
 ] as const;
 
-function Radar({ scores, objectif }: { scores: Record<string, number>; objectif: Record<string, number> }) {
+export function Radar({ scores, objectif }: { scores: Record<string, number>; objectif: Record<string, number> }) {
   const cx = 130, cy = 120, R = 88;
   const pt = (i: number, v: number) => {
     const a = (Math.PI * 2 * i) / 6 - Math.PI / 2;
