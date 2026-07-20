@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { useUser } from '@/lib/hooks/useUser'
 import { useLeaderboard } from '@/lib/hooks/useLeaderboard'
+import QrAppCard from '@/components/push/QrAppCard'
 import type { IntraRole } from '@/lib/auth/rbac'
 
 interface NavItem {
@@ -184,8 +185,14 @@ export default function SideNav() {
         )}
       </nav>
 
-      {/* Bloc utilisateur — ancre en bas (mt-auto) */}
-      <div className="mt-auto p-3">
+      {/* Carte QR permanente (desktop) : la SideNav est hidden lg:flex, donc
+          jamais rendue en mobile → QR desktop-only garanti. */}
+      <div className="mt-auto px-3 pt-3">
+        <QrAppCard />
+      </div>
+
+      {/* Bloc utilisateur — ancre en bas */}
+      <div className="p-3">
         <Link
           href="/profil"
           className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all"

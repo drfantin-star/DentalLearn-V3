@@ -9,7 +9,8 @@ import SophieBubble from '@/components/sophie/SophieBubble'
 import type { UserInterests } from '@/lib/supabase/types'
 import { useSaveInterests } from '@/lib/hooks/useSaveInterests'
 import { useUser } from '@/lib/hooks/useUser'
-import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { useNotificationOrchestrator } from '@/context/NotificationOrchestratorContext'
+import QrAppCard from '@/components/push/QrAppCard'
 import { createClient } from '@/lib/supabase/client'
 
 // ── Configuration des étapes ──────────────────────────────────────────
@@ -60,14 +61,16 @@ export default function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false)
   const [outro, setOutro] = useState(false)
 
-  // Abonnement push (déclenche le prompt de permission navigateur)
+  // Abonnement push via le provider unique (une seule registration SW). Sur
+  // desktop on ne déclenche AUCUN prompt (cf. §4.6) : la question y est
+  // purement déclarative et l'appareil reçoit le QR.
   const {
     isSupported: pushSupported,
     permission: pushPermission,
-    isSubscribed,
+    subscribed: isSubscribed,
     isLoading: pushLoading,
     subscribe,
-  } = usePushNotifications()
+  } = useNotificationOrchestrator()
 
   const handleEnablePush = useCallback(async () => {
     const ok = await subscribe()
@@ -107,6 +110,12 @@ export default function OnboardingPage() {
       try {
         const supabase = createClient()
         if (user) {
+          // Desktop (§4.6) : question déclarative → on écrit le consentement de
+          // compte sans jamais déclencher de prompt navigateur. Le device push
+          // se fera plus tard sur mobile (QR → soft-ask).
+          const isDesktop =
+            typeof window !== 'undefined' &&
+            window.matchMedia('(min-width: 1024px)').matches
           await supabase
             .from('user_notification_preferences')
             .upsert(
@@ -114,6 +123,7 @@ export default function OnboardingPage() {
                 user_id: user.id,
                 live_session_reminders: liveReminders,
                 formateur_publications: formateurPub,
+                ...(isDesktop ? { notifications_enabled: true } : {}),
               },
               { onConflict: 'user_id' }
             )
@@ -288,50 +298,59 @@ function NotifToggles({
 }: NotifTogglesProps) {
   return (
     <div className="flex flex-col gap-3">
-      {/* Activation en 1 tap : déclenche le prompt de permission navigateur */}
-      {pushSupported && pushPermission !== 'denied' && (
-        <button
-          type="button"
-          onClick={isSubscribed ? undefined : onEnablePush}
-          disabled={pushLoading || isSubscribed}
-          className="flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3.5 text-sm font-semibold transition active:scale-[0.99] disabled:cursor-default"
-          style={
-            isSubscribed
-              ? {
-                  background: 'rgba(0,188,212,0.10)',
-                  borderColor: 'rgba(0,188,212,0.35)',
-                  color: 'rgba(0,188,212,1)',
-                }
-              : {
-                  background: 'rgba(0,188,212,0.9)',
-                  borderColor: 'transparent',
-                  color: '#001014',
-                }
-          }
-        >
-          {pushLoading ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : isSubscribed ? (
-            <><Check className="h-5 w-5" /> Notifications activées</>
-          ) : (
-            <><Bell className="h-5 w-5" /> Activer les notifications</>
-          )}
-        </button>
-      )}
+      {/* Mobile uniquement : activation push en 1 tap (prompt navigateur).
+          Sur desktop on n'affiche jamais ce bouton (§4.6) → le QR ci-dessous
+          prend le relais. */}
+      <div className="flex flex-col gap-3 lg:hidden">
+        {pushSupported && pushPermission !== 'denied' && (
+          <button
+            type="button"
+            onClick={isSubscribed ? undefined : onEnablePush}
+            disabled={pushLoading || isSubscribed}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3.5 text-sm font-semibold transition active:scale-[0.99] disabled:cursor-default"
+            style={
+              isSubscribed
+                ? {
+                    background: 'rgba(0,188,212,0.10)',
+                    borderColor: 'rgba(0,188,212,0.35)',
+                    color: 'rgba(0,188,212,1)',
+                  }
+                : {
+                    background: 'rgba(0,188,212,0.9)',
+                    borderColor: 'transparent',
+                    color: '#001014',
+                  }
+            }
+          >
+            {pushLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : isSubscribed ? (
+              <><Check className="h-5 w-5" /> Notifications activées</>
+            ) : (
+              <><Bell className="h-5 w-5" /> Activer les notifications</>
+            )}
+          </button>
+        )}
 
-      {pushPermission === 'denied' && (
-        <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/60">
-          Les notifications sont bloquées par ton navigateur. Autorise-les dans ses
-          paramètres pour les recevoir.
-        </p>
-      )}
+        {pushPermission === 'denied' && (
+          <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/60">
+            Les notifications sont bloquées par ton navigateur. Autorise-les dans ses
+            paramètres pour les recevoir.
+          </p>
+        )}
 
-      {!pushSupported && (
-        <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/60">
-          Pour recevoir les notifications sur iPhone, ajoute d&apos;abord l&apos;app à
-          ton écran d&apos;accueil.
-        </p>
-      )}
+        {!pushSupported && (
+          <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/60">
+            Pour recevoir les notifications sur iPhone, ajoute d&apos;abord l&apos;app à
+            ton écran d&apos;accueil.
+          </p>
+        )}
+      </div>
+
+      {/* Desktop uniquement : QR vers app.certily.fr (jamais de prompt ici). */}
+      <div className="hidden lg:block">
+        <QrAppCard caption="Scanne pour installer Certily et recevoir tes rappels." />
+      </div>
 
       <ToggleRow
         label="Rappels sessions live"

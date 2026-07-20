@@ -7,10 +7,18 @@ import {
   triggerInstallPrompt,
   type BeforeInstallPromptEvent,
 } from '@/lib/pwa/installPrompt';
+import { useNotificationOrchestrator } from '@/context/NotificationOrchestratorContext';
 
 type BannerMode = 'safari' | 'chrome' | 'android' | null;
 
 export default function PWAInstallBanner() {
+  const {
+    softAskOpen,
+    canPush,
+    subscribed,
+    isTouchDevice,
+    prefs: pushPrefs,
+  } = useNotificationOrchestrator();
   const [showBanner, setShowBanner] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [mode, setMode] = useState<BannerMode>(null);
@@ -110,7 +118,20 @@ export default function PWAInstallBanner() {
     }
   };
 
-  if (!showBanner || !mode) return null;
+  // Priorité au soft-ask notifications : sur Android (où le push fonctionne
+  // sans installation), un soft-ask ouvert ou encore à afficher masque la
+  // bannière d'install (objectif secondaire). Sur iOS en navigateur, canPush
+  // est faux (standalone requis) → aucune suppression, la bannière d'install
+  // s'affiche normalement, ce qui est le bon ordre.
+  const suppressForSoftAsk =
+    softAskOpen ||
+    (canPush &&
+      !subscribed &&
+      isTouchDevice &&
+      pushPrefs !== null &&
+      pushPrefs.softask_shown_at === null);
+
+  if (!showBanner || !mode || suppressForSoftAsk) return null;
 
   return (
     <div

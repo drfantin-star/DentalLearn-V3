@@ -34,6 +34,7 @@ import CutoutCardRender from '@/components/home/CutoutCardRender'
 import SophieAutopilotCard from '@/components/sophie/SophieAutopilotCard'
 import PageContainer from '@/components/layout/PageContainer'
 import NotificationBell from '@/components/notifications/NotificationBell'
+import HomeDevicePushBanner from '@/components/push/HomeDevicePushBanner'
 import { useSignOut } from '@/lib/hooks/useSignOut'
 
 function formationToForYouItem(f: Formation): ForYouItem {
@@ -378,6 +379,9 @@ export default function HomePage() {
 
       <main className="min-h-screen" style={{ background: '#0F0F0F' }}>
        <PageContainer className="py-6 space-y-8">
+        {/* Rattrapage PC → mobile : cet appareil n'est pas abonné alors que la
+            préférence de compte dit oui (auto-gaté, mobile only). */}
+        <HomeDevicePushBanner />
         {/* Sophie / Quiz / Journal — 3 cartes uniformisees.
             Desktop (lg:) : grille 3 colonnes, hauteurs egales (auto-rows-fr +
             h-full des HomeFeedCard). Mobile inchange (pile verticale). */}

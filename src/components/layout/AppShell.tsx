@@ -9,6 +9,7 @@ import MiniPlayer from '@/components/MiniPlayer'
 import AudioQueuePlayer from '@/components/news/AudioQueuePlayer'
 import { useUser } from '@/lib/hooks/useUser'
 import { FocusModeProvider } from '@/context/FocusModeContext'
+import { NotificationOrchestratorProvider } from '@/context/NotificationOrchestratorContext'
 
 interface AppShellProps {
   children: React.ReactNode
@@ -57,15 +58,15 @@ export default function AppShell({
     (seg) => pathname === seg || pathname?.startsWith(`${seg}/`)
   )
 
-  if (isFullscreen) {
-    return (
-      <div className="min-h-screen" style={{ background: '#0F0F0F' }}>
-        {children}
-      </div>
-    )
-  }
-
-  return (
+  // Le provider push enveloppe les DEUX branches (plein écran et normal) : une
+  // seule instance (donc une seule registration SW + un seul fetch prefs) reste
+  // stable au travers du toggle fullscreen⇄normal. Il se charge lui-même de
+  // masquer le soft-ask sur les segments plein écran.
+  const inner = isFullscreen ? (
+    <div className="min-h-screen" style={{ background: '#0F0F0F' }}>
+      {children}
+    </div>
+  ) : (
     <FocusModeProvider>
       {/* Sous lg : DOM/rendu identique a avant (pb-28 pour la pilule mobile).
           A partir de lg : la SideNav fixe occupe la colonne de gauche (w-64) et
@@ -80,5 +81,9 @@ export default function AppShell({
         <BottomNav />
       </div>
     </FocusModeProvider>
+  )
+
+  return (
+    <NotificationOrchestratorProvider>{inner}</NotificationOrchestratorProvider>
   )
 }

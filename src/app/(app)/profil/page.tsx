@@ -4,13 +4,13 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import {
-  ChevronLeft, ChevronRight, Loader2, Briefcase, Building2,
+  ChevronLeft, ChevronRight, ChevronDown, Loader2, Briefcase, Building2,
   Shield, Presentation, BadgeCheck, Camera, Save, Lock, Eye, EyeOff,
   Bell, BellOff, Send, Mail, Calendar, CheckCircle, AlertCircle, Trash2, X, User, LogOut,
 } from 'lucide-react'
 import InterestsSection from '@/components/interests/InterestsSection'
 import CreateCabinetModal from '@/components/auth/CreateCabinetModal'
-import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { useNotificationOrchestrator } from '@/context/NotificationOrchestratorContext'
 import { Modal } from '@/components/ui/Modal'
 import Link from 'next/link'
 import type { IntraRole } from '@/lib/auth/rbac'
@@ -21,6 +21,57 @@ const TENANT_ADMIN_ROLES: ReadonlySet<IntraRole> = new Set<IntraRole>([
   'admin_rh',
   'admin_of',
 ])
+
+// Les 9 sous-préférences (après suppression de new_sequences), groupées en
+// 3 familles pour la modale « Personnaliser ».
+type PrefKey =
+  | 'daily_reminders'
+  | 'cp_reminders'
+  | 'autopilot_reminders'
+  | 'leaderboard_results'
+  | 'new_formations'
+  | 'weekly_journal'
+  | 'formateur_publications'
+  | 'new_tools'
+  | 'live_session_reminders'
+
+interface NotifFamily {
+  id: string
+  label: string
+  keys: { key: PrefKey; label: string; hint?: string }[]
+}
+
+const NOTIF_FAMILIES: NotifFamily[] = [
+  {
+    id: 'parcours',
+    label: 'Ton parcours',
+    keys: [
+      { key: 'daily_reminders', label: 'Rappel quotidien' },
+      { key: 'cp_reminders', label: 'Rappel certification' },
+      { key: 'autopilot_reminders', label: 'Plan mensuel Sophie' },
+      { key: 'leaderboard_results', label: 'Résultats du classement' },
+    ],
+  },
+  {
+    id: 'nouveautes',
+    label: 'Nouveautés',
+    keys: [
+      { key: 'new_formations', label: 'Nouvelles formations' },
+      { key: 'weekly_journal', label: 'Journal hebdomadaire' },
+      { key: 'formateur_publications', label: 'Publications des formateurs' },
+      {
+        key: 'new_tools',
+        label: 'Nouveaux outils',
+        hint: 'Être prévenu quand un nouvel outil arrive dans la boîte à outils.',
+      },
+    ],
+  },
+  {
+    id: 'direct',
+    label: 'En direct',
+    keys: [{ key: 'live_session_reminders', label: 'Sessions en direct' }],
+  },
+]
 
 export default function ProfilPage() {
   const router = useRouter()
@@ -60,15 +111,20 @@ export default function ProfilPage() {
   const [cpReminders, setCpReminders] = useState(true)
   const [autopilotReminders, setAutopilotReminders] = useState(true)
   const [newTools, setNewTools] = useState(true)
+  const [leaderboardResults, setLeaderboardResults] = useState(true)
   const [savingPrefs, setSavingPrefs] = useState(false)
+  const [showCustomize, setShowCustomize] = useState(false)
+  // Interrupteur push partagé via le provider unique (une seule registration SW,
+  // un seul état `subscribed`) plutôt qu'une instance propre à /profil.
   const {
     isSupported: pushSupported,
     permission: pushPermission,
-    isSubscribed,
+    subscribed: isSubscribed,
     isLoading: pushLoading,
     subscribe,
     unsubscribe,
-  } = usePushNotifications()
+    refresh: refreshOrchestrator,
+  } = useNotificationOrchestrator()
   const [testStatus, setTestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [testMessage, setTestMessage] = useState<string | null>(null)
 
@@ -114,7 +170,7 @@ export default function ProfilPage() {
 
       const { data: prefs } = await supabase
         .from('user_notification_preferences')
-        .select('notifications_enabled, daily_reminders, live_session_reminders, formateur_publications, weekly_journal, new_formations, cp_reminders, autopilot_reminders, new_tools')
+        .select('notifications_enabled, daily_reminders, live_session_reminders, formateur_publications, weekly_journal, new_formations, cp_reminders, autopilot_reminders, new_tools, leaderboard_results')
         .eq('user_id', session.user.id)
         .maybeSingle()
 
@@ -128,6 +184,7 @@ export default function ProfilPage() {
         if (prefs.cp_reminders != null) setCpReminders(prefs.cp_reminders)
         if (prefs.autopilot_reminders != null) setAutopilotReminders(prefs.autopilot_reminders)
         if (prefs.new_tools != null) setNewTools(prefs.new_tools)
+        if (prefs.leaderboard_results != null) setLeaderboardResults(prefs.leaderboard_results)
       }
 
       try {
@@ -257,32 +314,33 @@ export default function ProfilPage() {
     }
   }
 
-  const handleTogglePref = async (
-    key:
-      | 'notifications_enabled'
-      | 'daily_reminders'
-      | 'live_session_reminders'
-      | 'formateur_publications'
-      | 'weekly_journal'
-      | 'new_formations'
-      | 'cp_reminders'
-      | 'autopilot_reminders'
-      | 'new_tools',
-    value: boolean,
-  ) => {
+  // Valeurs courantes des 9 sous-préférences + leurs setters, indexés par clé.
+  const prefValues: Record<PrefKey, boolean> = {
+    daily_reminders: dailyReminders,
+    cp_reminders: cpReminders,
+    autopilot_reminders: autopilotReminders,
+    leaderboard_results: leaderboardResults,
+    new_formations: newFormations,
+    weekly_journal: weeklyJournal,
+    formateur_publications: formateurPublications,
+    new_tools: newTools,
+    live_session_reminders: liveSessionReminders,
+  }
+  const prefSetters: Record<PrefKey, (v: boolean) => void> = {
+    daily_reminders: setDailyReminders,
+    cp_reminders: setCpReminders,
+    autopilot_reminders: setAutopilotReminders,
+    leaderboard_results: setLeaderboardResults,
+    new_formations: setNewFormations,
+    weekly_journal: setWeeklyJournal,
+    formateur_publications: setFormateurPublications,
+    new_tools: setNewTools,
+    live_session_reminders: setLiveSessionReminders,
+  }
+
+  const handleTogglePref = async (key: PrefKey, value: boolean) => {
     if (!user) return
-    const setters: Record<typeof key, (v: boolean) => void> = {
-      notifications_enabled: setNotificationsEnabled,
-      daily_reminders: setDailyReminders,
-      live_session_reminders: setLiveSessionReminders,
-      formateur_publications: setFormateurPublications,
-      weekly_journal: setWeeklyJournal,
-      new_formations: setNewFormations,
-      cp_reminders: setCpReminders,
-      autopilot_reminders: setAutopilotReminders,
-      new_tools: setNewTools,
-    }
-    setters[key](value)
+    prefSetters[key](value)
     setSavingPrefs(true)
     try {
       await supabase
@@ -297,22 +355,40 @@ export default function ProfilPage() {
   // abonnement push de cet appareil (subscribe/unsubscribe).
   const masterOn = pushSupported ? (isSubscribed && notificationsEnabled) : notificationsEnabled
 
+  // Kill-switch de compte : notifications_enabled. Les colonnes individuelles
+  // ne sont jamais touchées → un retour de « coupure » retrouve la config
+  // exacte gratuitement (pas de snapshot nécessaire).
+  const writeMaster = async (value: boolean) => {
+    if (!user) return
+    setNotificationsEnabled(value)
+    setSavingPrefs(true)
+    try {
+      await supabase
+        .from('user_notification_preferences')
+        .upsert(
+          { user_id: user.id, notifications_enabled: value },
+          { onConflict: 'user_id' },
+        )
+    } finally {
+      setSavingPrefs(false)
+    }
+    await refreshOrchestrator()
+  }
+
   const handleToggleMaster = async () => {
     if (!user) return
     const target = !masterOn
-    if (pushSupported) {
-      if (target) {
+    if (target) {
+      // Sur appareil compatible, on tente l'abonnement d'abord : si la
+      // permission est refusée, on n'écrit pas le consentement.
+      if (pushSupported) {
         const ok = await subscribe()
-        // Permission refusée / erreur : on ne change pas le consentement,
-        // l'astuce d'aide s'affiche (permission === 'denied').
-        if (ok) await handleTogglePref('notifications_enabled', true)
-      } else {
-        await unsubscribe()
-        await handleTogglePref('notifications_enabled', false)
+        if (!ok) return
       }
+      await writeMaster(true)
     } else {
-      // Push non supporté sur cet appareil : on ne peut qu'écrire le consentement.
-      await handleTogglePref('notifications_enabled', target)
+      if (pushSupported) await unsubscribe()
+      await writeMaster(false)
     }
   }
 
@@ -694,107 +770,51 @@ export default function ProfilPage() {
               )}
             </div>
 
-            <div className={`space-y-3 pt-4 ${masterOn ? '' : 'opacity-40'}`} style={{ borderTop: '0.5px solid #333' }}>
-              <p className="text-xs font-medium text-white/55">Preferences de contenu</p>
+            {/* Personnaliser — replié par défaut, 3 familles visibles d'un coup */}
+            <div className={`border-t border-white/10 pt-4 ${masterOn ? '' : 'opacity-40'}`}>
               <button
-                onClick={() => { void handleTogglePref('daily_reminders', !dailyReminders) }}
-                disabled={savingPrefs || !masterOn}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
-                  dailyReminders
-                    ? 'bg-accent/10 text-accent border border-accent/20'
-                    : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={() => setShowCustomize((v) => !v)}
+                disabled={!masterOn}
+                className={`flex items-center justify-between gap-2 w-full text-left ${!masterOn ? 'cursor-not-allowed' : ''}`}
+                aria-expanded={showCustomize}
               >
-                <Bell className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Rappel quiz du jour</span>
+                <span className="text-sm font-semibold text-white/80">Personnaliser</span>
+                <ChevronDown
+                  className={`w-4 h-4 text-white/50 transition-transform ${showCustomize ? 'rotate-180' : ''}`}
+                />
               </button>
-              <button
-                onClick={() => { void handleTogglePref('live_session_reminders', !liveSessionReminders) }}
-                disabled={savingPrefs || !masterOn}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
-                  liveSessionReminders
-                    ? 'bg-accent/10 text-accent border border-accent/20'
-                    : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Bell className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Rappels sessions live</span>
-              </button>
-              <button
-                onClick={() => { void handleTogglePref('formateur_publications', !formateurPublications) }}
-                disabled={savingPrefs || !masterOn}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
-                  formateurPublications
-                    ? 'bg-accent/10 text-accent border border-accent/20'
-                    : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Bell className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Nouvelles publications formateurs</span>
-              </button>
-              <button
-                onClick={() => { void handleTogglePref('weekly_journal', !weeklyJournal) }}
-                disabled={savingPrefs || !masterOn}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
-                  weeklyJournal
-                    ? 'bg-accent/10 text-accent border border-accent/20'
-                    : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Bell className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Journal hebdo en ligne</span>
-              </button>
-              <button
-                onClick={() => { void handleTogglePref('new_formations', !newFormations) }}
-                disabled={savingPrefs || !masterOn}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
-                  newFormations
-                    ? 'bg-accent/10 text-accent border border-accent/20'
-                    : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Bell className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Nouvelle formation en ligne</span>
-              </button>
-              <button
-                onClick={() => { void handleTogglePref('cp_reminders', !cpReminders) }}
-                disabled={savingPrefs || !masterOn}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
-                  cpReminders
-                    ? 'bg-accent/10 text-accent border border-accent/20'
-                    : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Bell className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Rappel certification (auto-évaluation)</span>
-              </button>
-              <button
-                onClick={() => { void handleTogglePref('autopilot_reminders', !autopilotReminders) }}
-                disabled={savingPrefs || !masterOn}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
-                  autopilotReminders
-                    ? 'bg-accent/10 text-accent border border-accent/20'
-                    : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Bell className="w-5 h-5 shrink-0" />
-                <span className="text-sm">Plan mensuel Sophie</span>
-              </button>
-              <button
-                onClick={() => { void handleTogglePref('new_tools', !newTools) }}
-                disabled={savingPrefs || !masterOn}
-                className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
-                  newTools
-                    ? 'bg-accent/10 text-accent border border-accent/20'
-                    : 'bg-white/5 text-white/70 hover:bg-white/10'
-                } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <Bell className="w-5 h-5 shrink-0" />
-                <div className="flex-1 text-left">
-                  <div className="text-sm">Nouveaux outils</div>
-                  <div className="text-xs opacity-60 font-normal">Être prévenu quand un nouvel outil arrive dans la boîte à outils.</div>
+
+              {showCustomize && (
+                <div className="mt-4 space-y-5">
+                  {NOTIF_FAMILIES.map((family) => (
+                    <div key={family.id} className="space-y-2">
+                      <p className="text-xs font-medium text-white/55">{family.label}</p>
+                      {family.keys.map(({ key, label, hint }) => (
+                        <button
+                          key={key}
+                          onClick={() => { void handleTogglePref(key, !prefValues[key]) }}
+                          disabled={savingPrefs || !masterOn}
+                          className={`flex items-center gap-2 px-4 py-3 rounded-xl transition-all font-medium w-full text-left ${
+                            prefValues[key]
+                              ? 'bg-accent/10 text-accent border border-accent/20'
+                              : 'bg-white/5 text-white/70 hover:bg-white/10'
+                          } ${savingPrefs || !masterOn ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        >
+                          <Bell className="w-5 h-5 shrink-0" />
+                          {hint ? (
+                            <div className="flex-1 text-left">
+                              <div className="text-sm">{label}</div>
+                              <div className="text-xs opacity-60 font-normal">{hint}</div>
+                            </div>
+                          ) : (
+                            <span className="text-sm">{label}</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
                 </div>
-              </button>
+              )}
             </div>
           </div>
 
