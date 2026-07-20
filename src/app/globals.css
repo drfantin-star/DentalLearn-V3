@@ -61,6 +61,36 @@ body {
   --color-bottomnav: #1a1a1a;
 }
 
+/*
+ * Contrôles de formulaire — couleur de texte pilotée par `color-scheme`.
+ * ---------------------------------------------------------------------
+ * Bug récurrent (résolu ici à la racine) : le body impose
+ * `color: #e5e5e5` + `color-scheme: dark`, et le preflight Tailwind force
+ * `color: inherit` sur input/textarea/select. Résultat : dans les zones à
+ * thème clair (admin, formateur, cs, Boîte à outils — qui posent toutes
+ * `color-scheme: light`), le texte des champs restait gris clair, illisible
+ * sur fond blanc. `color-scheme: light` seul ne suffit PAS : il ne pilote que
+ * l'apparence native du widget, pas la couleur héritée du texte.
+ *
+ * `light-dark()` résout la couleur selon le `color-scheme` effectif (propriété
+ * héritée) : texte sombre en zone claire, texte clair en zone sombre — donc
+ * chaque contexte est correct automatiquement, sans surcharge champ par champ.
+ * Les utilitaires Tailwind (`text-gray-900`, `text-white`…) restent
+ * prioritaires quand un champ veut fixer sa couleur explicitement.
+ * Navigateurs sans `light-dark()` : la déclaration est ignorée → on retombe
+ * sur l'ancien comportement, aucune régression.
+ */
+input,
+textarea,
+select {
+  color: light-dark(#111827, var(--color-text-primary));
+}
+input::placeholder,
+textarea::placeholder {
+  color: light-dark(#6b7280, var(--color-text-muted));
+  opacity: 1; /* Firefox applique une opacité < 1 par défaut sur ::placeholder */
+}
+
 /* Hide scrollbar but keep functionality */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

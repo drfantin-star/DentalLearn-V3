@@ -172,7 +172,7 @@ export default function PromoteFormateurPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="ex : Dupont, marie, exemple@dentalschool.fr"
             autoFocus
-            className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+            className="w-full border border-gray-300 rounded-lg pl-10 pr-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
         {tooShort && (
