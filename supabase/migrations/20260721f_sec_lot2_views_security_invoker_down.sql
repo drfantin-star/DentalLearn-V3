@@ -1,6 +1,6 @@
--- Nom du fichier : 20260721b_sec_lot2_views_security_invoker_down.sql
+-- Nom du fichier : 20260721f_sec_lot2_views_security_invoker_down.sql
 -- Date de création : 2026-07-21
--- Rollback de : 20260721b_sec_lot2_views_security_invoker.sql (BRIEF 2 — LOT 2)
+-- Rollback de : 20260721f_sec_lot2_views_security_invoker.sql (BRIEF 2 — LOT 2)
 -- Retire la reloption security_invoker sur les 6 vues → retour exact à l'état
 -- d'origine (reloptions = NULL, exécution SECURITY DEFINER par défaut).
 -- Aucune définition de vue n'est touchée.

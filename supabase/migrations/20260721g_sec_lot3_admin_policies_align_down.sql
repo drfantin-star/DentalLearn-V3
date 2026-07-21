@@ -1,6 +1,6 @@
--- Nom du fichier : 20260721c_sec_lot3_admin_policies_align_down.sql
+-- Nom du fichier : 20260721g_sec_lot3_admin_policies_align_down.sql
 -- Date de création : 2026-07-21
--- Rollback de : 20260721c_sec_lot3_admin_policies_align.sql (BRIEF 2 — LOT 3)
+-- Rollback de : 20260721g_sec_lot3_admin_policies_align.sql (BRIEF 2 — LOT 3)
 -- Restaure les 3 policies « manage » dans leur définition d'origine exacte
 -- (mécanismes profiles.role='admin' et UUID codé en dur ; WITH CHECK vide).
 

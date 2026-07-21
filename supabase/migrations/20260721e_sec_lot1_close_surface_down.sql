@@ -1,6 +1,6 @@
--- Nom du fichier : 20260721a_sec_lot1_close_surface_down.sql
+-- Nom du fichier : 20260721e_sec_lot1_close_surface_down.sql
 -- Date de création : 2026-07-21
--- Rollback de : 20260721a_sec_lot1_close_surface.sql (BRIEF 2 — LOT 1)
+-- Rollback de : 20260721e_sec_lot1_close_surface.sql (BRIEF 2 — LOT 1)
 -- Restaure exactement l'état antérieur (grants EXECUTE, 6 policies SELECT
 -- storage.objects, RLS désactivée sur les 2 tables).
 

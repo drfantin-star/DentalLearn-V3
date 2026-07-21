@@ -1,4 +1,4 @@
--- Nom du fichier : 20260721b_sec_lot2_views_security_invoker.sql
+-- Nom du fichier : 20260721f_sec_lot2_views_security_invoker.sql
 -- Date de création : 2026-07-21
 -- Ticket : Durcissement sécurité BRIEF 2 — LOT 2 (vues en mode INVOKER)
 -- Description : Bascule 6 vues du schéma public de SECURITY DEFINER (défaut,
@@ -21,7 +21,7 @@
 --     cp_actions}. Les lectures serveur en service_role ne sont pas affectées
 --     (service_role n'est pas soumis à la RLS).
 --
--- Rollback : supabase/migrations/20260721b_sec_lot2_views_security_invoker_down.sql
+-- Rollback : supabase/migrations/20260721f_sec_lot2_views_security_invoker_down.sql
 --
 -- Décisions Julie respectées : aucune vue supprimée ; définition de
 -- cp_user_progress non touchée.

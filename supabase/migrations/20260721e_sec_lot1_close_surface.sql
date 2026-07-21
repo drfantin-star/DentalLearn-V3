@@ -1,4 +1,4 @@
--- Nom du fichier : 20260721a_sec_lot1_close_surface.sql
+-- Nom du fichier : 20260721e_sec_lot1_close_surface.sql
 -- Date de création : 2026-07-21
 -- Ticket : Durcissement sécurité BRIEF 2 — LOT 1 (fermetures, risque nul)
 -- Description : Réduit la surface d'exposition publique sans changer aucun
@@ -11,7 +11,7 @@
 --        par URL /object/public/... reste intact (buckets public = true).
 --   1.3  Active la RLS (deny-by-default, aucune policy) sur 2 tables écrites
 --        exclusivement par des Edge Functions en service_role.
--- Rollback : supabase/migrations/20260721a_sec_lot1_close_surface_down.sql
+-- Rollback : supabase/migrations/20260721e_sec_lot1_close_surface_down.sql
 --
 -- NOTE destructive : DROP POLICY (1.2) — signalé et validé dans le brief.
 

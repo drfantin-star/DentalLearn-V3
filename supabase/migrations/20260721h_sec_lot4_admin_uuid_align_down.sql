@@ -1,6 +1,6 @@
--- Nom du fichier : 20260721d_sec_lot4_admin_uuid_align_down.sql
+-- Nom du fichier : 20260721h_sec_lot4_admin_uuid_align_down.sql
 -- Date de création : 2026-07-21
--- Rollback de : 20260721d_sec_lot4_admin_uuid_align.sql (LOT 4)
+-- Rollback de : 20260721h_sec_lot4_admin_uuid_align.sql (LOT 4)
 -- Restaure les 4 policies dans leur définition d'origine exacte
 -- (UUID codé en dur, WITH CHECK vide, cmd et rôles identiques).
 

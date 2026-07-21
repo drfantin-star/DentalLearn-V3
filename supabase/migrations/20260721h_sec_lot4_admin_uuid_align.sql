@@ -1,4 +1,4 @@
--- Nom du fichier : 20260721d_sec_lot4_admin_uuid_align.sql
+-- Nom du fichier : 20260721h_sec_lot4_admin_uuid_align.sql
 -- Date de création : 2026-07-21
 -- Ticket : Durcissement sécurité — LOT 4 (suite BRIEF 2 / LOT 3)
 -- Description : Recrée les 4 dernières policies admin qui codaient en dur l'UUID
@@ -22,7 +22,7 @@
 --     - user_attestations."Users can view/insert/delete own attestations"
 --     - epp_improvement_suggestions."Users can read suggestions"
 --
--- Rollback : supabase/migrations/20260721d_sec_lot4_admin_uuid_align_down.sql
+-- Rollback : supabase/migrations/20260721h_sec_lot4_admin_uuid_align_down.sql
 
 -- complaints — SELECT ---------------------------------------------------------
 DROP POLICY IF EXISTS "Admins can view all complaints" ON public.complaints;
