@@ -160,19 +160,30 @@ export default function SequenceDetailPage() {
 
     setDeleting(questionId);
 
-    const { error } = await supabase
-      .from('questions')
-      .delete()
-      .eq('id', questionId);
+    // La table `questions` est en lecture seule cote navigateur (policy SELECT
+    // uniquement). La suppression doit passer par la route serveur qui utilise
+    // la cle service_role, comme l'editeur principal. On ne retire la question
+    // du state que si l'API confirme le succes.
+    try {
+      const response = await fetch(`/api/admin/questions/${questionId}`, {
+        method: 'DELETE',
+      });
 
-    if (error) {
-      console.error('Erreur suppression:', error);
-      alert('Erreur lors de la suppression');
-    } else {
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message = data?.error || `${response.status} ${response.statusText}`;
+        console.error('Erreur suppression:', message);
+        alert(`Erreur lors de la suppression : ${message}`);
+        return;
+      }
+
       setQuestions(questions.filter(q => q.id !== questionId));
+    } catch (err) {
+      console.error('Erreur suppression:', err);
+      alert('Erreur lors de la suppression');
+    } finally {
+      setDeleting(null);
     }
-
-    setDeleting(null);
   }
 
   async function handleSaveMedia() {
