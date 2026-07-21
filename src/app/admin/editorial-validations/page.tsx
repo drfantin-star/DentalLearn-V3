@@ -13,6 +13,7 @@ import {
   ListChecks,
   Newspaper,
   BookOpen,
+  FlaskConical,
 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -97,6 +98,14 @@ function TypeBadge({ type }: { type: EditorialContentType }) {
       </span>
     )
   }
+  if (type === 'news_synthesis') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-sky-100 text-sky-700">
+        <FlaskConical size={11} />
+        Synthèse
+      </span>
+    )
+  }
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-orange-100 text-orange-700">
       <Newspaper size={11} />
@@ -123,8 +132,13 @@ export default function AdminEditorialValidationsPage() {
 
   // Le filtre Publication ne s'applique qu'aux news : on le reset si on passe
   // sur l'onglet Formations.
+  // Le filtre Publication ne concerne que les épisodes news (draft/publié).
+  // On le reset sur les onglets Formations et Synthèses (vocabulaire distinct).
   useEffect(() => {
-    if (tab === 'formation' && publishStatusFilter !== 'all') {
+    if (
+      (tab === 'formation' || tab === 'news_synthesis') &&
+      publishStatusFilter !== 'all'
+    ) {
       setPublishStatusFilter('all')
     }
   }, [tab, publishStatusFilter])
@@ -190,15 +204,25 @@ export default function AdminEditorialValidationsPage() {
     let valid = 0
     let formations = 0
     let episodes = 0
+    let syntheses = 0
     for (const c of candidates) {
       const k = candidateStatusKey(c)
       if (k === 'unvalidated') unvalidated++
       else if (k === 'stale') stale++
       else valid++
       if (c.content_type === 'formation') formations++
+      else if (c.content_type === 'news_synthesis') syntheses++
       else episodes++
     }
-    return { unvalidated, stale, valid, formations, episodes, total: candidates.length }
+    return {
+      unvalidated,
+      stale,
+      valid,
+      formations,
+      episodes,
+      syntheses,
+      total: candidates.length,
+    }
   }, [candidates])
 
   const activeLead = useMemo(() => leads.find((m) => m.is_lead), [leads])
@@ -261,6 +285,7 @@ export default function AdminEditorialValidationsPage() {
             { key: 'all' as const, label: `Tous (${counts.total})` },
             { key: 'formation' as const, label: `Formations (${counts.formations})` },
             { key: 'news_episode' as const, label: `News (${counts.episodes})` },
+            { key: 'news_synthesis' as const, label: `Synthèses (${counts.syntheses})` },
           ].map((t) => (
             <button
               key={t.key}
@@ -300,7 +325,7 @@ export default function AdminEditorialValidationsPage() {
           ))}
         </div>
 
-        {tab !== 'formation' && (
+        {(tab === 'all' || tab === 'news_episode') && (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-semibold text-gray-700 mr-1">Publication :</span>
             {[

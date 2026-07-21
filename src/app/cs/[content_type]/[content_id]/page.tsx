@@ -103,6 +103,21 @@ export default async function CsValidationPage({
             </div>
           )}
 
+          {preview.fields && preview.fields.length > 0 && (
+            <div className="space-y-4 mb-4">
+              {preview.fields.map((f) => (
+                <div key={f.label}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">
+                    {f.label}
+                  </p>
+                  <p className="text-sm text-gray-700 whitespace-pre-line">
+                    {f.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="mt-6 pt-4 border-t border-gray-100">
             <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 mb-1">
               Empreinte cryptographique du contenu
