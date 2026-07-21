@@ -263,6 +263,14 @@ interface NewsEpisodeRow {
   status: string
 }
 
+// Ligne renvoyée par la RPC `get_syntheses_for_validation` (8A) — on ne garde
+// ici que les colonnes utiles à la liste des candidats.
+interface SynthesisRow {
+  id: string
+  display_title: string | null
+  specialite: string | null
+}
+
 function statusOrderKey(c: ValidationCandidate): number {
   // 0 : non validé · 1 : stale · 2 : validé à jour
   if (!c.current_validation_id) return 0
@@ -286,6 +294,7 @@ export function useValidationCandidates(
       // 1. Récupère les contenus bruts en parallèle
       const wantFormations = !contentType || contentType === 'formation'
       const wantEpisodes = !contentType || contentType === 'news_episode'
+      const wantSyntheses = !contentType || contentType === 'news_synthesis'
 
       const formationsPromise: Promise<{ data: FormationRow[]; error: any }> =
         wantFormations
@@ -316,15 +325,30 @@ export function useValidationCandidates(
             })()
           : Promise.resolve({ data: [] as NewsEpisodeRow[], error: null })
 
-      const [formationsRes, episodesRes] = await Promise.all([
+      // Synthèses : pas de SELECT client possible (8A) → RPC SECURITY DEFINER.
+      const synthesesPromise: Promise<{ data: SynthesisRow[]; error: any }> =
+        wantSyntheses
+          ? (async () => {
+              const res = await supabase.rpc('get_syntheses_for_validation')
+              return {
+                data: (res.data || []) as SynthesisRow[],
+                error: res.error,
+              }
+            })()
+          : Promise.resolve({ data: [] as SynthesisRow[], error: null })
+
+      const [formationsRes, episodesRes, synthesesRes] = await Promise.all([
         formationsPromise,
         episodesPromise,
+        synthesesPromise,
       ])
       if (formationsRes.error) throw formationsRes.error
       if (episodesRes.error) throw episodesRes.error
+      if (synthesesRes.error) throw synthesesRes.error
 
       const formationRows = formationsRes.data
       const episodeRows = episodesRes.data
+      const synthesisRows = synthesesRes.data
 
       // 2. Pour chaque ligne, appel get_validation_status en parallèle
       type StatusEntry = {
@@ -373,6 +397,26 @@ export function useValidationCandidates(
               title: e.title,
               episode_type: e.type,
               episode_status: e.status,
+              status:
+                Array.isArray(res.data) && res.data.length > 0
+                  ? (res.data[0] as ValidationStatus)
+                  : null,
+            }
+          })()
+        )
+      }
+
+      for (const s of synthesisRows) {
+        statusPromises.push(
+          (async (): Promise<StatusEntry> => {
+            const res = await supabase.rpc('get_validation_status', {
+              p_content_type: 'news_synthesis',
+              p_content_id: s.id,
+            })
+            return {
+              type: 'news_synthesis',
+              id: s.id,
+              title: s.display_title ?? 'Sans titre',
               status:
                 Array.isArray(res.data) && res.data.length > 0
                   ? (res.data[0] as ValidationStatus)

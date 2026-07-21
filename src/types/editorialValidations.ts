@@ -1,6 +1,6 @@
 // Types Ticket E — système de validation éditoriale (Qualiopi #21 + IA Act §50.4)
 
-export type EditorialContentType = 'formation' | 'news_episode'
+export type EditorialContentType = 'formation' | 'news_episode' | 'news_synthesis'
 
 export interface CsMember {
   id: string

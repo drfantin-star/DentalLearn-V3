@@ -4,7 +4,7 @@
 **Demandeur :** Dr Julie Fantin
 **Branche de session :** `claude/audit-cs-validations-etipt2`
 **Projet Supabase :** `dxybsuhfkwuemapqrvgz` (DentalLearn)
-**État :** 🛑 **POINT D'ARRÊT ÉTAPE 5 atteint.** SQL livré et appliqué. **Front NON démarré** — en attente du feu vert de Julie, en particulier sur la vérification 4 (stabilité du hash).
+**État :** ✅ **Étapes 1 → 7 livrées.** SQL appliqué (migration + backfill 623), 6 vérifications OK, **feu vert donné par Julie** sur la vérification 4, puis **front admin + `/cs` livré** et **build vert**. Badge praticien toujours hors périmètre (passe ultérieure).
 
 ---
 
@@ -71,21 +71,55 @@ volontairement** si des validations `news_synthesis` hors backfill subsistent
 lignes comme spécifié ; un balayage exhaustif des 623 peut être lancé à la
 demande si Julie souhaite une garantie sur la totalité.)*
 
+## Étape 6 — Front (livré après feu vert)
+
+Aucun badge praticien (`NewsModal`, `NewsRecapCard`, `NewsCardItem` non touchés).
+Fichiers protégés (`AudioContext.tsx`, `hooks.ts`) non touchés.
+
+- **Types**
+  - `src/types/editorialValidations.ts` — `EditorialContentType` +`'news_synthesis'`.
+  - `src/lib/cs/data.ts` — `CsContentType`, `CS_CONTENT_TYPES`, `contentTypeLabel()`
+    (switch, libellé « Synthèse ») ; `ContentPreview.fields?` (blocs structurés) ;
+    type `SynthesisRow`.
+- **Hook** `src/lib/hooks/useEditorialValidations.ts` — `useValidationCandidates` :
+  3e source appelant la RPC `get_syntheses_for_validation()` (pas de SELECT
+  client), puis `get_validation_status` par ligne, comme les autres types.
+- **Page** `src/app/admin/editorial-validations/page.tsx` — onglet « Synthèses »
+  + compteur ; `TypeBadge` variante synthèse (tokens Tailwind `bg-sky-100`,
+  icône `FlaskConical`, aucun hex) ; compteurs à trois voies ; filtre
+  « Publication » masqué et reset sur l'onglet Synthèses.
+- **Espace `/cs`** `src/lib/cs/data.ts` — `getValidationQueue` (3e source RPC),
+  `getContentPreview` (branche `news_synthesis` : résumé, méthode, chiffres clés,
+  niveau de preuve, impact clinique, limites), `getMyValidations` (titres de
+  synthèses via RPC). `src/app/cs/[content_type]/[content_id]/page.tsx` — rendu
+  des blocs `fields`.
+
+## Étape 7 — Build & remise
+
+`npx next build` → **vert** (`✓ Compiled successfully`, 69/69 pages, exit 0).
+`.env.local` (variables publiques) et `package-lock.json` non committés.
+Commit poussé sur la branche de session. **Aucune PR** (Julie la crée).
+
 ## Dette loggée
 
-- **Front en attente** (Étape 6, non démarré) : types (`EditorialContentType`,
-  `CsContentType`), hook `useValidationCandidates` (3e source via la RPC), page
-  `/admin/editorial-validations` (onglet + badge + masquage filtre Publication),
-  espace `/cs` (`getValidationQueue` / `getContentPreview` / `getMyValidations`).
 - **Badge praticien** hors périmètre de cette migration (passe ultérieure) :
   `NewsModal`, `NewsRecapCard`, `NewsCardItem` non touchés.
 - **Backfill mono-lot** : les 623 ont été insérés en une transaction (arbitrage
   12A `INSERT ... SELECT`, sans contrainte IDLE_TIMEOUT côté RPC SQL). Passé sans
   incident.
+- **Validation « en bloc » admin (`validate_content_bulk`)** : ne traite que
+  `formation`/`news_episode` (inchangée, hors périmètre). Les synthèses non
+  validées ne seraient donc pas prises par ce bouton — sans impact aujourd'hui
+  (les 623 sont validées par le backfill). À étendre si un flux de validation
+  bulk des synthèses devient nécessaire.
+- **`getContentPreview`/`getMyValidations` synthèses** : lisent via la RPC qui
+  renvoie toutes les synthèses actives puis filtrent côté serveur (pas de variante
+  par-id). Coût acceptable ; une RPC `get_synthesis_for_validation(uuid)` par-id
+  serait une optimisation ultérieure.
 
 ## Prochaine étape
 
-1. **Feu vert de Julie** sur les 6 vérifications (surtout la #4).
-2. Étape 6 — front admin + `/cs` (aucun badge praticien).
-3. Étape 7 — `npx next build`, commit, push. Pas de PR.
-4. Passe ultérieure — **badge praticien** « Synthèse validée » sur les actus.
+1. Validation de Julie sur la **preview Vercel** (admin `/admin/editorial-validations`
+   onglet Synthèses + espace `/cs`), puis création manuelle de la **PR**.
+2. Passe ultérieure — **badge praticien** « Synthèse validée » sur les actus
+   (`NewsModal` / cartes), branché sur `useValidationStatus('news_synthesis', id)`.

@@ -15,16 +15,27 @@ import { createClient } from '@/lib/supabase/server'
  * `cs_members.id` (FK), pas `auth.uid()`.
  */
 
-export type CsContentType = 'formation' | 'news_episode'
+export type CsContentType = 'formation' | 'news_episode' | 'news_synthesis'
 
-export const CS_CONTENT_TYPES: CsContentType[] = ['formation', 'news_episode']
+export const CS_CONTENT_TYPES: CsContentType[] = [
+  'formation',
+  'news_episode',
+  'news_synthesis',
+]
 
 export function isCsContentType(v: string): v is CsContentType {
   return (CS_CONTENT_TYPES as string[]).includes(v)
 }
 
 export function contentTypeLabel(t: CsContentType): string {
-  return t === 'formation' ? 'Formation' : 'Actu (épisode)'
+  switch (t) {
+    case 'formation':
+      return 'Formation'
+    case 'news_episode':
+      return 'Actu (épisode)'
+    case 'news_synthesis':
+      return 'Synthèse'
+  }
 }
 
 export interface QueueItem {
@@ -52,6 +63,26 @@ export interface ContentPreview {
   content_hash: string | null
   meta: string[]
   sections: string[]
+  // Blocs structurés (label + texte long) — utilisés pour le noyau
+  // scientifique d'une synthèse ; vide pour formation/épisode.
+  fields?: { label: string; value: string }[]
+}
+
+/**
+ * Forme d'une ligne renvoyée par la RPC `get_syntheses_for_validation`
+ * (canal de lecture des synthèses, arbitrage 8A — colonnes sûres uniquement).
+ */
+interface SynthesisRow {
+  id: string
+  display_title: string | null
+  summary_fr: string | null
+  method: string | null
+  key_figures: string[] | null
+  evidence_level: string | null
+  clinical_impact: string | null
+  caveats: string | null
+  specialite: string | null
+  published_at: string | null
 }
 
 export interface MyValidationRow {
@@ -134,20 +165,24 @@ export async function getValidationStatus(
 export async function getValidationQueue(): Promise<QueueItem[]> {
   const supabase = await createClient()
 
-  const [formationsRes, episodesRes, currentRes] = await Promise.all([
-    supabase
-      .from('formations')
-      .select('id, title, created_at')
-      .eq('is_published', true),
-    supabase
-      .from('news_episodes')
-      .select('id, title, published_at, created_at')
-      .eq('status', 'published'),
-    supabase
-      .from('editorial_validations')
-      .select('content_type, content_id')
-      .eq('is_current', true),
-  ])
+  const [formationsRes, episodesRes, synthesesRes, currentRes] =
+    await Promise.all([
+      supabase
+        .from('formations')
+        .select('id, title, created_at')
+        .eq('is_published', true),
+      supabase
+        .from('news_episodes')
+        .select('id, title, published_at, created_at')
+        .eq('status', 'published'),
+      // Synthèses : pas de SELECT client possible (arbitrage 8A) → RPC
+      // SECURITY DEFINER à colonnes sûres.
+      supabase.rpc('get_syntheses_for_validation'),
+      supabase
+        .from('editorial_validations')
+        .select('content_type, content_id')
+        .eq('is_current', true),
+    ])
 
   const validated = new Set<string>(
     (currentRes.data ?? []).map(
@@ -179,6 +214,17 @@ export async function getValidationQueue(): Promise<QueueItem[]> {
         (e.published_at as string | null) ??
         (e.created_at as string | null) ??
         null,
+    })
+  }
+
+  for (const s of (synthesesRes.data ?? []) as SynthesisRow[]) {
+    const key = `news_synthesis:${s.id}`
+    if (validated.has(key)) continue
+    items.push({
+      content_type: 'news_synthesis',
+      content_id: s.id,
+      title: s.display_title ?? 'Sans titre',
+      published_at: s.published_at ?? null,
     })
   }
 
@@ -236,6 +282,39 @@ export async function getContentPreview(
     }
   }
 
+  if (contentType === 'news_synthesis') {
+    // Pas de SELECT client sur news_syntheses (8A) : on lit via la RPC et on
+    // isole la ligne demandée. La RPC ne renvoie que les synthèses actives.
+    const { data: rows } = await supabase.rpc('get_syntheses_for_validation')
+    const s = ((rows ?? []) as SynthesisRow[]).find((r) => r.id === contentId)
+    if (!s) return null
+
+    const meta: string[] = []
+    if (s.specialite) meta.push(`Spécialité : ${s.specialite}`)
+    if (s.evidence_level) meta.push(`Niveau de preuve : ${s.evidence_level}`)
+    if (s.published_at) meta.push(`Publié le ${formatDateFr(s.published_at)}`)
+
+    const fields: { label: string; value: string }[] = []
+    if (s.summary_fr) fields.push({ label: 'Résumé', value: s.summary_fr })
+    if (s.method) fields.push({ label: 'Méthode', value: s.method })
+    if (s.key_figures && s.key_figures.length > 0) {
+      fields.push({ label: 'Chiffres clés', value: s.key_figures.join('\n') })
+    }
+    if (s.clinical_impact) {
+      fields.push({ label: 'Impact clinique', value: s.clinical_impact })
+    }
+    if (s.caveats) fields.push({ label: 'Limites', value: s.caveats })
+
+    return {
+      title: s.display_title ?? 'Sans titre',
+      content_type: contentType,
+      content_hash,
+      meta,
+      sections: [],
+      fields,
+    }
+  }
+
   // news_episode
   const { data: e } = await supabase
     .from('news_episodes')
@@ -283,20 +362,35 @@ export async function getMyValidations(
   const episodeIds = list
     .filter((r) => r.content_type === 'news_episode')
     .map((r) => r.content_id as string)
+  const synthesisIds = new Set(
+    list
+      .filter((r) => r.content_type === 'news_synthesis')
+      .map((r) => r.content_id as string)
+  )
 
   const titles = new Map<string, string>()
-  const [fTitles, eTitles] = await Promise.all([
+  const [fTitles, eTitles, sRows] = await Promise.all([
     formationIds.length
       ? supabase.from('formations').select('id, title').in('id', formationIds)
       : Promise.resolve({ data: [] as { id: string; title: string }[] }),
     episodeIds.length
       ? supabase.from('news_episodes').select('id, title').in('id', episodeIds)
       : Promise.resolve({ data: [] as { id: string; title: string }[] }),
+    // Titres de synthèses via la RPC (pas de SELECT client — 8A). La RPC ne
+    // renvoie que les synthèses actives ; une synthèse supprimée retombera
+    // sur le libellé « (contenu supprimé) ».
+    synthesisIds.size
+      ? supabase.rpc('get_syntheses_for_validation')
+      : Promise.resolve({ data: [] as SynthesisRow[] }),
   ])
   for (const f of fTitles.data ?? [])
     titles.set(`formation:${f.id}`, (f.title as string) ?? 'Sans titre')
   for (const e of eTitles.data ?? [])
     titles.set(`news_episode:${e.id}`, (e.title as string) ?? 'Sans titre')
+  for (const s of (sRows.data ?? []) as SynthesisRow[]) {
+    if (!synthesisIds.has(s.id)) continue
+    titles.set(`news_synthesis:${s.id}`, s.display_title ?? 'Sans titre')
+  }
 
   // Péremption : l'empreinte stockée correspond-elle encore au contenu live ?
   const staleFlags = await Promise.all(
