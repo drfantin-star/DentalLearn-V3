@@ -135,6 +135,7 @@ async function run(notificationIds: string[]): Promise<RunResult> {
     });
 
     let pushOk = false;
+    const expiredEndpoints: string[] = [];
     for (const sub of subs) {
       try {
         await webpush.sendNotification(
@@ -144,7 +145,38 @@ async function run(notificationIds: string[]): Promise<RunResult> {
         pushOk = true;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        logger.error("push_failed", { notification_id: n.id, user_id: n.user_id, error: msg });
+        // Endpoint mort (navigateur desinstalle / abonnement expire) : web-push
+        // remonte statusCode 404/410. Meme critere que les routes Next d'envoi
+        // (src/lib/push/webpush.ts). On ne purge PAS sur les autres erreurs
+        // (timeout, 5xx transitoire).
+        const statusCode = (err as { statusCode?: number } | null)?.statusCode;
+        if (statusCode === 404 || statusCode === 410) {
+          expiredEndpoints.push(sub.endpoint);
+        }
+        logger.error("push_failed", {
+          notification_id: n.id,
+          user_id: n.user_id,
+          error: msg,
+          status_code: statusCode ?? null,
+        });
+      }
+    }
+
+    // Purge des abonnements expires : meme client service_role, matching par
+    // endpoint (aligne sur daily-reminder/route.ts).
+    if (expiredEndpoints.length > 0) {
+      const { error: delErr } = await supabase
+        .from("push_subscriptions")
+        .delete()
+        .in("endpoint", expiredEndpoints);
+      if (delErr) {
+        logger.error("purge_expired_failed", {
+          user_id: n.user_id,
+          error: delErr.message,
+          count: expiredEndpoints.length,
+        });
+      } else {
+        logger.info("purge_expired", { user_id: n.user_id, count: expiredEndpoints.length });
       }
     }
 
