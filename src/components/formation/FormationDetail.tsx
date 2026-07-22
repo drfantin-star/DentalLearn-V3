@@ -526,7 +526,9 @@ export default function FormationDetail({
 
                   {needsRemediation && (
                     <p className="text-[11px] text-amber-400 mb-2 px-1 leading-snug">
-                      Réussis les questions ratées pour débloquer le bloc suivant
+                      {b!.failed_questions === 1
+                        ? '1 question à revoir — à rejouer en fin de bloc pour débloquer le suivant'
+                        : `${b!.failed_questions} questions à revoir — à rejouer en fin de bloc pour débloquer le suivant`}
                     </p>
                   )}
 
