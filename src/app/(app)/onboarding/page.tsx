@@ -2,14 +2,13 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Bell, Check } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import InterestChips from '@/components/interests/InterestChips'
 import type { InterestSection } from '@/components/interests/InterestChips'
 import SophieBubble from '@/components/sophie/SophieBubble'
 import type { UserInterests } from '@/lib/supabase/types'
 import { useSaveInterests } from '@/lib/hooks/useSaveInterests'
 import { useUser } from '@/lib/hooks/useUser'
-import { useNotificationOrchestrator } from '@/context/NotificationOrchestratorContext'
 import QrAppCard from '@/components/push/QrAppCard'
 import { createClient } from '@/lib/supabase/client'
 
@@ -56,36 +55,13 @@ export default function OnboardingPage() {
 
   const [stepIndex, setStepIndex] = useState(0)
   const [selection, setSelection] = useState<UserInterests>({ categories: [], axes: [] })
-  const [liveReminders, setLiveReminders] = useState(true)
-  const [formateurPub, setFormateurPub] = useState(true)
+  // Mobile (M1/U1) : interrupteur général unique piloté par le master push
+  // user_notification_preferences.notifications_enabled. Déclaratif — l'étape
+  // n'écrit que la préférence et ne déclenche AUCUN prompt système (le prompt
+  // arrive plus tard, après une victoire). Défaut true (déjà le défaut base).
+  const [masterEnabled, setMasterEnabled] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [outro, setOutro] = useState(false)
-
-  // Abonnement push via le provider unique (une seule registration SW). Sur
-  // desktop on ne déclenche AUCUN prompt (cf. §4.6) : la question y est
-  // purement déclarative et l'appareil reçoit le QR.
-  const {
-    isSupported: pushSupported,
-    permission: pushPermission,
-    subscribed: isSubscribed,
-    isLoading: pushLoading,
-    subscribe,
-  } = useNotificationOrchestrator()
-
-  const handleEnablePush = useCallback(async () => {
-    const ok = await subscribe()
-    // Abonnement réussi : on (ré)affirme le consentement global de compte.
-    if (ok && user) {
-      try {
-        const supabase = createClient()
-        await supabase
-          .from('user_notification_preferences')
-          .upsert({ user_id: user.id, notifications_enabled: true }, { onConflict: 'user_id' })
-      } catch {
-        // best-effort
-      }
-    }
-  }, [subscribe, user])
 
   // Garde-fou one-shot (inchangé par rapport au correctif PR2b-fix)
   useEffect(() => {
@@ -110,9 +86,14 @@ export default function OnboardingPage() {
       try {
         const supabase = createClient()
         if (user) {
-          // Desktop (§4.6) : question déclarative → on écrit le consentement de
-          // compte sans jamais déclencher de prompt navigateur. Le device push
-          // se fera plus tard sur mobile (QR → soft-ask).
+          // Question déclarative → on écrit le master push (consentement de
+          // compte) sans jamais déclencher de prompt navigateur. Le device push
+          // se fera plus tard sur mobile (QR → soft-ask après victoire).
+          //   • Desktop (§4.6) : le push n'y est jamais demandé → on affirme le
+          //     consentement de compte à true (comportement inchangé).
+          //   • Mobile (U1) : l'interrupteur général pilote notifications_enabled.
+          // Les 8 autres colonnes ne sont pas écrites ici → elles gardent leur
+          // défaut base (true).
           const isDesktop =
             typeof window !== 'undefined' &&
             window.matchMedia('(min-width: 1024px)').matches
@@ -121,9 +102,7 @@ export default function OnboardingPage() {
             .upsert(
               {
                 user_id: user.id,
-                live_session_reminders: liveReminders,
-                formateur_publications: formateurPub,
-                ...(isDesktop ? { notifications_enabled: true } : {}),
+                notifications_enabled: isDesktop ? true : masterEnabled,
               },
               { onConflict: 'user_id' }
             )
@@ -142,7 +121,7 @@ export default function OnboardingPage() {
       await refetch()
       router.replace('/')
     },
-    [saveInterests, mutateInterests, refetch, router, user, liveReminders, formateurPub]
+    [saveInterests, mutateInterests, refetch, router, user, masterEnabled]
   )
 
   const handleContinue = useCallback(async () => {
@@ -203,16 +182,9 @@ export default function OnboardingPage() {
       {!outro && (
         <>
           {step.isNotif ? (
-            <NotifToggles
-              liveReminders={liveReminders}
-              formateurPub={formateurPub}
-              onToggleLive={() => setLiveReminders((v) => !v)}
-              onToggleFormateur={() => setFormateurPub((v) => !v)}
-              pushSupported={pushSupported}
-              pushPermission={pushPermission}
-              isSubscribed={isSubscribed}
-              pushLoading={pushLoading}
-              onEnablePush={() => { void handleEnablePush() }}
+            <NotifStep
+              masterEnabled={masterEnabled}
+              onToggleMaster={() => setMasterEnabled((v) => !v)}
             />
           ) : (
             <InterestChips
@@ -271,132 +243,80 @@ export default function OnboardingPage() {
   )
 }
 
-// ── Toggles notifications (étape 5) ──────────────────────────────────
+// ── Étape notifications (étape 5) ────────────────────────────────────
+//
+// Desktop (P1) : le push n'est jamais demandé (un refus navigateur est
+//   définitif) → pas de réglage granulaire ici. On affiche le QR (« continue
+//   sur ton téléphone ») + une ligne discrète renvoyant vers le profil.
+// Mobile (M1/U1) : un seul interrupteur général qui pilote le master push
+//   (notifications_enabled). Déclaratif : il n'écrit que la préférence, ne
+//   déclenche aucun prompt système. Le détail des 9 toggles reste dans /profil.
 
-interface NotifTogglesProps {
-  liveReminders: boolean
-  formateurPub: boolean
-  onToggleLive: () => void
-  onToggleFormateur: () => void
-  pushSupported: boolean
-  pushPermission: 'prompt' | 'granted' | 'denied' | 'unsupported'
-  isSubscribed: boolean
-  pushLoading: boolean
-  onEnablePush: () => void
+interface NotifStepProps {
+  masterEnabled: boolean
+  onToggleMaster: () => void
 }
 
-function NotifToggles({
-  liveReminders,
-  formateurPub,
-  onToggleLive,
-  onToggleFormateur,
-  pushSupported,
-  pushPermission,
-  isSubscribed,
-  pushLoading,
-  onEnablePush,
-}: NotifTogglesProps) {
+function NotifStep({ masterEnabled, onToggleMaster }: NotifStepProps) {
   return (
     <div className="flex flex-col gap-3">
-      {/* Mobile uniquement : activation push en 1 tap (prompt navigateur).
-          Sur desktop on n'affiche jamais ce bouton (§4.6) → le QR ci-dessous
-          prend le relais. */}
-      <div className="flex flex-col gap-3 lg:hidden">
-        {pushSupported && pushPermission !== 'denied' && (
-          <button
-            type="button"
-            onClick={isSubscribed ? undefined : onEnablePush}
-            disabled={pushLoading || isSubscribed}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3.5 text-sm font-semibold transition active:scale-[0.99] disabled:cursor-default"
-            style={
-              isSubscribed
-                ? {
-                    background: 'rgba(0,188,212,0.10)',
-                    borderColor: 'rgba(0,188,212,0.35)',
-                    color: 'rgba(0,188,212,1)',
-                  }
-                : {
-                    background: 'rgba(0,188,212,0.9)',
-                    borderColor: 'transparent',
-                    color: '#001014',
-                  }
-            }
-          >
-            {pushLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : isSubscribed ? (
-              <><Check className="h-5 w-5" /> Notifications activées</>
-            ) : (
-              <><Bell className="h-5 w-5" /> Activer les notifications</>
-            )}
-          </button>
-        )}
-
-        {pushPermission === 'denied' && (
-          <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/60">
-            Les notifications sont bloquées par ton navigateur. Autorise-les dans ses
-            paramètres pour les recevoir.
-          </p>
-        )}
-
-        {!pushSupported && (
-          <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/60">
-            Pour recevoir les notifications sur iPhone, ajoute d&apos;abord l&apos;app à
-            ton écran d&apos;accueil.
-          </p>
-        )}
+      {/* Mobile uniquement : interrupteur général unique (master push). */}
+      <div className="lg:hidden">
+        <MasterSwitch active={masterEnabled} onToggle={onToggleMaster} />
       </div>
 
-      {/* Desktop uniquement : QR vers app.certily.fr (jamais de prompt ici). */}
+      {/* Desktop uniquement : QR vers app.certily.fr (jamais de prompt ici)
+          + renvoi discret vers le profil pour le réglage granulaire. */}
       <div className="hidden lg:block">
         <QrAppCard caption="Scanne pour installer Certily et recevoir tes rappels." />
+        <p className="mt-3 text-center text-xs text-white/45">
+          Tu régleras tes préférences de notifications dans ton profil.
+        </p>
       </div>
-
-      <ToggleRow
-        label="Rappels sessions live"
-        active={liveReminders}
-        onToggle={onToggleLive}
-      />
-      <ToggleRow
-        label="Publications des formateurs"
-        active={formateurPub}
-        onToggle={onToggleFormateur}
-      />
     </div>
   )
 }
 
-function ToggleRow({
-  label,
+// Interrupteur général mobile : titre + sous-ligne renvoyant vers le profil.
+function MasterSwitch({
   active,
   onToggle,
 }: {
-  label: string
   active: boolean
   onToggle: () => void
 }) {
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={active}
       onClick={onToggle}
-      className="flex w-full items-center justify-between rounded-xl border px-4 py-3.5 text-sm font-medium transition active:scale-[0.99]"
+      className="flex w-full items-start justify-between gap-4 rounded-xl border px-4 py-3.5 text-left transition active:scale-[0.99]"
       style={
         active
           ? {
               background: 'rgba(0,188,212,0.10)',
               borderColor: 'rgba(0,188,212,0.35)',
-              color: 'rgba(0,188,212,1)',
             }
           : {
               background: 'rgba(255,255,255,0.05)',
               borderColor: 'rgba(255,255,255,0.10)',
-              color: 'rgba(255,255,255,0.70)',
             }
       }
     >
-      <span>{label}</span>
+      <span className="flex flex-col gap-1">
+        <span
+          className="text-sm font-semibold"
+          style={{ color: active ? 'rgba(0,188,212,1)' : 'rgba(255,255,255,0.85)' }}
+        >
+          Recevoir mes rappels et notifications
+        </span>
+        <span className="text-xs text-white/50">
+          Tu pourras choisir précisément quoi activer ou désactiver dans ton profil.
+        </span>
+      </span>
       <span
-        className="flex h-6 w-11 items-center rounded-full px-0.5 transition-all duration-200"
+        className="mt-0.5 flex h-6 w-11 shrink-0 items-center rounded-full px-0.5 transition-all duration-200"
         style={{
           background: active ? 'rgba(0,188,212,0.6)' : 'rgba(255,255,255,0.15)',
           justifyContent: active ? 'flex-end' : 'flex-start',
