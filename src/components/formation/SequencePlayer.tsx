@@ -373,10 +373,15 @@ export default function SequencePlayer({
 
   useEffect(() => {
     if (!isEnrichedMode) return
+    // P5 : sur l'onglet « Audio seul », pas de focus-mode. Sans focus, le
+    // MiniPlayer global rend sa barre horizontale (vignette + titre + ⏮ ▶ ⏭ ✕)
+    // au lieu du WavePlayButton — c'est elle la surface de controle voulue ici.
+    // (Le focus-mode immersif reste actif sur les onglets combine/whiteboard.)
+    if (enrichedActiveTab === 'audio_only') { setFocus(false); return }
     if (!audioState.isPlaying) return
     const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
     if (isMobile) setFocus(true)
-  }, [audioState.isPlaying, isEnrichedMode, setFocus])
+  }, [audioState.isPlaying, isEnrichedMode, enrichedActiveTab, setFocus])
 
   // Fin d'audio : sortie automatique du focus pour que header + boutons reviennent.
   useEffect(() => {
