@@ -525,7 +525,7 @@ export default function FormationDetail({
                   </div>
 
                   {needsRemediation && (
-                    <p className="text-[11px] text-white/50 mb-2 px-1 leading-snug">
+                    <p className="text-[11px] text-amber-400 mb-2 px-1 leading-snug">
                       Réussis les questions ratées pour débloquer le bloc suivant
                     </p>
                   )}

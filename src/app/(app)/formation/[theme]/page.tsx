@@ -115,13 +115,15 @@ export default function ThemePage() {
   const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
   const [sequenceGradient, setSequenceGradient] = useState<{ from: string; to: string }>({ from: '#8B5CF6', to: '#A78BFA' })
 
-  // P4 : masque le mini-player flottant sur le detail formation et le quizz de
-  // sequence (memes vues, distinguees par viewMode). Reste visible sur la liste
-  // des formations du theme (viewMode 'theme'). N'affecte pas l'audio.
+  // P4 : masque le mini-player flottant sur le detail formation. En 'sequence',
+  // c'est SequencePlayer qui pilote la visibilite (il le re-affiche sur l'onglet
+  // audio-seul enrichi - P5), donc on n'ecrit PAS ici pour ce viewMode afin de
+  // ne pas ecraser sa decision. Reste visible sur la liste du theme. N'affecte
+  // jamais l'audio (AudioContext intact).
   const { setSuppressed: setMiniPlayerSuppressed } = useMiniPlayerVisibility()
   useEffect(() => {
-    setMiniPlayerSuppressed(viewMode === 'formation' || viewMode === 'sequence')
-    return () => setMiniPlayerSuppressed(false)
+    if (viewMode === 'sequence') return
+    setMiniPlayerSuppressed(viewMode === 'formation')
   }, [viewMode, setMiniPlayerSuppressed])
 
   const { markCompleted } = useUserFormationProgress(selectedFormationId)

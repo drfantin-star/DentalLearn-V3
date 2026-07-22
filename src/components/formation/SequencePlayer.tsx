@@ -35,6 +35,7 @@ import CaseStudyQuestion from '@/components/questions/CaseStudyQuestion'
 import { parseCaseStudyData } from '@/lib/questions/parseCaseStudyData'
 import { useAudio } from '@/context/AudioContext'
 import { useFocusMode } from '@/context/FocusModeContext'
+import { useMiniPlayerVisibility } from '@/context/MiniPlayerVisibilityContext'
 
 // ============================================
 // TYPES (basés sur types/questions.ts)
@@ -352,6 +353,24 @@ export default function SequencePlayer({
   // Focus mode : s'active quand l'audio démarre sur mobile en mode enrichi.
   // Pas de setFocus(false) à la pause — comportement Netflix.
   const isEnrichedMode = isAudio && !!sequence.timeline_url && sequence.timeline_published
+
+  // P5 : sur l'onglet « Audio seul » enrichi, le spinner vinyle est retire ; le
+  // mini-player flottant devient la surface de controle. On leve donc la
+  // suppression P4 uniquement dans ce cas precis (vue media audio + onglet
+  // audio_only). Partout ailleurs dans la sequence (autres onglets, quiz,
+  // resultats) le mini-player reste masque. En 'sequence', c'est ce composant
+  // qui pilote la visibilite (la page /formation/[theme] ne l'ecrase pas).
+  const { setSuppressed: setMiniPlayerSuppressed } = useMiniPlayerVisibility()
+  const isIntroOnlyMedia = questions.length === 0 && hasMedia
+  const showMiniPlayerForAudioOnly =
+    isEnrichedMode &&
+    enrichedActiveTab === 'audio_only' &&
+    (isIntroOnlyMedia || playerStep === 'video')
+  useEffect(() => {
+    setMiniPlayerSuppressed(!showMiniPlayerForAudioOnly)
+    return () => setMiniPlayerSuppressed(false)
+  }, [showMiniPlayerForAudioOnly, setMiniPlayerSuppressed])
+
   useEffect(() => {
     if (!isEnrichedMode) return
     if (!audioState.isPlaying) return

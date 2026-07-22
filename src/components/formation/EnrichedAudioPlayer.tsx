@@ -189,9 +189,8 @@ export default function EnrichedAudioPlayer({
   // cette séquence.
   const showPrePlayState = hideLegacyCard && !isCurrentTrack
 
-  // Audio seul mobile : cover-vinyle lanceur (remplace la carte legacy).
+  // Audio seul mobile : lanceur de lecture (remplace la carte legacy sur mobile).
   const isAudioOnly = activeTab === 'audio_only'
-  const vinylSpinning = isCurrentTrack && state.isPlaying
 
   return (
     <div className="w-full">
@@ -215,43 +214,24 @@ export default function EnrichedAudioPlayer({
         </div>
       )}
 
-      {/* Audio seul mobile : cover-vinyle lanceur (md:hidden -> desktop garde la carte) */}
-      {isAudioOnly && !error && (
-        <div className="md:hidden flex justify-center mt-2 mb-4">
+      {/* Audio seul mobile : lanceur de lecture. P5 - le spinner vinyle est
+          retire ; une fois la lecture lancee, le mini-player flottant devient la
+          seule surface de controle (l'audio continue de tourner normalement).
+          md:hidden -> desktop garde la carte legacy. */}
+      {isAudioOnly && !error && !isCurrentTrack && (
+        <div className="md:hidden flex flex-col items-center gap-3 mt-2 mb-4">
           <button
             type="button"
-            onClick={isCurrentTrack ? undefined : onPlayRequest}
-            className="relative w-44 h-44 rounded-full overflow-hidden shadow-2xl active:scale-[0.98] transition-transform"
-            style={{ transform: 'translateZ(0)', WebkitTransform: 'translateZ(0)' }}
-            aria-label={isCurrentTrack ? 'Lecture en cours' : 'Demarrer la lecture audio'}
+            onClick={onPlayRequest}
+            className="w-20 h-20 rounded-full flex items-center justify-center shadow-2xl active:scale-[0.98] transition-transform"
+            style={{ background: `linear-gradient(135deg, ${accentColor || NEUTRAL_STYLE.from}, ${accentColorSecondary || NEUTRAL_STYLE.to})` }}
+            aria-label="Demarrer la lecture audio"
           >
-            {/* couche tournante : cover, ou degrade de repli si pas de cover */}
-            <span
-              className={`absolute inset-0 ${vinylSpinning ? 'animate-vinyl-spin' : ''}`}
-              style={
-                coverImageUrl
-                  ? undefined
-                  : { background: `linear-gradient(135deg, ${accentColor || NEUTRAL_STYLE.from}, ${accentColorSecondary || NEUTRAL_STYLE.to})` }
-              }
-            >
-              {coverImageUrl && (
-                <img src={coverImageUrl} alt="" className="w-full h-full object-cover" />
-              )}
-            </span>
-            {/* trou central vinyle (fixe) */}
-            <span
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full"
-              style={{ background: '#0F0F0F', border: '2px solid rgba(255,255,255,0.25)' }}
-            />
-            {/* overlay play tant que la piste n'est pas lancee (fixe) */}
-            {!isCurrentTrack && (
-              <span className="absolute inset-0 flex items-center justify-center bg-black/35">
-                <span className="w-14 h-14 rounded-full bg-white/90 flex items-center justify-center">
-                  <Play size={26} fill="#0F0F0F" className="text-[#0F0F0F] ml-0.5" />
-                </span>
-              </span>
-            )}
+            <Play size={32} fill="white" className="text-white ml-1" />
           </button>
+          <span className="text-sm font-medium" style={{ color: '#a3a3a3' }}>
+            Toucher pour demarrer
+          </span>
         </div>
       )}
 
