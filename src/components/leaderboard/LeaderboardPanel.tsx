@@ -230,7 +230,7 @@ export default function LeaderboardPanel({ userId, onViewHistory, compact = fals
       <div className="bg-gradient-to-r from-primary via-indigo-600 to-purple-600 p-4 text-white">
         <div className="flex items-center gap-2">
           <Trophy className="w-5 h-5" />
-          <h2 className="text-base font-bold">Classement Hebdo</h2>
+          <h2 className="text-base font-bold">{mode === 'lifetime' ? 'Classement à vie' : 'Classement Hebdo'}</h2>
         </div>
       </div>
 
