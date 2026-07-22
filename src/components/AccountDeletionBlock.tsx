@@ -36,15 +36,21 @@ export default function AccountDeletionBlock({
       const res = await fetch('/api/user/delete', { method: 'DELETE' })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'La reactivation a echoue. Veuillez reessayer.')
+        throw new Error(data.error || 'La reactivation a echoue, reessayez.')
       }
       // Succes confirme cote serveur : on relit l'etat. Le layout, voyant
       // deletion_requested_at NULL, rendra l'application normalement.
       // Pas de setLoading(false) ici : on reste en attente du re-render.
       router.refresh()
     } catch (err: unknown) {
+      // TypeError = echec reseau (fetch a throw) -> message habille en FR.
+      // Une erreur applicative (!res.ok) porte deja son propre message.
       const message =
-        err instanceof Error ? err.message : 'La reactivation a echoue. Veuillez reessayer.'
+        err instanceof TypeError
+          ? 'Connexion impossible, reessayez.'
+          : err instanceof Error
+            ? err.message
+            : 'La reactivation a echoue, reessayez.'
       setError(message)
       setLoading(false)
     }
