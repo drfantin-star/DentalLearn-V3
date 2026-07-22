@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   Briefcase,
   Stethoscope,
+  CalendarDays,
 } from 'lucide-react'
 import Link from 'next/link'
 import SiretCabinetForm, {
@@ -31,6 +32,7 @@ export default function RegisterForm() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [ordreInscriptionDate, setOrdreInscriptionDate] = useState('')
   const [rpps, setRpps] = useState('')
   const [rppsWarning, setRppsWarning] = useState<string | null>(null)
   const [isHealthProfessional, setIsHealthProfessional] = useState<boolean | null>(null)
@@ -51,6 +53,9 @@ export default function RegisterForm() {
   const router = useRouter()
   const supabase = createClient()
   const rppsTimerRef = useRef<number | null>(null)
+
+  // Borne haute du selecteur de date : pas de date d'inscription dans le futur.
+  const todayStr = new Date().toISOString().slice(0, 10)
 
   const validatePassword = (pwd: string) => {
     const minLength = pwd.length >= 8
@@ -155,6 +160,18 @@ export default function RegisterForm() {
       return
     }
 
+    if (!ordreInscriptionDate) {
+      setError('La date de première inscription à l\'Ordre est obligatoire')
+      setLoading(false)
+      return
+    }
+
+    if (ordreInscriptionDate > todayStr) {
+      setError('La date de première inscription à l\'Ordre ne peut pas être dans le futur')
+      setLoading(false)
+      return
+    }
+
     try {
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -163,6 +180,12 @@ export default function RegisterForm() {
           data: {
             first_name: firstName,
             last_name: lastName,
+            // Date de première inscription à l'Ordre (YYYY-MM-DD). Lue par le
+            // trigger handle_new_user pour ecrire user_profiles.ordre_inscription_date
+            // ET seeder cp_user_settings via create_cp_settings_for_user (SECURITY
+            // DEFINER). C'est le chemin serveur : on ne depend pas d'un write client
+            // post-signup (bloque par la RLS, cf. RPPS ci-dessous).
+            ordre_inscription_date: ordreInscriptionDate,
             // RPPS persisté en raw_user_meta_data ; le trigger handle_new_user
             // peut le recopier dans user_profiles.rpps en V1.5. Pour V1 on
             // l'écrit directement après signup (cf. update plus bas).
@@ -390,6 +413,28 @@ export default function RegisterForm() {
             )}
           </div>
 
+          {/* Date de première inscription à l'Ordre (obligatoire) */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Date de première inscription à l&apos;Ordre{' '}
+              <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <CalendarDays className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="date"
+                value={ordreInscriptionDate}
+                onChange={(e) => setOrdreInscriptionDate(e.target.value)}
+                required
+                max={todayStr}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Elle nous sert à calculer votre période de certification périodique.
+            </p>
+          </div>
+
           {/* Mode d'exercice */}
           <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
             <p className="text-sm font-medium text-gray-700">Mode d&apos;exercice</p>
@@ -517,6 +562,7 @@ export default function RegisterForm() {
               !passwordValidation.isValid ||
               password !== confirmPassword ||
               isHealthProfessional !== true ||
+              !ordreInscriptionDate ||
               !rgpdConsent ||
               (mode === 'titulaire_cabinet' && !cabinet.name.trim())
             }
