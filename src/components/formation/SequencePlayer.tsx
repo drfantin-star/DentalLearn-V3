@@ -29,12 +29,14 @@ import {
 } from '@/lib/supabase'
 import AudioPlayer from './AudioPlayer'
 import EnrichedAudioPlayer, { type EnrichedPlayerTab } from './EnrichedAudioPlayer'
+import FillBlankSentence from '@/components/questions/FillBlankSentence'
 import TreasureChest from '@/components/sequences/TreasureChest'
 import PostVictoryPushPrompt from '@/components/push/PostVictoryPushPrompt'
 import CaseStudyQuestion from '@/components/questions/CaseStudyQuestion'
 import { parseCaseStudyData } from '@/lib/questions/parseCaseStudyData'
 import { useAudio } from '@/context/AudioContext'
 import { useFocusMode } from '@/context/FocusModeContext'
+import { useMiniPlayerVisibility } from '@/context/MiniPlayerVisibilityContext'
 
 // ============================================
 // TYPES (basés sur types/questions.ts)
@@ -102,13 +104,16 @@ interface MatchingPairAssignment {
 
 // Palette cyclique pour les paires associées en matching (badge numéroté + halo).
 // Classes littérales pour que Tailwind JIT les détecte.
+// Contraste (P-fix) : le libelle passe en text-white pour ne jamais etre dans la
+// meme famille de teinte que le fond translucide. L'identite de la paire reste
+// portee par bg + border + badge (numerote) colores.
 const MATCHING_PAIR_COLORS = [
-  { bg: 'bg-violet-500/15',  border: 'border-violet-500',  text: 'text-violet-300',  badge: 'bg-violet-500' },
-  { bg: 'bg-emerald-500/15', border: 'border-emerald-500', text: 'text-emerald-300', badge: 'bg-emerald-500' },
-  { bg: 'bg-amber-500/15',   border: 'border-amber-500',   text: 'text-amber-300',   badge: 'bg-amber-500' },
-  { bg: 'bg-pink-500/15',    border: 'border-pink-500',    text: 'text-pink-300',    badge: 'bg-pink-500' },
-  { bg: 'bg-cyan-500/15',    border: 'border-cyan-500',    text: 'text-cyan-300',    badge: 'bg-cyan-500' },
-  { bg: 'bg-orange-500/15',  border: 'border-orange-500',  text: 'text-orange-300',  badge: 'bg-orange-500' },
+  { bg: 'bg-violet-500/15',  border: 'border-violet-500',  text: 'text-white',  badge: 'bg-violet-500' },
+  { bg: 'bg-emerald-500/15', border: 'border-emerald-500', text: 'text-white', badge: 'bg-emerald-500' },
+  { bg: 'bg-amber-500/15',   border: 'border-amber-500',   text: 'text-white',   badge: 'bg-amber-500' },
+  { bg: 'bg-pink-500/15',    border: 'border-pink-500',    text: 'text-white',    badge: 'bg-pink-500' },
+  { bg: 'bg-cyan-500/15',    border: 'border-cyan-500',    text: 'text-white',    badge: 'bg-cyan-500' },
+  { bg: 'bg-orange-500/15',  border: 'border-orange-500',  text: 'text-white',  badge: 'bg-orange-500' },
 ]
 
 function colorForPairIndex(pairIndex: number) {
@@ -352,12 +357,35 @@ export default function SequencePlayer({
   // Focus mode : s'active quand l'audio démarre sur mobile en mode enrichi.
   // Pas de setFocus(false) à la pause — comportement Netflix.
   const isEnrichedMode = isAudio && !!sequence.timeline_url && sequence.timeline_published
+
+  // P5 : sur l'onglet « Audio seul » enrichi, le spinner vinyle est retire ; le
+  // mini-player flottant devient la surface de controle. On leve donc la
+  // suppression P4 uniquement dans ce cas precis (vue media audio + onglet
+  // audio_only). Partout ailleurs dans la sequence (autres onglets, quiz,
+  // resultats) le mini-player reste masque. En 'sequence', c'est ce composant
+  // qui pilote la visibilite (la page /formation/[theme] ne l'ecrase pas).
+  const { setSuppressed: setMiniPlayerSuppressed } = useMiniPlayerVisibility()
+  const isIntroOnlyMedia = questions.length === 0 && hasMedia
+  const showMiniPlayerForAudioOnly =
+    isEnrichedMode &&
+    enrichedActiveTab === 'audio_only' &&
+    (isIntroOnlyMedia || playerStep === 'video')
+  useEffect(() => {
+    setMiniPlayerSuppressed(!showMiniPlayerForAudioOnly)
+    return () => setMiniPlayerSuppressed(false)
+  }, [showMiniPlayerForAudioOnly, setMiniPlayerSuppressed])
+
   useEffect(() => {
     if (!isEnrichedMode) return
+    // P5 : sur l'onglet « Audio seul », pas de focus-mode. Sans focus, le
+    // MiniPlayer global rend sa barre horizontale (vignette + titre + ⏮ ▶ ⏭ ✕)
+    // au lieu du WavePlayButton — c'est elle la surface de controle voulue ici.
+    // (Le focus-mode immersif reste actif sur les onglets combine/whiteboard.)
+    if (enrichedActiveTab === 'audio_only') { setFocus(false); return }
     if (!audioState.isPlaying) return
     const isMobile = typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
     if (isMobile) setFocus(true)
-  }, [audioState.isPlaying, isEnrichedMode, setFocus])
+  }, [audioState.isPlaying, isEnrichedMode, enrichedActiveTab, setFocus])
 
   // Fin d'audio : sortie automatique du focus pour que header + boutons reviennent.
   useEffect(() => {
@@ -1263,8 +1291,21 @@ export default function SequencePlayer({
 
                 {/* Question + Options — right side on desktop when image present */}
                 <div className={q.image_url ? "w-full md:w-1/2" : ""}>
-                  {/* Question text */}
-                  <h2 className="text-[16px] font-bold leading-relaxed mb-5" style={{ color: '#e5e5e5' }}>{q.question_text}</h2>
+                  {/* Question text — fill_blank : slots inline visibles (composant
+                      partage) au lieu du token « ________ » noye dans la phrase. */}
+                  {qType === 'fill_blank' ? (
+                    <h2 className="text-[16px] font-bold leading-relaxed mb-5 text-white">
+                      <FillBlankSentence
+                        questionText={q.question_text}
+                        blanks={parseFillBlankOptions(q.options)?.blanks ?? []}
+                        answers={fillBlankAnswers}
+                        showFeedback={showFeedback}
+                        onClearBlank={id => !showFeedback && setFillBlankAnswers(prev => { const n = { ...prev }; delete n[id]; return n })}
+                      />
+                    </h2>
+                  ) : (
+                    <h2 className="text-[16px] font-bold leading-relaxed mb-5" style={{ color: '#e5e5e5' }}>{q.question_text}</h2>
+                  )}
 
               {/* === MCQ / TRUE_FALSE / MCQ_IMAGE === */}
               {(qType === 'mcq' || qType === 'true_false' || qType === 'mcq_image' || qType === 'image') && (
@@ -1391,67 +1432,32 @@ export default function SequencePlayer({
                 
                 return (
                   <>
-                    <p className="text-xs mb-3" style={{ color: '#818cf8' }}>
-                      {hasWordBank ? '📝 Sélectionnez un mot de la banque pour chaque blanc' : '📝 Tapez votre réponse'}
+                    <p className="text-xs mb-3 text-white/50">
+                      {hasWordBank ? '📝 Sélectionne un mot de la banque pour chaque trou' : '📝 Tape ta réponse'}
                     </p>
-                    
-                    {/* Blanks */}
-                    <div className="p-4 rounded-2xl border-2 mb-4 space-y-3" style={{ background: '#1a1a1a', borderColor: '#333' }}>
-                      {opts.blanks.map((blank, idx) => {
-                        const answer = fillBlankAnswers[blank.id]
-                        const isCorrect = answer && (
-                          answer.toLowerCase().trim() === blank.correctAnswer.toLowerCase().trim() ||
-                          blank.alternatives?.some(alt => alt.toLowerCase().trim() === answer.toLowerCase().trim())
-                        )
-                        
-                        return (
+
+                    {/* Cas saisie libre (aucune question en base aujourd'hui) : inputs.
+                        Le cas wordBank saisit dans les slots inline du texte de la
+                        question (composant FillBlankSentence). */}
+                    {!hasWordBank && (
+                      <div className="p-4 rounded-2xl border-2 border-white/15 bg-white/[0.04] mb-4 space-y-3">
+                        {opts.blanks.map((blank, idx) => (
                           <div key={blank.id} className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-medium" style={{ color: '#a3a3a3' }}>
-                              {opts.blanks.length > 1 ? `Blanc ${idx + 1}:` : 'Réponse:'}
+                            <span className="text-sm font-medium text-white/60">
+                              {opts.blanks.length > 1 ? `Trou ${idx + 1}:` : 'Réponse:'}
                             </span>
-                            
-                            {/* Mode wordBank → bouton cliquable */}
-                            {hasWordBank ? (
-                              <button
-                                onClick={() => !showFeedback && setFillBlankAnswers(prev => {
-                                  const newAnswers = { ...prev }
-                                  delete newAnswers[blank.id]
-                                  return newAnswers
-                                })}
-                                disabled={showFeedback}
-                                className="min-w-[100px] px-4 py-2 rounded-xl border-2 border-dashed text-sm font-semibold transition-all"
-                                style={{
-                                  borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : answer ? categoryGradient.from : '#CBD5E1',
-                                  background: showFeedback ? (isCorrect ? '#F0FDF4' : '#FEF2F2') : answer ? `${categoryGradient.from}10` : 'white',
-                                  color: showFeedback ? (isCorrect ? '#16A34A' : '#DC2626') : '#334155',
-                                }}
-                              >
-                                {answer || '________'}
-                              </button>
-                            ) : (
-                              /* Mode saisie libre → input text */
-                              <input
-                                type="text"
-                                value={answer || ''}
-                                onChange={(e) => !showFeedback && setFillBlankAnswers(prev => ({ ...prev, [blank.id]: e.target.value }))}
-                                disabled={showFeedback}
-                                placeholder="Tapez votre réponse..."
-                                className="flex-1 min-w-[150px] px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all outline-none"
-                                style={{
-                                  borderColor: showFeedback ? (isCorrect ? '#4ADE80' : '#FCA5A5') : '#333',
-                                  background: showFeedback ? (isCorrect ? '#052e16' : '#450a0a') : '#242424',
-                                  color: showFeedback ? (isCorrect ? '#4ade80' : '#f87171') : '#e5e5e5',
-                                }}
-                              />
-                            )}
-                            
-                            {showFeedback && !isCorrect && (
-                              <span className="text-xs text-emerald-600 font-medium">→ {blank.correctAnswer}</span>
-                            )}
+                            <input
+                              type="text"
+                              value={fillBlankAnswers[blank.id] || ''}
+                              onChange={(e) => !showFeedback && setFillBlankAnswers(prev => ({ ...prev, [blank.id]: e.target.value }))}
+                              disabled={showFeedback}
+                              placeholder="Tape ta réponse..."
+                              className="flex-1 min-w-[150px] px-4 py-2 rounded-xl border-2 border-white/15 bg-white/[0.07] text-white text-sm font-semibold transition-all outline-none focus:border-accent"
+                            />
                           </div>
-                        )
-                      })}
-                    </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Word Bank (seulement si disponible) */}
                     {!showFeedback && hasWordBank && (
@@ -1470,12 +1476,8 @@ export default function SequencePlayer({
                                 }
                               }}
                               disabled={isUsed}
-                              className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-                              style={{
-                                background: isUsed ? '#E2E8F0' : categoryGradient.from,
-                                color: isUsed ? '#94A3B8' : 'white',
-                                opacity: isUsed ? 0.5 : 1,
-                              }}
+                              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all text-white ${isUsed ? 'bg-white/10 text-white/30 opacity-60' : ''}`}
+                              style={isUsed ? undefined : { background: categoryGradient.from }}
                             >
                               {word}
                             </button>

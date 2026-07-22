@@ -15,8 +15,10 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import Confetti from '@/components/Confetti'
+import NewsModal from '@/components/news/NewsModal'
 import PostVictoryPushPrompt from '@/components/push/PostVictoryPushPrompt'
 import CaseStudyQuestion from '@/components/questions/CaseStudyQuestion'
+import FillBlankSentence from '@/components/questions/FillBlankSentence'
 import { parseCaseStudyData } from '@/lib/questions/parseCaseStudyData'
 import LeaderboardModal from '@/components/leaderboard/LeaderboardModal'
 
@@ -69,6 +71,8 @@ interface DailyQuestion {
   formation_title: string | null
   question_type: string
   recommended_time_seconds?: number
+  news_synthesis_id?: string | null
+  news_source_title?: string | null
 }
 
 interface DailyQuizModalProps {
@@ -208,17 +212,18 @@ const typeLabels: Record<string, string> = {
   case_study: 'Cas clinique',
 }
 
-const GRADIENT_FROM = '#2D1B96'
-
 // Palette cyclique pour les paires associées en matching (badge numéroté + halo).
 // Toutes les classes sont littérales pour que Tailwind JIT les détecte.
+// Contraste (P-fix) : le libelle passe en text-white pour ne jamais etre dans la
+// meme famille de teinte que le fond translucide. L'identite de la paire reste
+// portee par bg + border + badge (numerote) colores.
 const MATCHING_PAIR_COLORS = [
-  { bg: 'bg-violet-500/15',  border: 'border-violet-500',  text: 'text-violet-300',  badge: 'bg-violet-500' },
-  { bg: 'bg-emerald-500/15', border: 'border-emerald-500', text: 'text-emerald-300', badge: 'bg-emerald-500' },
-  { bg: 'bg-amber-500/15',   border: 'border-amber-500',   text: 'text-amber-300',   badge: 'bg-amber-500' },
-  { bg: 'bg-pink-500/15',    border: 'border-pink-500',    text: 'text-pink-300',    badge: 'bg-pink-500' },
-  { bg: 'bg-cyan-500/15',    border: 'border-cyan-500',    text: 'text-cyan-300',    badge: 'bg-cyan-500' },
-  { bg: 'bg-orange-500/15',  border: 'border-orange-500',  text: 'text-orange-300',  badge: 'bg-orange-500' },
+  { bg: 'bg-violet-500/15',  border: 'border-violet-500',  text: 'text-white',  badge: 'bg-violet-500' },
+  { bg: 'bg-emerald-500/15', border: 'border-emerald-500', text: 'text-white', badge: 'bg-emerald-500' },
+  { bg: 'bg-amber-500/15',   border: 'border-amber-500',   text: 'text-white',   badge: 'bg-amber-500' },
+  { bg: 'bg-pink-500/15',    border: 'border-pink-500',    text: 'text-white',    badge: 'bg-pink-500' },
+  { bg: 'bg-cyan-500/15',    border: 'border-cyan-500',    text: 'text-white',    badge: 'bg-cyan-500' },
+  { bg: 'bg-orange-500/15',  border: 'border-orange-500',  text: 'text-white',  badge: 'bg-orange-500' },
 ]
 
 function colorForPairIndex(pairIndex: number) {
@@ -251,6 +256,10 @@ export default function DailyQuizModal({
   const [finished, setFinished] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
+
+  // Source news (carte « titre · Voir l'article ») — meme mecanique que le
+  // quizz par theme : ouvre NewsModal sur la cle news_synthesis_id.
+  const [articleNewsId, setArticleNewsId] = useState<string | null>(null)
 
   // Single-select state (mcq, true_false, mcq_image)
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
@@ -613,10 +622,10 @@ export default function DailyQuizModal({
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/70 backdrop-blur-sm">
-        <div className="w-full max-w-sm rounded-3xl p-8 text-center" style={{ background: '#1a1a1a' }}>
-          <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto mb-4" />
-          <p className="font-medium" style={{ color: '#a3a3a3' }}>Chargement du quiz...</p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+        <div className="glass-panel w-full max-w-sm mx-4 rounded-3xl p-8 text-center">
+          <Loader2 className="w-10 h-10 animate-spin text-accent mx-auto mb-4" />
+          <p className="text-white/70 font-medium">Chargement du quiz...</p>
         </div>
       </div>
     )
@@ -624,18 +633,18 @@ export default function DailyQuizModal({
 
   if (error || questions.length === 0) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-gray-900/70 backdrop-blur-sm">
-        <div className="w-full max-w-sm rounded-3xl p-6 text-center" style={{ background: '#1a1a1a' }}>
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <p className="font-medium mb-2" style={{ color: '#e5e5e5' }}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
+        <div className="glass-panel w-full max-w-sm rounded-3xl p-6 text-center">
+          <AlertCircle className="w-12 h-12 text-white/40 mx-auto mb-4" />
+          <p className="text-white font-semibold mb-2">
             {error || 'Aucune question disponible'}
           </p>
-          <p className="text-sm mb-6" style={{ color: '#a3a3a3' }}>
+          <p className="text-white/50 text-sm mb-6">
             Revenez plus tard ou contactez le support.
           </p>
           <button
             onClick={onClose}
-            className="w-full py-3 rounded-xl font-bold text-sm transition-colors" style={{ background: '#242424', color: '#ffffff' }}
+            className="w-full py-3 rounded-xl font-bold text-sm bg-white/10 text-white transition-premium hover:bg-white/20"
           >
             Fermer
           </button>
@@ -652,26 +661,24 @@ export default function DailyQuizModal({
 
     return (
       <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-gray-900/70 backdrop-blur-sm">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
         <Confetti active={true} />
-        <div className="w-full max-w-sm rounded-3xl p-6 text-center relative overflow-hidden" style={{ background: '#1a1a1a' }}>
+        <div className="glass-panel w-full max-w-sm rounded-3xl p-6 text-center relative overflow-hidden">
 
           <div className="relative z-10">
             {/* Trophée */}
-            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #2D1B96, #00D1C1)' }}>
+            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-gradient-to-br from-primary to-accent">
               <Trophy size={36} className="text-white" />
             </div>
 
             {/* Titre */}
-            <h2 className="text-2xl font-bold mb-1" style={{ color: '#e5e5e5' }}>
+            <h2 className="text-2xl font-bold mb-1 text-white">
               {isPerfect ? 'Parfait !' : finalScore >= 7 ? 'Bravo !' : 'Bien joué !'}
             </h2>
-            <p className="text-sm mb-5" style={{ color: '#a3a3a3' }}>Quiz du jour terminé</p>
+            <p className="text-sm mb-5 text-white/50">Quiz du jour terminé</p>
 
             {/* Score card */}
-            <div className="rounded-2xl p-5 mb-3 text-center"
-              style={{ background: 'linear-gradient(135deg, #2D1B96, #00D1C1)' }}>
+            <div className="rounded-2xl p-5 mb-3 text-center bg-gradient-to-br from-primary to-accent">
               <div className="text-5xl font-black text-white mb-1">
                 {finalScore}<span className="text-2xl font-bold opacity-70">/{questions.length}</span>
               </div>
@@ -695,7 +702,7 @@ export default function DailyQuizModal({
             <button
               onClick={() => setShowLeaderboard(true)}
               disabled={saving}
-              className="w-full py-3.5 bg-gradient-to-r from-primary to-[#00D1C1] text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+              className="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="w-5 h-5 animate-spin mx-auto" />
@@ -744,19 +751,19 @@ export default function DailyQuizModal({
   const caseStudySelectedId = caseStudyAnswers[caseStudySubQId] ?? null
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#0F0F0F' }}>
+    <div className="fixed inset-0 z-50 flex flex-col bg-[#0F0F0F]">
       {/* Top bar */}
       <div className="flex-shrink-0">
-        <div className="h-1.5" style={{ background: '#242424' }}>
+        <div className="h-1.5 bg-white/10">
           <div
-            className="h-full bg-gradient-to-r from-primary to-[#00D1C1] transition-all duration-500"
+            className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
 
-        <div className="px-4 py-3 flex items-center justify-between" style={{ background: '#1a1a1a', borderBottom: '0.5px solid #2a2a2a' }}>
+        <div className="px-4 py-3 flex items-center justify-between border-b border-white/10">
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold" style={{ color: '#e5e5e5' }}>
+            <span className="text-sm font-bold text-white">
               {current + 1}/{questions.length}
             </span>
             <div
@@ -765,9 +772,8 @@ export default function DailyQuizModal({
                   ? 'bg-red-900/40 text-red-400'
                   : timeLeft <= 30
                     ? 'bg-amber-900/40 text-amber-400'
-                    : 'text-white/70'
+                    : 'bg-white/10 text-white/70'
               }`}
-              style={timeLeft > 30 ? { background: '#242424' } : undefined}
             >
               <Clock size={12} />
               {timeLeft}s
@@ -775,14 +781,12 @@ export default function DailyQuizModal({
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-sm font-bold text-primary">
+            <span className="text-sm font-bold text-accent">
               {totalPoints} pts
             </span>
             <button
               onClick={onClose}
-              className="p-2 rounded-full transition-colors" style={{ color: '#6b7280' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#242424')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              className="p-2 rounded-full text-white/50 hover:text-white hover:bg-white/10 transition-premium"
             >
               <X size={20} />
             </button>
@@ -791,34 +795,67 @@ export default function DailyQuizModal({
       </div>
 
       {/* Question content - scrollable */}
-      <div className="flex-1 overflow-y-auto px-5 py-4">
+      <div className="flex-1 overflow-y-auto px-5 py-5">
         {/* Formation tag */}
         {q.formation_title && (
-          <div className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium mb-3" style={{ background: 'rgba(45,27,150,0.3)', color: '#a78bfa' }}>
+          <div className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium mb-3 bg-primary/30 text-violet-400">
             {q.formation_title}
           </div>
         )}
 
         {/* Type badge */}
-        <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold mb-3 ml-1" style={{ background: '#242424', color: 'rgba(255,255,255,0.7)' }}>
+        <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold mb-3 ml-1 bg-white/10 text-white/60">
           {typeLabels[qType] || qType.toUpperCase()}
         </span>
+
+        {/* Source news — carte « titre · Voir l'article » (reutilise le meme
+            pattern que ThemeQuizModal ; ouvre NewsModal sur news_synthesis_id). */}
+        {q.news_source_title && (
+          <div className="mb-4 rounded-xl glass-card px-3 py-2.5 flex items-start gap-2.5">
+            <span aria-hidden className="mt-0.5">📄</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-white/85 text-sm font-medium leading-snug">{q.news_source_title}</p>
+              {q.news_synthesis_id && (
+                <button
+                  type="button"
+                  onClick={() => setArticleNewsId(q.news_synthesis_id!)}
+                  className="mt-1 text-accent text-xs font-semibold hover:underline transition-premium"
+                >
+                  Voir l&apos;article
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Layout wrapper — side by side on desktop when image present */}
         <div className={q.image_url ? "flex flex-col md:flex-row md:gap-8 md:items-start" : ""}>
           {/* Image — left side on desktop */}
           {q.image_url && (
             <div className="w-full md:w-1/2 md:max-w-lg md:sticky md:top-4 mb-4 md:mb-0 shrink-0">
-              <img src={q.image_url} alt="Question" className="w-full rounded-xl border border-gray-200 max-h-[50vh] md:max-h-[60vh] object-contain" />
+              <img src={q.image_url} alt="Question" className="w-full rounded-xl max-h-[50vh] md:max-h-[60vh] object-contain" />
             </div>
           )}
 
           {/* Question + Options — right side on desktop when image present */}
           <div className={q.image_url ? "w-full md:w-1/2" : ""}>
-            {/* Question text */}
-            <h3 className="text-lg font-bold leading-snug mb-6" style={{ color: '#e5e5e5' }}>
-              {q.question_text}
-            </h3>
+            {/* Question text — fill_blank : slots inline visibles (composant
+                partage) au lieu du token « ________ » noye dans la phrase. */}
+            {normalizedType === 'fill_blank' ? (
+              <h3 className="text-lg font-bold text-white leading-relaxed mb-6">
+                <FillBlankSentence
+                  questionText={q.question_text}
+                  blanks={parseFillBlankOptions(q.options)?.blanks ?? []}
+                  answers={fillBlankAnswers}
+                  showFeedback={showFeedback}
+                  onClearBlank={id => setFillBlankAnswers(prev => { const n = { ...prev }; delete n[id]; return n })}
+                />
+              </h3>
+            ) : (
+              <h3 className="text-lg font-bold text-white leading-snug mb-6">
+                {q.question_text}
+              </h3>
+            )}
 
             {!showFeedback ? (
           <>
@@ -834,23 +871,15 @@ export default function DailyQuizModal({
                         key={opt.id}
                         onClick={() => handleSingleAnswer(opt.id)}
                         disabled={selectedAnswer !== null}
-                        className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
-                        style={{
-                          background: isSelected ? 'rgba(45,27,150,0.25)' : '#242424',
-                          border: `2px solid ${isSelected ? '#2D1B96' : '#333'}`,
-                          cursor: selectedAnswer ? 'default' : 'pointer',
-                        }}
+                        className={`w-full p-3.5 rounded-2xl text-left transition-premium flex items-center gap-3 border-2 ${isSelected ? 'bg-primary/20 border-primary' : 'bg-white/[0.07] border-white/15'}`}
+                        style={{ cursor: selectedAnswer ? 'default' : 'pointer' }}
                       >
                         <span
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0"
-                          style={{
-                            background: isSelected ? '#2D1B96' : '#333',
-                            color: isSelected ? 'white' : '#a3a3a3',
-                          }}
+                          className={`w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ${isSelected ? 'bg-primary text-white' : 'bg-white/10 text-white/60'}`}
                         >
                           {String.fromCharCode(65 + i)}
                         </span>
-                        <span className="flex-1 font-semibold text-sm" style={{ color: '#e5e5e5' }}>{opt.text}</span>
+                        <span className="flex-1 font-semibold text-base text-white">{opt.text}</span>
                       </button>
                     )
                   })}
@@ -859,56 +888,44 @@ export default function DailyQuizModal({
             })()}
 
             {/* === TRUE_FALSE === */}
+            {/* P2 : neutre (gris) avant reponse — pas de vert/rouge ni d'icone
+                ✓/✗ tant que l'user n'a pas repondu (le detail colore s'affiche
+                ensuite dans le FeedbackPanel). Aligne sur le quizz de sequence. */}
             {normalizedType === 'true_false' && (() => {
               const opts = parseStandardOptions(q.options)
               // If options are standard format with id/text/correct, render as buttons
               if (opts.length >= 2) {
                 return (
                   <div className="grid grid-cols-2 gap-4">
-                    {opts.map(opt => {
-                      const isVrai = opt.text.toLowerCase().includes('vrai') || opt.text.toLowerCase() === 'true'
-                      return (
-                        <button
-                          key={opt.id}
-                          onClick={() => handleSingleAnswer(opt.id)}
-                          disabled={selectedAnswer !== null}
-                          className="h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 hover:scale-[1.02] transition-all active:scale-95"
-                          style={isVrai
-                            ? { background: 'rgba(6,78,59,0.3)', borderColor: '#059669' }
-                            : { background: 'rgba(69,10,10,0.3)', borderColor: '#ef4444' }}
-                        >
-                          {isVrai ? (
-                            <CheckCircle2 size={28} className="text-emerald-600" />
-                          ) : (
-                            <X size={28} className="text-red-600" />
-                          )}
-                          <span className={`text-lg font-black ${isVrai ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {opt.text}
-                          </span>
-                        </button>
-                      )
-                    })}
+                    {opts.map(opt => (
+                      <button
+                        key={opt.id}
+                        onClick={() => handleSingleAnswer(opt.id)}
+                        disabled={selectedAnswer !== null}
+                        className="h-24 rounded-2xl border-2 border-white/15 bg-white/[0.07] flex items-center justify-center hover:scale-[1.02] transition-premium active:scale-95"
+                      >
+                        <span className="text-lg font-black text-white">{opt.text}</span>
+                      </button>
+                    ))}
                   </div>
                 )
               }
-              // Fallback: hardcoded VRAI/FAUX buttons for { correct_answer } format
+              // Fallback: VRAI/FAUX buttons for { correct_answer } format
               return (
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     onClick={() => handleSingleAnswer('true')}
                     disabled={selectedAnswer !== null}
-                    className="h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 hover:scale-[1.02] transition-all active:scale-95" style={{ background: 'rgba(6,78,59,0.3)', borderColor: '#059669' }}
+                    className="h-24 rounded-2xl border-2 border-white/15 bg-white/[0.07] flex items-center justify-center hover:scale-[1.02] transition-premium active:scale-95"
                   >
-                    <CheckCircle2 size={28} className="text-emerald-600" />
-                    <span className="text-lg font-black text-emerald-400">VRAI</span>
+                    <span className="text-lg font-black text-white">VRAI</span>
                   </button>
                   <button
                     onClick={() => handleSingleAnswer('false')}
                     disabled={selectedAnswer !== null}
-                    className="h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 hover:scale-[1.02] transition-all active:scale-95" style={{ background: 'rgba(69,10,10,0.3)', borderColor: '#ef4444' }}
+                    className="h-24 rounded-2xl border-2 border-white/15 bg-white/[0.07] flex items-center justify-center hover:scale-[1.02] transition-premium active:scale-95"
                   >
-                    <X size={28} className="text-red-600" />
-                    <span className="text-lg font-black text-red-400">FAUX</span>
+                    <span className="text-lg font-black text-white">FAUX</span>
                   </button>
                 </div>
               )
@@ -931,7 +948,7 @@ export default function DailyQuizModal({
               const opts = parseStandardOptions(q.options)
               return (
                 <>
-                  <p className="text-xs mb-3" style={{ color: '#60a5fa' }}>Plusieurs reponses possibles — cochez puis validez</p>
+                  <p className="text-xs text-blue-400 mb-3">Plusieurs reponses possibles — cochez puis validez</p>
                   <div className="flex flex-col gap-2.5">
                     {opts.map(opt => {
                       const isSelected = selectedAnswers.includes(opt.id)
@@ -943,19 +960,15 @@ export default function DailyQuizModal({
                               ? prev.filter(a => a !== opt.id)
                               : [...prev, opt.id]
                           )}
-                          className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
-                          style={{
-                            background: isSelected ? 'rgba(45,27,150,0.25)' : '#242424',
-                            border: `2px solid ${isSelected ? '#2D1B96' : '#333'}`,
-                          }}
+                          className={`w-full p-3.5 rounded-2xl text-left transition-premium flex items-center gap-3 border-2 ${isSelected ? 'bg-primary/20 border-primary' : 'bg-white/[0.07] border-white/15'}`}
                         >
                           <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
                             {isSelected
-                              ? <CheckSquare size={24} style={{ color: GRADIENT_FROM }} />
+                              ? <CheckSquare size={24} className="text-primary" />
                               : <Square size={24} className="text-white/40" />
                             }
                           </span>
-                          <span className="flex-1 font-semibold text-sm" style={{ color: '#e5e5e5' }}>{opt.text}</span>
+                          <span className="flex-1 font-semibold text-base text-white">{opt.text}</span>
                         </button>
                       )
                     })}
@@ -963,8 +976,7 @@ export default function DailyQuizModal({
                   <button
                     onClick={handleCheckboxValidate}
                     disabled={selectedAnswers.length === 0}
-                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40"
-                    style={{ background: GRADIENT_FROM }}
+                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-sm text-white bg-primary/60 hover:bg-primary/80 transition-premium disabled:opacity-40"
                   >
                     Valider ({selectedAnswers.length} selectionnee{selectedAnswers.length > 1 ? 's' : ''})
                   </button>
@@ -977,7 +989,7 @@ export default function DailyQuizModal({
               const opts = parseStandardOptions(q.options)
               return (
                 <>
-                  <p className="text-xs mb-3" style={{ color: '#fb7185' }}>Barrez les intrus en les selectionnant</p>
+                  <p className="text-xs text-rose-400 mb-3">Barrez les intrus en les selectionnant</p>
                   <div className="flex flex-col gap-2.5">
                     {opts.map(opt => {
                       const isSelected = selectedAnswers.includes(opt.id)
@@ -989,19 +1001,9 @@ export default function DailyQuizModal({
                               ? prev.filter(a => a !== opt.id)
                               : [...prev, opt.id]
                           )}
-                          className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
-                          style={{
-                            background: isSelected ? 'rgba(69,10,10,0.35)' : '#242424',
-                            border: `2px solid ${isSelected ? '#ef4444' : '#333'}`,
-                          }}
+                          className={`w-full p-3.5 rounded-2xl text-left transition-premium flex items-center gap-3 border-2 ${isSelected ? 'bg-red-500/15 border-red-400' : 'bg-white/[0.07] border-white/15'}`}
                         >
-                          <span
-                            className="flex-1 font-semibold text-sm"
-                            style={{
-                              color: isSelected ? '#f87171' : '#e5e5e5',
-                              textDecoration: isSelected ? 'line-through' : 'none',
-                            }}
-                          >
+                          <span className={`flex-1 font-semibold text-base ${isSelected ? 'text-red-300 line-through' : 'text-white'}`}>
                             {opt.text}
                           </span>
                         </button>
@@ -1011,8 +1013,7 @@ export default function DailyQuizModal({
                   <button
                     onClick={handleHighlightValidate}
                     disabled={selectedAnswers.length === 0}
-                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40"
-                    style={{ background: GRADIENT_FROM }}
+                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-sm text-white bg-primary/60 hover:bg-primary/80 transition-premium disabled:opacity-40"
                   >
                     Valider mes choix
                   </button>
@@ -1031,49 +1032,31 @@ export default function DailyQuizModal({
 
               return (
                 <>
-                  <p className="text-xs text-indigo-600 mb-3">
-                    {hasWordBank ? 'Selectionnez un mot de la banque pour chaque blanc' : 'Tapez votre reponse'}
+                  <p className="text-xs text-white/50 mb-3">
+                    {hasWordBank ? 'Selectionne un mot de la banque pour chaque trou' : 'Tape ta reponse'}
                   </p>
 
-                  <div className="p-4 rounded-2xl border-2 mb-4 space-y-3" style={{ background: '#1a1a1a', borderColor: '#333' }}>
-                    {opts.blanks.map((blank, idx) => {
-                      const answer = fillBlankAnswers[blank.id]
-                      return (
+                  {/* Cas saisie libre (aucune question en base aujourd'hui) : inputs.
+                      Le cas wordBank saisit directement dans les slots inline du
+                      texte de la question (composant FillBlankSentence). */}
+                  {!hasWordBank && (
+                    <div className="p-4 rounded-2xl border-2 border-white/15 bg-white/[0.04] mb-4 space-y-3">
+                      {opts.blanks.map((blank, idx) => (
                         <div key={blank.id} className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium" style={{ color: '#a3a3a3' }}>
-                            {opts.blanks.length > 1 ? `Blanc ${idx + 1}:` : 'Reponse:'}
+                          <span className="text-sm font-medium text-white/60">
+                            {opts.blanks.length > 1 ? `Trou ${idx + 1}:` : 'Reponse:'}
                           </span>
-
-                          {hasWordBank ? (
-                            <button
-                              onClick={() => setFillBlankAnswers(prev => {
-                                const next = { ...prev }
-                                delete next[blank.id]
-                                return next
-                              })}
-                              className="min-w-[100px] px-4 py-2 rounded-xl border-2 border-dashed text-sm font-semibold transition-all"
-                              style={{
-                                borderColor: answer ? GRADIENT_FROM : '#CBD5E1',
-                                background: answer ? `${GRADIENT_FROM}30` : '#242424',
-                                color: '#e5e5e5',
-                              }}
-                            >
-                              {answer || '________'}
-                            </button>
-                          ) : (
-                            <input
-                              type="text"
-                              value={answer || ''}
-                              onChange={e => setFillBlankAnswers(prev => ({ ...prev, [blank.id]: e.target.value }))}
-                              placeholder="Tapez votre reponse..."
-                              className="flex-1 min-w-[150px] px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all outline-none"
-                              style={{ borderColor: '#333', background: '#242424', color: '#ffffff' }}
-                            />
-                          )}
+                          <input
+                            type="text"
+                            value={fillBlankAnswers[blank.id] || ''}
+                            onChange={e => setFillBlankAnswers(prev => ({ ...prev, [blank.id]: e.target.value }))}
+                            placeholder="Tape ta reponse..."
+                            className="flex-1 min-w-[150px] px-4 py-2 rounded-xl border-2 border-white/15 bg-white/[0.07] text-white text-sm font-semibold transition-premium outline-none focus:border-accent"
+                          />
                         </div>
-                      )
-                    })}
-                  </div>
+                      ))}
+                    </div>
+                  )}
 
                   {hasWordBank && (
                     <div className="flex flex-wrap gap-2 mb-4">
@@ -1090,12 +1073,7 @@ export default function DailyQuizModal({
                               }
                             }}
                             disabled={isUsed}
-                            className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-                            style={{
-                              background: isUsed ? '#E2E8F0' : GRADIENT_FROM,
-                              color: isUsed ? '#94A3B8' : 'white',
-                              opacity: isUsed ? 0.5 : 1,
-                            }}
+                            className={`px-4 py-2 rounded-xl text-base font-semibold transition-premium ${isUsed ? 'bg-white/10 text-white/30 opacity-60' : 'bg-primary text-white hover:bg-primary/80'}`}
                           >
                             {word}
                           </button>
@@ -1107,8 +1085,7 @@ export default function DailyQuizModal({
                   <button
                     onClick={handleFillBlankValidate}
                     disabled={!allFilled}
-                    className="w-full py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40"
-                    style={{ background: GRADIENT_FROM }}
+                    className="w-full py-3.5 rounded-2xl font-bold text-sm text-white bg-primary/60 hover:bg-primary/80 transition-premium disabled:opacity-40"
                   >
                     Valider {hasWordBank ? 'mes reponses' : 'ma reponse'}
                   </button>
@@ -1131,7 +1108,7 @@ export default function DailyQuizModal({
 
               return (
                 <>
-                  <p className="text-xs text-amber-600 mb-3">Utilisez les fleches pour reordonner</p>
+                  <p className="text-xs text-amber-400 mb-3">Utilisez les fleches pour reordonner</p>
                   <div className="flex flex-col gap-2">
                     {orderingOrder.map((itemId, index) => {
                       const item = opts.find(o => o.id === itemId)
@@ -1139,30 +1116,28 @@ export default function DailyQuizModal({
                       return (
                         <div
                           key={itemId}
-                          className="flex items-center gap-2 p-3 rounded-2xl border-2 transition-all"
-                          style={{ background: '#242424', borderColor: '#333' }}
+                          className="flex items-center gap-2 p-3 rounded-2xl border-2 border-white/15 bg-white/[0.07] transition-premium"
                         >
                           <span
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white"
-                            style={{ background: GRADIENT_FROM }}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white bg-primary"
                           >
                             {index + 1}
                           </span>
-                          <span className="flex-1 text-sm font-semibold" style={{ color: '#e5e5e5' }}>{item.text}</span>
+                          <span className="flex-1 text-base font-semibold text-white">{item.text}</span>
                           <div className="flex flex-col">
                             <button
                               onClick={() => moveItem(index, index - 1)}
                               disabled={index === 0}
-                              className="p-1 hover:bg-[#2e2e2e] rounded disabled:opacity-30"
+                              className="p-1 hover:bg-white/10 rounded disabled:opacity-30"
                             >
-                              <ChevronUp size={16} style={{ color: '#a3a3a3' }} />
+                              <ChevronUp size={16} className="text-white/60" />
                             </button>
                             <button
                               onClick={() => moveItem(index, index + 1)}
                               disabled={index === orderingOrder.length - 1}
-                              className="p-1 hover:bg-[#2e2e2e] rounded disabled:opacity-30"
+                              className="p-1 hover:bg-white/10 rounded disabled:opacity-30"
                             >
-                              <ChevronDown size={16} style={{ color: '#a3a3a3' }} />
+                              <ChevronDown size={16} className="text-white/60" />
                             </button>
                           </div>
                         </div>
@@ -1171,8 +1146,7 @@ export default function DailyQuizModal({
                   </div>
                   <button
                     onClick={handleOrderingValidate}
-                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white"
-                    style={{ background: GRADIENT_FROM }}
+                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-sm text-white bg-primary/60 hover:bg-primary/80 transition-premium"
                   >
                     Valider l&apos;ordre
                   </button>
@@ -1193,13 +1167,13 @@ export default function DailyQuizModal({
 
               return (
                 <div className="space-y-4">
-                  <p className="text-xs font-medium" style={{ color: '#818cf8' }}>
+                  <p className="text-xs font-medium text-white/50">
                     Cliquez sur un élément gauche puis son correspondant à droite. Re-cliquez sur un élément déjà associé pour défaire la paire.
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     {/* Colonne gauche */}
                     <div className="flex flex-col gap-2">
-                      <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#6b7280' }}>À associer</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-white/40">À associer</p>
                       {data.leftItems.map((li) => {
                         const match = matchByLeft.get(li.left)
                         const color = match ? colorForPairIndex(match.pairIndex) : null
@@ -1207,18 +1181,14 @@ export default function DailyQuizModal({
                         const isCorrectMatch = showFeedback && match && match.rightId === li.correctRightId
                         const isWrongMatch = showFeedback && match && match.rightId !== li.correctRightId
                         const usePairColor = !!match && !showFeedback
-                        const pairClasses = usePairColor && color ? `${color.bg} ${color.border} ${color.text}` : ''
-
-                        const inlineBg = isCorrectMatch ? '#052e16'
-                          : isWrongMatch ? '#450a0a'
-                          : usePairColor ? undefined
-                          : isSelected ? 'rgba(99,102,241,0.25)'
-                          : '#242424'
-                        const inlineBorderColor = isCorrectMatch ? '#4ADE80'
-                          : isWrongMatch ? '#FCA5A5'
-                          : usePairColor ? undefined
-                          : isSelected ? '#6366F1'
-                          : '#333'
+                        // Etat -> classes tokens (jamais de hex). En pairing, les
+                        // classes de paire (color.*) portent bg/bordure/texte.
+                        const stateClasses = usePairColor && color
+                          ? `${color.bg} ${color.border} ${color.text}`
+                          : isCorrectMatch ? 'bg-emerald-500/15 border-emerald-400 text-white'
+                          : isWrongMatch ? 'bg-red-500/15 border-red-400 text-white'
+                          : isSelected ? 'bg-indigo-500/25 border-indigo-500 text-white'
+                          : 'bg-white/[0.07] border-white/15 text-white'
 
                         return (
                           <button key={li.left}
@@ -1232,12 +1202,7 @@ export default function DailyQuizModal({
                               }
                             }}
                             disabled={showFeedback}
-                            className={`w-full p-2.5 rounded-xl text-left text-xs font-bold transition-all flex items-center gap-3 border-2 ${pairClasses}`}
-                            style={{
-                              ...(inlineBg !== undefined ? { background: inlineBg } : {}),
-                              ...(inlineBorderColor !== undefined ? { borderColor: inlineBorderColor } : {}),
-                              color: usePairColor ? undefined : '#e5e5e5'
-                            }}>
+                            className={`w-full p-2.5 rounded-xl text-left text-sm font-bold transition-premium flex items-center gap-3 border-2 ${stateClasses}`}>
                             {match && (
                               <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${color?.badge ?? 'bg-gray-500'}`}>
                                 {match.pairIndex}
@@ -1250,21 +1215,18 @@ export default function DailyQuizModal({
                     </div>
                     {/* Colonne droite */}
                     <div className="flex flex-col gap-2">
-                      <p className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#6b7280' }}>Options</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-white/40">Options</p>
                       {rights.map((ro) => {
                         const match = matchByRight.get(ro.id)
                         const color = match ? colorForPairIndex(match.pairIndex) : null
                         const usePairColor = !!match && !showFeedback
-                        const pairClasses = usePairColor && color ? `${color.bg} ${color.border} ${color.text}` : ''
-
-                        const inlineBg = usePairColor ? undefined
-                          : match ? '#2a2a2a'
-                          : selectedLeftMatching ? 'rgba(0,209,193,0.15)'
-                          : '#242424'
-                        const inlineBorderColor = usePairColor ? undefined
-                          : match ? '#444'
-                          : selectedLeftMatching ? '#00D1C1'
-                          : '#333'
+                        // Etat « selectionnable » (gauche choisi, droite libre) : highlight accent.
+                        const isSelectable = !usePairColor && !match && !!selectedLeftMatching
+                        const stateClasses = usePairColor && color
+                          ? `${color.bg} ${color.border} ${color.text}`
+                          : match ? 'bg-white/10 border-white/20 text-white/70'
+                          : isSelectable ? 'bg-accent/15 border-accent text-white'
+                          : 'bg-white/[0.07] border-white/15 text-white'
 
                         return (
                           <button key={ro.id}
@@ -1274,12 +1236,7 @@ export default function DailyQuizModal({
                               setSelectedLeftMatching(null)
                             }}
                             disabled={showFeedback || !!match}
-                            className={`w-full p-2.5 rounded-xl text-left text-xs font-semibold transition-all flex items-center gap-3 border-2 ${pairClasses}`}
-                            style={{
-                              ...(inlineBg !== undefined ? { background: inlineBg } : {}),
-                              ...(inlineBorderColor !== undefined ? { borderColor: inlineBorderColor } : {}),
-                              color: usePairColor ? undefined : '#e5e5e5'
-                            }}>
+                            className={`w-full p-2.5 rounded-xl text-left text-sm font-semibold transition-premium flex items-center gap-3 border-2 ${stateClasses}`}>
                             {match && (
                               <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${color?.badge ?? 'bg-gray-500'}`}>
                                 {match.pairIndex}
@@ -1303,8 +1260,7 @@ export default function DailyQuizModal({
                         setShowFeedback(true)
                       }}
                       disabled={!allMatched}
-                      className="w-full py-3 rounded-2xl font-bold text-sm text-white disabled:opacity-40 transition-all"
-                      style={{ background: allMatched ? 'linear-gradient(135deg, #6366F1, #00D1C1)' : '#333' }}>
+                      className={`w-full py-3 rounded-2xl font-bold text-sm text-white disabled:opacity-40 transition-premium ${allMatched ? 'bg-gradient-to-br from-indigo-500 to-accent' : 'bg-white/10'}`}>
                       Valider les associations
                     </button>
                   )}
@@ -1319,8 +1275,7 @@ export default function DailyQuizModal({
                 <p className="text-white/55 mb-4">Type &quot;{qType}&quot; non supporte</p>
                 <button
                   onClick={next}
-                  className="px-6 py-3 rounded-xl text-white font-bold"
-                  style={{ background: GRADIENT_FROM }}
+                  className="px-6 py-3 rounded-xl text-white font-bold bg-primary"
                 >
                   Passer cette question
                 </button>
@@ -1338,7 +1293,6 @@ export default function DailyQuizModal({
             pointsEarned={pointsEarned}
             selectedAnswer={selectedAnswer}
             selectedAnswers={selectedAnswers}
-            fillBlankAnswers={fillBlankAnswers}
             orderingOrder={orderingOrder}
             matchingMatches={matchingMatches}
             current={current}
@@ -1349,6 +1303,7 @@ export default function DailyQuizModal({
           </div>{/* close question+options wrapper */}
         </div>{/* close flex layout wrapper */}
       </div>
+      <NewsModal newsId={articleNewsId} onClose={() => setArticleNewsId(null)} />
     </div>
   )
 }
@@ -1364,7 +1319,6 @@ interface FeedbackPanelProps {
   pointsEarned: number
   selectedAnswer: string | null
   selectedAnswers: string[]
-  fillBlankAnswers: Record<string, string>
   orderingOrder: string[]
   matchingMatches: MatchingPairAssignment[]
   current: number
@@ -1379,7 +1333,6 @@ function FeedbackPanel({
   pointsEarned,
   selectedAnswer,
   selectedAnswers,
-  fillBlankAnswers,
   orderingOrder,
   matchingMatches,
   current,
@@ -1387,7 +1340,9 @@ function FeedbackPanel({
   onNext,
 }: FeedbackPanelProps) {
 
-  // Show detailed feedback for types that benefit from it
+  // Detail des reponses (tokens uniquement). Le cas fill_blank n'est plus
+  // affiche ici : les slots inline du texte de question (FillBlankSentence)
+  // montrent deja le resultat en feedback.
   const renderDetailedFeedback = () => {
     switch (normalizedType) {
       case 'mcq':
@@ -1398,20 +1353,12 @@ function FeedbackPanel({
             {opts.map((opt, i) => {
               const isSelected = selectedAnswer === opt.id
               const optCorrect = opt.correct
-              let bg = '#1a1a1a', border = '#333', textColor = '#6b7280'
-              if (optCorrect) { bg = '#F0FDF4'; border = '#4ADE80'; textColor = '#334155' }
-              else if (isSelected) { bg = '#FEF2F2'; border = '#FCA5A5'; textColor = '#334155' }
               return (
-                <div key={opt.id} className="w-full p-3 rounded-2xl flex items-center gap-3"
-                  style={{ background: bg, border: `2px solid ${border}` }}>
-                  <span className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0"
-                    style={{
-                      background: optCorrect ? '#22C55E' : isSelected ? '#EF4444' : '#E2E8F0',
-                      color: optCorrect || isSelected ? 'white' : '#64748B',
-                    }}>
+                <div key={opt.id} className={`w-full p-3 rounded-2xl flex items-center gap-3 border-2 ${optCorrect ? 'bg-emerald-500/15 border-emerald-400' : isSelected ? 'bg-red-500/15 border-red-400' : 'bg-white/[0.04] border-white/10'}`}>
+                  <span className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 text-white ${optCorrect ? 'bg-emerald-500' : isSelected ? 'bg-red-500' : 'bg-white/10'}`}>
                     {optCorrect ? '\u2713' : isSelected ? '\u2717' : String.fromCharCode(65 + i)}
                   </span>
-                  <span className="flex-1 font-semibold text-sm" style={{ color: textColor }}>{opt.text}</span>
+                  <span className={`flex-1 font-semibold text-base ${optCorrect || isSelected ? 'text-white' : 'text-white/70'}`}>{opt.text}</span>
                 </div>
               )
             })}
@@ -1426,18 +1373,14 @@ function FeedbackPanel({
             {opts.map(opt => {
               const isSelected = selectedAnswers.includes(opt.id)
               const optCorrect = opt.correct
-              let bg = '#1a1a1a', border = '#333', textColor = '#6b7280'
-              if (optCorrect) { bg = '#F0FDF4'; border = '#4ADE80'; textColor = '#334155' }
-              else if (isSelected) { bg = '#FEF2F2'; border = '#FCA5A5'; textColor = '#334155' }
               return (
-                <div key={opt.id} className="w-full p-3 rounded-2xl flex items-center gap-3"
-                  style={{ background: bg, border: `2px solid ${border}` }}>
+                <div key={opt.id} className={`w-full p-3 rounded-2xl flex items-center gap-3 border-2 ${optCorrect ? 'bg-emerald-500/15 border-emerald-400' : isSelected ? 'bg-red-500/15 border-red-400' : 'bg-white/[0.04] border-white/10'}`}>
                   <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
-                    {optCorrect ? <CheckSquare size={22} className="text-emerald-500" />
-                      : isSelected ? <X size={22} className="text-red-500" />
-                      : <Square size={22} className="text-gray-300" />}
+                    {optCorrect ? <CheckSquare size={22} className="text-emerald-400" />
+                      : isSelected ? <X size={22} className="text-red-400" />
+                      : <Square size={22} className="text-white/30" />}
                   </span>
-                  <span className="flex-1 font-semibold text-sm" style={{ color: textColor }}>{opt.text}</span>
+                  <span className={`flex-1 font-semibold text-base ${optCorrect || isSelected ? 'text-white' : 'text-white/70'}`}>{opt.text}</span>
                 </div>
               )
             })}
@@ -1452,48 +1395,13 @@ function FeedbackPanel({
             {opts.map(opt => {
               const isIntrus = !opt.correct
               const isSelected = selectedAnswers.includes(opt.id)
-              let bg = '#F0FDF4', border = '#4ADE80', textColor = '#334155', textDeco = 'none'
-              if (isIntrus) { bg = '#FEF2F2'; border = '#FCA5A5'; textDeco = 'line-through'; textColor = '#DC2626' }
-              else if (isSelected) { bg = '#FEF2F2'; border = '#EF4444'; textColor = '#EF4444' }
+              const wrong = isIntrus || isSelected
               return (
-                <div key={opt.id} className="w-full p-3 rounded-2xl flex items-center gap-3"
-                  style={{ background: bg, border: `2px solid ${border}` }}>
-                  <span className="flex-1 font-semibold text-sm" style={{ color: textColor, textDecoration: textDeco }}>
+                <div key={opt.id} className={`w-full p-3 rounded-2xl flex items-center gap-3 border-2 ${wrong ? 'bg-red-500/15 border-red-400' : 'bg-emerald-500/15 border-emerald-400'}`}>
+                  <span className={`flex-1 font-semibold text-base ${isIntrus ? 'text-red-300 line-through' : isSelected ? 'text-red-300' : 'text-emerald-300'}`}>
                     {opt.text}
                   </span>
-                  {isIntrus && <span className="text-xs font-bold text-rose-500">INTRUS</span>}
-                </div>
-              )
-            })}
-          </div>
-        )
-      }
-
-      case 'fill_blank': {
-        const opts = parseFillBlankOptions(q.options)
-        if (!opts) return null
-        return (
-          <div className="p-4 rounded-2xl border-2 mb-4 space-y-3" style={{ background: '#1a1a1a', borderColor: '#333' }}>
-            {opts.blanks.map((blank, idx) => {
-              const answer = fillBlankAnswers[blank.id] || ''
-              const correct = answer.toLowerCase().trim() === blank.correctAnswer.toLowerCase().trim() ||
-                (blank.alternatives?.some(a => a.toLowerCase().trim() === answer.toLowerCase().trim()) ?? false)
-              return (
-                <div key={blank.id} className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium" style={{ color: '#a3a3a3' }}>
-                    {opts.blanks.length > 1 ? `Blanc ${idx + 1}:` : 'Reponse:'}
-                  </span>
-                  <span className="px-3 py-1.5 rounded-xl border-2 text-sm font-semibold"
-                    style={{
-                      borderColor: correct ? '#4ADE80' : '#FCA5A5',
-                      background: correct ? '#F0FDF4' : '#FEF2F2',
-                      color: correct ? '#16A34A' : '#DC2626',
-                    }}>
-                    {answer || '(vide)'}
-                  </span>
-                  {!correct && (
-                    <span className="text-xs text-emerald-600 font-medium">&rarr; {blank.correctAnswer}</span>
-                  )}
+                  {isIntrus && <span className="text-xs font-bold text-rose-400">INTRUS</span>}
                 </div>
               )
             })}
@@ -1510,17 +1418,12 @@ function FeedbackPanel({
               if (!item) return null
               const isCorrectPos = item.correctPosition === index + 1
               return (
-                <div key={itemId} className="flex items-center gap-2 p-3 rounded-2xl border-2 transition-all"
-                  style={{
-                    background: isCorrectPos ? '#F0FDF4' : '#FEF2F2',
-                    borderColor: isCorrectPos ? '#4ADE80' : '#FCA5A5',
-                  }}>
-                  <span className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white"
-                    style={{ background: isCorrectPos ? '#22C55E' : '#EF4444' }}>
+                <div key={itemId} className={`flex items-center gap-2 p-3 rounded-2xl border-2 transition-premium ${isCorrectPos ? 'bg-emerald-500/15 border-emerald-400' : 'bg-red-500/15 border-red-400'}`}>
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white ${isCorrectPos ? 'bg-emerald-500' : 'bg-red-500'}`}>
                     {index + 1}
                   </span>
-                  <span className="flex-1 text-sm font-semibold" style={{ color: '#e5e5e5' }}>{item.text}</span>
-                  {!isCorrectPos && <span className="text-xs text-emerald-600">&rarr; Pos. {item.correctPosition}</span>}
+                  <span className="flex-1 text-base font-semibold text-white">{item.text}</span>
+                  {!isCorrectPos && <span className="text-xs text-emerald-400">&rarr; Pos. {item.correctPosition}</span>}
                 </div>
               )
             })}
@@ -1538,23 +1441,21 @@ function FeedbackPanel({
           <div className="flex flex-col gap-2 mb-4">
             {data.leftItems.map((li) => {
               const userAnswerId = matchByLeft.get(li.left)
-              const userAnswerText = userAnswerId ? (rightLookup.get(userAnswerId) ?? userAnswerId) : null
               const correctText = rightLookup.get(li.correctRightId) ?? li.correctRightId
               const isCorrectMatch = !!userAnswerId && userAnswerId === li.correctRightId
+              // Correction : on n'affiche PLUS la reponse fausse choisie. Deux
+              // conteneurs de meme taille (flex-1, meme police) : gauche = terme
+              // (fond emerald si juste, red sinon), droit = UNIQUEMENT la bonne
+              // reponse. La bonne reponse doit dominer, jamais la fausse.
               return (
-                <div key={li.left} className="flex items-center gap-2 p-3 rounded-2xl border-2"
-                  style={{
-                    background: isCorrectMatch ? '#F0FDF4' : '#FEF2F2',
-                    borderColor: isCorrectMatch ? '#4ADE80' : '#FCA5A5',
-                  }}>
-                  <span className="text-sm font-semibold" style={{ color: '#e5e5e5' }}>{li.left}</span>
-                  <span className="mx-1" style={{ color: '#6b7280' }}>&rarr;</span>
-                  <span className="text-sm font-semibold" style={{ color: isCorrectMatch ? '#16A34A' : '#DC2626' }}>
-                    {userAnswerText || '?'}
+                <div key={li.left} className="flex items-stretch gap-2">
+                  <span className={`flex-1 p-3 rounded-2xl border-2 text-base font-semibold flex items-center ${isCorrectMatch ? 'bg-emerald-500/15 border-emerald-400 text-white' : 'bg-red-500/15 border-red-400 text-white'}`}>
+                    {li.left}
                   </span>
-                  {!isCorrectMatch && (
-                    <span className="text-xs text-emerald-600 ml-auto">&rarr; {correctText}</span>
-                  )}
+                  <span aria-hidden className="self-center text-white/40 shrink-0">&rarr;</span>
+                  <span className="flex-1 p-3 rounded-2xl border-2 bg-emerald-500/15 border-emerald-400 text-white text-base font-semibold flex items-center">
+                    {correctText}
+                  </span>
                 </div>
               )
             })}
@@ -1574,10 +1475,7 @@ function FeedbackPanel({
 
       {/* Feedback card */}
       <div
-        className="rounded-2xl p-5"
-        style={isCorrect
-          ? { background: 'rgba(6,78,59,0.25)', border: '1px solid #059669' }
-          : { background: 'rgba(69,10,10,0.25)', border: '1px solid #ef4444' }}
+        className={`rounded-2xl p-5 border ${isCorrect ? 'bg-emerald-500/10 border-emerald-500' : 'bg-red-500/10 border-red-500'}`}
       >
         <div className="flex items-center gap-3 mb-3">
           <div
@@ -1598,16 +1496,16 @@ function FeedbackPanel({
               {isCorrect ? 'Exact !' : 'Incorrect'}
             </span>
             {pointsEarned > 0 && (
-              <span className="ml-2 text-sm text-emerald-600">+{pointsEarned} pts</span>
+              <span className="ml-2 text-sm text-emerald-400">+{pointsEarned} pts</span>
             )}
           </div>
         </div>
-        <p className="text-sm leading-relaxed mb-4" style={{ color: '#e5e5e5' }}>
+        <p className="text-sm leading-relaxed mb-4 text-white">
           {isCorrect ? q.feedback_correct : q.feedback_incorrect}
         </p>
         <button
           onClick={onNext}
-          className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors" style={{ background: '#e5e5e5', color: '#0F0F0F' }}
+          className="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-premium bg-white text-[#0F0F0F] hover:bg-white/90"
         >
           {current < total - 1 ? 'Suivant' : 'Voir mon score'}
           <ArrowRight size={16} />
