@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   X,
   CheckCircle2,
@@ -20,6 +19,7 @@ import NewsModal from '@/components/news/NewsModal'
 import PostVictoryPushPrompt from '@/components/push/PostVictoryPushPrompt'
 import CaseStudyQuestion from '@/components/questions/CaseStudyQuestion'
 import { parseCaseStudyData } from '@/lib/questions/parseCaseStudyData'
+import LeaderboardModal from '@/components/leaderboard/LeaderboardModal'
 
 // ============================================
 // TYPES
@@ -239,7 +239,6 @@ export default function DailyQuizModal({
   onClose,
   onComplete,
 }: DailyQuizModalProps) {
-  const router = useRouter()
   const [questions, setQuestions] = useState<DailyQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -252,6 +251,7 @@ export default function DailyQuizModal({
   const [pointsEarned, setPointsEarned] = useState(0)
   const [finished, setFinished] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
 
   // Source news (carte « titre · Voir l'article ») — meme mecanique que le
   // quizz par theme : ouvre NewsModal sur la cle news_synthesis_id.
@@ -656,6 +656,7 @@ export default function DailyQuizModal({
     const bonusPoints = isPerfect ? 50 : 0
 
     return (
+      <>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-gray-900/70 backdrop-blur-sm">
         <Confetti active={true} />
         <div className="w-full max-w-sm rounded-3xl p-6 text-center relative overflow-hidden" style={{ background: '#1a1a1a' }}>
@@ -695,17 +696,14 @@ export default function DailyQuizModal({
             </div>
 
             <button
-              onClick={async () => {
-                await onComplete(finalScore, totalPoints + bonusPoints)
-                router.push('/profil')
-              }}
+              onClick={() => setShowLeaderboard(true)}
               disabled={saving}
               className="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="w-5 h-5 animate-spin mx-auto" />
               ) : (
-                "Voir mes stats →"
+                "Voir le classement"
               )}
             </button>
 
@@ -714,6 +712,20 @@ export default function DailyQuizModal({
           </div>
         </div>
       </div>
+
+      {/* Classement hebdo par-dessus l'écran de résultat. z-[60] pour passer
+          au-dessus du z-50 de l'écran de fin. À la fermeture : onComplete
+          démonte le flux quiz et rafraîchit la home (stats/streak/classement). */}
+      {showLeaderboard && (
+        <div className="relative z-[60]">
+          <LeaderboardModal
+            open={showLeaderboard}
+            onClose={() => onComplete(finalScore, totalPoints + bonusPoints)}
+            userId={userId}
+          />
+        </div>
+      )}
+      </>
     )
   }
 
