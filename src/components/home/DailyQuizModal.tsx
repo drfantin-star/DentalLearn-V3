@@ -879,7 +879,7 @@ export default function DailyQuizModal({
                         >
                           {String.fromCharCode(65 + i)}
                         </span>
-                        <span className="flex-1 font-semibold text-sm text-white">{opt.text}</span>
+                        <span className="flex-1 font-semibold text-base text-white">{opt.text}</span>
                       </button>
                     )
                   })}
@@ -968,7 +968,7 @@ export default function DailyQuizModal({
                               : <Square size={24} className="text-white/40" />
                             }
                           </span>
-                          <span className="flex-1 font-semibold text-sm text-white">{opt.text}</span>
+                          <span className="flex-1 font-semibold text-base text-white">{opt.text}</span>
                         </button>
                       )
                     })}
@@ -1003,7 +1003,7 @@ export default function DailyQuizModal({
                           )}
                           className={`w-full p-3.5 rounded-2xl text-left transition-premium flex items-center gap-3 border-2 ${isSelected ? 'bg-red-500/15 border-red-400' : 'bg-white/[0.07] border-white/15'}`}
                         >
-                          <span className={`flex-1 font-semibold text-sm ${isSelected ? 'text-red-300 line-through' : 'text-white'}`}>
+                          <span className={`flex-1 font-semibold text-base ${isSelected ? 'text-red-300 line-through' : 'text-white'}`}>
                             {opt.text}
                           </span>
                         </button>
@@ -1073,7 +1073,7 @@ export default function DailyQuizModal({
                               }
                             }}
                             disabled={isUsed}
-                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-premium ${isUsed ? 'bg-white/10 text-white/30 opacity-60' : 'bg-primary text-white hover:bg-primary/80'}`}
+                            className={`px-4 py-2 rounded-xl text-base font-semibold transition-premium ${isUsed ? 'bg-white/10 text-white/30 opacity-60' : 'bg-primary text-white hover:bg-primary/80'}`}
                           >
                             {word}
                           </button>
@@ -1123,7 +1123,7 @@ export default function DailyQuizModal({
                           >
                             {index + 1}
                           </span>
-                          <span className="flex-1 text-sm font-semibold text-white">{item.text}</span>
+                          <span className="flex-1 text-base font-semibold text-white">{item.text}</span>
                           <div className="flex flex-col">
                             <button
                               onClick={() => moveItem(index, index - 1)}
@@ -1202,7 +1202,7 @@ export default function DailyQuizModal({
                               }
                             }}
                             disabled={showFeedback}
-                            className={`w-full p-2.5 rounded-xl text-left text-xs font-bold transition-premium flex items-center gap-3 border-2 ${stateClasses}`}>
+                            className={`w-full p-2.5 rounded-xl text-left text-sm font-bold transition-premium flex items-center gap-3 border-2 ${stateClasses}`}>
                             {match && (
                               <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${color?.badge ?? 'bg-gray-500'}`}>
                                 {match.pairIndex}
@@ -1236,7 +1236,7 @@ export default function DailyQuizModal({
                               setSelectedLeftMatching(null)
                             }}
                             disabled={showFeedback || !!match}
-                            className={`w-full p-2.5 rounded-xl text-left text-xs font-semibold transition-premium flex items-center gap-3 border-2 ${stateClasses}`}>
+                            className={`w-full p-2.5 rounded-xl text-left text-sm font-semibold transition-premium flex items-center gap-3 border-2 ${stateClasses}`}>
                             {match && (
                               <span className={`shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white ${color?.badge ?? 'bg-gray-500'}`}>
                                 {match.pairIndex}
@@ -1358,7 +1358,7 @@ function FeedbackPanel({
                   <span className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 text-white ${optCorrect ? 'bg-emerald-500' : isSelected ? 'bg-red-500' : 'bg-white/10'}`}>
                     {optCorrect ? '\u2713' : isSelected ? '\u2717' : String.fromCharCode(65 + i)}
                   </span>
-                  <span className={`flex-1 font-semibold text-sm ${optCorrect || isSelected ? 'text-white' : 'text-white/70'}`}>{opt.text}</span>
+                  <span className={`flex-1 font-semibold text-base ${optCorrect || isSelected ? 'text-white' : 'text-white/70'}`}>{opt.text}</span>
                 </div>
               )
             })}
@@ -1380,7 +1380,7 @@ function FeedbackPanel({
                       : isSelected ? <X size={22} className="text-red-400" />
                       : <Square size={22} className="text-white/30" />}
                   </span>
-                  <span className={`flex-1 font-semibold text-sm ${optCorrect || isSelected ? 'text-white' : 'text-white/70'}`}>{opt.text}</span>
+                  <span className={`flex-1 font-semibold text-base ${optCorrect || isSelected ? 'text-white' : 'text-white/70'}`}>{opt.text}</span>
                 </div>
               )
             })}
@@ -1398,7 +1398,7 @@ function FeedbackPanel({
               const wrong = isIntrus || isSelected
               return (
                 <div key={opt.id} className={`w-full p-3 rounded-2xl flex items-center gap-3 border-2 ${wrong ? 'bg-red-500/15 border-red-400' : 'bg-emerald-500/15 border-emerald-400'}`}>
-                  <span className={`flex-1 font-semibold text-sm ${isIntrus ? 'text-red-300 line-through' : isSelected ? 'text-red-300' : 'text-emerald-300'}`}>
+                  <span className={`flex-1 font-semibold text-base ${isIntrus ? 'text-red-300 line-through' : isSelected ? 'text-red-300' : 'text-emerald-300'}`}>
                     {opt.text}
                   </span>
                   {isIntrus && <span className="text-xs font-bold text-rose-400">INTRUS</span>}
@@ -1422,7 +1422,7 @@ function FeedbackPanel({
                   <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white ${isCorrectPos ? 'bg-emerald-500' : 'bg-red-500'}`}>
                     {index + 1}
                   </span>
-                  <span className="flex-1 text-sm font-semibold text-white">{item.text}</span>
+                  <span className="flex-1 text-base font-semibold text-white">{item.text}</span>
                   {!isCorrectPos && <span className="text-xs text-emerald-400">&rarr; Pos. {item.correctPosition}</span>}
                 </div>
               )

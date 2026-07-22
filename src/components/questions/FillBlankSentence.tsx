@@ -73,9 +73,9 @@ export default function FillBlankSentence({
                 // (petit, barre). Si l'user avait juste, seul le chip vert reste.
                 <span className="inline-flex items-center gap-1.5 mx-1 align-middle">
                   {!correct && answer && (
-                    <span className="text-xs text-red-300/80 line-through">{answer}</span>
+                    <span className="text-sm text-red-300/80 line-through">{answer}</span>
                   )}
-                  <span className="inline-flex items-center justify-center min-w-[3.25rem] px-2.5 py-0.5 rounded-lg border-2 border-emerald-400 bg-emerald-500/15 text-white text-sm font-bold">
+                  <span className="inline-flex items-center justify-center min-w-[3.25rem] px-2.5 py-0.5 rounded-lg border-2 border-emerald-400 bg-emerald-500/15 text-white text-base font-bold">
                     {blank.correctAnswer}
                   </span>
                 </span>
@@ -84,7 +84,7 @@ export default function FillBlankSentence({
                   type="button"
                   disabled={!answer}
                   onClick={() => answer && onClearBlank?.(blank.id)}
-                  className={`inline-flex items-center justify-center align-middle mx-1 min-w-[3.25rem] px-2.5 py-0.5 rounded-lg border-2 text-sm font-bold transition-premium ${inputSlotClasses}`}
+                  className={`inline-flex items-center justify-center align-middle mx-1 min-w-[3.25rem] px-2.5 py-0.5 rounded-lg border-2 text-base font-bold transition-premium ${inputSlotClasses}`}
                   aria-label={answer ? `Trou ${i + 1} : ${answer}` : `Trou ${i + 1} a completer`}
                 >
                   {answer || (i + 1)}

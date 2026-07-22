@@ -357,7 +357,7 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
                         >
                           {String.fromCharCode(65 + i)}
                         </span>
-                        <span className="flex-1 font-semibold text-sm text-white">{opt.text}</span>
+                        <span className="flex-1 font-semibold text-base text-white">{opt.text}</span>
                       </button>
                     )
                   })}
@@ -440,7 +440,7 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
                               ? <CheckSquare size={24} style={{ color: tc.light }} />
                               : <Square size={24} className="text-white/40" />}
                           </span>
-                          <span className="flex-1 font-semibold text-sm text-white">{opt.text}</span>
+                          <span className="flex-1 font-semibold text-base text-white">{opt.text}</span>
                         </button>
                       )
                     })}
@@ -478,7 +478,7 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
                           style={{ background: optCorrect ? '#22C55E' : isSelected ? '#EF4444' : 'rgba(255,255,255,0.1)' }}>
                           {optCorrect ? '✓' : isSelected ? '✗' : String.fromCharCode(65 + i)}
                         </span>
-                        <span className="flex-1 font-semibold text-sm text-white">{opt.text}</span>
+                        <span className="flex-1 font-semibold text-base text-white">{opt.text}</span>
                       </div>
                     )
                   })}
@@ -503,7 +503,7 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
                             : isSelected ? <X size={22} className="text-red-400" />
                             : <Square size={22} className="text-white/30" />}
                         </span>
-                        <span className="flex-1 font-semibold text-sm text-white">{opt.text}</span>
+                        <span className="flex-1 font-semibold text-base text-white">{opt.text}</span>
                       </div>
                     )
                   })}
