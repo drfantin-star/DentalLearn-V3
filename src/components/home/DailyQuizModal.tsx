@@ -1449,11 +1449,11 @@ function FeedbackPanel({
               // reponse. La bonne reponse doit dominer, jamais la fausse.
               return (
                 <div key={li.left} className="flex items-stretch gap-2">
-                  <span className={`flex-1 p-3 rounded-2xl border-2 text-sm font-semibold flex items-center ${isCorrectMatch ? 'bg-emerald-500/15 border-emerald-400 text-white' : 'bg-red-500/15 border-red-400 text-white'}`}>
+                  <span className={`flex-1 p-3 rounded-2xl border-2 text-base font-semibold flex items-center ${isCorrectMatch ? 'bg-emerald-500/15 border-emerald-400 text-white' : 'bg-red-500/15 border-red-400 text-white'}`}>
                     {li.left}
                   </span>
                   <span aria-hidden className="self-center text-white/40 shrink-0">&rarr;</span>
-                  <span className="flex-1 p-3 rounded-2xl border-2 bg-emerald-500/15 border-emerald-400 text-white text-sm font-semibold flex items-center">
+                  <span className="flex-1 p-3 rounded-2xl border-2 bg-emerald-500/15 border-emerald-400 text-white text-base font-semibold flex items-center">
                     {correctText}
                   </span>
                 </div>

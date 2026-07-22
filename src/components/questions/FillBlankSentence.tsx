@@ -58,31 +58,38 @@ export default function FillBlankSentence({
         const answer = blank ? answers[blank.id] : undefined
         const correct = blank ? isBlankCorrect(blank, answer) : false
 
-        let slotClasses = 'border-dashed border-white/40 text-white/40'
-        if (showFeedback) {
-          slotClasses = correct
-            ? 'border-emerald-400 bg-emerald-500/15 text-emerald-300'
-            : 'border-red-400 bg-red-500/15 text-red-300'
-        } else if (answer) {
-          slotClasses = 'border-accent bg-accent/20 text-white'
-        }
+        // Etat saisie (hors feedback) : chip cliquable (numero du trou / mot).
+        const inputSlotClasses = answer
+          ? 'border-accent bg-accent/20 text-white'
+          : 'border-dashed border-white/40 text-white/40'
 
         return (
           <React.Fragment key={i}>
             {part}
             {!isLast && blank && (
-              <button
-                type="button"
-                disabled={showFeedback || !answer}
-                onClick={() => answer && onClearBlank?.(blank.id)}
-                className={`inline-flex items-center justify-center align-middle mx-1 min-w-[3.25rem] px-2.5 py-0.5 rounded-lg border-2 text-sm font-bold transition-premium ${slotClasses}`}
-                aria-label={answer ? `Trou ${i + 1} : ${answer}` : `Trou ${i + 1} a completer`}
-              >
-                {answer || (i + 1)}
-              </button>
-            )}
-            {!isLast && blank && showFeedback && !correct && (
-              <span className="text-emerald-400 text-sm font-semibold whitespace-nowrap"> {blank.correctAnswer}</span>
+              showFeedback ? (
+                // Feedback : la BONNE reponse domine (gros chip vert encadre).
+                // La reponse fausse de l'user reste visible mais discrete
+                // (petit, barre). Si l'user avait juste, seul le chip vert reste.
+                <span className="inline-flex items-center gap-1.5 mx-1 align-middle">
+                  {!correct && answer && (
+                    <span className="text-xs text-red-300/80 line-through">{answer}</span>
+                  )}
+                  <span className="inline-flex items-center justify-center min-w-[3.25rem] px-2.5 py-0.5 rounded-lg border-2 border-emerald-400 bg-emerald-500/15 text-white text-sm font-bold">
+                    {blank.correctAnswer}
+                  </span>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!answer}
+                  onClick={() => answer && onClearBlank?.(blank.id)}
+                  className={`inline-flex items-center justify-center align-middle mx-1 min-w-[3.25rem] px-2.5 py-0.5 rounded-lg border-2 text-sm font-bold transition-premium ${inputSlotClasses}`}
+                  aria-label={answer ? `Trou ${i + 1} : ${answer}` : `Trou ${i + 1} a completer`}
+                >
+                  {answer || (i + 1)}
+                </button>
+              )
             )}
           </React.Fragment>
         )
