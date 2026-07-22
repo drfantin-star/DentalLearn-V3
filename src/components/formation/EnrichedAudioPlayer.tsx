@@ -6,6 +6,7 @@ import { Play } from 'lucide-react'
 import { KaraokeTranscript } from '@/components/audio-enriched/KaraokeTranscript'
 import { SceneWhiteboardWithConcepts } from '@/components/audio-enriched/SceneWhiteboardWithConcepts'
 import { useAudio } from '@/context/AudioContext'
+import { NEUTRAL_STYLE } from '@/lib/design/categoryStyle'
 import { useEnrichedTimeline } from '@/hooks/useEnrichedTimeline'
 import {
   getActiveOrLastScene,
@@ -230,7 +231,7 @@ export default function EnrichedAudioPlayer({
               style={
                 coverImageUrl
                   ? undefined
-                  : { background: `linear-gradient(135deg, ${accentColor ?? '#2D1B96'}, ${accentColorSecondary ?? '#00D1C1'})` }
+                  : { background: `linear-gradient(135deg, ${accentColor || NEUTRAL_STYLE.from}, ${accentColorSecondary || NEUTRAL_STYLE.to})` }
               }
             >
               {coverImageUrl && (
@@ -274,7 +275,7 @@ export default function EnrichedAudioPlayer({
             <span
               className="w-20 h-20 rounded-full flex items-center justify-center shadow-2xl"
               style={{
-                background: `linear-gradient(135deg, ${accentColor ?? '#2D1B96'}, ${accentColorSecondary ?? '#00D1C1'})`,
+                background: `linear-gradient(135deg, ${accentColor || NEUTRAL_STYLE.from}, ${accentColorSecondary || NEUTRAL_STYLE.to})`,
               }}
             >
               <Play size={36} fill="white" className="text-white ml-1" />

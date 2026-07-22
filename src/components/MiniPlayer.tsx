@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { Play, Pause, SkipBack, SkipForward, X, Music } from 'lucide-react'
 import { useAudio } from '@/context/AudioContext'
 import { useFocusMode } from '@/context/FocusModeContext'
+import { useMiniPlayerVisibility } from '@/context/MiniPlayerVisibilityContext'
 import WavePlayButton from '@/components/WavePlayButton'
 
 // ============================================
@@ -15,13 +16,17 @@ export default function MiniPlayer() {
   const pathname = usePathname()
   const { state, pauseAudio, resumeAudio, seekTo, closePlayer } = useAudio()
   const { isFocus } = useFocusMode()
+  const { suppressed } = useMiniPlayerVisibility()
 
   // Hidden pages
   const hiddenPaths = ['/login', '/register', '/admin']
   const isHidden = hiddenPaths.some(p => pathname.startsWith(p))
 
-  // Don't render if no audio or on hidden pages
-  if (!state.audioUrl || isHidden) return null
+  // P4 : `suppressed` masque l'affichage du mini-player sur le detail formation
+  // et le quizz de sequence (pose par /formation/[theme]). L'audio continue de
+  // tourner (AudioContext intact), seul le rendu du mini-player est coupe.
+  // Don't render if no audio, on hidden pages, or explicitly suppressed.
+  if (!state.audioUrl || isHidden || suppressed) return null
 
   const progressPercent = state.duration > 0 ? (state.currentTime / state.duration) * 100 : 0
 

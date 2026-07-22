@@ -18,6 +18,7 @@ import {
 } from '@/lib/supabase'
 import { useUser } from '@/lib/hooks/useUser'
 import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
+import { useMiniPlayerVisibility } from '@/context/MiniPlayerVisibilityContext'
 import FormationDetail from '@/components/formation/FormationDetail'
 import type { IntroSessionResult } from '@/components/formation/EnrollmentCTA'
 import SequencePlayer from '@/components/formation/SequencePlayer'
@@ -113,6 +114,15 @@ export default function ThemePage() {
   const [selectedAccessType, setSelectedAccessType] = useState<'demo' | 'full' | null>(null)
   const [selectedSequence, setSelectedSequence] = useState<Sequence | null>(null)
   const [sequenceGradient, setSequenceGradient] = useState<{ from: string; to: string }>({ from: '#8B5CF6', to: '#A78BFA' })
+
+  // P4 : masque le mini-player flottant sur le detail formation et le quizz de
+  // sequence (memes vues, distinguees par viewMode). Reste visible sur la liste
+  // des formations du theme (viewMode 'theme'). N'affecte pas l'audio.
+  const { setSuppressed: setMiniPlayerSuppressed } = useMiniPlayerVisibility()
+  useEffect(() => {
+    setMiniPlayerSuppressed(viewMode === 'formation' || viewMode === 'sequence')
+    return () => setMiniPlayerSuppressed(false)
+  }, [viewMode, setMiniPlayerSuppressed])
 
   const { markCompleted } = useUserFormationProgress(selectedFormationId)
 

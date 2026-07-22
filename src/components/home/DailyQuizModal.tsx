@@ -16,6 +16,7 @@ import {
   ChevronDown,
 } from 'lucide-react'
 import Confetti from '@/components/Confetti'
+import NewsModal from '@/components/news/NewsModal'
 import PostVictoryPushPrompt from '@/components/push/PostVictoryPushPrompt'
 import CaseStudyQuestion from '@/components/questions/CaseStudyQuestion'
 import { parseCaseStudyData } from '@/lib/questions/parseCaseStudyData'
@@ -69,6 +70,8 @@ interface DailyQuestion {
   formation_title: string | null
   question_type: string
   recommended_time_seconds?: number
+  news_synthesis_id?: string | null
+  news_source_title?: string | null
 }
 
 interface DailyQuizModalProps {
@@ -208,8 +211,6 @@ const typeLabels: Record<string, string> = {
   case_study: 'Cas clinique',
 }
 
-const GRADIENT_FROM = '#2D1B96'
-
 // Palette cyclique pour les paires associées en matching (badge numéroté + halo).
 // Toutes les classes sont littérales pour que Tailwind JIT les détecte.
 const MATCHING_PAIR_COLORS = [
@@ -251,6 +252,10 @@ export default function DailyQuizModal({
   const [pointsEarned, setPointsEarned] = useState(0)
   const [finished, setFinished] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  // Source news (carte « titre · Voir l'article ») — meme mecanique que le
+  // quizz par theme : ouvre NewsModal sur la cle news_synthesis_id.
+  const [articleNewsId, setArticleNewsId] = useState<string | null>(null)
 
   // Single-select state (mcq, true_false, mcq_image)
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
@@ -657,8 +662,7 @@ export default function DailyQuizModal({
 
           <div className="relative z-10">
             {/* Trophée */}
-            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #2D1B96, #00D1C1)' }}>
+            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl flex items-center justify-center bg-gradient-to-br from-primary to-accent">
               <Trophy size={36} className="text-white" />
             </div>
 
@@ -669,8 +673,7 @@ export default function DailyQuizModal({
             <p className="text-sm mb-5" style={{ color: '#a3a3a3' }}>Quiz du jour terminé</p>
 
             {/* Score card */}
-            <div className="rounded-2xl p-5 mb-3 text-center"
-              style={{ background: 'linear-gradient(135deg, #2D1B96, #00D1C1)' }}>
+            <div className="rounded-2xl p-5 mb-3 text-center bg-gradient-to-br from-primary to-accent">
               <div className="text-5xl font-black text-white mb-1">
                 {finalScore}<span className="text-2xl font-bold opacity-70">/{questions.length}</span>
               </div>
@@ -697,7 +700,7 @@ export default function DailyQuizModal({
                 router.push('/profil')
               }}
               disabled={saving}
-              className="w-full py-3.5 bg-gradient-to-r from-primary to-[#00D1C1] text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+              className="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="w-5 h-5 animate-spin mx-auto" />
@@ -737,7 +740,7 @@ export default function DailyQuizModal({
       <div className="flex-shrink-0">
         <div className="h-1.5" style={{ background: '#242424' }}>
           <div
-            className="h-full bg-gradient-to-r from-primary to-[#00D1C1] transition-all duration-500"
+            className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -782,7 +785,7 @@ export default function DailyQuizModal({
       <div className="flex-1 overflow-y-auto px-5 py-4">
         {/* Formation tag */}
         {q.formation_title && (
-          <div className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium mb-3" style={{ background: 'rgba(45,27,150,0.3)', color: '#a78bfa' }}>
+          <div className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium mb-3 bg-primary/30 text-violet-400">
             {q.formation_title}
           </div>
         )}
@@ -791,6 +794,26 @@ export default function DailyQuizModal({
         <span className="inline-block px-3 py-1 rounded-full text-[11px] font-semibold mb-3 ml-1" style={{ background: '#242424', color: 'rgba(255,255,255,0.7)' }}>
           {typeLabels[qType] || qType.toUpperCase()}
         </span>
+
+        {/* Source news — carte « titre · Voir l'article » (reutilise le meme
+            pattern que ThemeQuizModal ; ouvre NewsModal sur news_synthesis_id). */}
+        {q.news_source_title && (
+          <div className="mb-4 rounded-xl glass-card px-3 py-2.5 flex items-start gap-2.5">
+            <span aria-hidden className="mt-0.5">📄</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-white/85 text-sm font-medium leading-snug">{q.news_source_title}</p>
+              {q.news_synthesis_id && (
+                <button
+                  type="button"
+                  onClick={() => setArticleNewsId(q.news_synthesis_id!)}
+                  className="mt-1 text-accent text-xs font-semibold hover:underline transition-premium"
+                >
+                  Voir l&apos;article
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Layout wrapper — side by side on desktop when image present */}
         <div className={q.image_url ? "flex flex-col md:flex-row md:gap-8 md:items-start" : ""}>
@@ -822,19 +845,11 @@ export default function DailyQuizModal({
                         key={opt.id}
                         onClick={() => handleSingleAnswer(opt.id)}
                         disabled={selectedAnswer !== null}
-                        className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
-                        style={{
-                          background: isSelected ? 'rgba(45,27,150,0.25)' : '#242424',
-                          border: `2px solid ${isSelected ? '#2D1B96' : '#333'}`,
-                          cursor: selectedAnswer ? 'default' : 'pointer',
-                        }}
+                        className={`w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3 border-2 ${isSelected ? 'bg-primary/25 border-primary' : 'bg-[#242424] border-[#333]'}`}
+                        style={{ cursor: selectedAnswer ? 'default' : 'pointer' }}
                       >
                         <span
-                          className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0"
-                          style={{
-                            background: isSelected ? '#2D1B96' : '#333',
-                            color: isSelected ? 'white' : '#a3a3a3',
-                          }}
+                          className={`w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 ${isSelected ? 'bg-primary text-white' : 'bg-[#333] text-[#a3a3a3]'}`}
                         >
                           {String.fromCharCode(65 + i)}
                         </span>
@@ -847,56 +862,44 @@ export default function DailyQuizModal({
             })()}
 
             {/* === TRUE_FALSE === */}
+            {/* P2 : neutre (gris) avant reponse — pas de vert/rouge ni d'icone
+                ✓/✗ tant que l'user n'a pas repondu (le detail colore s'affiche
+                ensuite dans le FeedbackPanel). Aligne sur le quizz de sequence. */}
             {normalizedType === 'true_false' && (() => {
               const opts = parseStandardOptions(q.options)
               // If options are standard format with id/text/correct, render as buttons
               if (opts.length >= 2) {
                 return (
                   <div className="grid grid-cols-2 gap-4">
-                    {opts.map(opt => {
-                      const isVrai = opt.text.toLowerCase().includes('vrai') || opt.text.toLowerCase() === 'true'
-                      return (
-                        <button
-                          key={opt.id}
-                          onClick={() => handleSingleAnswer(opt.id)}
-                          disabled={selectedAnswer !== null}
-                          className="h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 hover:scale-[1.02] transition-all active:scale-95"
-                          style={isVrai
-                            ? { background: 'rgba(6,78,59,0.3)', borderColor: '#059669' }
-                            : { background: 'rgba(69,10,10,0.3)', borderColor: '#ef4444' }}
-                        >
-                          {isVrai ? (
-                            <CheckCircle2 size={28} className="text-emerald-600" />
-                          ) : (
-                            <X size={28} className="text-red-600" />
-                          )}
-                          <span className={`text-lg font-black ${isVrai ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {opt.text}
-                          </span>
-                        </button>
-                      )
-                    })}
+                    {opts.map(opt => (
+                      <button
+                        key={opt.id}
+                        onClick={() => handleSingleAnswer(opt.id)}
+                        disabled={selectedAnswer !== null}
+                        className="h-24 rounded-2xl border-2 border-[#333] bg-[#242424] flex items-center justify-center hover:scale-[1.02] transition-all active:scale-95"
+                      >
+                        <span className="text-lg font-black text-white">{opt.text}</span>
+                      </button>
+                    ))}
                   </div>
                 )
               }
-              // Fallback: hardcoded VRAI/FAUX buttons for { correct_answer } format
+              // Fallback: VRAI/FAUX buttons for { correct_answer } format
               return (
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     onClick={() => handleSingleAnswer('true')}
                     disabled={selectedAnswer !== null}
-                    className="h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 hover:scale-[1.02] transition-all active:scale-95" style={{ background: 'rgba(6,78,59,0.3)', borderColor: '#059669' }}
+                    className="h-24 rounded-2xl border-2 border-[#333] bg-[#242424] flex items-center justify-center hover:scale-[1.02] transition-all active:scale-95"
                   >
-                    <CheckCircle2 size={28} className="text-emerald-600" />
-                    <span className="text-lg font-black text-emerald-400">VRAI</span>
+                    <span className="text-lg font-black text-white">VRAI</span>
                   </button>
                   <button
                     onClick={() => handleSingleAnswer('false')}
                     disabled={selectedAnswer !== null}
-                    className="h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 hover:scale-[1.02] transition-all active:scale-95" style={{ background: 'rgba(69,10,10,0.3)', borderColor: '#ef4444' }}
+                    className="h-24 rounded-2xl border-2 border-[#333] bg-[#242424] flex items-center justify-center hover:scale-[1.02] transition-all active:scale-95"
                   >
-                    <X size={28} className="text-red-600" />
-                    <span className="text-lg font-black text-red-400">FAUX</span>
+                    <span className="text-lg font-black text-white">FAUX</span>
                   </button>
                 </div>
               )
@@ -931,15 +934,11 @@ export default function DailyQuizModal({
                               ? prev.filter(a => a !== opt.id)
                               : [...prev, opt.id]
                           )}
-                          className="w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3"
-                          style={{
-                            background: isSelected ? 'rgba(45,27,150,0.25)' : '#242424',
-                            border: `2px solid ${isSelected ? '#2D1B96' : '#333'}`,
-                          }}
+                          className={`w-full p-3.5 rounded-2xl text-left transition-all flex items-center gap-3 border-2 ${isSelected ? 'bg-primary/25 border-primary' : 'bg-[#242424] border-[#333]'}`}
                         >
                           <span className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
                             {isSelected
-                              ? <CheckSquare size={24} style={{ color: GRADIENT_FROM }} />
+                              ? <CheckSquare size={24} className="text-primary" />
                               : <Square size={24} className="text-white/40" />
                             }
                           </span>
@@ -951,8 +950,7 @@ export default function DailyQuizModal({
                   <button
                     onClick={handleCheckboxValidate}
                     disabled={selectedAnswers.length === 0}
-                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40"
-                    style={{ background: GRADIENT_FROM }}
+                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40 bg-primary"
                   >
                     Valider ({selectedAnswers.length} selectionnee{selectedAnswers.length > 1 ? 's' : ''})
                   </button>
@@ -999,8 +997,7 @@ export default function DailyQuizModal({
                   <button
                     onClick={handleHighlightValidate}
                     disabled={selectedAnswers.length === 0}
-                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40"
-                    style={{ background: GRADIENT_FROM }}
+                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40 bg-primary"
                   >
                     Valider mes choix
                   </button>
@@ -1039,12 +1036,8 @@ export default function DailyQuizModal({
                                 delete next[blank.id]
                                 return next
                               })}
-                              className="min-w-[100px] px-4 py-2 rounded-xl border-2 border-dashed text-sm font-semibold transition-all"
-                              style={{
-                                borderColor: answer ? GRADIENT_FROM : '#CBD5E1',
-                                background: answer ? `${GRADIENT_FROM}30` : '#242424',
-                                color: '#e5e5e5',
-                              }}
+                              className={`min-w-[100px] px-4 py-2 rounded-xl border-2 border-dashed text-sm font-semibold transition-all ${answer ? 'border-primary bg-primary/30' : 'border-[#CBD5E1] bg-[#242424]'}`}
+                              style={{ color: '#e5e5e5' }}
                             >
                               {answer || '________'}
                             </button>
@@ -1078,12 +1071,7 @@ export default function DailyQuizModal({
                               }
                             }}
                             disabled={isUsed}
-                            className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
-                            style={{
-                              background: isUsed ? '#E2E8F0' : GRADIENT_FROM,
-                              color: isUsed ? '#94A3B8' : 'white',
-                              opacity: isUsed ? 0.5 : 1,
-                            }}
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${isUsed ? 'bg-[#E2E8F0] text-[#94A3B8] opacity-50' : 'bg-primary text-white'}`}
                           >
                             {word}
                           </button>
@@ -1095,8 +1083,7 @@ export default function DailyQuizModal({
                   <button
                     onClick={handleFillBlankValidate}
                     disabled={!allFilled}
-                    className="w-full py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40"
-                    style={{ background: GRADIENT_FROM }}
+                    className="w-full py-3.5 rounded-2xl font-bold text-[15px] text-white disabled:opacity-40 bg-primary"
                   >
                     Valider {hasWordBank ? 'mes reponses' : 'ma reponse'}
                   </button>
@@ -1131,8 +1118,7 @@ export default function DailyQuizModal({
                           style={{ background: '#242424', borderColor: '#333' }}
                         >
                           <span
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white"
-                            style={{ background: GRADIENT_FROM }}
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white bg-primary"
                           >
                             {index + 1}
                           </span>
@@ -1159,8 +1145,7 @@ export default function DailyQuizModal({
                   </div>
                   <button
                     onClick={handleOrderingValidate}
-                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white"
-                    style={{ background: GRADIENT_FROM }}
+                    className="w-full mt-4 py-3.5 rounded-2xl font-bold text-[15px] text-white bg-primary"
                   >
                     Valider l&apos;ordre
                   </button>
@@ -1244,14 +1229,17 @@ export default function DailyQuizModal({
                         const color = match ? colorForPairIndex(match.pairIndex) : null
                         const usePairColor = !!match && !showFeedback
                         const pairClasses = usePairColor && color ? `${color.bg} ${color.border} ${color.text}` : ''
+                        // Etat « selectionnable » (gauche choisi, droite libre) : highlight
+                        // accent via tokens (bg-accent/15 + border-accent), jamais de hex teal.
+                        const isSelectable = !usePairColor && !match && !!selectedLeftMatching
 
                         const inlineBg = usePairColor ? undefined
                           : match ? '#2a2a2a'
-                          : selectedLeftMatching ? 'rgba(0,209,193,0.15)'
+                          : isSelectable ? undefined
                           : '#242424'
                         const inlineBorderColor = usePairColor ? undefined
                           : match ? '#444'
-                          : selectedLeftMatching ? '#00D1C1'
+                          : isSelectable ? undefined
                           : '#333'
 
                         return (
@@ -1262,7 +1250,7 @@ export default function DailyQuizModal({
                               setSelectedLeftMatching(null)
                             }}
                             disabled={showFeedback || !!match}
-                            className={`w-full p-2.5 rounded-xl text-left text-xs font-semibold transition-all flex items-center gap-3 border-2 ${pairClasses}`}
+                            className={`w-full p-2.5 rounded-xl text-left text-xs font-semibold transition-all flex items-center gap-3 border-2 ${pairClasses} ${isSelectable ? 'bg-accent/15 border-accent' : ''}`}
                             style={{
                               ...(inlineBg !== undefined ? { background: inlineBg } : {}),
                               ...(inlineBorderColor !== undefined ? { borderColor: inlineBorderColor } : {}),
@@ -1291,8 +1279,7 @@ export default function DailyQuizModal({
                         setShowFeedback(true)
                       }}
                       disabled={!allMatched}
-                      className="w-full py-3 rounded-2xl font-bold text-sm text-white disabled:opacity-40 transition-all"
-                      style={{ background: allMatched ? 'linear-gradient(135deg, #6366F1, #00D1C1)' : '#333' }}>
+                      className={`w-full py-3 rounded-2xl font-bold text-sm text-white disabled:opacity-40 transition-all ${allMatched ? 'bg-gradient-to-br from-indigo-500 to-accent' : 'bg-[#333]'}`}>
                       Valider les associations
                     </button>
                   )}
@@ -1307,8 +1294,7 @@ export default function DailyQuizModal({
                 <p className="text-white/55 mb-4">Type &quot;{qType}&quot; non supporte</p>
                 <button
                   onClick={next}
-                  className="px-6 py-3 rounded-xl text-white font-bold"
-                  style={{ background: GRADIENT_FROM }}
+                  className="px-6 py-3 rounded-xl text-white font-bold bg-primary"
                 >
                   Passer cette question
                 </button>
@@ -1337,6 +1323,7 @@ export default function DailyQuizModal({
           </div>{/* close question+options wrapper */}
         </div>{/* close flex layout wrapper */}
       </div>
+      <NewsModal newsId={articleNewsId} onClose={() => setArticleNewsId(null)} />
     </div>
   )
 }

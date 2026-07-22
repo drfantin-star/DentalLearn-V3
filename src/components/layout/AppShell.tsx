@@ -9,6 +9,7 @@ import MiniPlayer from '@/components/MiniPlayer'
 import AudioQueuePlayer from '@/components/news/AudioQueuePlayer'
 import { useUser } from '@/lib/hooks/useUser'
 import { FocusModeProvider } from '@/context/FocusModeContext'
+import { MiniPlayerVisibilityProvider } from '@/context/MiniPlayerVisibilityContext'
 import { NotificationOrchestratorProvider } from '@/context/NotificationOrchestratorContext'
 
 interface AppShellProps {
@@ -84,6 +85,8 @@ export default function AppShell({
   )
 
   return (
-    <NotificationOrchestratorProvider>{inner}</NotificationOrchestratorProvider>
+    <NotificationOrchestratorProvider>
+      <MiniPlayerVisibilityProvider>{inner}</MiniPlayerVisibilityProvider>
+    </NotificationOrchestratorProvider>
   )
 }

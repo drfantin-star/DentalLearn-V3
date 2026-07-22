@@ -366,33 +366,25 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
             })()}
 
             {/* === TRUE_FALSE === */}
+            {/* P2 : neutre (gris) avant reponse — pas de vert/rouge ni d'icone
+                ✓/✗ tant que l'user n'a pas repondu (le detail colore s'affiche
+                ensuite dans la section feedback). Aligne sur le quizz de sequence. */}
             {normalizedType === 'true_false' && (() => {
               const opts = parseStandardOptions(q.options)
               if (opts.length >= 2) {
                 return (
                   <div className="grid grid-cols-2 gap-4">
-                    {opts.map(opt => {
-                      const isVrai = opt.text.toLowerCase().includes('vrai') || opt.text.toLowerCase() === 'true'
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => handleSingleAnswer(opt.id)}
-                          disabled={selectedAnswer !== null}
-                          className="h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 transition-premium hover:scale-[1.02] active:scale-95"
-                          style={isVrai
-                            ? { background: 'rgba(6,78,59,0.3)', borderColor: '#059669' }
-                            : { background: 'rgba(69,10,10,0.3)', borderColor: '#ef4444' }}
-                        >
-                          {isVrai
-                            ? <CheckCircle2 size={28} className="text-emerald-500" />
-                            : <X size={28} className="text-red-500" />}
-                          <span className={`text-lg font-black ${isVrai ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {opt.text}
-                          </span>
-                        </button>
-                      )
-                    })}
+                    {opts.map(opt => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => handleSingleAnswer(opt.id)}
+                        disabled={selectedAnswer !== null}
+                        className="h-24 rounded-2xl border-2 border-white/15 bg-white/[0.07] flex items-center justify-center transition-premium hover:scale-[1.02] active:scale-95"
+                      >
+                        <span className="text-lg font-black text-white">{opt.text}</span>
+                      </button>
+                    ))}
                   </div>
                 )
               }
@@ -402,21 +394,17 @@ export default function ThemeQuizModal({ specialite, label, onClose }: ThemeQuiz
                     type="button"
                     onClick={() => handleSingleAnswer('true')}
                     disabled={selectedAnswer !== null}
-                    className="h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 transition-premium hover:scale-[1.02] active:scale-95"
-                    style={{ background: 'rgba(6,78,59,0.3)', borderColor: '#059669' }}
+                    className="h-24 rounded-2xl border-2 border-white/15 bg-white/[0.07] flex items-center justify-center transition-premium hover:scale-[1.02] active:scale-95"
                   >
-                    <CheckCircle2 size={28} className="text-emerald-500" />
-                    <span className="text-lg font-black text-emerald-400">VRAI</span>
+                    <span className="text-lg font-black text-white">VRAI</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => handleSingleAnswer('false')}
                     disabled={selectedAnswer !== null}
-                    className="h-24 rounded-2xl border-2 flex flex-col items-center justify-center gap-2 transition-premium hover:scale-[1.02] active:scale-95"
-                    style={{ background: 'rgba(69,10,10,0.3)', borderColor: '#ef4444' }}
+                    className="h-24 rounded-2xl border-2 border-white/15 bg-white/[0.07] flex items-center justify-center transition-premium hover:scale-[1.02] active:scale-95"
                   >
-                    <X size={28} className="text-red-500" />
-                    <span className="text-lg font-black text-red-400">FAUX</span>
+                    <span className="text-lg font-black text-white">FAUX</span>
                   </button>
                 </div>
               )

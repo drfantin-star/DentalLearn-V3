@@ -10,7 +10,6 @@ import {
   Star,
   Trophy,
   Sparkles,
-  AlertTriangle,
   CheckCircle2,
   BookOpen,
   Info,
@@ -30,6 +29,7 @@ import {
 } from '@/lib/supabase'
 import { useEnrollmentStatus } from '@/lib/hooks/useEnrollmentStatus'
 import { useAudio } from '@/context/AudioContext'
+import { useMiniPlayerVisibility } from '@/context/MiniPlayerVisibilityContext'
 import EnrollmentCTA, { type IntroSessionResult } from '@/components/formation/EnrollmentCTA'
 import PostIntroEnrollmentModal from '@/components/formation/PostIntroEnrollmentModal'
 import { GenerateAttestationButton } from '@/components/attestations/GenerateAttestationButton'
@@ -248,7 +248,10 @@ export default function FormationDetail({
   // pour décaler le CTA fixe au-dessus et éviter qu'il soit recouvert et
   // donc inatteignable au clic.
   const { state: audioState } = useAudio()
-  const isMiniPlayerVisible = !!audioState.audioUrl
+  // P4 : sur le detail formation le mini-player est masque (suppressed), donc il
+  // ne recouvre pas le CTA — le decalage bottom-40 ne doit alors pas s'appliquer.
+  const { suppressed: miniPlayerSuppressed } = useMiniPlayerVisibility()
+  const isMiniPlayerVisible = !!audioState.audioUrl && !miniPlayerSuppressed
 
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [showPostIntroModal, setShowPostIntroModal] = useState(false)
@@ -498,10 +501,12 @@ export default function FormationDetail({
                 statusBg = 'rgba(34,197,94,0.14)'
                 StatusIcon = CheckCircle2
               } else if (needsRemediation) {
-                statusLabel = 'Remédiation requise'
+                // P3 (3C-1) : ton positif. Le blocage est au niveau du bloc,
+                // le wording dit « bloc suivant ». Icone positive (Sparkles).
+                statusLabel = 'Presque !'
                 statusColor = '#FBBF24'
                 statusBg = 'rgba(245,158,11,0.14)'
-                StatusIcon = AlertTriangle
+                StatusIcon = Sparkles
               }
 
               return (
@@ -518,6 +523,12 @@ export default function FormationDetail({
                       {statusLabel}
                     </span>
                   </div>
+
+                  {needsRemediation && (
+                    <p className="text-[11px] text-white/50 mb-2 px-1 leading-snug">
+                      Réussis les questions ratées pour débloquer le bloc suivant
+                    </p>
+                  )}
 
                   {blocSeqs.map((seq) => {
                     const base = isSequenceAccessible(seq, currentSequence, completedSequenceIds, isPremium)

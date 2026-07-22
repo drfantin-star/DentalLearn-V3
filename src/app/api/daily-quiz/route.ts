@@ -86,6 +86,7 @@ export async function GET(request: NextRequest) {
           question_type,
           image_url,
           recommended_time_seconds,
+          news_synthesis_id,
           sequence:sequences!questions_sequence_id_fkey (
             formation:formations!sequences_formation_id_fkey (
               title
@@ -107,6 +108,26 @@ export async function GET(request: NextRequest) {
       const shuffled = seededShuffle(allQuestions, seed)
       const selected = shuffled.slice(0, 10)
 
+      // Resolve news source titles for the selected news questions (meme pattern
+      // que /api/quiz/by-theme : requete separee + Map, pas d'embed fragile).
+      const newsIds = Array.from(
+        new Set(
+          selected
+            .map((q) => q.news_synthesis_id)
+            .filter((v): v is string => typeof v === 'string' && v.length > 0)
+        )
+      )
+      const titleById = new Map<string, string>()
+      if (newsIds.length > 0) {
+        const { data: newsRows } = await supabase
+          .from('news_syntheses')
+          .select('id, display_title')
+          .in('id', newsIds)
+        for (const r of newsRows ?? []) {
+          titleById.set(r.id as string, (r.display_title as string) ?? '')
+        }
+      }
+
       const formatted = selected.map((q) => ({
         id: q.id,
         question_text: q.question_text,
@@ -119,6 +140,10 @@ export async function GET(request: NextRequest) {
         recommended_time_seconds: q.recommended_time_seconds ?? null,
         formation_title: (q.sequence as Record<string, unknown>)?.formation
           ? ((q.sequence as Record<string, unknown>).formation as Record<string, unknown>).title
+          : null,
+        news_synthesis_id: (q.news_synthesis_id as string) ?? null,
+        news_source_title: q.news_synthesis_id
+          ? titleById.get(q.news_synthesis_id as string) ?? null
           : null,
       }))
 
