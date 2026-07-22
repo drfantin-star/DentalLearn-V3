@@ -3,11 +3,18 @@
 import React from 'react'
 
 // Rendu commun aux fill_blank (DailyQuizModal + quizz de sequence) : affiche la
-// phrase de la question avec chaque trou remplace par un SLOT visible (chip
-// encadre) au lieu du token brut « ________ » noye dans le texte. Couleurs via
-// tokens du design system uniquement (accent / emerald / red), jamais de hex.
+// phrase de la question avec chaque trou remplace par un SLOT inline visible
+// (chip encadre) au lieu du marqueur brut noye dans le texte. Deux formats de
+// marqueur en base sont reconnus :
+//   - « (blanc N) » (format standard, majoritaire)
+//   - « ________ » (underscores, format ancien/marginal)
+// Chaque slot est mappe positionnellement au i-eme blank (ids "1".."N" dans
+// l'ordre d'apparition, garanti par les donnees). Vide -> numero du trou ;
+// rempli -> mot choisi. Couleurs via tokens uniquement (accent / emerald / red).
 
-const BLANK_TOKEN = '________'
+// Un separateur = soit 3+ underscores, soit « (blanc N) » (espace optionnelle,
+// insensible a la casse). Pas de groupe capturant -> split retire le marqueur.
+const BLANK_REGEX = /_{3,}|\(blanc\s*\d+\)/gi
 
 export interface FillBlankSlotDef {
   id: string
@@ -17,11 +24,11 @@ export interface FillBlankSlotDef {
 
 interface FillBlankSentenceProps {
   questionText: string
-  /** Blancs dans l'ordre d'apparition des « ________ » dans questionText. */
+  /** Blancs dans l'ordre d'apparition des marqueurs dans questionText. */
   blanks: FillBlankSlotDef[]
   answers: Record<string, string>
   showFeedback?: boolean
-  /** Vider un slot rempli (mode saisie, hors feedback). */
+  /** Vider un slot rempli (re-tap), hors feedback. */
   onClearBlank?: (blankId: string) => void
 }
 
@@ -41,7 +48,7 @@ export default function FillBlankSentence({
   showFeedback = false,
   onClearBlank,
 }: FillBlankSentenceProps) {
-  const parts = questionText.split(BLANK_TOKEN)
+  const parts = questionText.split(BLANK_REGEX)
 
   return (
     <>
@@ -69,9 +76,9 @@ export default function FillBlankSentence({
                 disabled={showFeedback || !answer}
                 onClick={() => answer && onClearBlank?.(blank.id)}
                 className={`inline-flex items-center justify-center align-middle mx-1 min-w-[3.25rem] px-2.5 py-0.5 rounded-lg border-2 text-sm font-bold transition-premium ${slotClasses}`}
-                aria-label={answer ? `Reponse : ${answer}` : 'Trou a completer'}
+                aria-label={answer ? `Trou ${i + 1} : ${answer}` : `Trou ${i + 1} a completer`}
               >
-                {answer || '   '}
+                {answer || (i + 1)}
               </button>
             )}
             {!isLast && blank && showFeedback && !correct && (

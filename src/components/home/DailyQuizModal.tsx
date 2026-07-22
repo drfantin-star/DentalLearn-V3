@@ -214,13 +214,16 @@ const typeLabels: Record<string, string> = {
 
 // Palette cyclique pour les paires associées en matching (badge numéroté + halo).
 // Toutes les classes sont littérales pour que Tailwind JIT les détecte.
+// Contraste (P-fix) : le libelle passe en text-white pour ne jamais etre dans la
+// meme famille de teinte que le fond translucide. L'identite de la paire reste
+// portee par bg + border + badge (numerote) colores.
 const MATCHING_PAIR_COLORS = [
-  { bg: 'bg-violet-500/15',  border: 'border-violet-500',  text: 'text-violet-300',  badge: 'bg-violet-500' },
-  { bg: 'bg-emerald-500/15', border: 'border-emerald-500', text: 'text-emerald-300', badge: 'bg-emerald-500' },
-  { bg: 'bg-amber-500/15',   border: 'border-amber-500',   text: 'text-amber-300',   badge: 'bg-amber-500' },
-  { bg: 'bg-pink-500/15',    border: 'border-pink-500',    text: 'text-pink-300',    badge: 'bg-pink-500' },
-  { bg: 'bg-cyan-500/15',    border: 'border-cyan-500',    text: 'text-cyan-300',    badge: 'bg-cyan-500' },
-  { bg: 'bg-orange-500/15',  border: 'border-orange-500',  text: 'text-orange-300',  badge: 'bg-orange-500' },
+  { bg: 'bg-violet-500/15',  border: 'border-violet-500',  text: 'text-white',  badge: 'bg-violet-500' },
+  { bg: 'bg-emerald-500/15', border: 'border-emerald-500', text: 'text-white', badge: 'bg-emerald-500' },
+  { bg: 'bg-amber-500/15',   border: 'border-amber-500',   text: 'text-white',   badge: 'bg-amber-500' },
+  { bg: 'bg-pink-500/15',    border: 'border-pink-500',    text: 'text-white',    badge: 'bg-pink-500' },
+  { bg: 'bg-cyan-500/15',    border: 'border-cyan-500',    text: 'text-white',    badge: 'bg-cyan-500' },
+  { bg: 'bg-orange-500/15',  border: 'border-orange-500',  text: 'text-white',  badge: 'bg-orange-500' },
 ]
 
 function colorForPairIndex(pairIndex: number) {
