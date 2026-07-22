@@ -1441,19 +1441,21 @@ function FeedbackPanel({
           <div className="flex flex-col gap-2 mb-4">
             {data.leftItems.map((li) => {
               const userAnswerId = matchByLeft.get(li.left)
-              const userAnswerText = userAnswerId ? (rightLookup.get(userAnswerId) ?? userAnswerId) : null
               const correctText = rightLookup.get(li.correctRightId) ?? li.correctRightId
               const isCorrectMatch = !!userAnswerId && userAnswerId === li.correctRightId
+              // Correction : on n'affiche PLUS la reponse fausse choisie. Deux
+              // conteneurs de meme taille (flex-1, meme police) : gauche = terme
+              // (fond emerald si juste, red sinon), droit = UNIQUEMENT la bonne
+              // reponse. La bonne reponse doit dominer, jamais la fausse.
               return (
-                <div key={li.left} className={`flex items-center gap-2 p-3 rounded-2xl border-2 ${isCorrectMatch ? 'bg-emerald-500/15 border-emerald-400' : 'bg-red-500/15 border-red-400'}`}>
-                  <span className="text-sm font-semibold text-white">{li.left}</span>
-                  <span className="mx-1 text-white/40">&rarr;</span>
-                  <span className={`text-sm font-semibold ${isCorrectMatch ? 'text-emerald-300' : 'text-red-300'}`}>
-                    {userAnswerText || '?'}
+                <div key={li.left} className="flex items-stretch gap-2">
+                  <span className={`flex-1 p-3 rounded-2xl border-2 text-sm font-semibold flex items-center ${isCorrectMatch ? 'bg-emerald-500/15 border-emerald-400 text-white' : 'bg-red-500/15 border-red-400 text-white'}`}>
+                    {li.left}
                   </span>
-                  {!isCorrectMatch && (
-                    <span className="text-xs text-emerald-400 ml-auto">&rarr; {correctText}</span>
-                  )}
+                  <span aria-hidden className="self-center text-white/40 shrink-0">&rarr;</span>
+                  <span className="flex-1 p-3 rounded-2xl border-2 bg-emerald-500/15 border-emerald-400 text-white text-sm font-semibold flex items-center">
+                    {correctText}
+                  </span>
                 </div>
               )
             })}
