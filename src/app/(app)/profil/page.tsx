@@ -132,6 +132,7 @@ export default function ProfilPage() {
   const [deletionRequestedAt, setDeletionRequestedAt] = useState<string | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deletionLoading, setDeletionLoading] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   // Modal infos perso
   const [showProfilModal, setShowProfilModal] = useState(false)
@@ -416,17 +417,17 @@ export default function ProfilPage() {
   }
 
   const handleRequestDeletion = async () => {
+    if (deleteConfirmText !== 'SUPPRIMER') return
     setDeletionLoading(true)
     try {
       const res = await fetch('/api/user/delete', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      setDeletionRequestedAt(data.deletion_date)
-      setShowDeleteConfirm(false)
-      showMessage('success', 'Demande de suppression enregistree')
+      // Demande enregistree (deletion_requested_at = now()). On ferme la
+      // session : a la reconnexion, l'ecran bloquant proposera la reactivation.
+      await handleSignOut()
     } catch (err: any) {
       showMessage('error', err.message || 'Erreur')
-    } finally {
       setDeletionLoading(false)
     }
   }
@@ -469,8 +470,10 @@ export default function ProfilPage() {
     return email[0]?.toUpperCase() || 'U'
   }
 
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  // deletion_requested_at stocke la date de DEMANDE ; la purge intervient a J+30.
+  const formatPurgeDate = (iso: string) =>
+    new Date(new Date(iso).getTime() + 30 * 24 * 60 * 60 * 1000)
+      .toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 
   const showTenantLink = intraRole && TENANT_ADMIN_ROLES.has(intraRole)
   const showUpgradeCard = !loading && orgless && !intraRole
@@ -519,7 +522,7 @@ export default function ProfilPage() {
             <Trash2 className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-red-800">
-                Suppression planifiee le {formatDate(deletionRequestedAt)}
+                Suppression planifiee le {formatPurgeDate(deletionRequestedAt)}
               </p>
               <p className="text-xs text-red-600 mt-0.5">
                 Toutes vos donnees seront supprimees definitivement.
@@ -998,7 +1001,7 @@ export default function ProfilPage() {
             La suppression est irreversible apres 30 jours. Toutes vos donnees seront effacees.
           </p>
 
-          {!deletionRequestedAt && !showDeleteConfirm && (
+          {!deletionRequestedAt && (
             <button
               onClick={() => setShowDeleteConfirm(true)}
               className="flex items-center gap-2 text-sm text-red-500 font-medium hover:text-red-400 transition-premium"
@@ -1007,31 +1010,84 @@ export default function ProfilPage() {
               Supprimer mon compte
             </button>
           )}
-
-          {showDeleteConfirm && !deletionRequestedAt && (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-red-400">
-                Etes-vous sur ? Cette action planifie la suppression dans 30 jours.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleRequestDeletion}
-                  disabled={deletionLoading}
-                  className="flex-1 py-2.5 bg-red-600 text-white text-sm font-semibold rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
-                >
-                  {deletionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                  Confirmer la suppression
-                </button>
-                <button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  className="px-4 py-2.5 text-sm text-white/55 hover:bg-gray-100 hover:text-gray-900 rounded-xl transition-premium"
-                >
-                  Annuler
-                </button>
-              </div>
-            </div>
-          )}
         </div>
+
+        {/* Modal — Suppression definitive du compte */}
+        <Modal
+          open={showDeleteConfirm}
+          onClose={() => { setShowDeleteConfirm(false); setDeleteConfirmText('') }}
+          variant="dark"
+          size="lg"
+          ariaLabel="Supprimer definitivement mon compte"
+          className="bg-neutral-900 border border-neutral-800"
+        >
+          <div className="flex items-center justify-between gap-3 px-6 py-5 border-b border-neutral-800">
+            <h2 className="font-bold text-red-500 text-base">Supprimer définitivement mon compte</h2>
+            <button
+              onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText('') }}
+              className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-premium"
+            >
+              <X className="w-4 h-4 text-white/60" />
+            </button>
+          </div>
+
+          <div className="px-6 py-5 max-h-[60vh] overflow-y-auto space-y-4">
+            <p className="text-sm text-white/80">
+              Avant de continuer, téléchargez vos attestations. Elles ne seront plus
+              accessibles depuis l&apos;application après la suppression.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); router.push('/ma-certif/attestations') }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white border border-white/20 hover:bg-white/10 transition-premium"
+            >
+              <BadgeCheck className="w-4 h-4" />
+              Voir mes attestations
+            </button>
+
+            <p className="text-sm text-white/80">
+              Seront supprimés : votre profil, votre progression, vos points, votre
+              historique de certification périodique et vos justificatifs déposés.
+            </p>
+
+            <p className="text-sm text-white/60">
+              Votre compte sera définitivement supprimé dans 30 jours. Vous pouvez
+              annuler à tout moment en vous reconnectant.
+            </p>
+
+            <div className="pt-1">
+              <label className="block text-xs font-medium text-white/55 mb-1.5">
+                Pour confirmer, tapez <span className="font-mono font-semibold text-white/80">SUPPRIMER</span>
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                autoComplete="off"
+                placeholder="SUPPRIMER"
+                className="w-full px-3 py-2 rounded-xl text-sm bg-neutral-800 border border-neutral-700 text-white"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 px-6 py-5 border-t border-neutral-800">
+            <button
+              onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText('') }}
+              className="px-4 py-2 text-sm text-white/55 hover:text-white rounded-xl transition-premium"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleRequestDeletion}
+              disabled={deletionLoading || deleteConfirmText !== 'SUPPRIMER'}
+              className="px-5 py-2 bg-red-600 text-white text-sm font-semibold rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deletionLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Supprimer mon compte
+            </button>
+          </div>
+        </Modal>
 
       </div>
 

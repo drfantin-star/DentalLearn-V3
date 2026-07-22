@@ -12,19 +12,21 @@ export async function POST(request: Request) {
     }
 
     const userId = session.user.id
-    const deletionDate = new Date()
-    deletionDate.setDate(deletionDate.getDate() + 30)
+    // Semantique : on stocke la DATE DE DEMANDE (now()). Le delai J+30 est
+    // calcule a l'affichage cote UI et applique par le cron
+    // purge_expired_deletions (deletion_requested_at < now() - 30 jours).
+    const requestedAt = new Date().toISOString()
 
     const { error } = await supabase
       .from('user_profiles')
-      .update({ deletion_requested_at: deletionDate.toISOString() })
+      .update({ deletion_requested_at: requestedAt })
       .eq('id', userId)
 
     if (error) throw error
 
     return NextResponse.json({
       success: true,
-      deletion_date: deletionDate.toISOString()
+      deletion_requested_at: requestedAt
     })
   } catch (err) {
     console.error('Delete request error:', err)

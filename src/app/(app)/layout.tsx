@@ -1,5 +1,6 @@
 import AppShell from '@/components/layout/AppShell'
 import SessionRecoveryGuard from '@/components/SessionRecoveryGuard'
+import AccountDeletionBlock from '@/components/AccountDeletionBlock'
 import { AudioProvider } from '@/context/AudioContext'
 import { AudioPlayerProvider } from '@/context/AudioPlayerContext'
 import { redirect } from 'next/navigation'
@@ -27,6 +28,20 @@ export default async function AppLayout({
   // /reclamation, /auth/callback) sont hors de ce route group et restent ouvertes.
   if (!user) {
     redirect('/login')
+  }
+
+  // Ecran bloquant si une demande de suppression est en attente. Lecture d'une
+  // seule colonne, indexee par PK (id), ajoutee ici car le layout ne faisait
+  // qu'un getUser(). La reconnexion remet deletion_requested_at a NULL via la
+  // reactivation : c'est le garde-fou du praticien qui se ravise.
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('deletion_requested_at')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.deletion_requested_at) {
+    return <AccountDeletionBlock deletionRequestedAt={profile.deletion_requested_at} />
   }
 
   return (

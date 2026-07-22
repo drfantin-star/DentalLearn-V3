@@ -16,6 +16,7 @@ import {
   Plus
 } from 'lucide-react';
 import AddEnrollmentModal from '@/components/admin/AddEnrollmentModal';
+import PendingDeletionsPanel from '@/components/admin/PendingDeletionsPanel';
 
 interface UserEnrollment {
   id: string;
@@ -244,6 +245,9 @@ export default function AccessManagementPage() {
           {message.text}
         </div>
       )}
+
+      {/* Suppressions de compte RGPD en attente */}
+      <PendingDeletionsPanel />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
