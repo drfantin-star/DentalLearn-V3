@@ -474,7 +474,13 @@ function RegeneratePanel({
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
         const detail = Array.isArray(json.details) ? ` — ${json.details.join(' ; ')}` : ''
-        throw new Error(`${json.error || `Erreur ${res.status}`}${detail}`)
+        const timing =
+          typeof json.duration_ms === 'number'
+            ? ` [durée écoulée ${(json.duration_ms / 1000).toFixed(1)} s${
+                typeof json.attempts === 'number' ? `, tentative ${json.attempts}` : ''
+              }]`
+            : ''
+        throw new Error(`${json.error || `Erreur ${res.status}`}${detail}${timing}`)
       }
       setSuccess(
         `Synthèse régénérée (${json.questions_count ?? '?'} questions). La version issue de l'abstract a été écrasée.`,

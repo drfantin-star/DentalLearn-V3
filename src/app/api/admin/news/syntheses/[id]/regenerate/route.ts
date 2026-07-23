@@ -9,10 +9,15 @@ import {
   type TaxonomyLists,
 } from '@/lib/news/regenerate-fulltext-validators'
 
-// Route nodejs longue (appel Sonnet ~20-40s) — necessite Vercel Pro
-// (cf CLAUDE.md « Vercel Pro dependencies »), meme pattern que extract-scenes.
+// Route nodejs longue — necessite Vercel Pro (cf CLAUDE.md « Vercel Pro
+// dependencies »). La generation Sonnet part d'un TEXTE INTEGRAL (plus long
+// qu'un abstract : synthesize_articles mesure ~43s depuis un abstract), une
+// coupure a 45s est structurellement intenable. maxDuration=300 aligne sur le
+// plafond du plan (routes generate-script / generate-audio / regenerate-linked
+// -episodes tournent deja a 300 en prod). Le timeout AbortController (240s cote
+// sonnet) laisse ~60s de marge pour l'embedding + la RPC.
 export const runtime = 'nodejs'
-export const maxDuration = 60
+export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
 // Bornes du texte integral (brief 4.2, controle 5). Le minimum evite de degrader
@@ -181,6 +186,7 @@ export async function POST(
           error: `Échec de la régénération (${regen.stage})`,
           details: regen.errors.slice(0, 5),
           attempts: regen.attempts,
+          duration_ms: regen.duration_ms,
         },
         { status },
       )

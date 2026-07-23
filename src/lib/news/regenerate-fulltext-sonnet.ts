@@ -35,12 +35,18 @@ export const SONNET_MODEL = 'claude-sonnet-4-6'
 /** max_tokens output : 4096 suffit (la sortie ne grossit pas avec l'entree). */
 export const SONNET_MAX_TOKENS = 4096
 
-/** 1 essai + 2 retries sur tag_validation / json_parse / structure_check. */
-export const MAX_RETRIES = 3
+/** Nombre de tentatives Sonnet. Invariant budget :
+ *  MAX_RETRIES * SONNET_CALL_TIMEOUT_MS <= maxDuration de la route (300s).
+ *  Avec un timeout unitaire de 240s, seule 1 tentative rentre (240 <= 300 ;
+ *  2 * 240 = 480 > 300). Donc pas de retry : un echec (tag_validation,
+ *  json_parse, no_valid_questions) remonte directement au caller. */
+export const MAX_RETRIES = 1
 
-/** Timeout AbortController par appel. Route maxDuration=60s : on coupe a 45s
- *  pour laisser une marge sur l'embedding OpenAI + la RPC. */
-export const SONNET_CALL_TIMEOUT_MS = 45_000
+/** Timeout AbortController par appel. Route maxDuration=300s : on coupe a 240s
+ *  pour laisser ~60s de marge sur l'embedding OpenAI + la RPC. La generation
+ *  Sonnet (synthese + 3-4 questions) peut depasser 45s sur un texte integral,
+ *  d'ou ce budget large (l'entree longue allonge le time-to-first-token). */
+export const SONNET_CALL_TIMEOUT_MS = 240_000
 
 /** Cles top-level requises dans la sortie Sonnet avant de tenter validateTags. */
 const REQUIRED_TOP_LEVEL_KEYS = [
@@ -78,6 +84,8 @@ export interface RegenFailure {
   errors: string[]
   tokens: RegenTokens
   attempts: number
+  /** Duree ecoulee (ms) depuis le debut de l'appel — sert au diagnostic UI. */
+  duration_ms: number
 }
 
 export type RegenResult = RegenSuccess | RegenFailure
@@ -116,6 +124,8 @@ export async function regenerateSynthesisFromFullText(
   article: FullTextArticle,
   lists: TaxonomyLists,
 ): Promise<RegenResult> {
+  const startedAt = performance.now()
+  const elapsed = () => Math.round(performance.now() - startedAt)
   const tokens: RegenTokens = { input: 0, output: 0 }
 
   const apiKey = process.env.ANTHROPIC_API_KEY
@@ -126,6 +136,7 @@ export async function regenerateSynthesisFromFullText(
       errors: ['Missing ANTHROPIC_API_KEY env var'],
       tokens,
       attempts: 0,
+      duration_ms: elapsed(),
     }
   }
 
@@ -159,13 +170,13 @@ export async function regenerateSynthesisFromFullText(
         e instanceof Error &&
         (e.name === 'AbortError' || e.message.toLowerCase().includes('aborted'))
       const msg = isAbort
-        ? `Anthropic call aborted after ${SONNET_CALL_TIMEOUT_MS}ms`
+        ? `Anthropic call aborted after ${elapsed()}ms (timeout ${SONNET_CALL_TIMEOUT_MS}ms, tentative ${attempt})`
         : e instanceof Error
           ? e.message
           : String(e)
       // Pas de retry : le SDK retry deja 429/5xx en interne, un abort signifie
       // qu'on est trop proche du maxDuration route.
-      return { ok: false, stage: 'anthropic_call', errors: [msg], tokens, attempts: attempt }
+      return { ok: false, stage: 'anthropic_call', errors: [msg], tokens, attempts: attempt, duration_ms: elapsed() }
     }
     clearTimeout(timer)
 
@@ -225,6 +236,7 @@ export async function regenerateSynthesisFromFullText(
         ],
         tokens,
         attempts: attempt,
+        duration_ms: elapsed(),
       }
     }
 
@@ -240,5 +252,12 @@ export async function regenerateSynthesisFromFullText(
 
   // Boucle epuisee
   const fallback = lastFailure ?? { stage: 'json_parse' as const, errors: ['unknown failure'] }
-  return { ok: false, stage: fallback.stage, errors: fallback.errors, tokens, attempts: attemptsDone }
+  return {
+    ok: false,
+    stage: fallback.stage,
+    errors: fallback.errors,
+    tokens,
+    attempts: attemptsDone,
+    duration_ms: elapsed(),
+  }
 }
