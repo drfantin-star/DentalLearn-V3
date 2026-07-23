@@ -28,10 +28,15 @@ export async function GET(request: Request) {
 
     const admin = createAdminClient()
 
+    // Verrou editorial : on ne retient que les syntheses validees par le
+    // comite au niveau de la SELECTION des newsIds. Les questions elles-memes
+    // ne sont pas filtrees (decision : le pool du quiz par theme reste tel
+    // quel), mais elles sont rattachees a une synthese validee.
     const { data: newsRows, error: nErr } = await admin
       .from('news_syntheses')
       .select('id, display_title')
       .eq('status', 'active')
+      .eq('is_editorially_validated', true)
       .eq('specialite', specialite)
 
     if (nErr) throw nErr

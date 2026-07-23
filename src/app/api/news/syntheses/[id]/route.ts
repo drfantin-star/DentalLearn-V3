@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getInvalidEpisodeIds } from '@/lib/news/episodeValidation'
 import type {
   NewsDetail,
   NewsDetailResponse,
@@ -39,11 +40,14 @@ export async function GET(
 
     const supabase = createAdminClient()
 
+    // Verrou editorial : une synthese non validee par le comite renvoie 404
+    // (via maybeSingle -> null -> Not found), pas une page vide.
     const { data: synthesisRow, error: synthesisError } = await supabase
       .from('news_syntheses')
       .select(NEWS_DETAIL_COLUMNS)
       .eq('id', id)
       .eq('status', 'active')
+      .eq('is_editorially_validated', true)
       .maybeSingle()
 
     if (synthesisError) {
@@ -105,11 +109,17 @@ export async function GET(
       }
       const episodeIds = Array.from(positionByEpisode.keys())
 
-      if (episodeIds.length > 0) {
+      // Verrou editorial : ne pas exposer un episode qui contient une AUTRE
+      // synthese non validee (la synthese courante est deja validee, sinon on
+      // aurait renvoye 404 plus haut).
+      const invalidEpisodeIds = await getInvalidEpisodeIds(supabase, episodeIds)
+      const validEpisodeIds = episodeIds.filter((eid) => !invalidEpisodeIds.has(eid))
+
+      if (validEpisodeIds.length > 0) {
         const { data: episodes, error: episodesError } = await supabase
           .from('news_episodes')
           .select('id, audio_url, duration_s, published_at, timeline_url, timeline_published')
-          .in('id', episodeIds)
+          .in('id', validEpisodeIds)
           .eq('status', 'published')
           .order('published_at', { ascending: false, nullsFirst: false })
           .limit(1)

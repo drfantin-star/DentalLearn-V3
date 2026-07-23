@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getInvalidEpisodeIds } from '@/lib/news/episodeValidation'
 import type { JournalEpisode, JournalSynthesisProjection } from '@/types/news'
 
 export const dynamic = 'force-dynamic'
@@ -18,22 +19,37 @@ export async function GET() {
   try {
     const adminSupabase = createAdminClient()
 
-    const { data: episode, error: epErr } = await adminSupabase
+    // Verrou editorial : on ne diffuse que le journal publie le plus recent
+    // dont TOUTES les syntheses liees sont validees. On lit une fenetre de
+    // candidats (les 20 derniers, ~20 semaines) et on retient le premier
+    // entierement valide ; les journaux contenant une synthese non validee
+    // sont ecartes. Cap documente : si les 20 derniers sont tous invalides,
+    // aucun journal n'est diffuse (retour null).
+    const { data: candidates, error: epErr } = await adminSupabase
       .from('news_episodes')
       .select('id, week_iso, audio_url, duration_s, status, created_at, published_at, timeline_url, timeline_published')
       .eq('type', 'journal')
       .eq('status', 'published')
       .not('audio_url', 'is', null)
       .order('published_at', { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle()
+      .limit(20)
 
     if (epErr) {
       console.error('GET /api/news/journal/current episode error:', epErr)
       return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
     }
-    if (!episode) {
+    if (!candidates || candidates.length === 0) {
       console.warn('GET /api/news/journal/current: aucun journal publié avec audio_url trouvé')
+      return NextResponse.json(null, { status: 200 })
+    }
+
+    const invalidEpisodeIds = await getInvalidEpisodeIds(
+      adminSupabase,
+      candidates.map((c) => c.id as string),
+    )
+    const episode = candidates.find((c) => !invalidEpisodeIds.has(c.id as string)) ?? null
+    if (!episode) {
+      console.warn('GET /api/news/journal/current: aucun journal entièrement validé dans la fenêtre')
       return NextResponse.json(null, { status: 200 })
     }
 

@@ -38,6 +38,7 @@ export async function GET() {
       .from('news_syntheses')
       .select(SAFE_NEWS_COLUMNS)
       .eq('status', 'active')
+      .eq('is_editorially_validated', true)
       .order('created_at', { ascending: false, nullsFirst: false })
       .limit(THEME_ROW_ITEMS)
 
@@ -69,6 +70,7 @@ export async function GET() {
         .from('news_syntheses')
         .select(SAFE_NEWS_COLUMNS, { count: 'exact' })
         .eq('status', 'active')
+        .eq('is_editorially_validated', true)
         .eq(map.field, map.value)
         .order('created_at', { ascending: false, nullsFirst: false })
         .limit(THEME_ROW_ITEMS)

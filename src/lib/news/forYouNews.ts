@@ -49,6 +49,7 @@ export async function fetchForYouNews(
           .from('news_syntheses')
           .select(SAFE_NEWS_COLUMNS)
           .eq('status', 'active')
+          .eq('is_editorially_validated', true)
           .in('formation_category_match', categories)
           .order('published_at', { ascending: false, nullsFirst: false })
           .limit(matchedLimit)
@@ -57,6 +58,7 @@ export async function fetchForYouNews(
       .from('news_syntheses')
       .select(SAFE_NEWS_COLUMNS)
       .eq('status', 'active')
+      .eq('is_editorially_validated', true)
       .order('published_at', { ascending: false, nullsFirst: false })
       .limit(recentLimit),
   ])
