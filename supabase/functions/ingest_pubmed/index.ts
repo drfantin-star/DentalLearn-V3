@@ -19,8 +19,9 @@
 //   1. SELECT des sources actives type='pubmed' + query MeSH (filtré sur
 //      source_id si fourni).
 //   2. Pour chaque source : ESearch (PMIDs) → EFetch (XML) → parse.
-//   3. UPSERT dans news_raw avec dedup strict sur (source_id, external_id)
-//      via la contrainte news_raw_source_external_uniq (ON CONFLICT DO NOTHING).
+//   3. UPSERT dans news_raw avec dedup strict sur external_id (unique global,
+//      contrainte news_raw_external_id_uniq — un même PMID moissonné par
+//      plusieurs requêtes MeSH/sources ne crée plus de doublon).
 //   4. UPDATE news_sources.last_fetched_at à la fin de chaque source.
 //   5. Logs structurés : ingested / duplicates / errors par source.
 //
@@ -177,13 +178,14 @@ async function upsertRaw(
   source_id: string,
   a: ArticleMeta,
 ): Promise<{ inserted: boolean }> {
-  // Dedup strict : (source_id, external_id) UNIQUE.
-  // .upsert avec ignoreDuplicates=true + select count : on distingue insert
-  // vs no-op en interrogeant d'abord si la ligne existe.
+  // Dedup strict : external_id UNIQUE global (cf migration
+  // 20260723e_news_raw_external_id_global_uniq.sql — un même PMID peut être
+  // moissonné par plusieurs requêtes MeSH/source_id différentes, d'où le
+  // passage d'un unique (source_id, external_id) à un unique global sur
+  // external_id, sans filtre source_id ici).
   const { data: existing, error: existErr } = await supabase
     .from("news_raw")
     .select("id")
-    .eq("source_id", source_id)
     .eq("external_id", a.pmid)
     .maybeSingle();
 

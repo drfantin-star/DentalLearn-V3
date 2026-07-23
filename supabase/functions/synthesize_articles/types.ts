@@ -130,11 +130,15 @@ export type ValidationStage =
   | "embedding"           // appel OpenAI embeddings raté après les retries client
   | "synthesis_insert"    // INSERT news_syntheses raté (DB error)
   | "question_insert"     // INSERT questions raté (rollback applicatif déclenché)
-  | "anthropic_call";     // appel Sonnet raté APRÈS retries internes 429/5xx
+  | "anthropic_call"      // appel Sonnet raté APRÈS retries internes 429/5xx
                           //   (timeout abort, 4xx non retryable, réseau cassé).
                           //   Distinct de json_parse : ici on n'a même pas de
                           //   réponse à parser. Sert à filtrer admin
                           //   "transient API down" vs "Sonnet drift".
+  | "abstract_too_long";  // abstract > MAX_ABSTRACT_LENGTH — jamais envoyé à
+                          //   Sonnet (timeout IDLE_TIMEOUT 150s). Skip tracé
+                          //   au lieu de laisser l'article en 'selected' sans
+                          //   trace (cf Lot 2 news-pipeline-dedup-sizing).
 
 /** Schéma standardisé du JSONB validation_errors. */
 export interface ValidationErrorPayload {
