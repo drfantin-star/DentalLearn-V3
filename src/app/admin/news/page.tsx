@@ -20,6 +20,8 @@ import {
   Database,
   Inbox,
   Mic,
+  CheckCircle2,
+  Circle,
 } from 'lucide-react'
 import { ALLOWED_FORMATION_CATEGORIES } from '@/lib/constants/news'
 import { describeCardDate, formatDate } from '@/lib/news-display'
@@ -109,6 +111,9 @@ interface Synthesis {
   published_at: string | null
   ingested_at: string | null
   audioState: 'published' | 'ready' | 'none'
+  // Etat de validation editoriale agrege (synthese + episode insight courant).
+  // Present uniquement pour les syntheses actives ; absent sinon.
+  validationState?: 'pending' | 'revalidate' | 'validated'
 }
 
 interface ListResponse {
@@ -549,6 +554,43 @@ function AudioStateIcon({ state }: { state: Synthesis['audioState'] }) {
   )
 }
 
+// Badge de validation editoriale (ADMIN uniquement, Decision 14C — aucun badge
+// cote praticien). Icone SEULE, pas d'infobulle ni de texte. Chaque etat a une
+// FORME distincte (lisible en noir et blanc) en plus de sa couleur :
+//   validated   -> check   (couleur succes)
+//   revalidate  -> triangle d'alerte (couleur warning)
+//   pending     -> cercle  (couleur neutre)
+function ValidationStateIcon({
+  state,
+}: {
+  state: Synthesis['validationState']
+}) {
+  if (!state) return null
+  const config = {
+    validated: {
+      Icon: CheckCircle2,
+      className: 'text-emerald-600',
+      label: 'Validation editoriale : valide',
+    },
+    revalidate: {
+      Icon: AlertTriangle,
+      className: 'text-amber-600',
+      label: 'Validation editoriale : a revalider',
+    },
+    pending: {
+      Icon: Circle,
+      className: 'text-gray-400',
+      label: 'Validation editoriale : en attente',
+    },
+  }[state]
+  const { Icon, className, label } = config
+  return (
+    <span aria-label={label} role="img" className="flex-shrink-0 mt-0.5">
+      <Icon className={`w-4 h-4 ${className}`} aria-hidden="true" />
+    </span>
+  )
+}
+
 function SynthesisCard({ synthesis }: { synthesis: Synthesis }) {
   const dateInfo = describeCardDate(synthesis.published_at, synthesis.created_at)
   const editorialBadge = synthesis.category_editorial
@@ -565,6 +607,7 @@ function SynthesisCard({ synthesis }: { synthesis: Synthesis }) {
           {synthesis.display_title || 'Sans titre'}
         </h3>
         <AudioStateIcon state={synthesis.audioState} />
+        <ValidationStateIcon state={synthesis.validationState} />
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-3">
