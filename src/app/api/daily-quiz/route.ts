@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { updateStreak, getTodayParis } from '@/lib/streak'
 
 // Force dynamic rendering — prevents Next.js from caching the response
@@ -102,9 +103,41 @@ export async function GET(request: NextRequest) {
         )
       }
 
+      // Verrou editorial (parite avec get_daily_quiz) : dans ce repli aussi,
+      // une question news n'est retenue que si sa synthese est active ET
+      // validee. Les questions formation (news_synthesis_id null) passent
+      // toujours. Lookup via client admin (pas de RLS SELECT sur
+      // news_syntheses). Ce repli reste best-effort : il ne rejoue pas le
+      // quota 80/20 du RPC, mais il ne diffuse aucune synthese non validee.
+      const rawQuestions = (fallbackQuestions || []) as Record<string, unknown>[]
+      const fallbackNewsIds = Array.from(
+        new Set(
+          rawQuestions
+            .map((q) => q.news_synthesis_id)
+            .filter((v): v is string => typeof v === 'string' && v.length > 0)
+        )
+      )
+      const validatedNewsIds = new Set<string>()
+      if (fallbackNewsIds.length > 0) {
+        const admin = createAdminClient()
+        const { data: validRows } = await admin
+          .from('news_syntheses')
+          .select('id')
+          .in('id', fallbackNewsIds)
+          .eq('status', 'active')
+          .eq('is_editorially_validated', true)
+        for (const r of validRows ?? []) validatedNewsIds.add(r.id as string)
+      }
+      const allQuestions = rawQuestions.filter((q) => {
+        const nsid = q.news_synthesis_id
+        if (typeof nsid === 'string' && nsid.length > 0) {
+          return validatedNewsIds.has(nsid)
+        }
+        return true
+      })
+
       // Shuffle all eligible questions with a date-based seed, then take 10
       const seed = dailySeedFromDate(today)
-      const allQuestions = (fallbackQuestions || []) as Record<string, unknown>[]
       const shuffled = seededShuffle(allQuestions, seed)
       const selected = shuffled.slice(0, 10)
 

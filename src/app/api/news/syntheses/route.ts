@@ -52,6 +52,7 @@ export async function GET(request: Request) {
       .from('news_syntheses')
       .select(NEWS_CARD_COLUMNS, { count: 'exact' })
       .eq('status', 'active')
+      .eq('is_editorially_validated', true)
 
     if (specialite) {
       query = query.eq('specialite', specialite)
