@@ -14,6 +14,7 @@ interface PlanItem {
   estMinutes: number | null
   status: string
   href: string
+  alreadyStarted?: boolean
 }
 
 interface AutopilotData {
@@ -41,19 +42,27 @@ export default function SophieAutopilotCard() {
     fetchData()
   }, [fetchData])
 
-  const todoCount = data?.items?.filter((it: PlanItem) => it.status === 'todo').length ?? 0
-  const totalCount = data?.items?.length ?? 0
-  const allDone = totalCount > 0 && todoCount === 0
+  // Meme filtre que PlanDuMoisSection : on masque les items deja engages
+  // ailleurs (alreadyStarted) et les items faits (status === 'done').
+  const restant = data?.items?.filter(
+    (it: PlanItem) => it.status === 'todo' && !it.alreadyStarted,
+  ).length ?? 0
+  const total = data?.items?.length ?? 0
 
   let title: string
   if (!data) {
     title = '...'
   } else if (data.needsSetup) {
-    title = 'Cree ton plan du mois'
-  } else if (allDone) {
-    title = 'Plan du mois termine 👏'
+    title = 'Crée ton plan du mois'
+  } else if (restant === 0) {
+    title = 'Plan du mois terminé 👏'
+  } else if (restant === 1) {
+    // Elision : jamais « plus que 1 action ».
+    title = 'Plus qu\'une action à réaliser !'
+  } else if (restant < total) {
+    title = `Plus que ${restant} actions à réaliser !`
   } else {
-    title = `${todoCount} action${todoCount > 1 ? 's' : ''} a faire ce mois-ci`
+    title = `${total} actions à faire ce mois-ci`
   }
 
   return (

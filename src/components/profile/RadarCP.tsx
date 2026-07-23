@@ -80,10 +80,10 @@ export default function RadarCP({ cpSettings, actionsParAxe, autoevalYears }: Ra
   const OBJECTIF_PAR_AXE = 2;
 
   const axes = [
-    { id: 'axe1', label: 'Competences', color: axeHex(1), icon: '📚', count: actionsParAxe.axe1 },
-    { id: 'axe2', label: 'Qualite pratiques', color: axeHex(2), icon: '📋', count: actionsParAxe.axe2 },
+    { id: 'axe1', label: 'Compétences', color: axeHex(1), icon: '📚', count: actionsParAxe.axe1 },
+    { id: 'axe2', label: 'Qualité pratiques', color: axeHex(2), icon: '📋', count: actionsParAxe.axe2 },
     { id: 'axe3', label: 'Relation patient', color: axeHex(3), icon: '🤝', count: actionsParAxe.axe3 },
-    { id: 'axe4', label: 'Sante praticien', color: axeHex(4), icon: '❤️', count: actionsParAxe.axe4 },
+    { id: 'axe4', label: 'Santé praticien', color: axeHex(4), icon: '❤️', count: actionsParAxe.axe4 },
   ];
 
   const totalActions = Object.values(actionsParAxe).reduce((a, b) => a + b, 0);
@@ -94,9 +94,9 @@ export default function RadarCP({ cpSettings, actionsParAxe, autoevalYears }: Ra
 
       {/* Header */}
       <div className="px-4 py-3" style={{ background: 'linear-gradient(135deg, #1D4ED8, #60A5FA)' }}>
-        <h3 className="text-white font-bold text-sm">Certification Periodique</h3>
+        <h3 className="text-white font-bold text-sm">Certification Périodique</h3>
         <p className="text-white/70 text-xs">
-          {periode.isDerogation ? 'Premier cycle (derogation 9 ans)' : 'Cycle standard (6 ans)'}
+          {periode.isDerogation ? 'Premier cycle (dérogation 9 ans)' : 'Cycle standard (6 ans)'}
         </p>
       </div>
 
@@ -224,7 +224,7 @@ export default function RadarCP({ cpSettings, actionsParAxe, autoevalYears }: Ra
 
         {/* Total */}
         <div className="flex justify-between items-center pt-1">
-          <span className="text-xs text-white/55">Total validees</span>
+          <span className="text-xs text-white/55">Total validées</span>
           <span className="text-sm font-bold text-white">
             {totalActions} / {totalObjectif} actions min.
           </span>
@@ -234,7 +234,7 @@ export default function RadarCP({ cpSettings, actionsParAxe, autoevalYears }: Ra
         {tempsRestant.pourcentageEcoule > 50 && totalActions < totalObjectif / 2 && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
             <p className="text-xs text-amber-700">
-              ⚠️ <strong>Attention :</strong> Plus de la moitie de la periode est ecoulee.
+              ⚠️ <strong>Attention :</strong> Plus de la moitié de la période est écoulée.
               Pensez a valider vos actions restantes.
             </p>
           </div>

@@ -7,6 +7,7 @@ import { Award, ChevronLeft, ChevronRight, ClipboardCheck, Loader2, X } from 'lu
 import Link from 'next/link'
 import RadarCP from '@/components/profile/RadarCP'
 import DemarchesSection from '@/components/profile/DemarchesSection'
+import PlanDuMoisSection from '@/components/profile/PlanDuMoisSection'
 import ActionsParAxeSection from '@/components/profile/ActionsParAxeSection'
 import { useDemarches } from '@/lib/hooks/useDemarches'
 import { useUser } from '@/lib/hooks/useUser'
@@ -232,6 +233,10 @@ export default function MaCertifPage() {
             </div>
           </div>
         )}
+
+        {/* Mon plan du mois (Sophie/Autopilot) — ce qui est PRÉVU ce mois,
+            distinct des démarches en cours (ce qui est COMMENCÉ). */}
+        <PlanDuMoisSection />
 
         {/* Demarches en cours */}
         <DemarchesSection demarches={demarches} loading={demarchesLoading} />
