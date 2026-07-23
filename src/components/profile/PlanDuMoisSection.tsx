@@ -1,12 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronLeft, ChevronRight, Loader2, Sparkles } from 'lucide-react'
 import { axeHex } from '@/lib/cp/axeColors'
-import { getCategoryStyle } from '@/lib/design/categoryStyle'
-import MediaCard from '@/components/home/MediaCard'
+import type { Formation } from '@/lib/supabase/types'
+import FormationCardOverlay from '@/components/home/FormationCardOverlay'
 import EppCardBackground from '@/components/home/EppCardBackground'
+import { mediaCardSizeStyle } from '@/components/home/MediaCard'
 import SophieAutopilotModal from '@/components/sophie/SophieAutopilotModal'
 
 interface PlanItem {
@@ -35,81 +36,66 @@ interface AutopilotData {
 type FetchState = 'loading' | 'error' | 'ready'
 
 // ── Carte d'un item du plan ─────────────────────────────────────────────────
-// Meme shell paysage que les cartes de la rangee "Reprendre" de la home
-// (MediaCard). Fond : cover formation (via ref_id) / EppCardBackground teal
-// pour l'EPP / radial derive de la couleur d'axe pour autoeval + attestation.
-// Badge d'axe en surimpression, duree ancree en bas.
-function PlanCard({ item, onClick }: { item: PlanItem; onClick: () => void }) {
-  const color = axeHex(item.axeId)
-
-  let cover: string | null | undefined
-  let coverFit: 'cover' | 'contain' | undefined
-  let coverBackground: string | undefined
-  let fallback: ReactNode
-
+// Identite par construction avec la rangee « Reprendre » de la home :
+//  - formation : REUTILISE FormationCardOverlay tel quel (degrade de categorie
+//    natif, pas de progressPercent — les items du plan sont non commences).
+//  - epp / autoeval / attestation : meme patron que le bloc EPP de « Reprendre »
+//    (shell landscape + EppCardBackground + titre centre clamp 4). EPP -> teal
+//    Axe 2 (sans prop color) ; autoeval/attestation -> couleur de l'axe.
+function PlanItemCard({ item, onClick }: { item: PlanItem; onClick: () => void }) {
   if (item.itemType === 'formation') {
-    const style = getCategoryStyle(item.category)
-    const gradient = `linear-gradient(135deg, ${style.from}, ${style.to})`
-    if (item.coverImageUrl) {
-      cover = item.coverImageUrl
-    } else if (item.coverCutoutUrl) {
-      cover = item.coverCutoutUrl
-      coverFit = 'contain'
-      coverBackground = gradient
-    } else {
-      fallback = <div style={{ position: 'absolute', inset: 0, background: gradient }} />
-    }
-  } else if (item.itemType === 'epp') {
-    // Teal Axe 2 fixe (decision verrouillee).
-    fallback = <EppCardBackground />
-  } else {
-    // autoeval / attestation : radial derive de la couleur d'axe.
-    fallback = <EppCardBackground color={color} />
+    const formation = {
+      title: item.title,
+      category: item.category ?? '',
+      cover_image_url: item.coverImageUrl ?? null,
+      cover_cutout_url: item.coverCutoutUrl ?? null,
+    } as unknown as Formation
+    return <FormationCardOverlay formation={formation} aspect="landscape" onClick={onClick} />
   }
 
+  const bgColor = item.itemType === 'epp' ? undefined : axeHex(item.axeId)
   return (
-    <MediaCard
+    <button
+      type="button"
       onClick={onClick}
-      ariaLabel={item.title}
-      aspect="landscape"
-      cover={cover}
-      coverFit={coverFit}
-      coverBackground={coverBackground}
-      fallback={fallback}
-      topLeft={
-        <span
-          className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full"
-          style={{ background: color, color: 'white', boxShadow: '0 1px 4px rgba(0,0,0,0.4)' }}
-        >
-          {item.axeShortName}
-        </span>
-      }
+      aria-label={item.title}
+      className="flex-shrink-0 snap-start rounded-2xl overflow-hidden text-left active:scale-[0.98] transition-transform duration-150 relative"
+      style={{
+        ...mediaCardSizeStyle('landscape'),
+        border: '0.5px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+      }}
     >
-      <p
+      <EppCardBackground color={bgColor} />
+      <div
         style={{
-          margin: 0,
-          fontSize: '13px',
-          fontWeight: 700,
-          color: 'white',
-          lineHeight: 1.25,
-          textShadow: '0 2px 6px rgba(0,0,0,0.75)',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '14px',
         }}
       >
-        {item.title}
-      </p>
-      {item.estMinutes != null && (
-        <span
-          className="text-[11px] font-semibold text-white/90"
-          style={{ textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+        <p
+          style={{
+            margin: 0,
+            textAlign: 'center',
+            fontSize: '13px',
+            fontWeight: 700,
+            color: 'white',
+            lineHeight: 1.3,
+            textShadow: '0 2px 6px rgba(0,0,0,0.85)',
+            display: '-webkit-box',
+            WebkitLineClamp: 4,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
         >
-          {item.estMinutes} min
-        </span>
-      )}
-    </MediaCard>
+          {item.title}
+        </p>
+      </div>
+    </button>
   )
 }
 
@@ -211,7 +197,7 @@ export default function PlanDuMoisSection() {
             className="flex gap-3 overflow-x-auto scroll-smooth pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4"
           >
             {visibleItems.map((item) => (
-              <PlanCard key={item.id} item={item} onClick={() => router.push(item.href)} />
+              <PlanItemCard key={item.id} item={item} onClick={() => router.push(item.href)} />
             ))}
           </div>
           <button

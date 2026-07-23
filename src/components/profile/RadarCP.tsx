@@ -234,7 +234,7 @@ export default function RadarCP({ cpSettings, actionsParAxe, autoevalYears }: Ra
         {tempsRestant.pourcentageEcoule > 50 && totalActions < totalObjectif / 2 && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
             <p className="text-xs text-amber-700">
-              ⚠️ <strong>Attention :</strong> Plus de la moitie de la periode est ecoulee.
+              ⚠️ <strong>Attention :</strong> Plus de la moitié de la période est écoulée.
               Pensez a valider vos actions restantes.
             </p>
           </div>
