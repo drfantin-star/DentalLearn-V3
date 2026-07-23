@@ -40,6 +40,7 @@ import { OpenAIClient } from "../_shared/openai.ts";
 import { Logger } from "../_shared/logger.ts";
 import { getServiceClient } from "../_shared/supabase.ts";
 import { processArticle } from "./article_processor/index.ts";
+import { upsertFailedSynthesis } from "./article_processor/persist.ts";
 import {
   CATEGORY_EDITORIAL_VALUES,
   DEFAULT_BATCH_LIMIT,
@@ -59,18 +60,20 @@ import type {
 
 const logger = new Logger("synthesize_articles");
 
-// Abstracts au-delà de ce seuil sont skippés silencieusement (l'article
-// reste status='selected' en BDD mais n'entre pas dans le pipeline Sonnet
-// du run en cours). Motivation : >3000 chars = Sonnet >50s, et avec les
-// autres étapes on dépasse l'IDLE_TIMEOUT Supabase 150s (timeout
-// systématique). Override via env var pour réactiver ces articles si on
-// monte sur un plan plus permissif ou si on ajoute un pipeline dédié aux
-// revues longues. Cf plan "Filtre abstracts longs" (T-tech-debt).
+// Abstracts au-delà de ce seuil sont tracés en échec (validation_errors,
+// stage='abstract_too_long') plutôt qu'envoyés à Sonnet — motivation :
+// au-delà, le run risque de dépasser l'IDLE_TIMEOUT Supabase 150s. Relevé
+// 3000 → 6000 le 23/07/2026 (Lot 2 news-pipeline-dedup-sizing) : le plus
+// long abstract du corpus au 23/07/2026 est sous 6000 chars, donc plus
+// aucune exclusion silencieuse en régime courant — cette borne ne joue
+// désormais que pour un futur outlier. Override via env var pour ajuster
+// si on monte sur un plan plus permissif ou si on ajoute un pipeline dédié
+// aux revues longues. Cf plan "Filtre abstracts longs" (T-tech-debt).
 const MAX_ABSTRACT_LENGTH = (() => {
   const raw = Deno.env.get("SYNTHESIS_MAX_ABSTRACT_LENGTH");
-  if (!raw) return 3000;
+  if (!raw) return 6000;
   const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 3000;
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 6000;
 })();
 
 // ---------------------------------------------------------------------------
@@ -270,21 +273,6 @@ async function loadCandidates(
     const raw = row.raw;
     if (!raw) continue; // sécurité — !inner devrait empêcher ce cas
 
-    // Filtre abstracts trop longs (timeout Sonnet/IDLE_TIMEOUT 150s).
-    // Skip silencieux : l'article reste status='selected' en BDD et
-    // pourra être ré-éligible si on relève MAX_ABSTRACT_LENGTH.
-    const abstractLength =
-      typeof raw.abstract === "string" ? raw.abstract.length : 0;
-    if (abstractLength > MAX_ABSTRACT_LENGTH) {
-      logger.warn("skip_long_abstract", {
-        scored_id: row.id,
-        abstract_length: abstractLength,
-        threshold: MAX_ABSTRACT_LENGTH,
-      });
-      skippedLongAbstract++;
-      continue;
-    }
-
     const synArr = Array.isArray(row.syntheses) ? row.syntheses : [];
     // Sélection déterministe : on priorise les statuts "skip-wins" pour que
     // isEligible retourne false même si l'embed renvoie plusieurs rows pour
@@ -328,7 +316,16 @@ async function loadCandidates(
 
     if (!isEligible) continue;
 
-    eligible.push({
+    const existingSynthesis = syn
+      ? {
+          id: syn.id,
+          status: typeof syn.status === "string" ? syn.status : "failed",
+          failed_attempts:
+            typeof syn.failed_attempts === "number" ? syn.failed_attempts : 0,
+        }
+      : null;
+
+    const article: SelectedArticle = {
       scored_id: row.id,
       raw_id: row.raw_id,
       title: raw.title ?? "",
@@ -338,15 +335,43 @@ async function loadCandidates(
       authors: Array.isArray(raw.authors) ? raw.authors : null,
       published_at: raw.published_at ?? null,
       url: raw.url ?? null,
-      existing_synthesis: syn
-        ? {
-            id: syn.id,
-            status: typeof syn.status === "string" ? syn.status : "failed",
-            failed_attempts:
-              typeof syn.failed_attempts === "number" ? syn.failed_attempts : 0,
-          }
-        : null,
-    });
+      existing_synthesis: existingSynthesis,
+    };
+
+    // Filtre abstracts trop longs (timeout Sonnet/IDLE_TIMEOUT 150s). Tracé
+    // en validation_errors (stage='abstract_too_long') au lieu du skip
+    // silencieux d'origine — l'article reste visible côté admin avec le
+    // motif + la longueur, et rejoue au run suivant tant que
+    // failed_attempts < MAX_FAILED_ATTEMPTS (cf upsertFailedSynthesis).
+    const abstractLength =
+      typeof raw.abstract === "string" ? raw.abstract.length : 0;
+    if (abstractLength > MAX_ABSTRACT_LENGTH) {
+      skippedLongAbstract++;
+      try {
+        await upsertFailedSynthesis(
+          supabase,
+          article,
+          {
+            stage: "abstract_too_long",
+            reason: `abstract ${abstractLength} chars > seuil ${MAX_ABSTRACT_LENGTH}`,
+            details: { abstract_length: abstractLength, threshold: MAX_ABSTRACT_LENGTH },
+            timestamp: new Date().toISOString(),
+          },
+          existingSynthesis,
+          null,
+        );
+      } catch (e) {
+        logger.error("skip_long_abstract_trace_failed", {
+          scored_id: row.id,
+          abstract_length: abstractLength,
+          threshold: MAX_ABSTRACT_LENGTH,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+      continue;
+    }
+
+    eligible.push(article);
   }
 
   return {

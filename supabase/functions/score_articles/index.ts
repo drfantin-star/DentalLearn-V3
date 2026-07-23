@@ -40,6 +40,17 @@
 // Pas d'auto-réinvocation interne. La gestion de la boucle reste côté caller
 // (CLI manuel pour backfill, cron pour la suite).
 //
+// Seuil de sélection (`threshold`) — Lot 4 news-pipeline-dedup-sizing
+// ---------------------------------------------------------------------
+// body POST `{"threshold": T}` (nombre dans [0, 1]) surcharge le seuil de
+// sélection pour ce run uniquement (score >= threshold → status='selected').
+//   - défaut : NEWS_SCORE_THRESHOLD env var ou DEFAULT_THRESHOLD (0.70).
+//   - body absent ou JSON malformé → défaut. body avec `threshold` hors
+//     [0, 1] ou non-numérique → 400 propre (même parsing défensif que `limit`).
+// Le cron news_score_articles n'envoie pas ce champ et reste donc inchangé
+// (seuil par défaut 0.70). Sert au backfill manuel (Lot 5) à relever le
+// seuil (ex: 0.80) sans redéploiement.
+//
 // Comportement :
 //   1. RPC count_unscored_articles() — total restant (sans charger les
 //      lignes), sert à total_remaining_estimate / has_more.
@@ -536,18 +547,14 @@ async function insertScored(
 // Main
 // ---------------------------------------------------------------------------
 
-async function run(opts: { limit: number }): Promise<RunSummary> {
+async function run(opts: { limit: number; threshold: number }): Promise<RunSummary> {
   const supabase = getServiceClient();
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY env var is missing");
   const anthropic = new AnthropicClient({ apiKey });
 
   const model = Deno.env.get("NEWS_HAIKU_MODEL") || DEFAULT_MODEL;
-  const thresholdRaw = Deno.env.get("NEWS_SCORE_THRESHOLD");
-  const threshold = thresholdRaw ? parseFloat(thresholdRaw) : DEFAULT_THRESHOLD;
-  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
-    throw new Error(`NEWS_SCORE_THRESHOLD invalide: ${thresholdRaw}`);
-  }
+  const threshold = opts.threshold;
 
   const summary: RunSummary = {
     ok: true,
@@ -780,19 +787,62 @@ function defaultLimitFromEnv(): number {
   return Math.min(n, MAX_BATCH_LIMIT);
 }
 
-type ParsedLimit =
-  | { ok: true; limit: number; requested: number | null; capped: boolean }
+/**
+ * Défaut threshold lu depuis l'env (surcharge possible sans redéploiement).
+ * Invalide (non-numérique, hors [0,1]) → log warn + repli DEFAULT_THRESHOLD
+ * (même politique défensive que defaultLimitFromEnv, pour ne pas casser le
+ * cron sur une valeur d'env mal formée).
+ */
+function defaultThresholdFromEnv(): number {
+  const raw = Deno.env.get("NEWS_SCORE_THRESHOLD");
+  if (!raw) return DEFAULT_THRESHOLD;
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 1) {
+    logger.warn("env_invalid_threshold", {
+      var: "NEWS_SCORE_THRESHOLD",
+      raw,
+      fallback: DEFAULT_THRESHOLD,
+    });
+    return DEFAULT_THRESHOLD;
+  }
+  return n;
+}
+
+type ParsedBody =
+  | {
+      ok: true;
+      limit: number;
+      requested_limit: number | null;
+      limit_capped: boolean;
+      threshold: number;
+      requested_threshold: number | null;
+    }
   | { ok: false; error: string };
 
+function defaultsOnly(): ParsedBody {
+  return {
+    ok: true,
+    limit: defaultLimitFromEnv(),
+    requested_limit: null,
+    limit_capped: false,
+    threshold: defaultThresholdFromEnv(),
+    requested_threshold: null,
+  };
+}
+
 /**
- * Parse défensif du body POST :
- *   - body absent / vide → default (env var ou DEFAULT_BATCH_LIMIT).
- *   - JSON malformé → fallback default + log warn (ne bloque pas le cron qui
+ * Parse défensif du body POST — `limit` (borne d'articles par invocation) et
+ * `threshold` (Lot 4, seuil de sélection 0-1, remplace l'env NEWS_SCORE_THRESHOLD
+ * pour ce run uniquement) :
+ *   - body absent / vide → defaults (env var ou constantes par défaut).
+ *   - JSON malformé → fallback defaults + log warn (ne bloque pas le cron qui
  *     envoie déjà un body valide ; protège contre un curl approximatif).
  *   - {"limit": N} avec N entier > 0 → utilisé, cappé à MAX_BATCH_LIMIT.
  *   - {"limit": N} avec N <= 0, non-entier ou non-numérique → 400.
+ *   - {"threshold": T} avec T numérique dans [0, 1] → utilisé tel quel.
+ *   - {"threshold": T} hors [0, 1] ou non-numérique → 400.
  */
-async function parseLimitFromBody(req: Request): Promise<ParsedLimit> {
+async function parseRequestBody(req: Request): Promise<ParsedBody> {
   let bodyText = "";
   try {
     bodyText = await req.text();
@@ -802,9 +852,8 @@ async function parseLimitFromBody(req: Request): Promise<ParsedLimit> {
       error: `failed to read body: ${e instanceof Error ? e.message : String(e)}`,
     };
   }
-  if (!bodyText.trim()) {
-    return { ok: true, limit: defaultLimitFromEnv(), requested: null, capped: false };
-  }
+  if (!bodyText.trim()) return defaultsOnly();
+
   let parsed: unknown;
   try {
     parsed = JSON.parse(bodyText);
@@ -813,27 +862,54 @@ async function parseLimitFromBody(req: Request): Promise<ParsedLimit> {
       error: e instanceof Error ? e.message : String(e),
       preview: bodyText.slice(0, 200),
     });
-    return { ok: true, limit: defaultLimitFromEnv(), requested: null, capped: false };
+    return defaultsOnly();
   }
-  if (!parsed || typeof parsed !== "object") {
-    return { ok: true, limit: defaultLimitFromEnv(), requested: null, capped: false };
+  if (!parsed || typeof parsed !== "object") return defaultsOnly();
+
+  const obj = parsed as Record<string, unknown>;
+
+  // limit
+  let limit = defaultLimitFromEnv();
+  let requestedLimit: number | null = null;
+  let limitCapped = false;
+  const rawLimit = obj.limit;
+  if (rawLimit !== undefined) {
+    if (typeof rawLimit !== "number" || !Number.isFinite(rawLimit)) {
+      return { ok: false, error: `limit must be a positive integer (got ${typeof rawLimit})` };
+    }
+    if (!Number.isInteger(rawLimit) || rawLimit <= 0) {
+      return { ok: false, error: `limit must be a positive integer (got ${rawLimit})` };
+    }
+    requestedLimit = rawLimit;
+    limitCapped = rawLimit > MAX_BATCH_LIMIT;
+    limit = Math.min(rawLimit, MAX_BATCH_LIMIT);
   }
-  const raw = (parsed as Record<string, unknown>).limit;
-  if (raw === undefined) {
-    return { ok: true, limit: defaultLimitFromEnv(), requested: null, capped: false };
+
+  // threshold (Lot 4 — bornage 0-1, même style défensif que limit)
+  let threshold = defaultThresholdFromEnv();
+  let requestedThreshold: number | null = null;
+  const rawThreshold = obj.threshold;
+  if (rawThreshold !== undefined) {
+    if (typeof rawThreshold !== "number" || !Number.isFinite(rawThreshold)) {
+      return {
+        ok: false,
+        error: `threshold must be a number between 0 and 1 (got ${typeof rawThreshold})`,
+      };
+    }
+    if (rawThreshold < 0 || rawThreshold > 1) {
+      return { ok: false, error: `threshold must be between 0 and 1 (got ${rawThreshold})` };
+    }
+    requestedThreshold = rawThreshold;
+    threshold = rawThreshold;
   }
-  if (typeof raw !== "number" || !Number.isFinite(raw)) {
-    return { ok: false, error: `limit must be a positive integer (got ${typeof raw})` };
-  }
-  if (!Number.isInteger(raw) || raw <= 0) {
-    return { ok: false, error: `limit must be a positive integer (got ${raw})` };
-  }
-  const capped = raw > MAX_BATCH_LIMIT;
+
   return {
     ok: true,
-    limit: Math.min(raw, MAX_BATCH_LIMIT),
-    requested: raw,
-    capped,
+    limit,
+    requested_limit: requestedLimit,
+    limit_capped: limitCapped,
+    threshold,
+    requested_threshold: requestedThreshold,
   };
 }
 
@@ -847,23 +923,23 @@ Deno.serve(async (req) => {
     });
   }
 
-  const parsed = await parseLimitFromBody(req);
+  const parsed = await parseRequestBody(req);
   if (!parsed.ok) {
     return new Response(JSON.stringify({ ok: false, error: parsed.error }), {
       status: 400,
       headers: { "content-type": "application/json" },
     });
   }
-  if (parsed.capped) {
+  if (parsed.limit_capped) {
     logger.warn("limit_capped", {
-      requested_limit: parsed.requested,
+      requested_limit: parsed.requested_limit,
       max_batch_limit: MAX_BATCH_LIMIT,
       applied: parsed.limit,
     });
   }
 
   try {
-    const result = await run({ limit: parsed.limit });
+    const result = await run({ limit: parsed.limit, threshold: parsed.threshold });
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { "content-type": "application/json" },
