@@ -183,19 +183,19 @@ export async function insertSynthesisAndQuestions(
 // ---------------------------------------------------------------------------
 
 /**
- * Supprime les questions liées PUIS la synthèse. Ordre critique :
+ * Supprime les questions liées PUIS la synthèse. Ordre conservé par prudence.
  *
- *   La FK questions.news_synthesis_id a `ON DELETE SET NULL`. Si on
- *   supprimait la synth d'abord, le SET NULL violerait la contrainte
- *   questions_source_check (Phase 0 §5.2) qui exige
+ *   Correction 23/07/2026 : la FK questions.news_synthesis_id est en réalité
+ *   `ON DELETE CASCADE` (vérifié via pg_get_constraintdef sur le projet
+ *   dxybsuhfkwuemapqrvgz), et NON `ON DELETE SET NULL` comme l'affirmait ce
+ *   commentaire auparavant. Concrètement, supprimer la synthèse d'abord
+ *   supprimerait automatiquement ses questions (cascade) sans violer la
+ *   contrainte questions_source_check :
  *     (sequence_id IS NOT NULL AND news_synthesis_id IS NULL) OR
  *     (sequence_id IS NULL     AND news_synthesis_id IS NOT NULL)
- *   sur les questions news (sequence_id=NULL + news_synthesis_id qui
- *   passerait à NULL → branch 1 false, branch 2 false → CHECK violée
- *   → DELETE de la synth planterait).
- *
- * Donc on DELETE les questions d'abord (ce qui les fait disparaître,
- * la CHECK n'a plus de sujet à valider), puis la synth.
+ *   L'ordre « questions d'abord » reste donc correct mais n'est plus
+ *   strictement nécessaire — on le garde comme défense en profondeur
+ *   (comportement identique quel que soit le vrai ON DELETE).
  *
  * Utilisé par :
  *   - Étape 0 (force=true cleanup) du processArticle

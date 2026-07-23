@@ -53,6 +53,7 @@ const NIVEAUX_PREUVE = [
   { value: 'opinion-expert', label: 'Opinion d\'expert' },
   { value: 'consensus', label: 'Consensus' },
   { value: 'reco-officielle', label: 'Recommandation officielle' },
+  { value: 'in-vitro', label: 'Étude in vitro / ex vivo (laboratoire)' },
 ] as const
 
 const CATEGORIES_EDITORIALES = [
