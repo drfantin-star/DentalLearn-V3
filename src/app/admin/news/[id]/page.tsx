@@ -44,6 +44,7 @@ interface Synthesis {
   category_editorial: string | null
   formation_category_match: FormationCategorySlug | string | null
   status: string
+  is_editorially_validated: boolean
   failed_attempts: number
   manual_added: boolean
   llm_model: string | null
@@ -121,6 +122,7 @@ export default function NewsDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [questionsError, setQuestionsError] = useState<string | null>(null)
   const [notFoundFlag, setNotFoundFlag] = useState(false)
+  const [refreshNonce, setRefreshNonce] = useState(0)
 
   useEffect(() => {
     if (!id) return
@@ -169,7 +171,7 @@ export default function NewsDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [id])
+  }, [id, refreshNonce])
 
   if (notFoundFlag) {
     notFound()
@@ -213,7 +215,12 @@ export default function NewsDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
           <main className="lg:col-span-2 space-y-6">
             <SynthesisDetailsCard synthesis={synthesis} />
-            <RawSourceCard raw={raw} />
+            <RawSourceCard
+              raw={raw}
+              synthesisId={synthesis.id}
+              isEditoriallyValidated={synthesis.is_editorially_validated}
+              onRegenerated={() => setRefreshNonce((n) => n + 1)}
+            />
             <QuestionsCard
               questions={questions}
               loading={questionsLoading}
@@ -358,7 +365,20 @@ function Section({ label, content }: { label: string; content: string | null }) 
   )
 }
 
-function RawSourceCard({ raw }: { raw: RawArticle | null }) {
+const REGEN_TEXT_MIN = 2000
+const REGEN_TEXT_MAX = 60000
+
+function RawSourceCard({
+  raw,
+  synthesisId,
+  isEditoriallyValidated,
+  onRegenerated,
+}: {
+  raw: RawArticle | null
+  synthesisId: string
+  isEditoriallyValidated: boolean
+  onRegenerated: () => void
+}) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Article source</h2>
@@ -412,6 +432,123 @@ function RawSourceCard({ raw }: { raw: RawArticle | null }) {
         <p className="text-sm text-gray-500 italic">
           Article source non disponible (raw_id manquant)
         </p>
+      )}
+
+      <RegeneratePanel
+        synthesisId={synthesisId}
+        isEditoriallyValidated={isEditoriallyValidated}
+        onRegenerated={onRegenerated}
+      />
+    </div>
+  )
+}
+
+function RegeneratePanel({
+  synthesisId,
+  isEditoriallyValidated,
+  onRegenerated,
+}: {
+  synthesisId: string
+  isEditoriallyValidated: boolean
+  onRegenerated: () => void
+}) {
+  const [text, setText] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  const len = text.trim().length
+  const outOfBounds = len < REGEN_TEXT_MIN || len > REGEN_TEXT_MAX
+  const disabled = saving || isEditoriallyValidated || outOfBounds
+
+  const regenerate = async () => {
+    setSaving(true)
+    setError(null)
+    setSuccess(null)
+    try {
+      const res = await fetch(`/api/admin/news/syntheses/${synthesisId}/regenerate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullText: text }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const detail = Array.isArray(json.details) ? ` — ${json.details.join(' ; ')}` : ''
+        throw new Error(`${json.error || `Erreur ${res.status}`}${detail}`)
+      }
+      setSuccess(
+        `Synthèse régénérée (${json.questions_count ?? '?'} questions). La version issue de l'abstract a été écrasée.`,
+      )
+      onRegenerated()
+    } catch (e) {
+      // On ne vide PAS le textarea : le texte collé n'est persisté nulle part.
+      setError(e instanceof Error ? e.message : 'Erreur inconnue')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mt-6 pt-6 border-t border-gray-100">
+      <h3 className="text-sm font-semibold text-gray-900 mb-1">
+        Régénérer depuis l'article complet
+      </h3>
+      <p className="text-xs text-gray-500 mb-3">
+        Colle le texte intégral de l'article ci-dessous puis régénère la synthèse
+        et ses questions. La version issue de l'abstract sera écrasée.
+      </p>
+
+      {isEditoriallyValidated ? (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-600">
+          Synthèse validée éditorialement — régénération impossible.
+        </div>
+      ) : (
+        <>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            disabled={saving}
+            rows={8}
+            placeholder="Coller le texte intégral de l'article…"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+          />
+          <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
+            <span
+              className={`text-xs ${
+                len === 0
+                  ? 'text-gray-400'
+                  : outOfBounds
+                    ? 'text-red-600'
+                    : 'text-gray-500'
+              }`}
+            >
+              {len.toLocaleString('fr-FR')} caractères (min{' '}
+              {REGEN_TEXT_MIN.toLocaleString('fr-FR')} / max{' '}
+              {REGEN_TEXT_MAX.toLocaleString('fr-FR')})
+            </span>
+            <button
+              onClick={regenerate}
+              disabled={disabled}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {saving ? 'Régénération… (20–40 s)' : 'Régénérer depuis l\'article complet'}
+            </button>
+          </div>
+
+          {error && (
+            <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700 break-words">{error}</p>
+            </div>
+          )}
+          {success && (
+            <div className="mt-3 bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-start gap-2">
+              <Check className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-emerald-800">{success}</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
