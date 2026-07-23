@@ -19,7 +19,7 @@ export default function DemarchesSection({ demarches, loading }: DemarchesSectio
     <section>
       <h2 className="text-base font-bold text-white flex items-center gap-2 mb-3">
         <BookOpen size={18} className="text-[#8B5CF6]" />
-        Mes demarches en cours
+        Mes démarches en cours
       </h2>
       {loading ? (
         <div className="flex justify-center py-8">

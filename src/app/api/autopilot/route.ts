@@ -62,6 +62,7 @@ interface PlanRow {
   id: string
   item_type: string
   axe_id: number
+  ref_id: string | null
   title: string
   est_minutes: number | null
   status: string
@@ -206,7 +207,7 @@ async function attestationProvider(
       ref_id: null,
       ref_key: 'attestation:axe3',
       axe_id: 3,
-      title: "Attester ta demarche d'information patient",
+      title: "Attester ta démarche d'information patient",
       href: '/patient/bibliotheque',
       est_minutes: EST.attestation,
     })
@@ -217,7 +218,7 @@ async function attestationProvider(
       ref_id: null,
       ref_key: 'attestation:axe4',
       axe_id: 4,
-      title: 'Attester ta demarche sante au travail',
+      title: 'Attester ta démarche santé au travail',
       href: '/sante/bibliotheque',
       est_minutes: EST.attestation,
     })
@@ -309,6 +310,23 @@ interface PlanItem {
   estMinutes: number | null
   status: string
   href: string
+  // Calcule a la lecture (jamais stocke dans autopilot_plan) : l'activite est
+  // deja engagee ailleurs — formation entamee non completee, ou EPP dont une
+  // session est ouverte. Les surfaces (plan du mois, compteur Sophie) masquent
+  // ces items sans dupliquer la logique cote client.
+  alreadyStarted: boolean
+  // Covers formation (null pour epp/autoeval/attestation) — permettent aux
+  // cartes du plan de repliquer le shell des cartes "Reprendre".
+  coverImageUrl: string | null
+  coverCutoutUrl: string | null
+  category: string | null
+}
+
+interface FormationCoverRow {
+  id: string
+  cover_image_url: string | null
+  cover_cutout_url: string | null
+  category: string | null
 }
 
 async function readItems(
@@ -318,7 +336,7 @@ async function readItems(
 ): Promise<PlanItem[]> {
   const { data } = await supabase
     .from('autopilot_plan')
-    .select('id, item_type, axe_id, title, est_minutes, status, href, ordre')
+    .select('id, item_type, axe_id, ref_id, title, est_minutes, status, href, ordre')
     .eq('user_id', userId)
     .eq('month_key', mk)
     .order('ordre')
@@ -333,16 +351,73 @@ async function readItems(
     .in('id', axeIds)
   const axeMap = new Map((axes as AxeRow[] ?? []).map((a) => [a.id, a.short_name]))
 
-  return rows.map((r) => ({
-    id: r.id,
-    itemType: r.item_type,
-    axeId: r.axe_id,
-    axeShortName: axeMap.get(r.axe_id) ?? '',
-    title: r.title,
-    estMinutes: r.est_minutes,
-    status: r.status,
-    href: r.href,
-  }))
+  // ── Detection "deja commence" + covers formation ──────────────────────────
+  const formationIds = rows
+    .filter((r) => r.item_type === 'formation' && r.ref_id)
+    .map((r) => r.ref_id as string)
+  const hasEpp = rows.some((r) => r.item_type === 'epp')
+
+  // Formations entamees non completees.
+  let startedFormationIds = new Set<string>()
+  let coverMap = new Map<string, FormationCoverRow>()
+  if (formationIds.length > 0) {
+    const [{ data: ufRows }, { data: covers }] = await Promise.all([
+      supabase
+        .from('user_formations')
+        .select('formation_id')
+        .eq('user_id', userId)
+        .is('completed_at', null)
+        .not('started_at', 'is', null),
+      supabase
+        .from('formations')
+        .select('id, cover_image_url, cover_cutout_url, category')
+        .in('id', formationIds),
+    ])
+    startedFormationIds = new Set(
+      (ufRows as { formation_id: string }[] ?? []).map((r) => r.formation_id),
+    )
+    coverMap = new Map((covers as FormationCoverRow[] ?? []).map((c) => [c.id, c]))
+  }
+
+  // EPP dont une session est ouverte (statut != not_started, via la source
+  // unique getEppTourStatus).
+  const eppByAudit = new Map<string, { tour: number; completed_at: string | null }[]>()
+  if (hasEpp) {
+    const { data: sessionRows } = await supabase
+      .from('user_epp_sessions')
+      .select('audit_id, tour, completed_at')
+      .eq('user_id', userId)
+    for (const s of (sessionRows as UserEppRow[] ?? [])) {
+      const list = eppByAudit.get(s.audit_id) ?? []
+      list.push({ tour: s.tour, completed_at: s.completed_at })
+      eppByAudit.set(s.audit_id, list)
+    }
+  }
+
+  return rows.map((r) => {
+    let alreadyStarted = false
+    if (r.item_type === 'formation' && r.ref_id) {
+      alreadyStarted = startedFormationIds.has(r.ref_id)
+    } else if (r.item_type === 'epp' && r.ref_id) {
+      const sessions = eppByAudit.get(r.ref_id)
+      if (sessions) alreadyStarted = getEppTourStatus(sessions) !== 'not_started'
+    }
+    const cover = r.item_type === 'formation' && r.ref_id ? coverMap.get(r.ref_id) : undefined
+    return {
+      id: r.id,
+      itemType: r.item_type,
+      axeId: r.axe_id,
+      axeShortName: axeMap.get(r.axe_id) ?? '',
+      title: r.title,
+      estMinutes: r.est_minutes,
+      status: r.status,
+      href: r.href,
+      alreadyStarted,
+      coverImageUrl: cover?.cover_image_url ?? null,
+      coverCutoutUrl: cover?.cover_cutout_url ?? null,
+      category: cover?.category ?? null,
+    }
+  })
 }
 
 // ── Endpoints ─────────────────────────────────────────────────────────────────

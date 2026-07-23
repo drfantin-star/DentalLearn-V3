@@ -10,9 +10,15 @@ import { getCategoryStyle } from '@/lib/design/categoryStyle'
  * se fasse qu'a un endroit.
  * Quand themeSlug est fourni, la couleur derive de getCategoryStyle(theme)
  * (couleur clinique du theme de l'audit) ; sinon, repli sur axeHex(2).
+ * `color` (optionnel) force la teinte du radial — utilise par les cartes du
+ * plan du mois pour deriver le fond d'un item sans theme (autoeval,
+ * attestation) de sa couleur d'axe. Defaut inchange quand non fourni.
  */
-export default function EppCardBackground({ themeSlug }: { themeSlug?: string | null }) {
-  const color = themeSlug ? getCategoryStyle(themeSlug).from : axeHex(2)
+export default function EppCardBackground({
+  themeSlug,
+  color: colorOverride,
+}: { themeSlug?: string | null; color?: string }) {
+  const color = colorOverride ?? (themeSlug ? getCategoryStyle(themeSlug).from : axeHex(2))
   return (
     <>
       <div
