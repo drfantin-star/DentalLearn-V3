@@ -119,6 +119,7 @@ export const NEWS_NIVEAU_PREUVE = [
   { value: 'reco-officielle', label: 'Recommandation officielle' },
   { value: 'consensus', label: 'Consensus professionnel' },
   { value: 'opinion-expert', label: "Opinion d'expert" },
+  { value: 'in-vitro', label: 'Étude in vitro / ex vivo (laboratoire)' },
 ] as const
 
 export type NewsNiveauPreuveSlug = typeof NEWS_NIVEAU_PREUVE[number]['value']
