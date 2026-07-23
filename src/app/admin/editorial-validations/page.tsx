@@ -114,6 +114,15 @@ function TypeBadge({ type }: { type: EditorialContentType }) {
   )
 }
 
+// Pour content_type='news_episode' : la validation se pose desormais via la
+// publication de l'episode (fusion validation/publication, route
+// episodes/[id]/publish). Le bouton "Valider"/"Re-valider" manuel est donc
+// retire pour ces lignes -- mention discrete, pas de bouton actif. Le
+// comportement ne change pas pour 'formation' et 'news_synthesis'.
+function isEpisodeAutoValidated(candidate: ValidationCandidate): boolean {
+  return candidate.content_type === 'news_episode'
+}
+
 function DraftBadge({ candidate }: { candidate: ValidationCandidate }) {
   if (candidate.content_type !== 'news_episode' || candidate.episode_status !== 'draft') {
     return null
@@ -437,13 +446,19 @@ export default function AdminEditorialValidationsPage() {
                         <td className="px-4 py-3 text-right">
                           <div className="inline-flex items-center gap-1 flex-wrap justify-end">
                             {status !== 'valid' ? (
-                              <button
-                                type="button"
-                                onClick={() => setValidationModal(c)}
-                                className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
-                              >
-                                {status === 'stale' ? 'Re-valider' : 'Valider'}
-                              </button>
+                              isEpisodeAutoValidated(c) ? (
+                                <span className="text-xs text-gray-500 italic px-1">
+                                  Se valide via la publication de l&apos;épisode
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => setValidationModal(c)}
+                                  className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                                >
+                                  {status === 'stale' ? 'Re-valider' : 'Valider'}
+                                </button>
+                              )
                             ) : (
                               <button
                                 type="button"
@@ -499,13 +514,19 @@ export default function AdminEditorialValidationsPage() {
                   )}
                   <div className="flex items-center gap-2 mt-3 flex-wrap">
                     {status !== 'valid' ? (
-                      <button
-                        type="button"
-                        onClick={() => setValidationModal(c)}
-                        className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white"
-                      >
-                        {status === 'stale' ? 'Re-valider' : 'Valider'}
-                      </button>
+                      isEpisodeAutoValidated(c) ? (
+                        <span className="flex-1 text-xs text-gray-500 italic px-1 py-2">
+                          Se valide via la publication de l&apos;épisode
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setValidationModal(c)}
+                          className="flex-1 px-3 py-2 rounded-lg text-xs font-semibold bg-emerald-600 text-white"
+                        >
+                          {status === 'stale' ? 'Re-valider' : 'Valider'}
+                        </button>
+                      )
                     ) : (
                       <button
                         type="button"

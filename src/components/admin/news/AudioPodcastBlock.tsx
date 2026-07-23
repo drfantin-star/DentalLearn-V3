@@ -1085,7 +1085,7 @@ function CaseCReady({
               Publication…
             </>
           ) : (
-            <>✅ Publier</>
+            <>✅ Valider et publier</>
           )}
         </button>
         {hasAudio && (

@@ -676,7 +676,7 @@ export default function AdminJournalDetailPage() {
               disabled={busy !== null}
               className="bg-green-600 hover:bg-green-500 disabled:opacity-50 text-white px-5 py-2 rounded-xl text-sm font-semibold transition-colors"
             >
-              {busy === 'publish' ? 'Publication…' : 'Publier le journal'}
+              {busy === 'publish' ? 'Publication…' : 'Valider et publier le journal'}
             </button>
             <button
               type="button"
