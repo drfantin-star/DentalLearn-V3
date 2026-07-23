@@ -6,6 +6,7 @@ import {
   buildScriptPrompt,
   calcTargetWords,
   validateScriptFormat,
+  MIN_REPLIES,
   type EditorialTone,
   type ScriptFormat,
   type ScriptNarrator,
@@ -27,9 +28,11 @@ const ANTHROPIC_TIMEOUT_MS = 90_000
 const ANTHROPIC_MAX_RETRIES = 2
 
 // POST: génère un script Sonnet pour une synthèse News.
-// Auth admin → fetch synthèse + raw → archivage de l'épisode existant si
-// présent → appel Anthropic → validation format → INSERT news_episodes +
-// news_episode_items.
+// Auth admin → fetch synthèse + raw → appel Anthropic → validation format.
+// En cas d'échec de validation : réponse 200 { ok:false, ... } sans rien
+// persister ni archiver (épisode précédent intact). En cas de succès :
+// archivage de l'épisode existant → INSERT news_episodes + news_episode_items.
+// Accepte un `previousScript` optionnel (régénération assistée).
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -105,6 +108,18 @@ export async function POST(
     const editorial_notes =
       typeof body.editorial_notes === 'string' ? body.editorial_notes : undefined
 
+    // Régénération assistée (optionnelle) : script précédent rejeté à la
+    // validation de format, réinjecté dans le prompt pour repartir de cette
+    // base. `previousReason` accompagne pour renseigner le motif de rejet.
+    const previousScript =
+      typeof body.previousScript === 'string' && body.previousScript.trim().length > 0
+        ? body.previousScript
+        : undefined
+    const previousReason =
+      typeof body.previousReason === 'string' && body.previousReason.trim().length > 0
+        ? body.previousReason
+        : 'format attendu non atteint'
+
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
         { error: 'Clé API Anthropic manquante côté serveur' },
@@ -162,10 +177,85 @@ export async function POST(
       ? `${raw.title} (${raw.journal})`
       : raw.title
 
-    // ----- 4. Archivage épisode existant (si présent) -----
-    // On cherche l'épisode courant via news_episode_items (1 item par
-    // synthèse côté insight). S'il en existe plusieurs (régénérations
-    // antérieures), on n'archive que ceux qui ne le sont pas déjà.
+    // ----- 4. Appel Anthropic (fetch direct, pattern _shared/anthropic.ts) -----
+    const abstract =
+      typeof raw.abstract === 'string' ? raw.abstract : undefined
+    const systemPrompt = buildScriptPrompt(
+      {
+        display_title: synthesis.display_title ?? 'Sans titre',
+        summary_fr: synthesis.summary_fr ?? '',
+        specialites_tags: Array.isArray(synthesis.themes) ? synthesis.themes : [],
+        niveau_preuve: synthesis.niveau_preuve ?? 'non précisé',
+        source_title: sourceTitle ?? 'titre inconnu',
+        source_authors: sourceAuthors,
+        source_year: sourceYear,
+        format,
+        narrator,
+        target_duration_min,
+        editorial_tone,
+      },
+      abstract,
+      editorial_notes,
+      previousScript
+        ? { script: previousScript, reason: previousReason }
+        : undefined,
+    )
+
+    let scriptMd: string
+    try {
+      scriptMd = await callAnthropic(systemPrompt, target_duration_min, format, narrator)
+    } catch (err) {
+      console.error('Échec appel Anthropic:', err)
+      return NextResponse.json(
+        {
+          error: err instanceof Error
+            ? err.message
+            : 'Échec de la génération du script',
+        },
+        { status: 502 },
+      )
+    }
+
+    // ----- 5. Validation format -----
+    // Échec de VALIDATION (script produit mais non conforme) ≠ échec technique
+    // (appel LLM en erreur, géré ci-dessus en 502). On répond ici en 200 avec
+    // ok:false + le script brut, pour que l'admin puisse le relire et repartir
+    // de cette base. Le script rejeté n'est PAS persisté en base, et
+    // l'archivage de l'épisode précédent (step 6) n'a pas encore eu lieu :
+    // l'épisode précédent reste donc intact.
+    const wordCount = countWords(scriptMd)
+    const validation = validateScriptFormat(
+      scriptMd,
+      format,
+      narrator ?? undefined,
+    )
+    if (!validation.valid) {
+      const estimatedDurationSec = Math.round((wordCount / 150) * 60)
+      return NextResponse.json({
+        ok: false,
+        validation: {
+          reason: validation.errors.join(' '),
+          detected: validation.replyCount,
+          expected: MIN_REPLIES,
+        },
+        rawScript: scriptMd,
+        stats: {
+          replies: validation.replyCount,
+          words: wordCount,
+          estimatedDurationSec,
+        },
+      })
+    }
+
+    // ----- 6. Archivage épisode existant (si présent) -----
+    // Placé APRÈS la validation réussie : sur échec (technique ou validation)
+    // on retourne avant, laissant l'épisode précédent intact. On cherche
+    // l'épisode courant via news_episode_items (1 item par synthèse côté
+    // insight). S'il en existe plusieurs (régénérations antérieures), on
+    // n'archive que ceux qui ne le sont pas déjà. Cet archivage DOIT précéder
+    // l'INSERT du nouvel item (step 8) : le trigger DB
+    // news_episode_items_one_active_insight refuserait un 2e insight actif pour
+    // la même synthèse.
     const { data: existingItems, error: itemsError } = await adminSupabase
       .from('news_episode_items')
       .select('episode_id')
@@ -195,60 +285,7 @@ export async function POST(
       }
     }
 
-    // ----- 5. Appel Anthropic (fetch direct, pattern _shared/anthropic.ts) -----
-    const abstract =
-      typeof raw.abstract === 'string' ? raw.abstract : undefined
-    const systemPrompt = buildScriptPrompt(
-      {
-        display_title: synthesis.display_title ?? 'Sans titre',
-        summary_fr: synthesis.summary_fr ?? '',
-        specialites_tags: Array.isArray(synthesis.themes) ? synthesis.themes : [],
-        niveau_preuve: synthesis.niveau_preuve ?? 'non précisé',
-        source_title: sourceTitle ?? 'titre inconnu',
-        source_authors: sourceAuthors,
-        source_year: sourceYear,
-        format,
-        narrator,
-        target_duration_min,
-        editorial_tone,
-      },
-      abstract,
-      editorial_notes,
-    )
-
-    let scriptMd: string
-    try {
-      scriptMd = await callAnthropic(systemPrompt, target_duration_min, format, narrator)
-    } catch (err) {
-      console.error('Échec appel Anthropic:', err)
-      return NextResponse.json(
-        {
-          error: err instanceof Error
-            ? err.message
-            : 'Échec de la génération du script',
-        },
-        { status: 502 },
-      )
-    }
-
-    // ----- 6. Validation format -----
-    const validation = validateScriptFormat(
-      scriptMd,
-      format,
-      narrator ?? undefined,
-    )
-    if (!validation.valid) {
-      return NextResponse.json(
-        {
-          error: 'Script généré non conforme au format attendu',
-          validation_errors: validation.errors,
-        },
-        { status: 422 },
-      )
-    }
-
     // ----- 7. INSERT news_episodes -----
-    const wordCount = countWords(scriptMd)
     const estimatedDurationMin = wordCount > 0 ? wordCount / 150 : 0
 
     // Semaine ISO courante — informative pour les insights. Depuis la
@@ -257,7 +294,7 @@ export async function POST(
     // coexister la même semaine (un par synthèse). On ne fait donc PLUS
     // d'archivage hebdomadaire ici (il archivait à tort les insights des
     // autres synthèses). La règle "1 insight actif par synthèse" est garantie
-    // par le step 4 (archivage des épisodes de LA MÊME synthèse) et, en
+    // par le step 6 (archivage des épisodes de LA MÊME synthèse) et, en
     // défense DB, par le trigger news_episode_items_one_active_insight.
     const currentWeek = getCurrentIsoWeek()
 

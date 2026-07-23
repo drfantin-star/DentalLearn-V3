@@ -66,11 +66,15 @@ const TONE_INSTRUCTIONS: Record<EditorialTone, string> = {
  * contexte scientifique complémentaire si non vide (>50 chars).
  * `editorialNotes` (optionnel) : notes éditorial libre saisies par l'admin,
  * injectées comme directives prioritaires si non vides.
+ * `previousRejection` (optionnel) : script précédent rejeté à la validation
+ * de format + raison du rejet. Si fourni, injecte un bloc de régénération
+ * assistée demandant de reprendre ce script et de l'étoffer.
  */
 export function buildScriptPrompt(
   params: BuildScriptPromptParams,
   abstract?: string,
   editorialNotes?: string,
+  previousRejection?: { script: string; reason: string },
 ): string {
   const {
     display_title,
@@ -115,6 +119,15 @@ export function buildScriptPrompt(
       '',
       '## Notes éditorial (points à développer impérativement)',
       editorialNotes.trim(),
+    )
+  }
+  if (previousRejection && previousRejection.script.trim().length > 0) {
+    contextBlocks.push(
+      '',
+      `## VERSION PRÉCÉDENTE REJETÉE (raison : ${previousRejection.reason})`,
+      previousRejection.script.trim(),
+      '',
+      'Reprends-la intégralement, conserve les données chiffrées et leurs sources, et étoffe pour atteindre le format attendu en développant les angles indiqués dans les notes éditoriales. N\'invente aucune donnée absente de la synthèse source.',
     )
   }
 
@@ -309,9 +322,18 @@ export function buildJournalPrompt(
 
 const SPEAKER_LINE_RE = /^(Sophie|Martin):\s+.+$/
 
+/**
+ * Nombre minimum de répliques valides pour qu'un script soit accepté.
+ * En-dessous, le script est jugé trop court. Exporté pour que les callers
+ * (route generate-script) puissent renvoyer ce seuil comme `expected`.
+ */
+export const MIN_REPLIES = 10
+
 export interface ScriptValidationResult {
   valid: boolean
   errors: string[]
+  /** Nombre de répliques "Sophie:/Martin:" détectées (0 si script vide). */
+  replyCount: number
 }
 
 /**
@@ -332,7 +354,7 @@ export function validateScriptFormat(
   const errors: string[] = []
 
   if (!script || typeof script !== 'string') {
-    return { valid: false, errors: ['Script vide ou invalide'] }
+    return { valid: false, errors: ['Script vide ou invalide'], replyCount: 0 }
   }
 
   const rawLines = script.split('\n')
@@ -341,7 +363,7 @@ export function validateScriptFormat(
     .filter((l) => l.length > 0)
 
   if (meaningfulLines.length === 0) {
-    return { valid: false, errors: ['Script sans ligne exploitable'] }
+    return { valid: false, errors: ['Script sans ligne exploitable'], replyCount: 0 }
   }
 
   let speakerLines = 0
@@ -378,13 +400,13 @@ export function validateScriptFormat(
     )
   }
 
-  if (speakerLines < 10) {
+  if (speakerLines < MIN_REPLIES) {
     errors.push(
-      `Script trop court (${speakerLines} répliques détectées, minimum 10).`,
+      `Script trop court (${speakerLines} répliques détectées, minimum ${MIN_REPLIES}).`,
     )
   }
 
-  return { valid: errors.length === 0, errors }
+  return { valid: errors.length === 0, errors, replyCount: speakerLines }
 }
 
 // ---------------------------------------------------------------------------

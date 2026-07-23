@@ -31,6 +31,11 @@ function sanitizeSearchTerm(q: string): string {
 
 type AudioState = 'published' | 'ready' | 'none'
 
+// Etat agrege de validation editoriale d'une carte (synthese + son episode
+// insight courant). 'pending' = au moins un contenu non valide ;
+// 'revalidate' = sinon au moins un stale ; 'validated' = tout est a jour.
+type ValidationState = 'pending' | 'revalidate' | 'validated'
+
 function hasAudio(url: unknown): boolean {
   return typeof url === 'string' && url.trim().length > 0
 }
@@ -102,6 +107,142 @@ async function computeAudioStates(
     } else if (current !== 'published') {
       result.set(synthesisId, 'ready')
     }
+  }
+
+  return result
+}
+
+// Agrege l'etat de validation editoriale de chaque synthese affichee, en
+// tenant compte de SA synthese ET de son episode insight COURANT (non-archive)
+// s'il existe. Regle du pire cas (Decision 14C, admin uniquement) :
+//   - au moins un contenu NON VALIDE  -> 'pending'    (« en attente »)
+//   - sinon au moins un contenu STALE -> 'revalidate' (« a revalider »)
+//   - sinon                           -> 'validated'  (« valide »)
+// L'absence d'episode n'est PAS un defaut : une synthese validee sans episode
+// est 'validated'. Reutilise le meme calcul de stale que
+// /admin/editorial-validations (RPC get_validation_status, hash live).
+//
+// Cout : borne a la page. 2 lectures batch (episode_items, episodes) + <=1
+// appel get_validation_status par contenu (<=20 syntheses + <=20 episodes), en
+// parallele cote serveur. Aucun N+1 cote client (le champ est deja resolu).
+//
+// Fail-open : toute erreur laisse la synthese hors de la Map -> le client
+// n'affiche simplement pas de badge pour cette carte.
+async function computeValidationStates(
+  adminSupabase: ReturnType<typeof createAdminClient>,
+  synthesisIds: string[],
+): Promise<Map<string, ValidationState>> {
+  const result = new Map<string, ValidationState>()
+  if (synthesisIds.length === 0) return result
+
+  // 1. Resoudre l'episode insight COURANT (non-archive) de chaque synthese.
+  //    Le trigger news_episode_items_one_active_insight garantit <=1 insight
+  //    non-archive par synthese.
+  const currentEpisodeBySynthesis = new Map<string, string>()
+  const { data: itemRows, error: itemErr } = await adminSupabase
+    .from('news_episode_items')
+    .select('synthesis_id, episode_id')
+    .in('synthesis_id', synthesisIds)
+
+  if (itemErr) {
+    console.error('Erreur lecture news_episode_items (validation state):', itemErr)
+  } else {
+    const episodeIds = Array.from(
+      new Set(
+        (itemRows ?? [])
+          .map((r: { episode_id: string | null }) => r.episode_id)
+          .filter((id): id is string => !!id),
+      ),
+    )
+    if (episodeIds.length > 0) {
+      const { data: epRows, error: epErr } = await adminSupabase
+        .from('news_episodes')
+        .select('id')
+        .in('id', episodeIds)
+        .eq('type', 'insight')
+        .neq('status', 'archived')
+      if (epErr) {
+        console.error('Erreur lecture news_episodes (validation state):', epErr)
+      } else {
+        const nonArchived = new Set(
+          (epRows ?? []).map((e: { id: string }) => e.id),
+        )
+        for (const row of itemRows ?? []) {
+          const sid = row.synthesis_id as string | null
+          const eid = row.episode_id as string | null
+          if (sid && eid && nonArchived.has(eid)) {
+            currentEpisodeBySynthesis.set(sid, eid)
+          }
+        }
+      }
+    }
+  }
+
+  // 2. Construire la liste des contenus a interroger (synthese + episode).
+  type Ref = {
+    synthesisId: string
+    contentType: 'news_synthesis' | 'news_episode'
+    contentId: string
+  }
+  const refs: Ref[] = []
+  for (const sid of synthesisIds) {
+    refs.push({ synthesisId: sid, contentType: 'news_synthesis', contentId: sid })
+    const eid = currentEpisodeBySynthesis.get(sid)
+    if (eid) {
+      refs.push({ synthesisId: sid, contentType: 'news_episode', contentId: eid })
+    }
+  }
+
+  // 3. get_validation_status en parallele (meme RPC que l'ecran candidats).
+  const statuses = await Promise.all(
+    refs.map(async (ref) => {
+      try {
+        const res = await adminSupabase.rpc('get_validation_status', {
+          p_content_type: ref.contentType,
+          p_content_id: ref.contentId,
+        })
+        if (res.error) throw res.error
+        const row =
+          Array.isArray(res.data) && res.data.length > 0 ? res.data[0] : null
+        return {
+          ref,
+          ok: true,
+          validated: Boolean(row?.validated),
+          isStale: Boolean(row?.is_stale),
+        }
+      } catch (err) {
+        console.error('Erreur get_validation_status (validation state):', err)
+        return { ref, ok: false, validated: false, isStale: false }
+      }
+    }),
+  )
+
+  // 4. Agregation pire-cas par synthese. On ne conclut que si le statut de la
+  //    synthese elle-meme a bien ete resolu (sinon fail-open : pas de badge).
+  const agg = new Map<
+    string,
+    { synthResolved: boolean; anyUnvalidated: boolean; anyStale: boolean }
+  >()
+  for (const sid of synthesisIds) {
+    agg.set(sid, { synthResolved: false, anyUnvalidated: false, anyStale: false })
+  }
+  for (const s of statuses) {
+    const a = agg.get(s.ref.synthesisId)
+    if (!a) continue
+    if (s.ref.contentType === 'news_synthesis' && s.ok) {
+      a.synthResolved = true
+    }
+    if (!s.ok) continue
+    if (!s.validated) a.anyUnvalidated = true
+    else if (s.isStale) a.anyStale = true
+  }
+  for (const sid of synthesisIds) {
+    const a = agg.get(sid)
+    if (!a || !a.synthResolved) continue
+    result.set(
+      sid,
+      a.anyUnvalidated ? 'pending' : a.anyStale ? 'revalidate' : 'validated',
+    )
   }
 
   return result
@@ -208,15 +349,25 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const audioStates = await computeAudioStates(
-      adminSupabase,
-      (data ?? []).map((row: any) => row.id as string),
-    )
+    const pageIds = (data ?? []).map((row: any) => row.id as string)
+
+    // Badge de validation editoriale (ADMIN uniquement, Decision 14C) calcule
+    // seulement pour les syntheses actives : les seules passees par la
+    // validation / le backfill. Pour les autres statuts on n'affiche pas de
+    // badge (validationState reste undefined). Le calcul audio + validation
+    // tourne en parallele.
+    const [audioStates, validationStates] = await Promise.all([
+      computeAudioStates(adminSupabase, pageIds),
+      status === 'active'
+        ? computeValidationStates(adminSupabase, pageIds)
+        : Promise.resolve(new Map<string, ValidationState>()),
+    ])
 
     const syntheses = (data ?? []).map((row: any) => {
       const base = {
         id: row.id,
         audioState: audioStates.get(row.id) ?? 'none',
+        validationState: validationStates.get(row.id),
         display_title: row.display_title,
         summary_fr: truncate(row.summary_fr, SUMMARY_TRUNCATE_CHARS),
         specialite: row.specialite,

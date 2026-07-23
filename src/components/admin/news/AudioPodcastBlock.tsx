@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { Loader2, AlertCircle, X } from 'lucide-react'
+import { Loader2, AlertCircle, X, Copy, Check } from 'lucide-react'
 import { formatDate } from '@/lib/news-display'
 
 // ---------- Types ----------
@@ -20,6 +20,12 @@ interface NewsEpisode {
   duration_s: number | null
   published_at: string | null
   created_at: string
+}
+
+interface RejectedStats {
+  replies: number
+  words: number
+  estimatedDurationSec: number
 }
 
 type ScriptFormat = 'dialogue' | 'monologue'
@@ -108,6 +114,13 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
   const [isDeletingDraft, setIsDeletingDraft] = useState(false)
   const [scriptDraft, setScriptDraft] = useState('')
   const [errors, setErrors] = useState<string[]>([])
+  // Script rejeté à la validation de format (200 { ok:false }) : conservé en
+  // state React (jamais localStorage/sessionStorage) pour relecture seule et
+  // régénération assistée. Effacé à la prochaine génération réussie.
+  const [rejectedScript, setRejectedScript] = useState<string | null>(null)
+  const [rejectedStats, setRejectedStats] = useState<RejectedStats | null>(null)
+  const [rejectedReason, setRejectedReason] = useState<string | null>(null)
+  const [reuseRejected, setReuseRejected] = useState(true)
 
   // Fetch initial de l'épisode lié.
   useEffect(() => {
@@ -185,6 +198,10 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
     setIsGeneratingScript(true)
     setErrors([])
     try {
+      // Régénération assistée : si un script précédent a été rejeté et que la
+      // case "Repartir du script précédent" est cochée, on le renvoie au
+      // serveur pour repartir de cette base.
+      const reusePrevious = rejectedScript != null && reuseRejected
       const res = await fetch(
         `/api/admin/news/syntheses/${synthesisId}/generate-script`,
         {
@@ -199,11 +216,18 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
             target_duration_min: scriptParams.target_duration_min,
             editorial_tone: scriptParams.editorial_tone,
             editorial_notes: editorialNotes,
+            ...(reusePrevious
+              ? {
+                  previousScript: rejectedScript,
+                  previousReason: rejectedReason ?? undefined,
+                }
+              : {}),
           }),
         },
       )
       const json = await res.json()
       if (!res.ok) {
+        // Échec technique (502) ou autre erreur HTTP.
         const msg = json.error || `Erreur ${res.status}`
         const validation = Array.isArray(json.validation_errors)
           ? json.validation_errors
@@ -211,10 +235,36 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
         setErrors([msg, ...validation])
         return
       }
+      if (json && json.ok === false && json.validation) {
+        // Échec de VALIDATION de format : le script a bien été produit mais
+        // n'est pas conforme. On l'affiche en lecture seule (bandeau rouge +
+        // panneau repliable) sans rien persister.
+        const reason =
+          typeof json.validation.reason === 'string' &&
+          json.validation.reason.length > 0
+            ? json.validation.reason
+            : 'Script généré non conforme au format attendu.'
+        setErrors([reason])
+        setRejectedScript(
+          typeof json.rawScript === 'string' ? json.rawScript : '',
+        )
+        setRejectedStats(
+          json.stats && typeof json.stats === 'object'
+            ? (json.stats as RejectedStats)
+            : null,
+        )
+        setRejectedReason(reason)
+        setReuseRejected(true)
+        return
+      }
+      // Succès : nouvel épisode draft créé. On efface l'état de rejet
+      // (les notes éditoriales ne sont jamais effacées automatiquement).
+      setRejectedScript(null)
+      setRejectedStats(null)
+      setRejectedReason(null)
       // L'endpoint renvoie episode_id + script_md mais pas l'objet complet.
       // On re-fetch pour avoir l'épisode au format BDD complet.
       await refreshEpisode()
-      setEditorialNotes('')
     } catch (e) {
       setErrors([
         e instanceof Error
@@ -442,6 +492,9 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
         setEditorialNotes={setEditorialNotes}
         onGenerate={handleGenerateScript}
         loading={isGeneratingScript}
+        showReuseOption={rejectedScript != null}
+        reuseRejected={reuseRejected}
+        setReuseRejected={setReuseRejected}
       />
     )
   } else if (status === 'draft') {
@@ -512,7 +565,76 @@ export function AudioPodcastBlock({ synthesisId }: AudioPodcastBlockProps) {
           </button>
         </div>
       )}
+      {rejectedScript != null && (
+        <RejectedScriptPanel
+          script={rejectedScript}
+          stats={rejectedStats}
+        />
+      )}
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Panneau repliable — script généré non conforme (lecture seule)
+// ---------------------------------------------------------------------------
+
+function RejectedScriptPanel({
+  script,
+  stats,
+}: {
+  script: string
+  stats: RejectedStats | null
+}) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(script)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard indisponible (contexte non sécurisé) — silencieux.
+    }
+  }
+
+  const estimatedMin =
+    stats != null ? Math.round(stats.estimatedDurationSec / 60) : null
+
+  return (
+    <details className="mt-4 border border-gray-200 rounded-lg bg-gray-50">
+      <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-gray-800">
+        Voir le script généré (non conforme)
+      </summary>
+      <div className="px-4 pb-4 space-y-3">
+        {stats != null && (
+          <p className="text-xs text-gray-600">
+            {stats.replies} répliques &middot; {stats.words} mots &middot; durée
+            estimée ~{estimatedMin} min
+          </p>
+        )}
+        <pre className="w-full max-h-96 overflow-auto whitespace-pre-wrap break-words font-mono text-sm border border-gray-200 rounded-lg p-3 bg-white text-gray-800">
+          {script}
+        </pre>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className={BTN_SECONDARY}
+        >
+          {copied ? (
+            <>
+              <Check className="w-4 h-4" />
+              Copié
+            </>
+          ) : (
+            <>
+              <Copy className="w-4 h-4" />
+              Copier le script
+            </>
+          )}
+        </button>
+      </div>
+    </details>
   )
 }
 
@@ -527,6 +649,9 @@ function CaseAParametrage({
   setEditorialNotes,
   onGenerate,
   loading,
+  showReuseOption,
+  reuseRejected,
+  setReuseRejected,
 }: {
   params: {
     format: ScriptFormat
@@ -546,6 +671,9 @@ function CaseAParametrage({
   setEditorialNotes: (notes: string) => void
   onGenerate: () => void
   loading: boolean
+  showReuseOption: boolean
+  reuseRejected: boolean
+  setReuseRejected: (v: boolean) => void
 }) {
   const disabled =
     loading || (params.format === 'monologue' && params.narrator == null)
@@ -682,6 +810,19 @@ function CaseAParametrage({
           className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 placeholder:text-gray-400"
         />
       </div>
+
+      {showReuseOption && (
+        <label className="flex items-center gap-2 mb-3 text-sm text-gray-800">
+          <input
+            type="checkbox"
+            checked={reuseRejected}
+            onChange={(e) => setReuseRejected(e.target.checked)}
+            disabled={loading}
+            className="text-primary focus:ring-primary rounded"
+          />
+          Repartir du script précédent
+        </label>
+      )}
 
       <button
         type="button"
@@ -944,7 +1085,7 @@ function CaseCReady({
               Publication…
             </>
           ) : (
-            <>✅ Publier</>
+            <>✅ Valider et publier</>
           )}
         </button>
         {hasAudio && (
