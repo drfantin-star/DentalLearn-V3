@@ -12,8 +12,10 @@
 // §6.3+§6.4). news_scored.spe_tags reste donc NULL en sortie de ce ticket.
 //
 // Déclenchement :
-//   - cron Supabase (pg_cron + pg_net) → lundi 14h00 UTC (spec v1.3 §4.4),
-//     après ingest_pubmed (04h00 UTC) et ingest_rss (04h30 UTC).
+//   - cron Supabase (pg_cron + pg_net) → quotidien 14h00 UTC depuis le
+//     18/09/2026 (auparavant hebdomadaire le lundi, spec v1.3 §4.4), après
+//     ingest_pubmed (lundi 04h00 UTC) et ingest_rss (lundi 04h30 UTC).
+//     Cf. 20260918b_news_crons_rss_fix_score_daily.sql.
 //   - manuel via HTTP POST (re-run / backfill, réservé service_role).
 //
 // Borne par invocation (`limit`)
@@ -47,9 +49,11 @@
 //   - défaut : NEWS_SCORE_THRESHOLD env var ou DEFAULT_THRESHOLD (0.70).
 //   - body absent ou JSON malformé → défaut. body avec `threshold` hors
 //     [0, 1] ou non-numérique → 400 propre (même parsing défensif que `limit`).
-// Le cron news_score_articles n'envoie pas ce champ et reste donc inchangé
-// (seuil par défaut 0.70). Sert au backfill manuel (Lot 5) à relever le
-// seuil (ex: 0.80) sans redéploiement.
+// Depuis le 18/09/2026, le cron news_score_articles envoie
+// {"limit": 30, "threshold": 0.80} : le seuil de production est donc 0.80,
+// passé par le body du cron et modifiable par simple migration, sans
+// redéploiement. DEFAULT_THRESHOLD (0.70) ne s'applique plus qu'aux appels
+// manuels qui omettent le champ.
 //
 // Comportement :
 //   1. RPC count_unscored_articles() — total restant (sans charger les
@@ -57,9 +61,14 @@
 //   2. HEAD count news_scored — already_scored (monitoring).
 //   3. RPC get_unscored_articles(limit) — fenêtre triée + filtrée côté DB :
 //      NOT EXISTS news_scored, exclude raw_payload->>retracted_at_ingestion
-//      = 'true', tri (published_at DESC NULLS LAST → source.type='pubmed'
-//      first → ingested_at ASC), LIMIT limit_count. Cf. migration
-//      20260518_rpc_get_unscored_articles.sql.
+//      = 'true', LIMIT limit_count. Tri à deux files depuis le 18/09/2026 :
+//      les articles publiés dans les `freshness_days` derniers jours
+//      (paramètre DB, défaut 90, non passé par le code) passent d'abord, du
+//      plus récent au plus ancien ; tout le reste conserve le FIFO
+//      ingested_at ASC. Cf. migrations
+//      20260518_rpc_get_unscored_articles.sql,
+//      20260723g_get_unscored_articles_fifo.sql et
+//      20260918a_rpc_get_unscored_articles_freshness.sql.
 //   4. SELECT ciblé news_scored WHERE dedupe_hash IN (hashes du tour) AND
 //      status != 'duplicate' — existing_hashes pour cross-run dedup.
 //   5. Cross-source dedup dans la fenêtre : pour un dedupe_hash donné, le
@@ -338,6 +347,15 @@ const SYSTEM_PROMPT =
   `- Recherche fondamentale sans application clinique évidente.\n` +
   `- Case report isolé sans portée pédagogique générale.\n` +
   `- Sujet hors champ dentaire.\n` +
+  `- Étude descriptive de prévalence, d'incidence ou de besoins en soins\n` +
+  `  portant sur une population nationale ou régionale spécifique dont le\n` +
+  `  système de soins et les déterminants ne sont pas transposables à\n` +
+  `  l'exercice français → score bas (0.15–0.35).\n` +
+  `  Exceptions à maintenir en score élevé : données françaises ou d'Europe\n` +
+  `  occidentale ; méta-analyses et revues systématiques multi-pays ;\n` +
+  `  recommandations d'une autorité (HAS, OMS, FDI, société savante) ;\n` +
+  `  étude dont l'intérêt est méthodologique ou porte sur une pratique\n` +
+  `  clinique transposable, même menée ailleurs.\n` +
   `- Texte trop court ou abstract manquant pour juger sereinement → score\n` +
   `  modéré (~0.30-0.50) et reasoning explicitant l'incertitude.\n\n` +
   `RÈGLES STRICTES :\n` +
