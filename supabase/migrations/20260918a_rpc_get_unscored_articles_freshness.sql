@@ -137,8 +137,21 @@ COMMENT ON FUNCTION public.get_unscored_articles(integer, integer) IS
 -- ============================================================================
 -- 3. Droits — restauration à l'identique de l'état pré-DROP
 -- ============================================================================
+-- ⚠️ GOTCHA Supabase — ALTER DEFAULT PRIVILEGES
+-- Le schema public porte des droits par défaut (pg_default_acl) qui accordent
+-- automatiquement EXECUTE à anon, authenticated et service_role sur TOUTE
+-- fonction nouvellement créée. Un simple REVOKE ... FROM PUBLIC ne les retire
+-- PAS : ce sont des droits nommés, pas le pseudo-rôle PUBLIC. Il faut donc un
+-- REVOKE explicite FROM anon, authenticated après chaque CREATE FUNCTION.
+--
+-- Incident 18/09/2026 : la première version de cette migration ne faisait que
+-- REVOKE FROM PUBLIC. Le DROP + CREATE a donc rendu la RPC appelable par anon
+-- via PostgREST, réouvrant ce que 20260721e_sec_lot1_close_surface.sql avait
+-- fermé le 21/07/2026. Toute migration qui recrée une fonction fermée par
+-- 20260721e doit rejouer le REVOKE de cette migration.
 
 REVOKE EXECUTE ON FUNCTION public.get_unscored_articles(integer, integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.get_unscored_articles(integer, integer) FROM anon, authenticated;
 GRANT  EXECUTE ON FUNCTION public.get_unscored_articles(integer, integer) TO postgres;
 GRANT  EXECUTE ON FUNCTION public.get_unscored_articles(integer, integer) TO service_role;
 
@@ -164,5 +177,7 @@ COMMIT;
 -- SELECT p.oid::regprocedure, p.proacl
 --   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
 --  WHERE n.nspname = 'public' AND p.proname = 'get_unscored_articles';
--- Attendu : {postgres=X/postgres,service_role=X/postgres} — ni anon, ni
--- authenticated.
+-- Attendu EXACTEMENT : {postgres=X/postgres,service_role=X/postgres}
+-- Si anon ou authenticated apparaissent, le REVOKE ci-dessus a été oublié :
+-- SELECT has_function_privilege('anon', 'public.get_unscored_articles(integer,integer)', 'EXECUTE');
+-- doit renvoyer false.
