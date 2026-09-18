@@ -237,6 +237,105 @@ Bug historique : `get_daily_quiz` échouait silencieusement en prod
 sur les 20 RPC : aucun autre bug latent, tous les RPC post-`get_daily_quiz`
 suivent déjà le pattern.
 
+## Convention RPC : REVOKE explicite après tout CREATE FUNCTION
+
+Le schéma `public` porte des droits par défaut Supabase (`pg_default_acl`)
+qui accordent automatiquement `EXECUTE` à `anon`, `authenticated` et
+`service_role` sur **toute fonction nouvellement créée**.
+
+`REVOKE ... FROM PUBLIC` **ne les retire pas** : ce sont des droits nommés,
+pas le pseudo-rôle `PUBLIC`. Le `REVOKE` doit nommer les rôles.
+
+```sql
+-- Insuffisant — anon et authenticated gardent EXECUTE :
+REVOKE EXECUTE ON FUNCTION public.ma_rpc(integer) FROM PUBLIC;
+
+-- Correct :
+REVOKE EXECUTE ON FUNCTION public.ma_rpc(integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.ma_rpc(integer) FROM anon, authenticated;
+GRANT  EXECUTE ON FUNCTION public.ma_rpc(integer) TO postgres, service_role;
+```
+
+### Quand la règle mord
+
+`CREATE OR REPLACE` sur une fonction existante **conserve** son ACL : pas de
+problème. Le piège est le `DROP` + `CREATE`, obligatoire dès qu'on change la
+signature (ajout ou retrait d'un paramètre). La fonction recréée repart des
+droits par défaut, et toute fermeture antérieure est silencieusement annulée.
+
+C'est particulièrement grave sur une fonction `SECURITY DEFINER`, qui
+contourne la RLS par construction : la rouvrir à `anon` expose les tables
+sous-jacentes via PostgREST, même quand leur RLS ne laisse passer que
+`service_role`.
+
+### Fonctions devant rester fermées à `anon` / `authenticated`
+
+`20260721e_sec_lot1_close_surface.sql` (21/07/2026) a fermé 8 fonctions
+`SECURITY DEFINER` appelées uniquement par pg_cron, par des routes
+service_role ou par un trigger. Toute migration qui en recrée une doit
+rejouer le `REVOKE`.
+
+⚠️ **État mesuré le 18/09/2026 : 5 des 8 sont de nouveau ouvertes.** La
+fermeture de juillet n'a donc pas tenu, et le rollback `20260721e_*_down.sql`
+n'a pas été joué (la RLS qu'il désactiverait est toujours active).
+
+| Fonction | État 18/09/2026 | Recréée par |
+|---|---|---|
+| `send_autoeval_reminders(text)` | ❌ ouverte | aucune migration au repo |
+| `send_autopilot_reminders(text)` | ❌ ouverte | aucune migration au repo |
+| `purge_old_notifications()` | ❌ ouverte | aucune migration au repo |
+| `audio_jobs_cost_summary()` | ❌ ouverte | aucune migration au repo |
+| `handle_new_user()` | ❌ ouverte | `20260722a_handle_new_user_cp_seed.sql` |
+| `get_unscored_articles(...)` | ✅ refermée le 18/09 | `20260918a` (incident ci-dessous) |
+| `get_cold_survey_recipients()` | ✅ fermée | — |
+| `mark_cold_survey_notified(uuid,text)` | ✅ fermée | — |
+
+Pour les 4 sans migration identifiée, l'hypothèse est un `DROP` + `CREATE`
+appliqué à chaud dans le SQL Editor — un `CREATE OR REPLACE` aurait conservé
+l'ACL. C'est le même mécanisme de dérive que celui documenté pour les crons :
+un correctif hors migration que rien dans le repo ne trace.
+
+Portée réelle de l'ouverture : `handle_new_user()` retourne `trigger` et n'est
+donc pas appelable via PostgREST malgré le grant. Les 4 autres le sont, dont
+`purge_old_notifications()` qui **supprime des lignes**, et les deux
+`send_*_reminders(text)` qui **déclenchent des envois**.
+
+`verify_attestation_public(varchar)` reste volontairement exposée à `anon`
+(page `/verify`). Ne pas la fermer.
+
+`count_unscored_articles()` est ouverte depuis l'origine : `20260721e` l'avait
+omise de sa liste de 8, alors qu'elle est `SECURITY DEFINER` sur les mêmes
+tables que `get_unscored_articles`.
+
+### Vérification après toute migration créant une fonction
+
+```sql
+SELECT p.oid::regprocedure, p.prosecdef,
+       has_function_privilege('anon', p.oid, 'EXECUTE')          AS anon_peut,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth_peut
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public' AND p.proname = '<nom_fonction>';
+```
+
+Attendu sur une RPC service_role-only : `anon_peut` et `auth_peut` à `false`.
+
+### Incident référence
+
+Septembre 2026 — `20260918a_rpc_get_unscored_articles_freshness.sql` ajoutait
+un paramètre `freshness_days` à `get_unscored_articles`, donc `DROP` +
+`CREATE`. La migration ne faisait que `REVOKE ... FROM PUBLIC` : la RPC
+`SECURITY DEFINER` est redevenue appelable par `anon` via PostgREST, rouvrant
+ce que `20260721e` avait fermé deux mois plus tôt. ACL constatée après
+application : `{postgres,anon,authenticated,service_role}`. Détectée par
+hasard, à la relecture de l'état de la fonction après une erreur sans rapport
+(`42883` sur un `DROP` rejoué) — la PR #442 était déjà mergée. Aucune donnée
+personnelle concernée (métadonnées de littérature scientifique publiée), mais
+contournement de RLS avéré.
+
+La détection a déclenché l'audit des 8 fonctions de `20260721e`, qui a révélé
+les 5 réouvertures du tableau ci-dessus. Aucune n'est corrigée à ce jour —
+sujet à traiter dans une session dédiée, pas au fil de l'eau.
+
 ## Couleurs interdites dans les nouveaux fichiers
 
 `#2D1B96`, `#231575`, `#00D1C1` — anciennes constantes du design system,
