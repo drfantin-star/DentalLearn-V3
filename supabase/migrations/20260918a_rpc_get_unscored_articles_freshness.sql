@@ -61,8 +61,17 @@
 -- redéploiement d'Edge Function.
 
 -- ============================================================================
--- 1. DROP de l'ancienne signature
+-- 1. DROP de l'ancienne signature — transaction explicite
 -- ============================================================================
+-- Le BEGIN / COMMIT encadrant est obligatoire ici : entre le DROP et le
+-- CREATE, get_unscored_articles n'existe plus. Une interruption à cet instant
+-- laisserait la RPC manquante et casserait le cron news_score_articles au
+-- prochain passage (14h00 UTC). L'éditeur SQL Supabase enveloppe déjà un Run
+-- dans une transaction implicite, mais on ne dépend pas de ce comportement
+-- pour une opération destructive : soit la bascule passe en entier, soit la
+-- fonction reste dans son état précédent.
+
+BEGIN;
 
 DROP FUNCTION public.get_unscored_articles(integer);
 
@@ -132,6 +141,8 @@ COMMENT ON FUNCTION public.get_unscored_articles(integer, integer) IS
 REVOKE EXECUTE ON FUNCTION public.get_unscored_articles(integer, integer) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION public.get_unscored_articles(integer, integer) TO postgres;
 GRANT  EXECUTE ON FUNCTION public.get_unscored_articles(integer, integer) TO service_role;
+
+COMMIT;
 
 -- ============================================================================
 -- 4. Vérification (à exécuter dans un RUN SÉPARÉ)

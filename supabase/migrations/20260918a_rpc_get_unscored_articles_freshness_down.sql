@@ -9,6 +9,11 @@
 -- ⚠️ Comme à l'aller, le retour change la signature : DROP de la fonction à
 -- deux arguments puis CREATE de celle à un seul, et re-GRANT explicite.
 
+-- BEGIN / COMMIT explicite : même raison qu'à l'aller, la fonction n'existe
+-- plus entre le DROP et le CREATE.
+
+BEGIN;
+
 DROP FUNCTION public.get_unscored_articles(integer, integer);
 
 CREATE FUNCTION public.get_unscored_articles(limit_count integer)
@@ -55,6 +60,8 @@ COMMENT ON FUNCTION public.get_unscored_articles(integer) IS
 REVOKE EXECUTE ON FUNCTION public.get_unscored_articles(integer) FROM PUBLIC;
 GRANT  EXECUTE ON FUNCTION public.get_unscored_articles(integer) TO postgres;
 GRANT  EXECUTE ON FUNCTION public.get_unscored_articles(integer) TO service_role;
+
+COMMIT;
 
 -- ============================================================================
 -- Vérification (à exécuter dans un RUN SÉPARÉ)
