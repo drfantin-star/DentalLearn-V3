@@ -57,7 +57,21 @@ $$;
 COMMENT ON FUNCTION public.get_unscored_articles(integer) IS
   'Articles news_raw non encore présents en news_scored, triés FIFO (ingested_at ASC depuis le 23/07/2026 — auparavant published_at DESC NULLS LAST, qui affamait la queue). Filtre raw_payload->>retracted_at_ingestion = true. Appelée par l''Edge Function score_articles.';
 
+-- ⚠️ GOTCHA Supabase — ALTER DEFAULT PRIVILEGES
+-- Le schema public porte des droits par défaut (pg_default_acl) qui accordent
+-- automatiquement EXECUTE à anon, authenticated et service_role sur TOUTE
+-- fonction nouvellement créée. Un simple REVOKE ... FROM PUBLIC ne les retire
+-- PAS : ce sont des droits nommés, pas le pseudo-rôle PUBLIC. Il faut donc un
+-- REVOKE explicite FROM anon, authenticated après chaque CREATE FUNCTION.
+--
+-- Incident 18/09/2026 : la première version de cette migration ne faisait que
+-- REVOKE FROM PUBLIC. Le DROP + CREATE a donc rendu la RPC appelable par anon
+-- via PostgREST, réouvrant ce que 20260721e_sec_lot1_close_surface.sql avait
+-- fermé le 21/07/2026. Toute migration qui recrée une fonction fermée par
+-- 20260721e doit rejouer le REVOKE de cette migration.
+
 REVOKE EXECUTE ON FUNCTION public.get_unscored_articles(integer) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.get_unscored_articles(integer) FROM anon, authenticated;
 GRANT  EXECUTE ON FUNCTION public.get_unscored_articles(integer) TO postgres;
 GRANT  EXECUTE ON FUNCTION public.get_unscored_articles(integer) TO service_role;
 
