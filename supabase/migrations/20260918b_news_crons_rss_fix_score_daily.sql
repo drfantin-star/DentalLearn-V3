@@ -52,6 +52,12 @@
 --    Source passée active = false (décision Dr Fantin, réactivation plus tard,
 --    abonnement rss.app à reprendre).
 --
+-- ⚠️ Droits — ne pas écrire directement dans cron.job. Le rôle postgres
+-- utilisé par le SQL Editor a SELECT sur cron.job mais pas UPDATE : la table
+-- appartient à supabase_admin. Tout passage par cron.schedule /
+-- cron.unschedule fonctionne ; tout UPDATE / INSERT / DELETE direct lève
+-- 42501 et annule la transaction entière.
+--
 -- Périmètre strict : aucun autre job n'est touché. Les 9
 -- news_ingest_pubmed_*, news_check_retractions, news_synthesize_articles et
 -- news_synthesize_articles_late restent strictement inchangés.
@@ -139,12 +145,14 @@ BEGIN
     )
   );
 
-  -- 2.3 active=true explicite sur les 2 jobs : cron.schedule les active déjà
-  --     par défaut, garde défensive si un run précédent en avait désactivé un
-  --     manuellement.
-  UPDATE cron.job
-     SET active = true
-   WHERE jobname IN ('news_ingest_rss', 'news_score_articles');
+  -- 2.3 Pas de garde `UPDATE cron.job SET active = true` ici, contrairement à
+  --     20260723h : le rôle postgres du SQL Editor peut LIRE cron.job mais pas
+  --     y écrire (la table appartient à supabase_admin), et un UPDATE direct
+  --     lève 42501 permission denied for table job — ce qui annule tout le DO
+  --     block. Le garde est de toute façon du code mort : on fait
+  --     unschedule + schedule, et cron.schedule crée toujours le job avec
+  --     active = true (vérifié le 18/09/2026 sur ce projet). cron.alter_job
+  --     n'est pas SECURITY DEFINER et échouerait pour la même raison.
 END
 $mig$;
 
