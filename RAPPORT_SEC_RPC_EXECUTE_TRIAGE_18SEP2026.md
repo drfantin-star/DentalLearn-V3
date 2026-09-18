@@ -1,10 +1,11 @@
-# Rapport — Droits d'EXECUTE sur les RPC : Lot 0 + Lot 1 (triage)
+# Rapport — Droits d'EXECUTE sur les RPC : Lots 0, 1 et 2
 
 18/09/2026 · Projet Supabase `dxybsuhfkwuemapqrvgz` · Branche `claude/confident-noether-cynb5w`
 
 Suite au brief « Droits d'exécution des RPC : triage et fermeture ».
-**Aucune fermeture n'a été appliquée** — ce document est le livrable du Lot 1,
-à valider avant d'écrire la migration du Lot 2.
+Le tableau du Lot 1 a été validé, puis la migration du Lot 2 a été écrite sur
+le périmètre validé (9 fonctions). **La migration n'est pas encore appliquée
+en base** : application manuelle par le SQL Editor, cf. dernière section.
 
 ---
 
@@ -161,3 +162,125 @@ RPC prévues pour un écran pas encore livré. À trancher par Dr Fantin.
   `SECURITY DEFINER` sur les mêmes tables que `get_unscored_articles`.
 - La question du `ALTER DEFAULT PRIVILEGES` (deny-by-default) reste entière et
   n'est pas tranchée ici.
+
+
+---
+
+## Lot 2 — Migration de fermeture
+
+Fichiers : `supabase/migrations/20260918c_sec_rpc_execute_triage.sql`
+et son `_down.sql`. Préfixe vérifié (`20260918a` et `b` déjà pris, `c` libre).
+
+Périmètre validé : les 8 de catégorie 2 + `is_cs_member` (anon seulement).
+Les 6 de catégorie 3 ne sont pas touchées. `handle_new_user()` non plus — hors
+du périmètre validé pour ce lot (cf. Observations).
+
+### Découverte : il faut DEUX `REVOKE`, pas un
+
+L'audit ACL détaillé (`aclexplode` sur `pg_proc.proacl`) contredit en partie le
+diagnostic du brief. Les fonctions ouvertes à `anon` le sont par **deux chemins
+distincts** :
+
+| Chemin | Forme dans `proacl` | Retiré par |
+|---|---|---|
+| grant **nommé** à `anon` / `authenticated` (défaut Supabase, `pg_default_acl`) | `anon=X/postgres` | `REVOKE ... FROM anon, authenticated` **uniquement** |
+| grant au pseudo-rôle **PUBLIC** (défaut PostgreSQL natif) | `=X/postgres` | `REVOKE ... FROM PUBLIC` **uniquement** |
+
+Et le relevé du 18/09 montre que les deux coexistent dans la nature :
+
+| Fonction | PUBLIC | `anon` nommé | `authenticated` nommé |
+|---|:--:|:--:|:--:|
+| `audio_jobs_cost_summary()` | ✅ | — | — |
+| `purge_old_notifications()` | ✅ | — | — |
+| `send_autoeval_reminders(text)` | ✅ | — | — |
+| `send_autopilot_reminders(text)` | ✅ | — | — |
+| `handle_new_user()` | ✅ | — | — |
+| `count_unscored_articles()` | — | ✅ | ✅ |
+| `is_cs_member(uuid)` | ✅ | ✅ | ✅ |
+| `is_sequence_completed(uuid,uuid)` | ✅ | ✅ | ✅ |
+| `get_user_completed_sequences(uuid,uuid)` | ✅ | ✅ | ✅ |
+| `regenerate_synthesis_from_fulltext(18 args)` | ✅ | ✅ | ✅ |
+
+**Conséquence directe sur le récit du brief.** Les 5 fonctions dites
+« réouvertes » depuis `20260721e` n'ont **aucun grant nommé** à `anon`. Le
+`REVOKE EXECUTE ... FROM anon, authenticated` de juillet a donc parfaitement
+tenu : les grants nommés ne sont jamais revenus. Ce qui les rouvre est le grant
+**PUBLIC**, revenu avec le `DROP` + `CREATE` — et que `20260721e` n'avait jamais
+retiré.
+
+Autrement dit, rejouer tel quel le `REVOKE ... FROM anon, authenticated` de
+juillet **n'aurait rien fermé du tout**. C'est le symétrique exact du piège
+documenté dans `CLAUDE.md`, et il coexiste avec lui.
+
+La migration applique donc systématiquement les trois lignes de la convention
+`CLAUDE.md` : `REVOKE FROM PUBLIC`, puis `REVOKE FROM anon, authenticated`,
+puis `GRANT TO postgres, service_role`.
+
+### Rollback non uniforme
+
+Le `_down.sql` ne peut pas être symétrique ligne à ligne, puisque l'état
+d'origine différait d'une fonction à l'autre. Il restaure trois groupes
+distincts (PUBLIC seul / grants nommés seuls / les deux), documentés en tête
+de fichier. Restauration à l'identique du relevé du 18/09.
+
+### Vérifications faites avant écriture
+
+- Les 9 signatures écrites dans la migration résolvent bien en base
+  (`::regprocedure`), y compris celle à 18 arguments avec le type `vector`.
+- Aucun `DROP`, aucun changement de signature ni de corps : la migration ne
+  touche que des privilèges, et est rejouable sans effet de bord.
+
+---
+
+## Application manuelle (SQL Editor) — à faire par Dr Fantin
+
+Convention du repo : bloc DDL et bloc SELECT dans deux `Run` séparés.
+
+**Run 1** — coller le contenu de
+`supabase/migrations/20260918c_sec_rpc_execute_triage.sql`.
+
+**Run 2** — coller ce bloc de vérification :
+
+```sql
+SELECT p.oid::regprocedure::text AS fonction,
+       has_function_privilege('anon', p.oid, 'EXECUTE')          AS anon_peut,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') AS auth_peut,
+       has_function_privilege('service_role', p.oid, 'EXECUTE')  AS svc_peut
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public'
+  AND p.proname IN ('audio_jobs_cost_summary','count_unscored_articles',
+                    'purge_old_notifications','send_autoeval_reminders',
+                    'send_autopilot_reminders','regenerate_synthesis_from_fulltext',
+                    'is_sequence_completed','get_user_completed_sequences','is_cs_member')
+ORDER BY 1;
+```
+
+Attendu : `anon_peut = false` sur les 9. `auth_peut = false` sur les 8
+premières et **`true` sur `is_cs_member`** (obligatoire — sinon les policies RLS
+du Comité Scientifique cassent). `svc_peut = true` partout.
+
+**Run 3** — critère d'acceptation du brief : la requête d'audit du Lot 1 ne doit
+plus renvoyer que des fonctions de catégorie 1 (et les 6 de catégorie 3,
+laissées ouvertes volontairement). Elle doit passer de 35 à 26 lignes.
+
+```sql
+SELECT count(*) AS restantes
+FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = 'public' AND p.prokind = 'f' AND p.prosecdef
+  AND has_function_privilege('anon', p.oid, 'EXECUTE')
+  AND pg_get_function_result(p.oid) <> 'trigger';
+```
+
+### Parcours front à re-tester après application
+
+Le SQL ne suffit pas (critère d'acceptation du brief) :
+
+- `/verify/[code]` — vérification d'attestation en **navigation privée**,
+  déconnecté (c'est le seul parcours réellement `anon`).
+- Ouvrir une formation, lire une séquence, répondre à un quiz — valide que
+  `user_can_see_formation` et les policies RLS n'ont pas bougé.
+- Générer une attestation — c'est l'écran qui appelle le plus de RPC
+  (`attestation_*_for`, `get_formation_completion_metrics`,
+  `is_formation_fully_completed`, `has_user_completed_satisfaction`).
+- Espace Comité Scientifique `/cs` — valide `is_cs_member` et ses policies.
+- Quiz du jour — valide `get_daily_quiz`.
