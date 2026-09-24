@@ -43,6 +43,15 @@
 -- conformément à la convention du repo. Aucune donnée n'est touchée : la
 -- contrainte est remplacée par la même, augmentée de 'rejected'. Les 5
 -- valeurs existantes sont conservées à l'identique.
+--
+-- BEGIN / COMMIT encadrant toute la migration : entre le DROP et le ADD, la
+-- table n'a plus de contrôle de statut, et une interruption à cet instant la
+-- laisserait sans garde-fou sur une colonne que sept surfaces de lecture
+-- filtrent. L'éditeur SQL Supabase enveloppe déjà un Run dans une transaction
+-- implicite, mais on ne dépend pas de ce comportement pour une opération
+-- destructive (même raison qu'en 20260918a).
+
+BEGIN;
 
 ALTER TABLE public.news_syntheses
   DROP CONSTRAINT news_syntheses_status_extended_check;
@@ -252,6 +261,8 @@ GRANT  EXECUTE ON FUNCTION public.restore_news_syntheses(uuid[])       TO postgr
 REVOKE EXECUTE ON FUNCTION public.get_rejected_syntheses()             FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.get_rejected_syntheses()             FROM anon, authenticated;
 GRANT  EXECUTE ON FUNCTION public.get_rejected_syntheses()             TO postgres, authenticated, service_role;
+
+COMMIT;
 
 -- ============================================================================
 -- 7. Vérification (à exécuter dans un RUN SÉPARÉ)
