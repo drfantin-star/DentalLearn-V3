@@ -50,6 +50,52 @@ export interface BulkValidationResult {
   validation_id: string
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Rejet éditorial (news_synthesis uniquement)
+// ─────────────────────────────────────────────────────────────────────────────
+// Avant 09/2026, « non validée » mélangeait « pas encore lue » et « lue et
+// refusée » : il n'existait aucune action de refus. Le rejet passe par
+// news_syntheses.status = 'rejected', ce qui retire la synthèse de TOUTES les
+// surfaces de lecture d'un coup (elles filtrent déjà status='active').
+// Cf. migration 20260924a_news_synthesis_rejection.sql.
+
+export type RejectionReason =
+  | 'hors_sujet'
+  | 'non_transposable'
+  | 'preuve_insuffisante'
+  | 'doublon'
+  | 'qualite_synthese'
+  | 'deja_traite'
+  | 'autre'
+
+// Libellés affichés. L'ordre est celui du menu de rejet : les motifs les plus
+// fréquents d'abord, « Autre » en dernier.
+export const REJECTION_REASONS: { value: RejectionReason; label: string; hint: string }[] = [
+  { value: 'hors_sujet', label: 'Hors sujet', hint: 'Hors du champ dentaire' },
+  { value: 'non_transposable', label: 'Non transposable', hint: "Sans portée pour l'exercice français" },
+  { value: 'preuve_insuffisante', label: 'Preuve insuffisante', hint: 'Niveau de preuve trop faible' },
+  { value: 'doublon', label: 'Doublon', hint: 'Sujet déjà couvert par une autre synthèse' },
+  { value: 'qualite_synthese', label: 'Synthèse ratée', hint: "L'article est bon, la synthèse est mauvaise" },
+  { value: 'deja_traite', label: 'Déjà traité', hint: 'Déjà couvert en formation ou dans le journal' },
+  { value: 'autre', label: 'Autre', hint: '' },
+]
+
+export function rejectionReasonLabel(value: string | null): string {
+  if (!value) return '—'
+  return REJECTION_REASONS.find((r) => r.value === value)?.label ?? value
+}
+
+// Forme retournée par get_rejected_syntheses()
+export interface RejectedSynthesis {
+  id: string
+  display_title: string | null
+  specialite: string | null
+  published_at: string | null
+  created_at: string
+  rejected_at: string | null
+  rejection_reason: string | null
+}
+
 // Contenu sans validation courante (pour l'écran admin)
 export interface ValidationCandidate {
   content_type: EditorialContentType

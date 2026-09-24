@@ -165,6 +165,7 @@ function NewsListPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [poolCounts, setPoolCounts] = useState<{ pending: number; approved: number } | null>(null)
+  const [pendingValidationCount, setPendingValidationCount] = useState<number | null>(null)
   const [failedCounts, setFailedCounts] = useState<
     { failed: number; failedPermanent: number } | null
   >(null)
@@ -209,6 +210,24 @@ function NewsListPage() {
       })
       .catch(() => {
         /* compteurs optionnels */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Compteur « à valider » : synthèses actives sans validation éditoriale.
+  // limit=1 car seul le total nous intéresse — on ne rapatrie pas les lignes.
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/admin/news/syntheses?status=active&validated=false&limit=1')
+      .then((r) => r.json())
+      .then((res) => {
+        if (cancelled) return
+        setPendingValidationCount(res?.total ?? 0)
+      })
+      .catch(() => {
+        /* compteur optionnel : on laisse « … » plutôt que d'afficher un faux 0 */
       })
     return () => {
       cancelled = true
@@ -341,13 +360,45 @@ function NewsListPage() {
         </div>
       </header>
 
-      {/* Pool Quiz du jour */}
+      {/* Validation éditoriale des synthèses
+          Ce bloc existe parce que la validation vit dans une AUTRE section
+          (/admin/editorial-validations) que la lecture des synthèses (ici).
+          Sans ce raccourci, rien depuis cet écran n'indique qu'une synthèse
+          non validée reste invisible côté public. */}
+      <Link
+        href="/admin/editorial-validations"
+        className="block bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-6 mb-4 text-white hover:from-emerald-700 hover:to-emerald-800 transition-colors"
+      >
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold mb-1">
+              Validation éditoriale des synthèses
+            </h2>
+            <p className="text-sm text-white/80">
+              Une synthèse non validée n&apos;apparaît ni dans la rubrique News, ni
+              dans le quiz du jour.
+            </p>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-xl px-5 py-3 text-center min-w-[120px]">
+            <p className="text-3xl font-bold">
+              {pendingValidationCount === null ? '…' : pendingValidationCount}
+            </p>
+            <p className="text-xs text-white/80">à valider</p>
+          </div>
+        </div>
+      </Link>
+
+      {/* Pool Quiz du jour
+          Rien à voir avec la validation éditoriale ci-dessus : il s'agit des
+          QUESTIONS de quiz générées à partir des synthèses. Les libellés sont
+          explicites pour éviter la confusion historique entre les deux files. */}
       <div className="bg-gradient-to-r from-primary to-[#5D4FE0] rounded-2xl p-6 mb-6 text-white">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-lg font-semibold mb-1">Pool Quiz du jour</h2>
             <p className="text-sm text-white/80">
-              Validation des questions news pour le quiz quotidien
+              Approbation des <strong>questions</strong> du quiz quotidien — distinct
+              de la validation éditoriale des synthèses
             </p>
           </div>
           <div className="flex gap-3">
@@ -358,7 +409,7 @@ function NewsListPage() {
               <p className="text-2xl font-bold">
                 {poolCounts ? poolCounts.pending : '…'}
               </p>
-              <p className="text-xs text-white/80">En attente</p>
+              <p className="text-xs text-white/80">Questions en attente</p>
             </Link>
             <Link
               href="/admin/news/approved"
@@ -367,7 +418,7 @@ function NewsListPage() {
               <p className="text-2xl font-bold text-emerald-300">
                 {poolCounts ? poolCounts.approved : '…'}
               </p>
-              <p className="text-xs text-white/80">Approuvées</p>
+              <p className="text-xs text-white/80">Questions approuvées</p>
             </Link>
           </div>
         </div>

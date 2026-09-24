@@ -6,6 +6,8 @@ import type {
   BulkValidationResult,
   CsMember,
   EditorialContentType,
+  RejectedSynthesis,
+  RejectionReason,
   ValidationCandidate,
   ValidationStatus,
 } from '@/types/editorialValidations'
@@ -473,4 +475,125 @@ export function useValidationCandidates(
   }, [fetchCandidates])
 
   return { candidates, loading, error, refetch: fetchCandidates }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. useRejectSyntheses — rejet éditorial (unitaire ou en lot)
+// ─────────────────────────────────────────────────────────────────────────────
+// Le rejet unitaire est un lot d'un seul élément : une seule RPC à maintenir.
+// Cf. migration 20260924a_news_synthesis_rejection.sql.
+interface UseRejectSynthesesResult {
+  reject: (ids: string[], reason: RejectionReason) => Promise<number>
+  loading: boolean
+  error: string | null
+}
+
+export function useRejectSyntheses(): UseRejectSynthesesResult {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const reject = useCallback(
+    async (ids: string[], reason: RejectionReason): Promise<number> => {
+      setLoading(true)
+      setError(null)
+      try {
+        const supabase = createClient()
+        const { data, error: rpcErr } = await supabase.rpc('reject_news_syntheses', {
+          p_ids: ids,
+          p_reason: reason,
+        })
+        if (rpcErr) throw rpcErr
+        return Number(data ?? 0)
+      } catch (err: any) {
+        console.error('useRejectSyntheses error:', err)
+        setError(err.message || 'Erreur lors du rejet')
+        throw err
+      } finally {
+        setLoading(false)
+      }
+    },
+    []
+  )
+
+  return { reject, loading, error }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. useRestoreSyntheses — annulation d'un rejet
+// ─────────────────────────────────────────────────────────────────────────────
+interface UseRestoreSynthesesResult {
+  restore: (ids: string[]) => Promise<number>
+  loading: boolean
+  error: string | null
+}
+
+export function useRestoreSyntheses(): UseRestoreSynthesesResult {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const restore = useCallback(async (ids: string[]): Promise<number> => {
+    setLoading(true)
+    setError(null)
+    try {
+      const supabase = createClient()
+      const { data, error: rpcErr } = await supabase.rpc('restore_news_syntheses', {
+        p_ids: ids,
+      })
+      if (rpcErr) throw rpcErr
+      return Number(data ?? 0)
+    } catch (err: any) {
+      console.error('useRestoreSyntheses error:', err)
+      setError(err.message || 'Erreur lors du rétablissement')
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  return { restore, loading, error }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. useRejectedSyntheses — la vue « Rejetées »
+// ─────────────────────────────────────────────────────────────────────────────
+// get_syntheses_for_validation() filtre status='active' : les rejetées en
+// sortent d'elles-mêmes. Il faut donc une lecture dédiée pour les relire.
+interface UseRejectedSynthesesResult {
+  rejected: RejectedSynthesis[]
+  loading: boolean
+  error: string | null
+  refetch: () => Promise<void>
+}
+
+export function useRejectedSyntheses(enabled: boolean): UseRejectedSynthesesResult {
+  const [rejected, setRejected] = useState<RejectedSynthesis[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchRejected = useCallback(async () => {
+    if (!enabled) {
+      setRejected([])
+      return
+    }
+    setLoading(true)
+    setError(null)
+    try {
+      const supabase = createClient()
+      const { data, error: rpcErr } = await supabase.rpc('get_rejected_syntheses')
+      if (rpcErr) throw rpcErr
+      setRejected((data || []) as RejectedSynthesis[])
+    } catch (err: any) {
+      console.error('useRejectedSyntheses error:', err)
+      setError(err.message || 'Erreur lors du chargement des synthèses rejetées')
+      setRejected([])
+    } finally {
+      setLoading(false)
+    }
+  }, [enabled])
+
+  useEffect(() => {
+    fetchRejected()
+  }, [fetchRejected])
+
+  return { rejected, loading, error, refetch: fetchRejected }
 }

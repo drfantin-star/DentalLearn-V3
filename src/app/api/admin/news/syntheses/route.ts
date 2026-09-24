@@ -306,6 +306,16 @@ export async function GET(request: Request) {
       .select(selectColumns, { count: 'exact' })
       .eq('status', status)
 
+    // ?validated=false : synthèses actives restant à valider éditorialement.
+    // Sert au compteur « à valider » du hub /admin/news, qui ne peut pas lire
+    // news_syntheses en direct côté client (RLS service-role only).
+    const validatedParam = searchParams.get('validated')
+    if (validatedParam === 'false') {
+      query = query.eq('is_editorially_validated', false)
+    } else if (validatedParam === 'true') {
+      query = query.eq('is_editorially_validated', true)
+    }
+
     if (specialite) query = query.eq('specialite', specialite)
     if (niveauPreuve) query = query.eq('niveau_preuve', niveauPreuve)
     if (categoryEditorial) query = query.eq('category_editorial', categoryEditorial)
