@@ -14,11 +14,18 @@ import {
   Newspaper,
   BookOpen,
   FlaskConical,
+  Ban,
+  RotateCcw,
+  Square,
+  CheckSquare,
 } from 'lucide-react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import {
   useCsMembers,
+  useRejectSyntheses,
+  useRejectedSyntheses,
+  useRestoreSyntheses,
   useRevokeValidation,
   useValidateContent,
   useValidateContentBulk,
@@ -27,10 +34,17 @@ import {
 import type {
   EditorialContentType,
   EditorialValidation,
+  RejectedSynthesis,
+  RejectionReason,
   ValidationCandidate,
 } from '@/types/editorialValidations'
+import { REJECTION_REASONS, rejectionReasonLabel } from '@/types/editorialValidations'
 
-type StatusFilter = 'all' | 'unvalidated' | 'stale' | 'valid'
+// 'rejected' n'est pas un état de validation mais un état de la synthèse
+// elle-même (news_syntheses.status). Il vit dans le même sélecteur parce que,
+// du point de vue éditorial, c'est la troisième issue possible d'une relecture :
+// je valide, je laisse en attente, je refuse.
+type StatusFilter = 'all' | 'unvalidated' | 'stale' | 'valid' | 'rejected'
 type TabFilter = 'all' | EditorialContentType
 type PublishStatusFilter = 'all' | 'draft' | 'published'
 
@@ -159,11 +173,30 @@ export default function AdminEditorialValidationsPage() {
   const { validate, loading: validating } = useValidateContent()
   const { revoke, loading: revoking } = useRevokeValidation()
   const { validateBulk, loading: bulking } = useValidateContentBulk()
+  const { reject, loading: rejecting } = useRejectSyntheses()
+  const { restore, loading: restoring } = useRestoreSyntheses()
+  const {
+    rejected,
+    loading: rejectedLoading,
+    refetch: refetchRejected,
+  } = useRejectedSyntheses(statusFilter === 'rejected')
 
   const [validationModal, setValidationModal] = useState<ValidationCandidate | null>(null)
   const [revocationModal, setRevocationModal] = useState<ValidationCandidate | null>(null)
   const [historyModal, setHistoryModal] = useState<ValidationCandidate | null>(null)
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
+
+  // Rejet : une seule modale sert l'unitaire et le lot — un rejet unitaire est
+  // un lot d'un seul élément, côté UI comme côté RPC.
+  const [rejectTargets, setRejectTargets] = useState<ValidationCandidate[] | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  // Toute bascule de filtre ou d'onglet vide la sélection : garder des cases
+  // cochées sur des lignes devenues invisibles est le meilleur moyen de
+  // rejeter en masse autre chose que ce qu'on croit voir.
+  useEffect(() => {
+    setSelectedIds(new Set())
+  }, [tab, statusFilter, publishStatusFilter])
 
   const [toast, setToast] = useState<string | null>(null)
   const showToast = (msg: string) => {
@@ -172,6 +205,10 @@ export default function AdminEditorialValidationsPage() {
   }
 
   const filteredCandidates = useMemo(() => {
+    // La vue « Rejetées » ne lit pas les candidats : get_syntheses_for_validation()
+    // filtre status='active', donc une synthèse rejetée en est absente par
+    // construction. Elle a sa propre source (useRejectedSyntheses).
+    if (statusFilter === 'rejected') return []
     return candidates.filter((c) => {
       if (statusFilter !== 'all' && candidateStatusKey(c) !== statusFilter) {
         return false
@@ -188,6 +225,63 @@ export default function AdminEditorialValidationsPage() {
       return true
     })
   }, [candidates, statusFilter, publishStatusFilter])
+
+  // ── Rejet éditorial ────────────────────────────────────────────────────────
+  // Réservé aux synthèses : une formation ou un épisode ne se « rejette » pas,
+  // il se dépublie ailleurs. Le bouton n'apparaît donc que sur news_synthesis,
+  // et jamais sur un contenu déjà validé (là, c'est « Révoquer » qu'il faut).
+  const isRejectable = (c: ValidationCandidate) =>
+    c.content_type === 'news_synthesis' && candidateStatusKey(c) !== 'valid'
+
+  const selectableCandidates = useMemo(
+    () => filteredCandidates.filter(isRejectable),
+    [filteredCandidates]
+  )
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const allSelectableSelected =
+    selectableCandidates.length > 0 &&
+    selectableCandidates.every((c) => selectedIds.has(c.content_id))
+
+  const toggleSelectAll = () => {
+    setSelectedIds(
+      allSelectableSelected
+        ? new Set()
+        : new Set(selectableCandidates.map((c) => c.content_id))
+    )
+  }
+
+  const confirmReject = async (reason: RejectionReason) => {
+    if (!rejectTargets || rejectTargets.length === 0) return
+    const ids = rejectTargets.map((c) => c.content_id)
+    const n = await reject(ids, reason)
+    setRejectTargets(null)
+    setSelectedIds(new Set())
+    await refetch()
+    showToast(
+      n === 0
+        ? 'Aucune synthèse rejetée (déjà traitée ailleurs ?)'
+        : `${n} synthèse${n > 1 ? 's' : ''} rejetée${n > 1 ? 's' : ''} — motif : ${rejectionReasonLabel(reason)}`
+    )
+  }
+
+  const handleRestore = async (id: string, title: string | null) => {
+    const n = await restore([id])
+    await refetchRejected()
+    showToast(
+      n > 0
+        ? `« ${title ?? 'Synthèse'} » rétablie — elle repasse en attente de validation`
+        : 'Rien à rétablir'
+    )
+  }
 
   // Compteurs Publication : dépendent de Type (déjà appliqué via candidates) et
   // du filtre Statut validation, mais pas du filtre Publication lui-même.
@@ -318,6 +412,7 @@ export default function AdminEditorialValidationsPage() {
             { key: 'unvalidated' as const, label: `Non validés (${counts.unvalidated})` },
             { key: 'stale' as const, label: `Stale (${counts.stale})` },
             { key: 'valid' as const, label: `À jour (${counts.valid})` },
+            { key: 'rejected' as const, label: 'Rejetées' },
           ].map((s) => (
             <button
               key={s.key}
@@ -325,7 +420,9 @@ export default function AdminEditorialValidationsPage() {
               onClick={() => setStatusFilter(s.key)}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                 statusFilter === s.key
-                  ? 'bg-emerald-600 text-white'
+                  ? s.key === 'rejected'
+                    ? 'bg-gray-800 text-white'
+                    : 'bg-emerald-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -333,6 +430,37 @@ export default function AdminEditorialValidationsPage() {
             </button>
           ))}
         </div>
+
+        {/* Barre d'action du rejet en lot — n'apparaît que si quelque chose est
+            sélectionné, pour qu'un rejet massif soit toujours un geste
+            délibéré et jamais un bouton qu'on frôle. */}
+        {selectedIds.size > 0 && (
+          <div className="flex flex-wrap items-center gap-3 rounded-xl bg-gray-900 px-4 py-3 text-white">
+            <span className="text-sm font-semibold">
+              {selectedIds.size} synthèse{selectedIds.size > 1 ? 's' : ''} sélectionnée
+              {selectedIds.size > 1 ? 's' : ''}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                setRejectTargets(
+                  selectableCandidates.filter((c) => selectedIds.has(c.content_id))
+                )
+              }
+              className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold hover:bg-red-700 transition-colors"
+            >
+              <Ban size={13} />
+              Rejeter la sélection
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs font-medium text-white/70 hover:text-white transition-colors"
+            >
+              Tout désélectionner
+            </button>
+          </div>
+        )}
 
         {(tab === 'all' || tab === 'news_episode') && (
           <div className="flex flex-wrap items-center gap-2">
@@ -383,6 +511,13 @@ export default function AdminEditorialValidationsPage() {
             Retour au dashboard admin
           </Link>
         </div>
+      ) : statusFilter === 'rejected' ? (
+        <RejectedList
+          rows={rejected}
+          loading={rejectedLoading}
+          restoring={restoring}
+          onRestore={handleRestore}
+        />
       ) : filteredCandidates.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-xl p-12 text-center text-gray-500">
           Aucun contenu ne correspond aux filtres sélectionnés.
@@ -395,6 +530,26 @@ export default function AdminEditorialValidationsPage() {
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 text-left text-xs uppercase tracking-wider text-gray-500">
                   <tr>
+                    <th className="px-3 py-3 w-10">
+                      {selectableCandidates.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={toggleSelectAll}
+                          title={
+                            allSelectableSelected
+                              ? 'Tout désélectionner'
+                              : `Sélectionner les ${selectableCandidates.length} synthèses affichées`
+                          }
+                          className="text-gray-400 hover:text-gray-700 transition-colors"
+                        >
+                          {allSelectableSelected ? (
+                            <CheckSquare size={15} />
+                          ) : (
+                            <Square size={15} />
+                          )}
+                        </button>
+                      )}
+                    </th>
                     <th className="px-4 py-3 font-semibold whitespace-nowrap">Type</th>
                     <th className="px-4 py-3 font-semibold">Contenu</th>
                     <th className="px-4 py-3 font-semibold">Statut</th>
@@ -405,8 +560,31 @@ export default function AdminEditorialValidationsPage() {
                 <tbody className="divide-y divide-gray-100">
                   {filteredCandidates.map((c) => {
                     const status = candidateStatusKey(c)
+                    const rejectable = isRejectable(c)
+                    const checked = selectedIds.has(c.content_id)
                     return (
-                      <tr key={`${c.content_type}:${c.content_id}`} className="text-gray-800">
+                      <tr
+                        key={`${c.content_type}:${c.content_id}`}
+                        className={`text-gray-800 ${checked ? 'bg-red-50/60' : ''}`}
+                      >
+                        <td className="px-3 py-3">
+                          {rejectable && (
+                            <button
+                              type="button"
+                              onClick={() => toggleSelected(c.content_id)}
+                              aria-label={
+                                checked ? 'Désélectionner' : 'Sélectionner pour rejet'
+                              }
+                              className={
+                                checked
+                                  ? 'text-red-600'
+                                  : 'text-gray-300 hover:text-gray-600 transition-colors'
+                              }
+                            >
+                              {checked ? <CheckSquare size={15} /> : <Square size={15} />}
+                            </button>
+                          )}
+                        </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <TypeBadge type={c.content_type} />
                           <DraftBadge candidate={c} />
@@ -467,6 +645,16 @@ export default function AdminEditorialValidationsPage() {
                               >
                                 <Trash2 size={12} />
                                 Révoquer
+                              </button>
+                            )}
+                            {rejectable && (
+                              <button
+                                type="button"
+                                onClick={() => setRejectTargets([c])}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-700 hover:bg-red-50 transition-colors"
+                              >
+                                <Ban size={12} />
+                                Rejeter
                               </button>
                             )}
                             <button
@@ -537,6 +725,16 @@ export default function AdminEditorialValidationsPage() {
                         Révoquer
                       </button>
                     )}
+                    {isRejectable(c) && (
+                      <button
+                        type="button"
+                        onClick={() => setRejectTargets([c])}
+                        className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-xs font-semibold text-red-700 bg-red-50"
+                      >
+                        <Ban size={12} />
+                        Rejeter
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setHistoryModal(c)}
@@ -551,6 +749,16 @@ export default function AdminEditorialValidationsPage() {
             })}
           </div>
         </>
+      )}
+
+      {/* Reject modal — unitaire ou lot, même écran */}
+      {rejectTargets && rejectTargets.length > 0 && (
+        <RejectModal
+          targets={rejectTargets}
+          submitting={rejecting}
+          onClose={() => setRejectTargets(null)}
+          onConfirm={confirmReject}
+        />
       )}
 
       {/* Validation modal */}
@@ -1235,6 +1443,245 @@ function ConfirmBulkModal({
             )}
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RejectModal — choix du motif, unitaire ou en lot
+// ─────────────────────────────────────────────────────────────────────────────
+// Le motif est obligatoire (la RPC le refuse vide) : c'est lui qui transforme
+// le tri éditorial en signal exploitable. Un motif qui domine indique un
+// critère à ajouter au prompt de score_articles, plutôt que de continuer à
+// trier à la main indéfiniment.
+function RejectModal({
+  targets,
+  submitting,
+  onClose,
+  onConfirm,
+}: {
+  targets: ValidationCandidate[]
+  submitting: boolean
+  onClose: () => void
+  onConfirm: (reason: RejectionReason) => Promise<void>
+}) {
+  const [reason, setReason] = useState<RejectionReason | null>(null)
+  const [localError, setLocalError] = useState<string | null>(null)
+  const isBulk = targets.length > 1
+
+  const submit = async () => {
+    if (!reason) {
+      setLocalError('Choisis un motif avant de rejeter.')
+      return
+    }
+    setLocalError(null)
+    try {
+      await onConfirm(reason)
+    } catch (err: any) {
+      setLocalError(err?.message || 'Erreur lors du rejet')
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-gray-900/70 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="w-full sm:max-w-lg h-full sm:h-auto sm:max-h-[90vh] flex flex-col rounded-none sm:rounded-2xl overflow-hidden shadow-2xl"
+        style={{ background: '#0a0a0a', border: '1px solid #2a2a2a' }}
+      >
+        <div
+          className="flex items-start justify-between gap-3 px-5 py-4 flex-shrink-0"
+          style={{ background: '#1a1a1a', borderBottom: '1px solid #2a2a2a' }}
+        >
+          <h2
+            className="text-lg font-bold inline-flex items-center gap-2"
+            style={{ color: '#e5e5e5' }}
+          >
+            <Ban size={18} className="text-red-500" />
+            {isBulk ? `Rejeter ${targets.length} synthèses` : 'Rejeter la synthèse'}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            aria-label="Fermer"
+            className="p-2 rounded-full"
+            style={{ color: '#a3a3a3' }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+          {isBulk ? (
+            <div
+              className="rounded-xl px-4 py-3 max-h-40 overflow-y-auto"
+              style={{ background: '#1a1a1a', border: '1px solid #2a2a2a' }}
+            >
+              <ul className="space-y-1">
+                {targets.map((t) => (
+                  <li key={t.content_id} className="text-xs" style={{ color: '#d4d4d4' }}>
+                    • {t.content_title}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-sm font-medium" style={{ color: '#e5e5e5' }}>
+              {targets[0].content_title}
+            </p>
+          )}
+
+          <div>
+            <p className="text-xs font-semibold mb-2" style={{ color: '#a3a3a3' }}>
+              MOTIF DU REJET
+            </p>
+            <div className="space-y-1.5">
+              {REJECTION_REASONS.map((r) => (
+                <button
+                  key={r.value}
+                  type="button"
+                  onClick={() => {
+                    setReason(r.value)
+                    setLocalError(null)
+                  }}
+                  className="w-full text-left px-4 py-2.5 rounded-xl transition-colors"
+                  style={{
+                    background: reason === r.value ? 'rgba(220,38,38,0.12)' : '#1a1a1a',
+                    border:
+                      reason === r.value ? '1px solid #dc2626' : '1px solid #2a2a2a',
+                  }}
+                >
+                  <span className="text-sm font-semibold" style={{ color: '#e5e5e5' }}>
+                    {r.label}
+                  </span>
+                  {r.hint && (
+                    <span className="block text-xs mt-0.5" style={{ color: '#a3a3a3' }}>
+                      {r.hint}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-xs" style={{ color: '#a3a3a3' }}>
+            La synthèse disparaît de la file de validation, de la rubrique News et du
+            quiz du jour. Rien n&apos;est supprimé : tu peux la rétablir depuis le filtre
+            « Rejetées ».
+          </p>
+
+          {localError && <p className="text-sm text-red-400">{localError}</p>}
+        </div>
+
+        <div
+          className="px-5 py-4 flex-shrink-0 flex items-center gap-3"
+          style={{ background: '#1a1a1a', borderTop: '1px solid #2a2a2a' }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold"
+            style={{ background: '#242424', color: '#e5e5e5' }}
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={submitting || !reason}
+            className="flex-1 inline-flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
+          >
+            {submitting ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Rejet…
+              </>
+            ) : (
+              <>
+                <Ban size={16} />
+                {isBulk ? `Rejeter les ${targets.length}` : 'Rejeter'}
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RejectedList — la vue « Rejetées », avec rétablissement
+// ─────────────────────────────────────────────────────────────────────────────
+function RejectedList({
+  rows,
+  loading,
+  restoring,
+  onRestore,
+}: {
+  rows: RejectedSynthesis[]
+  loading: boolean
+  restoring: boolean
+  onRestore: (id: string, title: string | null) => Promise<void>
+}) {
+  if (loading) {
+    return (
+      <div className="bg-white rounded-2xl shadow-xl p-12 flex justify-center">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+      </div>
+    )
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl shadow-xl p-12 text-center text-gray-500">
+        Aucune synthèse rejetée.
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+      <div className="px-5 py-3 bg-gray-50 border-b border-gray-100 text-xs text-gray-600">
+        {rows.length} synthèse{rows.length > 1 ? 's' : ''} rejetée
+        {rows.length > 1 ? 's' : ''}. Elles ne sont visibles ni dans la rubrique News,
+        ni dans le quiz du jour. Rétablir une synthèse la renvoie en attente de
+        validation.
+      </div>
+      <div className="divide-y divide-gray-100">
+        {rows.map((r) => (
+          <div
+            key={r.id}
+            className="px-5 py-3 flex items-start justify-between gap-4 flex-wrap"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-gray-900 truncate">
+                {r.display_title ?? '(sans titre)'}
+              </div>
+              <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-semibold">
+                  {rejectionReasonLabel(r.rejection_reason)}
+                </span>
+                {r.specialite && <span>{r.specialite}</span>}
+                <span>rejetée le {formatDateFr(r.rejected_at)}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              disabled={restoring}
+              onClick={() => onRestore(r.id, r.display_title)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors disabled:opacity-60"
+            >
+              <RotateCcw size={12} />
+              Rétablir
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   )
