@@ -14,9 +14,11 @@ interface Props {
   onClose: () => void
 }
 
-function getWeekNumber(week_iso: string): string {
-  return week_iso.split('-W')[1] ?? ''
-}
+// Cf. JournalWeekCard : libellé fixe depuis le 01/10/2026, le numéro de
+// semaine de l'épisode n'est plus affiché (il désignait l'épisode, pas la
+// semaine en cours, et paraissait faux dès que la publication prenait du
+// retard).
+const JOURNAL_LABEL = 'Journal de la semaine'
 
 function formatDuration(seconds: number): string {
   if (!seconds) return ''
@@ -26,7 +28,6 @@ function formatDuration(seconds: number): string {
 
 export function JournalDetailModal({ journal, onClose }: Props) {
   const { playTrack } = useAudioPlayer()
-  const weekNum = getWeekNumber(journal.week_iso)
   const durationLabel = formatDuration(journal.duration_s)
 
   // T8 — fetch + état de la timeline pour <NewsVisualSequence> (Q-T8-6=a :
@@ -86,11 +87,14 @@ export function JournalDetailModal({ journal, onClose }: Props) {
             (titre) et la ligne d'infos (source). Bouton fermer au-dessus. */}
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="min-w-0">
+            {/* Le sur-titre portait déjà « Journal de la semaine » et le h2
+                le numéro de semaine. Ce dernier ayant disparu, le sur-titre
+                est ramené à « Journal » pour ne pas répéter le titre. */}
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-teal-400 text-sm font-bold">🎙️ Journal de la semaine</span>
+              <span className="text-teal-400 text-sm font-bold">🎙️ Journal</span>
             </div>
             <h2 className="text-white font-bold text-xl leading-tight">
-              Semaine {weekNum}
+              {JOURNAL_LABEL}
             </h2>
             <p className="text-gray-400 text-sm mt-1">
               {journal.syntheses.length} articles
@@ -218,7 +222,7 @@ export function JournalDetailModal({ journal, onClose }: Props) {
             onClick={() => {
               playTrack({
                 url: journal.audio_url,
-                title: `Journal S${weekNum}`,
+                title: JOURNAL_LABEL,
                 duration_s: journal.duration_s,
                 type: 'journal',
                 episodeId: journal.id,
