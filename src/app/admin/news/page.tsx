@@ -67,6 +67,10 @@ const CATEGORIES_EDITORIALES = [
 
 const STATUSES = [
   { value: 'active', label: 'Actives', chip: 'bg-emerald-100 text-emerald-700' },
+  // Rejetées : sans ce filtre, une synthèse rejetée depuis sa page de détail
+  // serait introuvable depuis /admin/news — elle ne figure dans aucune autre
+  // liste, puisque toutes filtrent sur un statut précis.
+  { value: 'rejected', label: 'Rejetées', chip: 'bg-red-100 text-red-700' },
   { value: 'failed', label: 'En échec', chip: 'bg-amber-100 text-amber-700' },
   { value: 'failed_permanent', label: 'Échec permanent', chip: 'bg-red-100 text-red-700' },
   { value: 'retracted', label: 'Rétractées', chip: 'bg-gray-200 text-gray-700' },

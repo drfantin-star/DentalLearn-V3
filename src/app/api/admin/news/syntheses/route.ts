@@ -7,7 +7,18 @@ const SUMMARY_TRUNCATE_CHARS = 200
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 50
 
-const ALLOWED_STATUSES = new Set(['active', 'retracted', 'deleted', 'failed', 'failed_permanent'])
+// 'rejected' ajouté le 01/10/2026 : sans lui, ?status=rejected retombait
+// silencieusement sur 'active' et une synthèse rejetée était introuvable depuis
+// /admin/news. Doit rester aligné sur la contrainte
+// news_syntheses_status_extended_check (cf. 20260924a).
+const ALLOWED_STATUSES = new Set([
+  'active',
+  'rejected',
+  'retracted',
+  'deleted',
+  'failed',
+  'failed_permanent',
+])
 const ALLOWED_SORTS = new Set([
   'created_at_desc',
   'created_at_asc',
