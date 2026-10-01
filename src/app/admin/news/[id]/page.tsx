@@ -22,6 +22,7 @@ import {
 import { describeCardDate, formatDate } from '@/lib/news-display'
 import { QuestionApprovalButton } from '@/components/admin/news/QuestionApprovalButton'
 import { AudioPodcastBlock } from '@/components/admin/news/AudioPodcastBlock'
+import EditorialDecisionPanel from '@/components/admin/EditorialDecisionPanel'
 import Badge, { type BadgeVariant } from '@/components/ui/Badge'
 
 // ---------- Types ----------
@@ -45,6 +46,8 @@ interface Synthesis {
   formation_category_match: FormationCategorySlug | string | null
   status: string
   is_editorially_validated: boolean
+  rejection_reason: string | null
+  rejected_at: string | null
   failed_attempts: number
   manual_added: boolean
   llm_model: string | null
@@ -236,6 +239,16 @@ export default function NewsDetailPage() {
             <AudioPodcastBlock synthesisId={synthesis.id} />
           </main>
           <aside className="space-y-6">
+            {/* En tête de colonne : la décision éditoriale est le geste qu'on
+                vient faire ici après avoir lu la synthèse. */}
+            <EditorialDecisionPanel
+              synthesisId={synthesis.id}
+              status={synthesis.status}
+              isEditoriallyValidated={synthesis.is_editorially_validated}
+              rejectionReason={synthesis.rejection_reason}
+              rejectedAt={synthesis.rejected_at}
+              onChanged={() => setRefreshNonce((n) => n + 1)}
+            />
             <MatchFormationCard
               synthesisId={synthesis.id}
               slug={synthesis.formation_category_match}
