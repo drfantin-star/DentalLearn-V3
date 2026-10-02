@@ -7,6 +7,8 @@ export const dynamic = 'force-dynamic'
 
 const DEFAULT_LIMIT = 5
 const MAX_LIMIT = 50
+const MIN_QUERY_LENGTH = 2
+const MAX_QUERY_LENGTH = 100
 
 const NEWS_CARD_COLUMNS = [
   'id',
@@ -24,6 +26,13 @@ const NEWS_CARD_COLUMNS = [
   'caveats',
 ].join(', ')
 
+function sanitizeSearchTerm(q: string): string {
+  // Meme logique que la route admin : virgules / parentheses cassent la syntaxe
+  // .or() de PostgREST, % et * elargiraient le motif ILIKE, " et \ cassent le
+  // quoting. Le reste (espaces, accents, tirets) est conserve.
+  return q.replace(/[,()%*"\\]/g, '').trim().slice(0, MAX_QUERY_LENGTH)
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -31,6 +40,8 @@ export async function GET(request: Request) {
     const limitRaw = parseInt(searchParams.get('limit') ?? String(DEFAULT_LIMIT), 10)
     const pageRaw = parseInt(searchParams.get('page') ?? '1', 10)
     const specialite = searchParams.get('specialite')
+    // Recherche par mots-cles : ignoree en dessous de MIN_QUERY_LENGTH caracteres.
+    const q = sanitizeSearchTerm(searchParams.get('q') ?? '')
 
     if (!Number.isFinite(limitRaw) || limitRaw < 1) {
       return NextResponse.json({ error: 'Paramètre `limit` invalide' }, { status: 400 })
@@ -56,6 +67,11 @@ export async function GET(request: Request) {
 
     if (specialite) {
       query = query.eq('specialite', specialite)
+    }
+    if (q.length >= MIN_QUERY_LENGTH) {
+      query = query.or(
+        `display_title.ilike.%${q}%,summary_fr.ilike.%${q}%,clinical_impact.ilike.%${q}%`,
+      )
     }
 
     const from = (page - 1) * limit
