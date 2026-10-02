@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, X } from 'lucide-react'
 import {
   NEWS_SPECIALITES,
   NEWS_SPECIALITE_LABELS,
@@ -13,6 +13,8 @@ import NewsModal from '@/components/news/NewsModal'
 import { useAudioPlayer, type AudioTrack } from '@/context/AudioPlayerContext'
 
 const FETCH_LIMIT = 50
+const SEARCH_DEBOUNCE_MS = 400
+const MIN_QUERY_LENGTH = 2
 
 type SynthesesPayload = { data: NewsCard[]; total: number; page: number }
 
@@ -37,13 +39,14 @@ function NewsListSkeleton() {
   )
 }
 
-function buildSyntheseUrl(page: number, filter: string): string {
+function buildSyntheseUrl(page: number, filter: string, query: string): string {
   const params = new URLSearchParams({
     limit: String(FETCH_LIMIT),
     page: String(page),
   })
   // Filtre serveur : 'all' = aucun param specialite (tout le catalogue).
   if (filter !== 'all') params.set('specialite', filter)
+  if (query) params.set('q', query)
   return `/api/news/syntheses?${params.toString()}`
 }
 
@@ -57,6 +60,10 @@ export default function NewsPage() {
   const [error, setError] = useState<string | null>(null)
 
   const [activeFilter, setActiveFilter] = useState<string>('all')
+  // searchInput = texte tape ; searchQuery = valeur envoyee au serveur, apres
+  // debounce et seulement a partir de MIN_QUERY_LENGTH caracteres.
+  const [searchInput, setSearchInput] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const [modalNewsId, setModalNewsId] = useState<string | null>(null)
   const [playlistLoading, setPlaylistLoading] = useState(false)
@@ -72,7 +79,15 @@ export default function NewsPage() {
     })
   }
 
-  // Chargement initial + refetch page 1 à chaque changement de filtre.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmed = searchInput.trim()
+      setSearchQuery(trimmed.length >= MIN_QUERY_LENGTH ? trimmed : '')
+    }, SEARCH_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [searchInput])
+
+  // Chargement initial + refetch page 1 à chaque changement de filtre ou de recherche.
   useEffect(() => {
     let cancelled = false
     const isInitial = !hasLoadedOnce.current
@@ -80,7 +95,7 @@ export default function NewsPage() {
     else setListLoading(true)
     setError(null)
 
-    fetch(buildSyntheseUrl(1, activeFilter))
+    fetch(buildSyntheseUrl(1, activeFilter, searchQuery))
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         return res.json() as Promise<SynthesesPayload>
@@ -105,14 +120,14 @@ export default function NewsPage() {
     return () => {
       cancelled = true
     }
-  }, [activeFilter])
+  }, [activeFilter, searchQuery])
 
   const loadMore = useCallback(async () => {
     if (loadingMore) return
     const nextPage = page + 1
     setLoadingMore(true)
     try {
-      const res = await fetch(buildSyntheseUrl(nextPage, activeFilter))
+      const res = await fetch(buildSyntheseUrl(nextPage, activeFilter, searchQuery))
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const payload = (await res.json()) as SynthesesPayload
       // Anti-doublons par id : protège contre une insertion entre deux fetches
@@ -129,7 +144,7 @@ export default function NewsPage() {
     } finally {
       setLoadingMore(false)
     }
-  }, [loadingMore, page, activeFilter, total])
+  }, [loadingMore, page, activeFilter, searchQuery, total])
 
   const hasMore = items.length < total
 
@@ -165,6 +180,35 @@ export default function NewsPage() {
           </p>
         ) : (
           <section>
+            <div className="relative mx-4 mb-4">
+              <Search
+                size={18}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none"
+              />
+              <input
+                type="search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Rechercher un mot-clé (implant, fluor…)"
+                aria-label="Rechercher dans les actualités"
+                maxLength={100}
+                className="w-full rounded-full bg-gray-800 py-2.5 pl-10 pr-10 text-sm text-white
+                           placeholder:text-white/40 outline-none focus:ring-2 focus:ring-violet-500
+                           [&::-webkit-search-cancel-button]:hidden"
+              />
+              {searchInput && (
+                <button
+                  type="button"
+                  onClick={() => setSearchInput('')}
+                  aria-label="Effacer la recherche"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full
+                             text-white/60 hover:bg-gray-700 hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
             {!listLoading && items.length > 0 && (
               <button
                 type="button"
@@ -272,9 +316,11 @@ export default function NewsPage() {
               </div>
             ) : items.length === 0 ? (
               <p className="px-4 text-sm text-white/55">
-                {activeFilter === 'all'
-                  ? 'Aucune actualité disponible pour le moment.'
-                  : 'Aucun article dans cette spécialité pour le moment.'}
+                {searchQuery
+                  ? `Aucun short ne correspond à « ${searchQuery} ».`
+                  : activeFilter === 'all'
+                    ? 'Aucune actualité disponible pour le moment.'
+                    : 'Aucun article dans cette spécialité pour le moment.'}
               </p>
             ) : (
               <>
