@@ -331,7 +331,7 @@ export default function AntibioGuideApp() {
 
         <footer className="text-[13px] text-slate-500 flex flex-col gap-1.5">
           <p className="m-0">Sources : {SOURCES.has2026} · {SOURCES.has2024}. <a href="https://www.has-sante.fr" target="_blank" rel="noreferrer" className="text-teal-700 underline">has-sante.fr</a></p>
-          <p className="m-0">Outil d&apos;aide à la consultation des recommandations, ne remplace pas le jugement clinique. Relecture par le Conseil scientifique Dentalschool en cours. Aucune donnée patient n&apos;est enregistrée.</p>
+          <p className="m-0">Outil d&apos;aide à la consultation des recommandations, ne remplace pas le jugement clinique. Aucune donnée patient n&apos;est enregistrée.</p>
         </footer>
       </div>
     </div>
