@@ -18,7 +18,12 @@ const ANTHROPIC_MODEL = 'claude-sonnet-4-6'
 // 12 min vise 1 800 mots ± 10 % : 8192 laisse une marge confortable, et
 // stop_reason est désormais contrôlé (cf. callAnthropic).
 const ANTHROPIC_MAX_TOKENS = 8192
-const ANTHROPIC_TIMEOUT_MS = 90_000
+// 15/10/2026 : depuis max_tokens 8192, un journal complet à 6 synthèses
+// dépasse 90 s de génération (« Anthropic timeout after 90000ms »). On
+// s'aligne sur maxDuration (300 s) : 240 s d'appel, sans retry sur timeout
+// (un second essai dépasserait la limite Vercel ; les retries restent
+// réservés aux 429/5xx, rapides).
+const ANTHROPIC_TIMEOUT_MS = 240_000
 const ANTHROPIC_MAX_RETRIES = 2
 
 // Mêmes contraintes UI/BDD que /api/admin/news/syntheses/[id]/generate-script
@@ -379,13 +384,12 @@ async function callAnthropic(
     } catch (e) {
       clearTimeout(timer)
       if (e instanceof DOMException && e.name === 'AbortError') {
-        lastErr = new Error(`Anthropic timeout after ${ANTHROPIC_TIMEOUT_MS}ms`)
-        if (attempt < ANTHROPIC_MAX_RETRIES) {
-          await sleep(1000 * Math.pow(2, attempt))
-          attempt++
-          continue
-        }
-        throw lastErr
+        // Pas de retry sur timeout : 240 s + un second appel dépasserait
+        // maxDuration (300 s) et Vercel couperait sans message utile.
+        throw new Error(
+          `Génération trop longue (plus de ${Math.round(ANTHROPIC_TIMEOUT_MS / 1000)} s). ` +
+            `Réduisez la durée cible ou le nombre de synthèses, puis régénérez.`,
+        )
       }
       throw e
     }
