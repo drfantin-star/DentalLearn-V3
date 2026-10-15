@@ -17,16 +17,30 @@ const CHARS_PER_MINUTE = 750
 const COST_PER_1000_CHARS_EUR = 0.05
 
 const SPEAKER_LINE_RE = /^(sophie|martin)\s*:\s*(.*)$/i
+// Audio tags ElevenLabs v3 : [pause], [laughs], [excited]…
+const AUDIO_TAG_RE = /\[[^\]]*\]/g
+
+/** Texte d'une réplique une fois les audio tags retirés. */
+function stripAudioTags(text: string): string {
+  return text.replace(AUDIO_TAG_RE, '').trim()
+}
 
 /**
  * Parse un script dialogue Sophie/Martin au format Dentalschool.
  * Réimplémentation TypeScript fidèle de parse_dialogue() Python (generate_audio_PHASE_2B.py).
+ *
+ * 15/10/2026 : une réplique composée uniquement d'audio tags (ex. « Martin: [pause] »,
+ * fréquent dans les scripts journal générés par Sonnet) était envoyée telle quelle et
+ * ElevenLabs la refusait (400 input_text_empty : « Input at position N has empty text »).
+ * Ces tags sont désormais reportés en tête de la réplique parlée suivante — la pause
+ * est conservée, sans réplique vide. Si rien ne suit, ils sont ignorés.
  */
 export function parseDialogueScript(text: string): DialogueInput[] {
   if (!text) return []
 
   const out: DialogueInput[] = []
   const lines = text.split(/\r?\n/)
+  let pendingTags = ''
 
   for (const raw of lines) {
     const line = raw.trim()
@@ -41,11 +55,18 @@ export function parseDialogueScript(text: string): DialogueInput[] {
     const replyText = m[2].trim()
     if (replyText.length === 0) continue
 
+    // Réplique « tags seuls » : on la reporte sur la suivante
+    if (stripAudioTags(replyText).length === 0) {
+      pendingTags = pendingTags ? `${pendingTags} ${replyText}` : replyText
+      continue
+    }
+
     out.push({
       voice_id: VOICE_IDS[speaker],
-      text: replyText,
+      text: pendingTags ? `${pendingTags} ${replyText}` : replyText,
       speaker,
     })
+    pendingTags = ''
   }
 
   return out
@@ -69,9 +90,10 @@ export function validateDialogue(inputs: DialogueInput[]): string[] {
     errors.push(`Script dépasse la limite caractères : ${totalChars} > ${MAX_TOTAL_CHARS}.`)
   }
 
-  const hasEmpty = inputs.some((i) => i.text.trim().length === 0)
+  // Même critère qu'ElevenLabs : vide une fois les audio tags retirés
+  const hasEmpty = inputs.some((i) => stripAudioTags(i.text).length === 0)
   if (hasEmpty) {
-    errors.push('Une ou plusieurs répliques ont un texte vide.')
+    errors.push('Une ou plusieurs répliques ont un texte vide (hors audio tags).')
   }
 
   const hasSophie = inputs.some((i) => i.speaker === 'sophie')
