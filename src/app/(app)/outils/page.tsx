@@ -11,6 +11,7 @@ import {
   Users,
   Stethoscope,
   Zap,
+  Pill,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -34,6 +35,7 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
   stethoscope: Stethoscope,
   zap: Zap,
   wrench: Wrench,
+  pill: Pill,
 }
 
 function toolIcon(name: string | null): LucideIcon {
