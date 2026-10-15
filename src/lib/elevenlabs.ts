@@ -40,6 +40,8 @@ export interface DialogueTurn {
 
 const SOPHIE_PREFIX_RE = /^Sophie:\s+/
 const MARTIN_PREFIX_RE = /^Martin:\s+/
+// Audio tags eleven_v3 : [pause], [laughs], [excited]…
+const AUDIO_TAG_RE = /\[[^\]]*\]/g
 
 /**
  * Convertit un script "Sophie: ...\nMartin: ..." en suite de répliques.
@@ -53,21 +55,31 @@ const MARTIN_PREFIX_RE = /^Martin:\s+/
 export function parseDialogue(script_md: string): DialogueTurn[] {
   if (!script_md) return []
   const turns: DialogueTurn[] = []
+  // 15/10/2026 : une réplique composée uniquement d'audio tags (« Martin: [pause] »,
+  // fréquent dans les scripts journal générés par Sonnet) était envoyée telle quelle
+  // et ElevenLabs la refusait (400 input_text_empty : « Input at position N has empty
+  // text »). Ces tags sont reportés en tête de la réplique parlée suivante — la pause
+  // est conservée, sans réplique vide. Si rien ne suit, ils sont ignorés.
+  let pendingTags = ''
+
+  const push = (speaker: DialogueTurn['speaker'], text: string) => {
+    if (text.length === 0) return
+    if (text.replace(AUDIO_TAG_RE, '').trim().length === 0) {
+      pendingTags = pendingTags ? `${pendingTags} ${text}` : text
+      return
+    }
+    turns.push({ speaker, text: pendingTags ? `${pendingTags} ${text}` : text })
+    pendingTags = ''
+  }
 
   for (const rawLine of script_md.split('\n')) {
     const line = rawLine.trim()
     if (line.length === 0) continue
 
     if (SOPHIE_PREFIX_RE.test(line)) {
-      turns.push({
-        speaker: 'sophie',
-        text: line.replace(SOPHIE_PREFIX_RE, '').trim(),
-      })
+      push('sophie', line.replace(SOPHIE_PREFIX_RE, '').trim())
     } else if (MARTIN_PREFIX_RE.test(line)) {
-      turns.push({
-        speaker: 'martin',
-        text: line.replace(MARTIN_PREFIX_RE, '').trim(),
-      })
+      push('martin', line.replace(MARTIN_PREFIX_RE, '').trim())
     }
   }
 
