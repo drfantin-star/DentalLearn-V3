@@ -13,7 +13,11 @@ import {
 export const dynamic = 'force-dynamic'
 
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6'
-const ANTHROPIC_MAX_TOKENS = 4096
+// 15/10/2026 : 4096 tronquait les journaux à 6 synthèses (≈ 1 400 mots en
+// français avec les balises [emotion]), sans erreur visible. Un journal de
+// 12 min vise 1 800 mots ± 10 % : 8192 laisse une marge confortable, et
+// stop_reason est désormais contrôlé (cf. callAnthropic).
+const ANTHROPIC_MAX_TOKENS = 8192
 const ANTHROPIC_TIMEOUT_MS = 90_000
 const ANTHROPIC_MAX_RETRIES = 2
 
@@ -292,6 +296,18 @@ interface AnthropicTextBlock {
 
 interface AnthropicResponse {
   content: AnthropicTextBlock[]
+  stop_reason?: 'end_turn' | 'max_tokens' | 'stop_sequence' | 'tool_use' | string
+}
+
+/** Erreur dédiée : la réponse a été coupée par max_tokens (script incomplet). */
+class ScriptTruncatedError extends Error {
+  constructor(wordCount: number) {
+    super(
+      `Script tronqué par la limite de génération (${ANTHROPIC_MAX_TOKENS} tokens, ` +
+        `${wordCount} mots produits). Réduisez la durée cible ou le nombre de synthèses, puis régénérez.`,
+    )
+    this.name = 'ScriptTruncatedError'
+  }
 }
 
 async function callAnthropic(
@@ -340,10 +356,16 @@ async function callAnthropic(
 
       if (res.ok) {
         const json = (await res.json()) as AnthropicResponse
-        return json.content
+        const text = json.content
           .filter((b): b is AnthropicTextBlock => b.type === 'text')
           .map((b) => b.text)
           .join('')
+        // Une coupure par max_tokens produisait jusqu'ici un script tronqué
+        // enregistré comme complet. On refuse explicitement.
+        if (json.stop_reason === 'max_tokens') {
+          throw new ScriptTruncatedError(countWords(text))
+        }
+        return text
       }
 
       const errText = await res.text().catch(() => '(no body)')
